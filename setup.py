@@ -1,6 +1,6 @@
 import sys
 from setuptools import setup, find_packages
-import nums
+
 
 requirements = [
     'numpy',
@@ -19,10 +19,10 @@ with open("README.md", "r") as fh:
 
 def main():
 
+    import nums
+
     if sys.version_info[:2] < (3, 6):
         raise RuntimeError("Python version >= 3.6 required.")
-
-    import numc
 
     setup(
         name='nums',
