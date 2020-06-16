@@ -5,11 +5,9 @@ from setuptools import setup, find_packages
 requirements = [
     'numpy',
     'boto3',
-    'joblib',
     'tqdm',
     'pytest',
-    'xxhash',
-    'networkx'
+    'xxhash'
 ]
 
 
@@ -27,8 +25,6 @@ def main():
     setup(
         name='nums',
         version=nums.__version__,
-        author='Melih Elibol',
-        author_email="elibol@gmail.com",
         description="A numerical computing library for python that scales.",
         long_description=long_description,
         long_description_content_type="text/markdown",
