@@ -6,6 +6,7 @@ install:
   - pip install .
   - pip install pytest pytest-pylint pytest-cov tqdm
 script:
-  - pytest --pylint --cov=./
+  - pytest --pylint ./nums
+  - pytest --pylint --cov=./nums/ ./tests
 after_success:
   - bash <(curl -s https://codecov.io/bash)
