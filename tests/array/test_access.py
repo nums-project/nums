@@ -340,7 +340,6 @@ def test_ref_accessor(app_inst: ArrayApplication):
         ((slice(None, None), slice(None, None), slice(0, 4)), None),
 
         # Broadcast tests.
-        # pylint: disable=bad-whitespace
         ((2,           slice(4, 6), slice(0, 4)),
          (slice(3, 4), slice(2, 4), slice(0, 4))),
         ((6,           slice(6, 8), slice(0, 4)),
