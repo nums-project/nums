@@ -19,56 +19,21 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-
-from setuptools import setup, find_packages
-
-
-requirements = [
-    'numpy<=1.20.0',
-    'scipy<=1.5.0',
-    'ray==0.8.7',
-    'boto3<=1.15.0'
-]
+from nums.numpy import linalg
+from nums.numpy import random
+from nums.numpy.nums_numpy import (
+    _not_implemented
+)
 
 
-test_requirements = [
-    'pytest',
-    'pytest-pylint',
-]
+def _init():
+    # pylint: disable=import-outside-toplevel
+    import numpy as np
+    from nums.core.systems import utils as system_utils
+    for name, func in system_utils.get_module_functions(np).items():
+        if name not in globals():
+            globals()[name] = _not_implemented(func)
 
 
-__version__ = None
-
-
-with open('nums/core/version.py') as f:
-    # pylint: disable=exec-used
-    exec(f.read(), globals())
-
-
-with open("README.md", "r") as fh:
-    long_description = fh.read()
-
-
-def main():
-
-    setup(
-        name='nums',
-        version=__version__,
-        description="A numerical computing library for Python that scales.",
-        long_description=long_description,
-        long_description_content_type="text/markdown",
-        url="https://github.com/nums-project/nums",
-        packages=find_packages(),
-        classifiers=[
-            "Programming Language :: Python :: 3",
-            "License :: OSI Approved :: MIT License",
-            "Operating System :: Unix",
-        ],
-        python_requires='>=3.6',
-        install_requires=requirements,
-        test_requirements=test_requirements
-    )
-
-
-if __name__ == "__main__":
-    main()
+_init()
+del _init

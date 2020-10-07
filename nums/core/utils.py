@@ -20,55 +20,28 @@
 # DEALINGS IN THE SOFTWARE.
 
 
-from setuptools import setup, find_packages
+import os
+from pathlib import Path
+import subprocess
 
 
-requirements = [
-    'numpy<=1.20.0',
-    'scipy<=1.5.0',
-    'ray==0.8.7',
-    'boto3<=1.15.0'
-]
+pj = lambda *paths: os.path.abspath(os.path.expanduser(os.path.join(*paths)))
+
+core_root = os.path.abspath(os.path.dirname(__file__))
+package_root = pj(core_root, "../")
+project_root = pj(package_root, "../")
+
+data_dir = pj(project_root, "data")
+Path(data_dir).mkdir(parents=True, exist_ok=True)
 
 
-test_requirements = [
-    'pytest',
-    'pytest-pylint',
-]
+def runproc(*args):
+    return subprocess.Popen(args,
+                            stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
 
 
-__version__ = None
-
-
-with open('nums/core/version.py') as f:
-    # pylint: disable=exec-used
-    exec(f.read(), globals())
-
-
-with open("README.md", "r") as fh:
-    long_description = fh.read()
-
-
-def main():
-
-    setup(
-        name='nums',
-        version=__version__,
-        description="A numerical computing library for Python that scales.",
-        long_description=long_description,
-        long_description_content_type="text/markdown",
-        url="https://github.com/nums-project/nums",
-        packages=find_packages(),
-        classifiers=[
-            "Programming Language :: Python :: 3",
-            "License :: OSI Approved :: MIT License",
-            "Operating System :: Unix",
-        ],
-        python_requires='>=3.6',
-        install_requires=requirements,
-        test_requirements=test_requirements
-    )
-
-
-if __name__ == "__main__":
-    main()
+def communicate(*args):
+    p = runproc(*args)
+    return tuple(map(lambda x: x.decode("utf-8"), p.communicate()))

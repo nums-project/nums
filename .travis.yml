@@ -6,6 +6,6 @@ install:
   - pip install .
   - pip install pytest pytest-cov
 script:
-  - pytest --cov=./
+  - pytest --pylint --cov=./
 after_success:
   - bash <(curl -s https://codecov.io/bash)
