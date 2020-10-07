@@ -24,6 +24,7 @@ import itertools
 
 import tqdm
 import numpy as np
+import pytest
 
 from nums.core.array import utils as array_utils
 import nums.core.array.selection as sel_module
@@ -100,6 +101,7 @@ def test_basic_assign(app_inst: ArrayApplication):
         assert np.allclose(*to_res), str(to_res)
 
 
+@pytest.mark.skip
 def test_basic_assign_3axis(app_inst: ArrayApplication):
 
     def get_access_iterator(shape, block_shape, limit=None):

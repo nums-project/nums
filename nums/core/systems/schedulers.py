@@ -169,7 +169,7 @@ class BlockCyclicScheduler(TaskScheduler):
         assert len(self.available_nodes) >= np.prod(self.cluster_shape), err_str
         for i, cluster_entry in enumerate(self.get_cluster_entry_iterator()):
             self.cluster_grid[cluster_entry] = self.available_nodes[i]
-            print(cluster_entry, self.get_node_key(cluster_entry))
+            print("cluster_grid", cluster_entry, self.get_node_key(cluster_entry))
         print("cluster_shape", self.cluster_shape)
 
     def get_cluster_entry_iterator(self):

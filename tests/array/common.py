@@ -55,8 +55,6 @@ class MockMultiNodeScheduler(BlockCyclicScheduler):
         self.available_nodes = self.available_nodes * np.prod(self.cluster_shape)
         for i, cluster_entry in enumerate(self.get_cluster_entry_iterator()):
             self.cluster_grid[cluster_entry] = self.available_nodes[i]
-        print("cluster_shape", self.cluster_shape)
-        print("cluster_grid", self.cluster_grid)
 
 
 def mock_cluster(cluster_shape):

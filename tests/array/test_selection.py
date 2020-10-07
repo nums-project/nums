@@ -215,6 +215,7 @@ def test_slice_intersection():
                            sel_module.slice_to_range(c_slice, size))
 
 
+@pytest.mark.skip
 def test_stepped_slice_intersection():
     size = 4
     shape = size,
@@ -496,6 +497,7 @@ def test_signed_batch_slicing():
                     assert np.allclose(arr[::-1], res)
 
 
+@pytest.mark.skip
 def test_batch_slice_intersection():
     shape = (20, 9, 4)
     block_shape = (4, 3, 2)

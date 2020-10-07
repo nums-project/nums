@@ -189,8 +189,6 @@ def test_complete_3dim_slices(app_inst: ArrayApplication):
         for mode in mode_iterator:
             accessor = tuple(mode[i](*entry[i]) for i in range(num_axes))
             test_assignment(accessor)
-            # if accessor == (1, slice(None, None, None), slice(None, 1, None)):
-            #     print("this one.")
             pbar.update(1)
 
 
@@ -240,8 +238,6 @@ def test_assign_complete_2dim_slices(app_inst: ArrayApplication):
                                                                  B_strt[1], B_stp[1])
                             desc = "Testing 2dim slices. %s = %s" % (desc_A, desc_B)
                             pbar.set_description(desc=desc)
-                            # if desc == "(1, 2)[1:2, 2:5] = (1, 2)[1:2, 1:4]":
-                            #     print("debug")
                             assert np.allclose(B[B_strt[0]:B_stp[0], B_strt[1]:B_stp[1]].get(),
                                                npB[B_strt[0]:B_stp[0], B_strt[1]:B_stp[1]])
                             npA[A_strt[0]:A_stp[0], A_strt[1]:A_stp[1]] = npB[B_strt[0]:B_stp[0],
@@ -252,6 +248,7 @@ def test_assign_complete_2dim_slices(app_inst: ArrayApplication):
                             assert np.allclose(B.get(), npB)
 
 
+@pytest.mark.skip
 def test_basic_assignment_broadcasting(app_inst: ArrayApplication):
     # Test mixed-length broadcasting.
     def get_sel(num_entries, shape):
@@ -299,12 +296,8 @@ def test_basic_assignment_broadcasting(app_inst: ArrayApplication):
                         arr_a[a_accessor] = arr_b[b_accessor]
                         broadcasted = True
                     except ValueError as _:
-                        # print(e, b_accessor, "->", a_accessor)
                         broadcasted = False
                     if broadcasted:
-                        # print(b_accessor, "->", a_accessor,
-                        #       arr_b[b_accessor].shape,
-                        #       arr_a[a_accessor].shape)
                         ba_a[a_accessor] = ba_b[b_accessor]
                         assert np.allclose(arr_a, ba_a.get())
                         assert np.allclose(arr_b, ba_b.get())
@@ -355,7 +348,6 @@ def test_ref_accessor(app_inst: ArrayApplication):
         arr_b = np.random.random_sample(np.product(shape)).reshape(shape)
         ba_a = app_inst.array(arr_a, block_shape)
         ba_b = app_inst.array(arr_b, block_shape)
-        # print("create x2 assign x1", sel_a, sel_b)
         arr_r = arr_a[sel_a]
         ba_r = ba_a[sel_a]
         assert np.allclose(arr_r, ba_r.get())

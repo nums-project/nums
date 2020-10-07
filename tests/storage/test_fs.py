@@ -50,14 +50,12 @@ def test_rwd(app_inst: ArrayApplication):
     write_result_np = write_result_ba.get()
     for grid_entry in write_result_ba.grid.get_entry_iterator():
         assert write_result_ba[grid_entry].get() == write_result_np[grid_entry]
-        print(write_result_np[grid_entry])
     ba_read: BlockArray = app_inst.read_fs(filename)
     assert app_inst.get(app_inst.allclose(ba, ba_read))
     delete_result_ba: BlockArray = app_inst.delete_fs(filename)
     delete_result_np = delete_result_ba.get()
     for grid_entry in delete_result_ba.grid.get_entry_iterator():
         assert delete_result_ba[grid_entry].get() == delete_result_np[grid_entry]
-        print(delete_result_np[grid_entry])
 
 
 if __name__ == "__main__":
