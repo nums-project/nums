@@ -48,11 +48,10 @@ class System(SystemInterface, ComputeInterface):
         check_implementation(ComputeInterface, self.compute_imp)
         # Collect implemented module functions.
         self.module_functions = extract_functions(self.compute_imp)
-        try:
-            self.rng_cls = compute_module.RNG
-        except Exception as _:
+        if getattr(compute_module, "RNG", None) is None:
             raise Exception("No random number generator implemented "
                             "for compute module %s" % str(compute_module))
+        self.rng_cls = compute_module.RNG
 
     def init(self):
         for name, _ in self.module_functions.items():
