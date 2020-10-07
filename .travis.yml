@@ -4,7 +4,7 @@ python:
   - "3.6"
 install:
   - pip install .
-  - pip install pytest pytest-pylint pytest-cov
+  - pip install pytest pytest-pylint pytest-cov tqdm
 script:
   - pytest --pylint --cov=./
 after_success:
