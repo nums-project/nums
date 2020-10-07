@@ -29,6 +29,7 @@ import pytest
 from nums.core.storage.storage import BimodalGaussian
 from nums.core.array.application import ArrayApplication
 
+# pylint: disable=wrong-import-order
 import common
 
 
