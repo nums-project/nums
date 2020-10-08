@@ -6,4 +6,7 @@ install:
   - pip install .
   - pip install pytest==6.1.1 pytest-pylint==0.17.0 pytest-cov==2.10.1 coverage==5.3 codecov==2.1.9 tqdm
 script:
-  - pytest --pylint --cov-report=xml --cov=nums
+  - pytest --pylint nums
+  - pytest --pylint --cov-config=.coveragerc --cov-report=term --cov=nums tests/
+after_success:
+  - codecov
