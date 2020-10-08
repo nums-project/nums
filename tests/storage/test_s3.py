@@ -6,7 +6,6 @@ from nums.core.array.blockarray import BlockArray
 from nums.core.storage.storage import StoredArrayS3
 
 
-@pytest.mark.skip
 def test_rwd(app_inst: ArrayApplication):
     array: np.ndarray = np.random.random(35).reshape(7, 5)
     ba: BlockArray = app_inst.array(array, block_shape=(3, 4))
