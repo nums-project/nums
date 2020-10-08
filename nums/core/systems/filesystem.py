@@ -81,17 +81,12 @@ def loadtxt_block(fname, dtype, comments, delimiter,
 ARRAY_FILETYPE = "pkl"
 
 
-def exists(filename: AnyStr):
-    return os.path.exists(filename)
-
-
 def write_meta_fs(meta: Dict, filename: AnyStr):
     """
     Write meta data to disk.
     """
-    file_dir = settings.pj(settings.fs_meta, filename)
-    settings.Path(file_dir).mkdir(parents=True, exist_ok=True)
-    filepath = settings.pj(file_dir, "meta.pkl")
+    settings.Path(filename).mkdir(parents=True, exist_ok=True)
+    filepath = settings.pj(filename, "meta.pkl")
     with open(filepath, "wb") as fh:
         return np.array(pickle.dump(meta, fh), dtype=object)
 
@@ -100,9 +95,8 @@ def read_meta_fs(filename: AnyStr):
     """
     Read meta data from disk.
     """
-    file_dir = settings.pj(settings.fs_meta, filename)
-    settings.Path(file_dir).mkdir(parents=True, exist_ok=True)
-    filepath = settings.pj(file_dir, "meta.pkl")
+    settings.Path(filename).mkdir(parents=True, exist_ok=True)
+    filepath = settings.pj(filename, "meta.pkl")
     with open(filepath, "rb") as fh:
         return pickle.load(fh)
 
@@ -111,9 +105,8 @@ def delete_meta_fs(filename: AnyStr):
     """
     Delete meta data from disk.
     """
-    file_dir = settings.pj(settings.fs_meta, filename)
-    settings.Path(file_dir).mkdir(parents=True, exist_ok=True)
-    filepath = settings.pj(file_dir, "meta.pkl")
+    settings.Path(filename).mkdir(parents=True, exist_ok=True)
+    filepath = settings.pj(filename, "meta.pkl")
     return np.array(os.remove(filepath), dtype=object)
 
 
@@ -137,10 +130,9 @@ def write_block_fs(block: Any, filename: AnyStr, grid_entry: Tuple):
     """
     Write block to disk.
     """
-    file_dir = settings.pj(settings.fs_data, filename)
-    settings.Path(file_dir).mkdir(parents=True, exist_ok=True)
+    settings.Path(filename).mkdir(parents=True, exist_ok=True)
     entry_name = "_".join(list(map(str, grid_entry))) + "." + ARRAY_FILETYPE
-    filepath = settings.pj(file_dir, entry_name)
+    filepath = settings.pj(filename, entry_name)
     return np.array(save(block, filepath), dtype=object)
 
 
@@ -148,10 +140,9 @@ def read_block_fs(filename, grid_entry: Tuple):
     """
     Read block from disk.
     """
-    file_dir = settings.pj(settings.fs_data, filename)
-    settings.Path(file_dir).mkdir(parents=True, exist_ok=True)
+    settings.Path(filename).mkdir(parents=True, exist_ok=True)
     entry_name = "_".join(list(map(str, grid_entry))) + "." + ARRAY_FILETYPE
-    filepath = settings.pj(file_dir, entry_name)
+    filepath = settings.pj(filename, entry_name)
     return load(filepath)
 
 
@@ -159,10 +150,9 @@ def delete_block_fs(filename, grid_entry: Tuple):
     """
     Delete block from disk.
     """
-    file_dir = settings.pj(settings.fs_data, filename)
-    settings.Path(file_dir).mkdir(parents=True, exist_ok=True)
+    settings.Path(filename).mkdir(parents=True, exist_ok=True)
     entry_name = "_".join(list(map(str, grid_entry))) + "." + ARRAY_FILETYPE
-    filepath = settings.pj(file_dir, entry_name)
+    filepath = settings.pj(filename, entry_name)
     return np.array(os.remove(filepath), dtype=object)
 
 
@@ -183,13 +173,6 @@ class FileSystem(object):
                      write_block_fs, read_block_fs, delete_block_fs,
                      loadtxt_block]:
             self.system.register(func.__name__, func, {})
-
-    ##################################################
-    # Private filesystem-like operations
-    ##################################################
-
-    def exists(self, filename: AnyStr, syskwargs):
-        raise NotImplementedError()
 
     ##################################################
     # Block-level (remote) operations

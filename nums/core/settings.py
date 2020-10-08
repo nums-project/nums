@@ -41,16 +41,6 @@ ray_init_default = {
 compute_name = os.environ.get("NUMS_COMPUTE", "numpy")
 
 
-# Filesystem settings.
-fs_root = pj("~", ".nums", "fs")
-Path(fs_root).mkdir(parents=True, exist_ok=True)
-
-fs_meta = pj(fs_root, "meta")
-Path(fs_meta).mkdir(parents=True, exist_ok=True)
-
-fs_data = pj(fs_root, "data")
-Path(fs_data).mkdir(parents=True, exist_ok=True)
-
 # Default block shapes for arrays with up to 2 axes.
 # Block shapes can grow to approximately 1 gigabytes in size.
 # Beyond 2 axes, block shape is a required parameter.

@@ -45,7 +45,7 @@ def test_text_basic(app_inst: ArrayApplication):
 def test_rwd(app_inst: ArrayApplication):
     array: np.ndarray = np.random.random(35).reshape(7, 5)
     ba: BlockArray = app_inst.array(array, block_shape=(3, 4))
-    filename = "darrays/read_write_delete_array_test"
+    filename = "/tmp/darrays/read_write_delete_array_test"
     write_result_ba: BlockArray = app_inst.write_fs(ba, filename)
     write_result_np = write_result_ba.get()
     for grid_entry in write_result_ba.grid.get_entry_iterator():
