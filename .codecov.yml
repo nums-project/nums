@@ -1,0 +1,20 @@
+# Documentation: https://docs.codecov.io/docs/codecov-yaml
+
+codecov:
+  allow_coverage_offsets: true
+
+coverage:
+  status:
+    project:
+      default:
+        target: 90%
+        threshold: 0.5%
+
+comment: off
+
+ignore:
+  - "tests/**/*"
+  - "setup.py"
+  - "nums/numpy/*"
+  - "nums/core/application_manager.py"
+  - "nums/core/settings.py"
