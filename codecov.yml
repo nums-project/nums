@@ -2,16 +2,8 @@
 
 coverage:
   status:
+    patch: off
     project:
       default:
         target: 90%
         threshold: 0.5%
-
-comment: off
-
-ignore:
-  - "tests/**/*"
-  - "setup.py"
-  - "nums/numpy/*"
-  - "nums/core/application_manager.py"
-  - "nums/core/settings.py"
