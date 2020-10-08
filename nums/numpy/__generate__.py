@@ -20,3 +20,25 @@
 # DEALINGS IN THE SOFTWARE.
 
 # TODO(hme): Generate NumPy API from nums.core.
+
+from nums.core.systems import utils as system_utils
+from nums.numpy import nums_numpy as numpy_api
+
+
+def _api_coverage():
+    import numpy as np
+
+    coverage = 0
+    total = 0
+    for name, func in system_utils.get_module_functions(np).items():
+        total += 1
+        if getattr(numpy_api, name, None) is None:
+            print("Missing ", name)
+        else:
+            coverage += 1
+    print("coverage", coverage)
+    print("total", total)
+    print("percent covered", coverage / total * 100)
+
+
+_api_coverage()
