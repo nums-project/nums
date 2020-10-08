@@ -8,6 +8,6 @@ install:
 script:
   - pytest --pylint ./nums
   - pytest --pylint --cov-config=.coveragerc --cov-report=xml --cov=./nums ./tests
-  - cat coverage.xml
 after_success:
   - bash <(curl -s https://codecov.io/bash)
+  - cat coverage.xml
