@@ -4,10 +4,8 @@ python:
   - "3.6"
 install:
   - pip install .
-  - pip install pytest pytest-pylint pytest-cov coverage tqdm
+  - pip install pytest==6.1.1 pytest-pylint==0.17.0 pytest-cov==2.10.1 coverage==5.3 codecov==2.1.9 tqdm
 script:
-  - pytest --pylint ./nums
-  - pytest --pylint --cov-config=.coveragerc --cov-report=xml --cov=./nums ./tests
+  - pytest --pylint --cov-config=.coveragerc --cov-report term --cov=nums
 after_success:
-  - bash <(curl -s https://codecov.io/bash)
-  - cat coverage.xml
+  - codecov
