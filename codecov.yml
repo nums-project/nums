@@ -1,9 +1,5 @@
 # Documentation: https://docs.codecov.io/docs/codecov-yaml
 
-codecov:
-  branch: first-push
-  allow_coverage_offsets: true
-
 coverage:
   status:
     project:
