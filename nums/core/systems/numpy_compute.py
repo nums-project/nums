@@ -98,11 +98,6 @@ class ComputeCls(ComputeImp):
     def touch(self, arr):
         return isinstance(arr, np.ndarray)
 
-    def zeros(self, grid_entry, grid_meta):
-        grid = ArrayGrid.from_meta(grid_meta)
-        block_shape = grid.get_block_shape(grid_entry)
-        return np.zeros(block_shape, dtype=grid.dtype)
-
     def empty(self, grid_entry, grid_meta):
         grid = ArrayGrid.from_meta(grid_meta)
         block_shape = grid.get_block_shape(grid_entry)
@@ -121,6 +116,9 @@ class ComputeCls(ComputeImp):
     def random_block(self, rng_params, rfunc_name, rfunc_args, shape, dtype):
         rng: Generator = block_rng(*rng_params)
         op_func = rng.__getattribute__(rfunc_name)
+        if rfunc_name == "multinomial" or rfunc_name == "dirichlet":
+            assert isinstance(rng_params[0], list)
+            shape = tuple(list(shape) + [len(rng_params[0])])
         result = op_func(*rfunc_args).reshape(shape)
         if rfunc_name not in ("random", "integers"):
             # Only random supports sampling of a specific type.
@@ -128,7 +126,7 @@ class ComputeCls(ComputeImp):
         return result
 
     def create_block(self, *src_arrs, src_params, dst_params, dst_shape, dst_shape_bc):
-        # TODO: Test putting dst_shape as first param.
+        # TODO (hme): Test putting dst_shape as first param.
         result = np.empty(shape=dst_shape, dtype=src_arrs[0].dtype)
         assert len(src_params) == len(dst_params)
         for i in range(len(src_params)):
@@ -191,7 +189,6 @@ class ComputeCls(ComputeImp):
         return arr.T
 
     def split(self, arr, indices_or_sections, axis, transposed):
-        # TODO: Test this.
         if transposed:
             arr = arr.T
         return np.split(arr, indices_or_sections, axis)

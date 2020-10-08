@@ -52,7 +52,7 @@ def sample_sym_pd_mat(shape):
     return (v * w) @ np.linalg.inv(v)
 
 
-def test_inv(app_inst: ArrayApplication):
+def test_inv_assumptions(app_inst: ArrayApplication):
     # pylint: disable=no-member, unused-variable
     np_Z = sample_sym_pd_mat(shape=(10, 10))
 
@@ -111,6 +111,19 @@ def test_inv(app_inst: ArrayApplication):
     np_Z_inv = np.linalg.inv(np_Z)
     np_runtime = time.time() - np_runtime
     assert scipy_runtime < np_runtime
+
+
+def test_inv(app_inst: ArrayApplication):
+    shape = (5, 5)
+    for dtype in (np.float32, np.float64):
+        mat = app_inst.array(sample_sym_pd_mat(shape=shape).astype(dtype), block_shape=shape)
+        mat_inv = app_inst.inv_sym_psd(mat).get()
+        assert np.allclose(np.linalg.inv(mat.get()), mat_inv, rtol=1e-4, atol=1e-4)
+        _, r = np.linalg.qr(mat.get())
+        r_inv = app_inst.inverse_triangular(app_inst.array(r, block_shape=shape), lower=False).get()
+        assert np.allclose(np.linalg.inv(r), r_inv, rtol=1e-4, atol=1e-4)
+        L = app_inst.cholesky(mat).get()
+        assert np.allclose(np.linalg.cholesky(mat.get()), L, rtol=1e-4, atol=1e-4)
 
 
 def test_qr(app_inst: ArrayApplication):
@@ -308,7 +321,7 @@ def test_poisson_basic(app_inst):
 
 
 def test_poisson(app_inst: ArrayApplication):
-    # TODO: Is there a more appropriate distribution for testing Poisson?
+    # TODO (hme): Is there a more appropriate distribution for testing Poisson?
     num_samples, num_features = 1000, 1
     rs = np.random.RandomState(1337)
     real_beta = rs.random_sample(num_features)
@@ -340,7 +353,8 @@ if __name__ == "__main__":
     from tests import conftest
 
     app_inst = conftest.get_app("serial")
-    # test_inv(app_inst)
+    test_inv_assumptions(app_inst)
+    test_inv(app_inst)
     # test_qr(app_inst)
     # test_svd(app_inst)
     # test_lr(app_inst)

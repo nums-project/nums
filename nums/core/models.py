@@ -101,7 +101,7 @@ class GLM(object):
         elif self._opt == "newton":
             beta = newton(self._app, self, beta, X, y, tol, max_iter)
         elif self._opt == "irls":
-            # TODO: Provide irls for all GLMs.
+            # TODO (hme): Provide irls for all GLMs.
             assert isinstance(self, LogisticRegression)
             beta = irls(self._app, self, beta, X, y, tol, max_iter)
         self._beta0 = beta[-1]
@@ -231,7 +231,7 @@ class PoissonRegression(GLM):
     def hessian(self, X: BlockArray, y: BlockArray, mu: BlockArray = None):
         if mu is None:
             mu = self.forward(X)
-        # TODO: This is sub-optimal as it forces the computation of X.T.
+        # TODO (hme): This is sub-optimal as it forces the computation of X.T.
         return (X.T * mu) @ X
 
     def deviance(self, y, y_pred):
@@ -260,7 +260,7 @@ class ExponentialRegression(GLM):
 
 
 def line_search():
-    pass
+    raise NotImplementedError()
 
 
 def block_sync_sgd(model: GLM, beta,
@@ -348,4 +348,4 @@ def irls(app: ArrayApplication, model: LogisticRegression, beta,
 
 
 def lbfgs():
-    pass
+    raise NotImplementedError()

@@ -157,7 +157,7 @@ def test_complete_3dim_slices(app_inst: ArrayApplication):
     shape_range = list(map(lambda x: list(range(1, x + 1)), shape))
     axis_accessors = []
     for i in range(num_axes):
-        # TODO: Change to a[0] <= a[1].
+        # TODO (hme): Change to a[0] <= a[1].
         accessor_pairs = list(filter(lambda a: a[0] < a[1],
                                      itertools.product(shape_range[i],
                                                        shape_range[i])))

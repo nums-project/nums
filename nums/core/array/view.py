@@ -110,7 +110,7 @@ class ArrayView(object):
             return self.create_basic_multi_step(concrete_cls)
 
     def create_references(self, concrete_cls) -> BlockArrayBase:
-        # TODO: Double check this.
+        # TODO (hme): Double check this.
         array_cls = BlockArrayBase if concrete_cls is None else concrete_cls
         dst_ba: BlockArrayBase = array_cls(self.grid, self._system)
         if 0 in self.shape:
@@ -226,7 +226,7 @@ class ArrayView(object):
             if (value_is_aligned
                     and dst_sel.is_aligned(self._source.block_shape)
                     and self.block_shape == value.block_shape):
-                # TODO: Sometimes self.block_shape != value.block_shape
+                # TODO (hme): Sometimes self.block_shape != value.block_shape
                 #  when it is in fact equal. This happens when value
                 #  is created from the last block of its source,
                 #  and is being assigned to the last block of this view's source.
@@ -238,7 +238,7 @@ class ArrayView(object):
             return self.basic_assign_multi_step(dst_sel, value)
 
     def assign_references(self, dst_sel: BasicSelection, value):
-        # TODO: This seems overly complicated, but correct. Double check it.
+        # TODO (hme): This seems overly complicated, but correct. Double check it.
         #  Also, revisit some of the variable names. They will likely
         #  be confusing in the future.
         # The destination has same block shape as value,
@@ -379,7 +379,7 @@ class ArrayView(object):
 
 
 def broadcast_to(ba: BlockArrayBase, shape):
-    # TODO: Test this to ensure nothing is copied.
+    # TODO (hme): Test this to ensure nothing is copied.
     b = array_utils.broadcast(ba.shape, shape)
     result_block_shape = array_utils.broadcast_block_shape(ba.shape, shape, ba.block_shape)
     result: BlockArrayBase = BlockArrayBase(ArrayGrid(b.shape,

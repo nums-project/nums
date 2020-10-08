@@ -18,3 +18,16 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
+
+
+from nums.core.systems import utils as systems_utils
+
+
+def test_utils():
+    r = systems_utils.get_module_functions(systems_utils)
+    assert len(r) > 0
+
+
+if __name__ == "__main__":
+    # pylint: disable=import-error
+    test_utils()

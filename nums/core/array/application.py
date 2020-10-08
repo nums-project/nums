@@ -20,7 +20,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 
-from typing import List, Dict
+from typing import List
 
 import numpy as np
 
@@ -38,7 +38,6 @@ class ArrayApplication(object):
         self._system: System = system
         self._filesystem: FileSystem = filesystem
         self._array_grids: (str, ArrayGrid) = {}
-        self._array_metas: (str, Dict) = {}
         self.one_half = self.scalar(.5)
         self.two = self.scalar(2.0)
         self.one = self.scalar(1.0)
@@ -49,11 +48,6 @@ class ArrayApplication(object):
             store_inst: StoredArray = stored_array_cls(filename)
             self._array_grids[filename] = store_inst.get_grid()
         return self._array_grids[filename]
-
-    def _get_array_meta(self, filename: str) -> Dict:
-        if filename not in self._array_metas:
-            self._array_metas[filename] = self._filesystem.read_meta_fs(filename)
-        return self._array_metas[filename]
 
     ######################################
     # Filesystem API
@@ -263,7 +257,7 @@ class ArrayApplication(object):
         result_ba = self.empty(result_shape, result_block_shape, first_arr.dtype)
 
         # Write result blocks.
-        # TODO: This can be optimized by updating blocks directly, but is much more complicated.
+        # TODO (hme): This can be optimized by updating blocks directly.
         pos = 0
         for arr in arrays:
             delta = arr.shape[axis]
@@ -272,53 +266,6 @@ class ArrayApplication(object):
             result_ba[result_selector] = arr
             pos += delta
         return result_ba
-
-    def eye(self, shape: tuple, block_shape: tuple, dtype: np.dtype = None):
-        # TODO: This is probably okay, but raise until it's tested.
-        # pylint: disable=unreachable
-        raise NotImplementedError()
-        assert len(shape) == len(block_shape)
-        if dtype is None:
-            dtype = np.float64
-        grid = ArrayGrid(shape, block_shape, dtype.__name__)
-        grid_meta = grid.to_meta()
-        rarr = BlockArray(grid, self._system)
-        for grid_entry in grid.get_entry_iterator():
-            syskwargs = {"grid_entry": grid_entry, "grid_shape": grid.grid_shape}
-            if np.all(np.diff(grid_entry) == 0):
-                # This is a diagonal block.
-                rarr.blocks[grid_entry].oid = self._system.new_block("eye",
-                                                                     grid_entry,
-                                                                     grid_meta,
-                                                                     syskwargs=syskwargs)
-            else:
-                rarr.blocks[grid_entry].oid = self._system.new_block("zeros",
-                                                                     grid_entry,
-                                                                     grid_meta,
-                                                                     syskwargs=syskwargs)
-        return rarr
-
-    def diag(self, X: BlockArray):
-        # TODO: This is probably okay, but raise until it's tested.
-        # pylint: disable=unreachable
-        raise NotImplementedError()
-        assert len(X.shape) == 1
-        shape = X.shape[0], X.shape[1]
-        block_shape = X.block_shape[0], X.block_shape[1]
-        grid = ArrayGrid(shape, block_shape, X.dtype.__name__)
-        grid_meta = grid.to_meta()
-        rarr = BlockArray(grid, self._system)
-        for grid_entry in grid.get_entry_iterator():
-            syskwargs = {"grid_entry": grid_entry, "grid_shape": grid.grid_shape}
-            if np.all(np.diff(grid_entry) == 0):
-                # This is a diagonal block.
-                rarr.blocks[grid_entry].oid = self._system.diag(X.blocks[grid_entry[0]].oid,
-                                                                syskwargs=syskwargs)
-            else:
-                rarr.blocks[grid_entry].oid = self._system.new_block("zeros",
-                                                                     grid_entry,
-                                                                     grid_meta,
-                                                                     syskwargs=syskwargs)
 
     def log(self, X: BlockArray):
         return X.ufunc("log")
@@ -333,6 +280,8 @@ class ArrayApplication(object):
         return X.reduce_axis("sum", axis, keepdims=keepdims)
 
     def mean(self, X: BlockArray, axis=0, keepdims=False):
+        if X.dtype not in (float, np.float32, np.float64):
+            X = X.astype(np.float64)
         return self.sum(X, axis=axis, keepdims=keepdims) / X.shape[axis]
 
     def std(self, X: BlockArray, axis=0, keepdims=False):
@@ -341,18 +290,24 @@ class ArrayApplication(object):
         return self.sqrt(ss / X.shape[axis])
 
     def sqrt(self, X):
+        if X.dtype not in (float, np.float32, np.float64):
+            X = X.astype(np.float64)
         return X.ufunc("sqrt")
 
     def norm(self, X):
         return self.sqrt(X.T @ X)
 
     def xlogy(self, x: BlockArray, y: BlockArray) -> BlockArray:
+        if x.dtype not in (float, np.float32, np.float64):
+            x = x.astype(np.float64)
+        if x.dtype not in (float, np.float32, np.float64):
+            y = y.astype(np.float64)
         return self._block_map_bop("xlogy", x, y)
 
     def _block_map_bop(self, op_name: str, arr_a: BlockArray, arr_b: BlockArray) -> BlockArray:
         shape = arr_a.shape
         block_shape = arr_a.block_shape
-        dtype = array_utils.get_output_type(arr_a.dtype, arr_b.dtype)
+        dtype = array_utils.get_bop_output_type("log", arr_a.dtype, arr_b.dtype)
         assert len(shape) == len(block_shape)
         grid = ArrayGrid(shape, block_shape, dtype.__name__)
         rarr = BlockArray(grid, self._system)
@@ -401,7 +356,7 @@ class ArrayApplication(object):
 
     def indirect_tsr(self, X: BlockArray, reshape_output=True):
         assert len(X.shape) == 2
-        # TODO: This assertion is temporary and ensures returned
+        # TODO (hme): This assertion is temporary and ensures returned
         #  shape of qr of block is correct.
         assert X.block_shape[0] >= X.shape[1]
         # Compute R for each block.
@@ -427,7 +382,7 @@ class ArrayApplication(object):
                           )
 
         # Construct R by summing over R blocks.
-        # TODO: Communication may be inefficient due to redundancy of data.
+        # TODO (hme): Communication may be inefficient due to redundancy of data.
         R_shape = (shape[1], shape[1])
         R_block_shape = (block_shape[1], block_shape[1])
         tsR = BlockArray(ArrayGrid(shape=R_shape,
@@ -584,7 +539,7 @@ class ArrayApplication(object):
         return U, S, VT
 
     def inverse_triangular(self, X: BlockArray, lower: bool):
-        # TODO: Implement scalable version.
+        # TODO (hme): Implement scalable version.
         assert X.dtype in (np.float32, np.float64)
         if X.dtype == np.float64:
             lapack_func = self._system.lapack_dtrtri
@@ -602,7 +557,7 @@ class ArrayApplication(object):
         return self._inv(self._system.inv, {}, X)
 
     def _inv(self, remote_func, kwargs, X: BlockArray):
-        # TODO: Implement scalable version.
+        # TODO (hme): Implement scalable version.
         block_shape = X.block_shape
         assert len(X.shape) == 2
         assert X.shape[0] == X.shape[1]
@@ -622,7 +577,7 @@ class ArrayApplication(object):
         return result
 
     def cholesky(self, X: BlockArray):
-        # TODO: Implement scalable version.
+        # TODO (hme): Implement scalable version.
         # Note:
         # A = Q, R
         # A.T @ A = R.T @ R
@@ -647,7 +602,7 @@ class ArrayApplication(object):
 
     def inv_sym_psd(self, X: BlockArray):
         # Assumes X is symmetric PSD.
-        # TODO: Implement scalable version.
+        # TODO (hme): Implement scalable version.
         assert len(X.shape) == 2
         assert X.shape[0] == X.shape[1]
         single_block = X.shape[0] == X.block_shape[0] and X.shape[1] == X.block_shape[1]
@@ -703,7 +658,7 @@ class ArrayApplication(object):
         R_block_shape = (block_shape[1], block_shape[1])
         R = self.indirect_tsr(X)
         lamb_vec = self.array(lamb*np.eye(R_shape[0]), block_shape=R_block_shape)
-        # TODO: A better solution exists, which inverts R by augmenting X and y.
+        # TODO (hme): A better solution exists, which inverts R by augmenting X and y.
         #  See Murphy 7.5.2.
         # (lamb_vec + R.T @ R) happens to be symmetric PSD since A.T @ A (= R.T @ R) is PSD
         # and lamb_vec is positive diag.

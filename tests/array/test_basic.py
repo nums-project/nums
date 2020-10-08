@@ -21,10 +21,10 @@
 
 
 import numpy as np
-import pytest
 
-from nums.core.storage.storage import BimodalGaussian
+from nums.core.storage.storage import BimodalGaussian, ArrayGrid
 from nums.core.array.application import ArrayApplication
+from nums.core.array.blockarray import BlockArray
 
 # pylint: disable=wrong-import-order
 import common
@@ -70,9 +70,20 @@ def test_concatenate(app_inst: ArrayApplication):
     assert np.allclose(X_concated.get(), real_X_concated)
 
 
-@pytest.mark.skip
 def test_split(app_inst: ArrayApplication):
-    raise NotImplementedError("Requires app-level imp. and tests.")
+    # TODO (hme): Implement a split leveraging block_shape param in reshape op.
+    x = app_inst.array(np.array([1.0, 2.0, 3.0, 4.0]), block_shape=(4,))
+    syskwargs = x.blocks[0].syskwargs()
+    syskwargs["options"] = {"num_return_vals": 2}
+    res1, res2 = x.system.split(x.blocks[0].oid,
+                                2,
+                                axis=0,
+                                transposed=False,
+                                syskwargs=syskwargs)
+    ba = BlockArray(ArrayGrid((4,), (2,), x.dtype.__name__), x.system)
+    ba.blocks[0].oid = res1
+    ba.blocks[1].oid = res2
+    assert np.allclose([1.0, 2.0, 3.0, 4.0], ba.get())
 
 
 def test_touch(app_inst: ArrayApplication):
@@ -85,6 +96,7 @@ if __name__ == "__main__":
     from tests import conftest
 
     app_inst = conftest.get_app("serial")
-    test_array_integrity(app_inst)
-    test_concatenate(app_inst)
-    test_touch(app_inst)
+    # test_array_integrity(app_inst)
+    # test_concatenate(app_inst)
+    # test_touch(app_inst)
+    test_split(app_inst)

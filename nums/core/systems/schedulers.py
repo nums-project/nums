@@ -29,10 +29,8 @@ import inspect
 import ray
 import numpy as np
 
-from nums.core.systems.interfaces import ComputeInterface, \
-    ComputeImp, \
-    check_implementation, \
-    extract_functions
+from nums.core.systems.interfaces import ComputeInterface, ComputeImp
+from nums.core.systems.utils import check_implementation, extract_functions
 
 
 class RayScheduler(ComputeInterface):
@@ -227,7 +225,7 @@ class BlockCyclicScheduler(TaskScheduler):
 
         cluster_entry: tuple = self.get_cluster_entry(grid_entry)
         node_key = self.get_node_key(cluster_entry)
-        # TODO: This will be problematic. Only able to assign 10k tasks-per-node.
+        # TODO (hme): This will be problematic. Only able to assign 10k tasks-per-node.
         resources[node_key] = 1.0/10**4
         options["resources"] = resources
 

@@ -137,12 +137,6 @@ class AxisSelection(object):
     def order(self):
         raise NotImplementedError()
 
-    def to_single_step(self):
-        raise NotImplementedError()
-
-    def to_forward(self, size):
-        raise NotImplementedError()
-
 
 class AxisSlice(AxisSelection):
 
@@ -189,19 +183,6 @@ class AxisSlice(AxisSelection):
     def order(self):
         return np.sign(1 if self.step is None else self.step)
 
-    def to_single_step(self):
-        step = 1 if self.step is None else int(np.sign(self.step))
-        return AxisSlice(self.start, self.stop, step)
-
-    def to_forward(self, size):
-        if self.order() > 0:
-            start, stop, step = self.start, self.stop, self.step
-        else:
-            stop = self.start + size + 1
-            start = self.stop + size + 1
-            step = -self.step
-        return AxisSlice(start, stop, step)
-
 
 class AxisIndex(AxisSelection):
 
@@ -234,12 +215,6 @@ class AxisIndex(AxisSelection):
     def order(self):
         return np.sign(self.index)
 
-    def to_single_step(self):
-        return AxisIndex(self.index)
-
-    def to_forward(self, size):
-        return AxisIndex(self.index)
-
 
 class AxisArray(AxisSelection):
     # See https://numpy.org/doc/stable/reference/arrays.indexing.html#integer-array-indexing
@@ -270,18 +245,6 @@ class AxisArray(AxisSelection):
     def order(self):
         return get_array_order(self.array)
 
-    def to_single_step(self):
-        if self.order() < 0:
-            array = np.arange(self.array[0], self.array[-1], -1)
-        elif self.order() > 0:
-            array = np.arange(self.array[0], self.array[-1], 1)
-        else:
-            raise ValueError("Unexpected array with order 0.")
-        return AxisArray(array)
-
-    def to_forward(self, size):
-        return AxisArray(self.array + size)
-
 
 class AxisEmpty(AxisSelection):
 
@@ -296,12 +259,6 @@ class AxisEmpty(AxisSelection):
 
     def order(self):
         return 0
-
-    def to_single_step(self):
-        return AxisEmpty()
-
-    def to_forward(self, size):
-        return AxisEmpty()
 
 
 class BasicSelection(object):
@@ -466,24 +423,6 @@ class BasicSelection(object):
                 sel.append(self.axes[i].selector())
         return tuple(sel)
 
-    def to_single_step(self):
-        # Compute a signed single stepped selector from this selector.
-        res: List[AxisSelection] = []
-        for item in self.axes:
-            res.append(item.to_single_step())
-        return BasicSelection(tuple(res), self.shape)
-
-    def clipped_block_selection(self, block_shape, clip_shape=False):
-        order = tuple(self.order())
-        if clip_shape:
-            selection_grid = self.block_selection(self.shape, block_shape, order)
-            self_single_step = self.to_single_step()
-            clipped_grid = selection_grid & self_single_step
-            return clipped_grid
-        else:
-            selection_grid = self.block_selection(self.get_output_shape(), block_shape, order)
-            return selection_grid
-
     def position(self, compute_stop=False):
         return Position.from_selection(self, compute_stop)
 
@@ -519,12 +458,6 @@ class BasicSelection(object):
             if not aligned:
                 return False
         return True
-
-    def to_forward(self):
-        new_axes: List[AxisSelection] = []
-        for i, item in enumerate(self.axes):
-            new_axes.append(item.to_forward(self.shape[i]))
-        return BasicSelection(tuple(new_axes), self.shape)
 
     def __repr__(self):
         return str(self.selector())
@@ -706,12 +639,6 @@ class AdvancedSelection(object):
 class Position(object):
 
     @classmethod
-    def from_array_like(cls, array_like):
-        assert array_utils.is_array_like(array_like)
-        value = np.array(array_like, dtype=np.intp)
-        return cls(value)
-
-    @classmethod
     def from_selection(cls, sel: BasicSelection, compute_stop=False):
         shape_dim = len(sel.shape)
         value: np.ndarray = np.empty(shape_dim, dtype=np.intp)
@@ -734,10 +661,6 @@ class Position(object):
             if axsel.order() < 0:
                 value[i] += 1
         return cls(value)
-
-    @classmethod
-    def from_shape(cls, shape: tuple):
-        return cls(np.zeros(len(shape), dtype=np.intp))
 
     @classmethod
     def from_dim(cls, dim: int):
@@ -781,7 +704,7 @@ class Position(object):
             elif bop not in ("add", "rsub"):
                 raise ValueError("Unsupported op encountered %s" % bop)
             assert self.dim == len(other.shape)
-            # TODO: Test shape addition / subtraction under various circumstances.
+            # TODO (hme): Test shape addition / subtraction under various circumstances.
             #  This should work okay, but does it work because of prior assumptions
             #  on AxisSelection types? This is okay, but we should answer this
             #  question.

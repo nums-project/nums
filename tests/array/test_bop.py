@@ -47,7 +47,7 @@ def test_matvec(app_inst: ArrayApplication):
     y2 = app_inst.array(np.arange(100).reshape(100), block_shape=(10,))
     assert np.allclose((X @ y2).get(), X.get() @ y2.get())
     # This won't trigger optimized routine, but it is rare and strange so not worth addressing.
-    # TODO: Apparently this is invalid. Figure out why.
+    # TODO (hme): Apparently this is invalid. Figure out why.
     # y3 = app_inst.array(np.arange(100).reshape((100, 1, 1)), block_shape=(10, 1, 1))
     # assert np.allclose((X @ y3).get(), X.get() @ y3.get())
 

@@ -22,18 +22,11 @@
 
 import numpy as np
 
-from nums.core.storage.storage import StoredArray
 from nums.core.systems import numpy_compute
 from nums.core.systems.systems import System, RaySystem
 from nums.core.systems.filesystem import FileSystem
 from nums.core.systems.schedulers import RayScheduler, BlockCyclicScheduler
 from nums.core.array.application import ArrayApplication, BlockArray
-
-
-def serial_read(container_name, name, store_cls):
-    sa: StoredArray = store_cls(container_name, name)
-    sa.init_grid()
-    return sa.get_array()
 
 
 def check_block_integrity(arr: BlockArray):

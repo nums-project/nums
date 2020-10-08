@@ -31,8 +31,7 @@ from nums.core.storage.utils import Batch
 
 
 class ArrayGrid(object):
-    # TODO: Add negative val support.
-    # TODO: Move to array module.
+    # TODO (hme): Move to array module.
 
     @classmethod
     def from_meta(cls, d: dict):
@@ -86,54 +85,9 @@ class ArrayGrid(object):
             block_shape.append(slice_tuple[1] - slice_tuple[0])
         return tuple(block_shape)
 
-    def get_size_of(self, units: str, num_entries: int) -> str:
-        entry_bytes = self.dtype().itemsize
-        num_bytes = entry_bytes * num_entries
-        units_mag = 1
-        if units == "KB":
-            units_mag = 3
-        if units == "MB":
-            units_mag = 6
-        if units == "GB":
-            units_mag = 9
-        return "%.2f %s" % (num_bytes / 10**units_mag, units)
-
-    def get_block_size(self, units: str) -> str:
-        return self.get_size_of(units, np.product(self.block_shape))
-
-    def get_size(self, units: str) -> str:
-        return self.get_size_of(units, np.product(self.shape))
-
-    def select(self, slice_tuples: List[Tuple]) -> List[List]:
-        """
-        :param slice_tuples: An array of slice tuples.
-               e.g. [(100, 200), (0, 100)]
-        :return: An array of [grid_entry, slice_tuples]
-                 pairs required to perform the selection.
-        """
-        grid_axis_intervals = []
-        for axis, (i_1, i_2) in enumerate(slice_tuples):
-            assert 0 <= i_1 < i_2 <= self.shape[axis]
-            bs = self.block_shape[axis]
-            grid_i_1 = i_1 // bs
-            grid_i_2 = (i_2 + bs - 1) // bs
-            # Collect required intervals along each grid coordinate
-            # in order to perform the selection.
-            grid_axis_intervals.append(list(range(grid_i_1, grid_i_2)))
-
-        selection_superset = []
-        iterator = itertools.product(*grid_axis_intervals)
-        for grid_entry in iterator:
-            block_slice_tuples = []
-            for axis, grid_index in enumerate(grid_entry):
-                # The length of grid_entry is equal to the number of axes.
-                # For each axis, append the block slice corresponding to the grid entry.
-                block_slice_tuples.append(tuple(self.grid_slices[axis][grid_index]))
-            selection_superset.append([grid_entry, block_slice_tuples])
-        return selection_superset
-
 
 class StoredArray(object):
+    # TODO (hme): This is no longer a useful abstraction.
 
     def __init__(self, filename: str, grid: ArrayGrid):
         self.filename = filename
@@ -286,48 +240,6 @@ class StoredArrayS3(StoredArray):
             },
         )
         return response
-
-
-class StoredArrayDFS(StoredArray):
-
-    def __init__(self, filename: str, grid: ArrayGrid = None):
-        super(StoredArrayDFS, self).__init__(filename, grid)
-
-    def get(self, grid_entry: Tuple) -> np.ndarray:
-        raise NotImplementedError()
-
-    def put(self, grid_entry: Tuple, block: np.ndarray) -> Any:
-        raise NotImplementedError()
-
-    def get_grid(self) -> ArrayGrid:
-        raise NotImplementedError()
-
-    def put_grid(self, array_grid: ArrayGrid) -> Any:
-        raise NotImplementedError()
-
-    def del_array(self) -> Any:
-        raise NotImplementedError()
-
-
-class StoredArrayFS(StoredArray):
-
-    def __init__(self, filename: str, grid: ArrayGrid = None):
-        super(StoredArrayFS, self).__init__(filename, grid)
-
-    def get(self, grid_entry: Tuple) -> np.ndarray:
-        raise NotImplementedError()
-
-    def put(self, grid_entry: Tuple, block: np.ndarray) -> Any:
-        raise NotImplementedError()
-
-    def get_grid(self) -> ArrayGrid:
-        raise NotImplementedError()
-
-    def put_grid(self, array_grid: ArrayGrid) -> Any:
-        raise NotImplementedError()
-
-    def del_array(self) -> Any:
-        raise NotImplementedError()
 
 
 class BimodalGaussian(object):

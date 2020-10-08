@@ -1,0 +1,20 @@
+[run]
+source=nums
+concurrency = multiprocessing
+parallel = True
+include =
+    nums/*
+omit =
+  setup.py
+  tests/**/*
+  nums/core/application_manager.py
+  nums/core/settings.py
+  nums/numpy/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+    return NotImplemented

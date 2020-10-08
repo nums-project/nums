@@ -52,8 +52,6 @@ class NumsRandomState(object):
     def normal(self, loc=0.0, scale=1.0, shape=None, block_shape=None, dtype=None):
         return self._sample_basic("normal", shape, block_shape, dtype, (loc, scale))
 
-    # TODO: These distributions have no tests.
-
     def beta(self, a, b, shape=None, block_shape=None, dtype=None):
         return self._sample_basic("beta", shape, block_shape, dtype, (a, b))
 
@@ -62,9 +60,6 @@ class NumsRandomState(object):
 
     def chisquare(self, df, shape=None, block_shape=None, dtype=None):
         return self._sample_basic("chisquare", shape, block_shape, dtype, (df,))
-
-    def dirichlet(self, alpha, shape=None, block_shape=None, dtype=None):
-        return self._sample_basic("dirichlet", shape, block_shape, dtype, (alpha,))
 
     def exponential(self, scale=1.0, shape=None, block_shape=None, dtype=None):
         return self._sample_basic("exponential", shape, block_shape, dtype, (scale,))
@@ -96,11 +91,6 @@ class NumsRandomState(object):
 
     def logseries(self, p, shape=None, block_shape=None, dtype=None):
         return self._sample_basic("logseries", shape, block_shape, dtype, (p,))
-
-    def multinomial(self, n, pvals, shape=None, block_shape=None, dtype=None):
-        return self._sample_basic("multinomial", shape, block_shape, dtype, (n, pvals))
-
-    # TODO: Add multivariate samplers.
 
     def negative_binomial(self, n, p, shape=None, block_shape=None, dtype=None):
         return self._sample_basic("negative_binomial", shape, block_shape, dtype, (n, p))
@@ -145,6 +135,8 @@ class NumsRandomState(object):
 
     def zipf(self, a, shape=None, block_shape=None, dtype=None):
         return self._sample_basic("zipf", shape, block_shape, dtype, (a,))
+
+    # TODO (hme): Add multivariate samplers.
 
     def _sample_basic(self, rfunc_name, shape, block_shape, dtype, rfunc_args) -> BlockArray:
         if shape is None:

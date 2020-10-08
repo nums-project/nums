@@ -127,7 +127,7 @@ def test_basic_assign_3axis(app_inst: ArrayApplication):
         lambda a1, a2, s: slice(a1, None, None),
         lambda a1, a2, s: slice(None, a1, None),
         lambda a1, a2, s: slice(a1, a2, None),
-        # TODO: Enable below once arbitrary step-size is supported.
+        # TODO (hme): Enable below once arbitrary step-size is supported.
         # lambda a1, a2, s: slice(None, None, s),
         # lambda a1, a2, s: slice(a1, None, s),
         # lambda a1, a2, s: slice(None, a1, s),

@@ -25,7 +25,6 @@ import itertools
 import numpy as np
 
 from nums.core.storage.storage import ArrayGrid
-from nums.core.systems.systems import System
 from nums.core.array import utils as array_utils
 from nums.core.array.base import BlockArrayBase, Block
 from nums.core.array.view import ArrayView
@@ -33,7 +32,7 @@ from nums.core.array.view import ArrayView
 
 class BlockArray(BlockArrayBase):
 
-    # TODO: Add block_shape constraints.
+    # TODO (hme): Add block_shape constraints.
 
     @classmethod
     def from_scalar(cls, val, system):
@@ -99,9 +98,6 @@ class BlockArray(BlockArrayBase):
             result.blocks[grid_entry] = block
         return result
 
-    def __init__(self, grid: ArrayGrid, system: System):
-        super().__init__(grid, system)
-
     def copy(self):
         grid_copy = self.grid.from_meta(self.grid.to_meta())
         rarr_copy = BlockArray(grid_copy, self.system)
@@ -120,7 +116,7 @@ class BlockArray(BlockArrayBase):
         self.system.get(oids)
 
     def reshape(self, shape=None, block_shape=None):
-        # TODO: Add support for arbitrary reshape.
+        # TODO (hme): Add support for arbitrary reshape.
         if shape is None:
             shape = self.shape
         if block_shape is None:
@@ -199,7 +195,7 @@ class BlockArray(BlockArrayBase):
                 assert grid_entry_op == "none"
                 self_grid_entry_slice = grid_entry_slice
 
-            # TODO: This is costly.
+            # TODO (hme): This is costly.
             rarr[grid_entry_slice] = self[self_grid_entry_slice]
         return rarr
 
@@ -221,7 +217,7 @@ class BlockArray(BlockArrayBase):
 
     def __getitem__(self, item):
         av: ArrayView = ArrayView.from_block_array(self)
-        # TODO: We don't have to create, but do so for now until we need to optimize.
+        # TODO (hme): We don't have to create, but do so for now until we need to optimize.
         return av[item].create(BlockArray)
 
     def __setitem__(self, key, value):
@@ -238,6 +234,9 @@ class BlockArray(BlockArrayBase):
             return self.from_np(other, self.block_shape, False, self.system)
         if isinstance(other, (np.int32, np.int64, np.float32, np.float64, int, float)):
             return self.from_scalar(other, self.system)
+        if isinstance(other, (np.bool, np.bool_, bool)):
+            other = np.array(other)
+            return self.from_np(other, self.block_shape, False, self.system)
         raise Exception("Unsupported type %s" % type(other))
 
     def ufunc(self, op_name):
@@ -316,7 +315,9 @@ class BlockArray(BlockArrayBase):
         result_block_shape = tuple(self.block_shape[:-axes] + other.block_shape[axes:])
         result_grid = ArrayGrid(shape=result_shape,
                                 block_shape=result_block_shape,
-                                dtype=array_utils.get_output_type(self.dtype, other.dtype).__name__)
+                                dtype=array_utils.get_bop_output_type("tensordot",
+                                                                      self.dtype,
+                                                                      other.dtype).__name__)
         assert result_grid.grid_shape == tuple(this_axes + other_axes)
         result = BlockArray(result_grid, self.system)
         this_dims = list(itertools.product(*map(range, this_axes)))
@@ -481,12 +482,12 @@ class BlockArray(BlockArrayBase):
     __itruediv__ = __truediv__
     __ipow__ = __pow__
 
-    # TODO: Type check bool ops.
+    # TODO (hme): Type check bool ops.
     def __bool__(self):
         # pylint: disable=no-member
         dtype = self.dtype
         if isinstance(dtype, type):
-            # TODO: Fix this strange issue.
+            # TODO (hme): Fix this strange issue.
             dtype = dtype()
         if isinstance(dtype, (bool, np.bool)) and np.sum(self.shape) == len(self.shape):
             return self.get().__bool__()

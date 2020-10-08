@@ -20,16 +20,29 @@
 # DEALINGS IN THE SOFTWARE.
 
 
-from typing import Tuple, List, Iterator
+from typing import Tuple, Iterator
 
 import itertools
 import numpy as np
 
 
-def get_output_type(dtype_a, dtype_b):
+def get_ufunc_output_type(op_name, dtype):
+    a = np.array(1, dtype=dtype)
+    result_dtype = np.__getattribute__(op_name)(a).dtype
+    return np.__getattribute__(str(result_dtype))
+
+
+def get_bop_output_type(op_name, dtype_a, dtype_b):
     a = np.array(1, dtype=dtype_a)
     b = np.array(2, dtype=dtype_b)
-    dtype = (a + b).dtype
+    op_name = {"truediv": "true_divide",
+               "sub": "subtract",
+               "pow": "power",
+               "mult": "multiply",
+               "mul": "multiply",
+               "tensordot": "multiply",
+               }.get(op_name, op_name)
+    dtype = np.__getattribute__(op_name)(a, b).dtype
     return np.__getattribute__(str(dtype))
 
 
@@ -44,22 +57,6 @@ def shape_from_block_array(arr: np.ndarray):
         for j_access in j_iter:
             shape[j] += arr[j_access].shape[j]
     return tuple(shape)
-
-
-def intersect(a_rect, b_rect):
-    num_dims = len(a_rect)
-    assert len(b_rect) == num_dims
-    result = []
-    for dim in range(num_dims):
-        rd = [None, None]
-        ad = a_rect[dim]
-        bd = b_rect[dim]
-        rd[0] = bd[0] if ad[0] < bd[0] else ad[0]
-        rd[1] = ad[1] if ad[1] < bd[1] else bd[1]
-        if rd[1] <= rd[0]:
-            return None
-        result.append(rd)
-    return result
 
 
 def broadcast(a_shape, b_shape):
@@ -133,58 +130,8 @@ def broadcast_shape_to_alt(from_shape, to_shape):
     return tuple(reversed(result_shape + to_shape_r[from_num_axes:]))
 
 
-def shape_from_subscript(slices_or_indices, shape, drop_dims=True):
-    ss_shape = []
-    for i, entry in enumerate(slices_or_indices):
-        if isinstance(entry, (np.intp, int)):
-            if not drop_dims:
-                ss_shape.append(1)
-        else:
-            slice_tuple = (0 if entry.start is None else entry.start,
-                           shape[i] if entry.stop is None else entry.stop)
-            ss_shape.append(slice_tuple[1] - slice_tuple[0])
-    return ss_shape
-
-
-def squeeze_like(slice_or_indices, shape, other_shape):
-    ss_shape = shape_from_subscript(slice_or_indices, shape, drop_dims=False)
-    ss_pos, other_pos = len(ss_shape) - 1, len(other_shape) - 1
-    while True:
-        if ss_pos < 0:
-            pass
-        elif other_pos < 0:
-            pass
-        ss_dim = ss_shape[ss_pos]
-        other_dim = other_shape[other_pos]
-        if ss_dim == other_dim:
-            pass
-        elif ss_dim == 1:
-            assert other_dim == 1
-        elif other_dim == 1:
-            pass
-        else:
-            raise Exception("The shape %s can't match %s" % (ss_shape, other_shape))
-        ss_pos -= 1
-        other_pos -= 1
-
-
-def squeeze_subscript(slices_or_indices, return_indices=False, invert=False):
-    result = []
-    for i, entry in enumerate(slices_or_indices):
-        if isinstance(entry, (np.intp, int)) == invert:
-            result.append(i if return_indices else entry)
-    return result
-
-
 def is_array_like(obj):
     return isinstance(obj, (tuple, list, np.ndarray))
-
-
-def is_advanced_subscript(subscript: tuple):
-    for obj in subscript:
-        if is_array_like(obj):
-            return True
-    return False
 
 
 def block_shape_from_subscript(subscript: tuple, block_shape: tuple):
@@ -197,22 +144,6 @@ def block_shape_from_subscript(subscript: tuple, block_shape: tuple):
         else:
             raise NotImplementedError("No support for advanced indexing.")
     return tuple(new_block_shape)
-
-
-def relative_subscript_rect(pos: np.ndarray, shape: np.ndarray):
-    pairs = np.concatenate([pos.reshape(-1, 1), (pos+shape).reshape(-1, 1)], axis=1).tolist()
-    subscript = tuple(map(lambda sparams: slice(*sparams), pairs))
-    return subscript
-
-
-def shape_from_slices(slices: Tuple[slice]):
-    shape = []
-    for s in slices:
-        if s.step is None or s.step > 0:
-            shape.append(s.stop - s.start)
-        else:
-            shape.append(s.start - s.stop)
-    return tuple(shape)
 
 
 def get_slices(total_size, batch_size, order, reverse_blocks=False):
@@ -265,20 +196,3 @@ class OrderedGrid(object):
         if 0 in self.shape:
             return []
         return itertools.product(*map(range, self.grid_shape))
-
-    def ordered_iterator(self) -> Iterator[Tuple]:
-        if 0 in self.shape:
-            return []
-        offset = np.zeros(len(self.order), dtype=np.intp)
-        order = np.array(self.order, dtype=np.intp)
-        for i, axis_order in enumerate(self.order):
-            if axis_order < 0:
-                offset[i] = self.grid_shape[i] - 1
-        for index in self.index_iterator():
-            r: List = (np.array(index, dtype=np.intp) * order + offset).tolist()
-            yield tuple(r)
-
-    def slice_iterator(self):
-        # This can be made faster with numpy iterators.
-        for grid_index in self.index_iterator():
-            yield self.slices[grid_index]

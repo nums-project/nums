@@ -31,6 +31,42 @@ from nums.core.array.application import ArrayApplication
 # pylint: disable=unused-variable
 
 
+def test_basic(app_inst: ArrayApplication):
+    # TODO (hme): Add more comprehensive tests for these distributions.
+
+    dists = [("beta", (1, 2, (3,), (3,))),
+             ("binomial", (3, .5, (3,), (3,))),
+             ("chisquare", (2, (3,), (3,))),
+             ("exponential", (1.0, (3,), (3,))),
+             ("f", (2, 1.0, (3,), (3,))),
+             ("gamma", (2, .7, (3,), (3,))),
+             ("geometric", (.5, (3,), (3,))),
+             ("gumbel", (0.0, 1.0, (3,), (3,))),
+             ("hypergeometric", (3, 2, 5, (3,), (3,))),
+             ("laplace", (0.0, 1.0, (3,), (3,))),
+             ("logistic", (0.0, 1.0, (3,), (3,))),
+             ("lognormal", (0.0, 1.0, (3,), (3,))),
+             ("logseries", (.5, (3,), (3,))),
+             ("negative_binomial", (5, .5, (3,), (3,))),
+             ("noncentral_chisquare", (2, 1.0, (3,), (3,))),
+             ("noncentral_f", (2, 3.0, 1.0, (3,), (3,))),
+             ("pareto", (2.0, (3,), (3,))),
+             ("poisson", (1.0, (3,), (3,))),
+             ("power", (2.0, (3,), (3,))),
+             ("rayleigh", (1.0, (3,), (3,))),
+             ("standard_cauchy", ((3,), (3,))),
+             ("standard_t", (2, (3,), (3,))),
+             ("triangular", (1, 3, 4, (3,), (3,))),
+             ("vonmises", (1.0, 3.0, (3,), (3,))),
+             ("wald", (4.0, 2.0, (3,), (3,))),
+             ("weibull", (2.0, (3,), (3,))),
+             ("zipf", (2.0, (3,), (3,))),
+             ]
+    rs = app_inst.random_state()
+    for dist_name, dist_params in dists:
+        assert len(rs.__getattribute__(dist_name)(*dist_params).get()) == 3
+
+
 def test_np_random(app_inst: ArrayApplication):
 
     # Sample a single value.
@@ -114,6 +150,7 @@ if __name__ == "__main__":
     from tests import conftest
 
     app_inst = conftest.get_app("serial")
-    test_np_random(app_inst)
-    test_np_distributions(app_inst)
-    test_np_integer(app_inst)
+    test_basic(app_inst)
+    # test_np_random(app_inst)
+    # test_np_distributions(app_inst)
+    # test_np_integer(app_inst)

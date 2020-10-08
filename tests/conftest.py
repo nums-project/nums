@@ -51,7 +51,8 @@ def get_app(mode):
             cluster_shape = (1, 1)
             scheduler: RayScheduler = BlockCyclicScheduler(compute_module=numpy_compute,
                                                            cluster_shape=cluster_shape,
-                                                           use_head=True)
+                                                           use_head=True,
+                                                           verbose=True)
         else:
             raise Exception()
         system: System = RaySystem(compute_module=numpy_compute,

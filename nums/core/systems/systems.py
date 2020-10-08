@@ -30,11 +30,8 @@ import numpy as np
 from nums.core import settings
 from nums.core.storage.storage import ArrayGrid
 from nums.core.systems.schedulers import RayScheduler, TaskScheduler, BlockCyclicScheduler
-from nums.core.systems.interfaces import SystemInterface, \
-    ComputeInterface, \
-    check_implementation, \
-    extract_functions, \
-    RNGInterface
+from nums.core.systems.interfaces import SystemInterface, ComputeInterface, RNGInterface
+from nums.core.systems.utils import check_implementation, extract_functions
 
 
 class System(SystemInterface, ComputeInterface):

@@ -33,7 +33,8 @@ from nums.core.array.selection import BasicSelection, \
     AxisArray, \
     AxisSlice, \
     AxisIndex, \
-    AxisEmpty
+    AxisEmpty, \
+    is_advanced_selection
 
 
 # pylint: disable=protected-access, cell-var-from-loop
@@ -122,6 +123,10 @@ def alt_compute_intersection(sel_a, sel_b, shape):
         else:
             raise ValueError("Unexpected types %s, %s" % (type(axis_a), type(axis_b)))
     return tuple(true_sel_c)
+
+
+def test_basics():
+    assert is_advanced_selection((0, np.array([3, 1, 2])))
 
 
 def test_basic_slice_selection():
@@ -228,7 +233,7 @@ def test_stepped_slice_intersection():
     for num_axes_idx, (num_axes_a, num_axes_b) in enumerate(num_axes_pairs):
         # Index multiplier of 1 is okay,
         # since we test larger index ranges in the slice selection test.
-        # TODO: Update this to catch error in block slice intersection test.
+        # TODO (hme): Update this to catch error in block slice intersection test.
         all_axis_selections = list(get_slices(size, index_multiplier=1))
         test_selections_a = list(itertools.product(all_axis_selections, repeat=num_axes_a))
         test_selections_b = list(itertools.product(all_axis_selections, repeat=num_axes_b))
@@ -556,15 +561,16 @@ if __name__ == "__main__":
     from tests import conftest
 
     app_inst = conftest.get_app("serial")
-    test_basic_slice_selection()
-    test_stepped_slice_selection()
-    test_index_selection()
-    test_slice_intersection()
-    test_stepped_slice_intersection()
-    test_index_intersection()
-    test_array_intersection()
-    test_multiselect_intersection()
-    test_ellipsis()
-    test_advanced_indexing_broadcasting()
-    test_signed_batch_slicing()
-    test_batch_slice_intersection()
+    test_basics()
+    # test_basic_slice_selection()
+    # test_stepped_slice_selection()
+    # test_index_selection()
+    # test_slice_intersection()
+    # test_stepped_slice_intersection()
+    # test_index_intersection()
+    # test_array_intersection()
+    # test_multiselect_intersection()
+    # test_ellipsis()
+    # test_advanced_indexing_broadcasting()
+    # test_signed_batch_slicing()
+    # test_batch_slice_intersection()

@@ -20,76 +20,10 @@
 # DEALINGS IN THE SOFTWARE.
 
 
-import inspect
-from functools import wraps
-
 from types import FunctionType
 from typing import Any, Union, List, Tuple, Dict
 
-
-def method_meta(num_return_vals=1):
-    def inner(func):
-        func.remote_params = {
-            "num_return_vals": num_return_vals
-        }
-        return func
-    return inner
-
-
-def extract_functions(imp, remove_self=True):
-
-    def wrap_func(func):
-        # This works for Ray, because ray.remote extracts signatures by following wrapped functions.
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
-        return wrapper
-
-    imp_functions = {}
-    for name, obj in inspect.getmembers(imp()):
-        if inspect.ismethod(obj):
-            if remove_self:
-                imp_functions[name] = wrap_func(obj)
-            else:
-                imp_functions[name] = obj
-    return imp_functions
-
-
-def check_implementation(interface_cls, imp):
-    imp_functions = extract_functions(imp, remove_self=False)
-    required_methods = inspect.getmembers(interface_cls(), predicate=inspect.ismethod)
-    for name, func in required_methods:
-        # Make sure the function exists.
-        assert name in imp_functions, "%s not implemented." % name
-        # Make sure all parameters are there.
-        for varname in func.__code__.co_varnames:
-            # Ignore matching on self and scheduling args.
-            if varname == "self":
-                continue
-            if varname == "syskwargs":
-                continue
-            assert varname in imp_functions[name].__code__.co_varnames
-
-
-def get_default_args(func):
-    signature = inspect.signature(func)
-    return {
-        k: v.default
-        for k, v in signature.parameters.items()
-        if v.default is not inspect.Parameter.empty
-    }
-
-
-def get_interface_method_meta(interface_cls):
-    required_methods = inspect.getmembers(interface_cls(), predicate=inspect.ismethod)
-    result = {}
-    for name, func in required_methods:
-        try:
-            remote_params = func.remote_params
-        except Exception as _:
-            remote_params = get_default_args(method_meta)
-        result[name] = remote_params
-    return result
+from nums.core.systems.utils import method_meta
 
 
 class SystemInterface(object):
@@ -138,7 +72,7 @@ class SystemInterface(object):
         raise NotImplementedError("Implement RPC with options support.")
 
     def get_options(self, cluster_entry, cluster_shape):
-        # TODO: API needs improvements in this area.
+        # TODO (hme): API needs improvements in this area.
         raise NotImplementedError()
 
 
@@ -149,9 +83,6 @@ class ComputeInterface(object):
         "Touch" the given array. This returns nothing and can be used to wait for
         a computation without pulling data to the head node.
         """
-        raise NotImplementedError()
-
-    def zeros(self, grid_entry: Tuple, grid_meta: Dict, syskwargs: Dict):
         raise NotImplementedError()
 
     def empty(self, grid_entry: Tuple, grid_meta: Dict, syskwargs: Dict):

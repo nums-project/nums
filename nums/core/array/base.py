@@ -92,6 +92,7 @@ class Block(object):
 
     def ufunc(self, op_name, options=None):
         block = self.copy()
+        block.dtype = array_utils.get_ufunc_output_type(op_name, self.dtype)
         if options is None:
             block.oid = self._system.ufunc(op_name,
                                            self.oid,
@@ -107,9 +108,9 @@ class Block(object):
         return block
 
     def reduce_axis(self, op_name, axis, keepdims):
-        # TODO: Add options version of this too, but need to fix block imps
+        # TODO (hme): Add options version of this too, but need to fix block imps
         #  so we're not branching between options / no options calls in every method.
-        # We lose and axis, so make sure to account for dropped axis in result.
+        # We lose an axis, so make sure to account for dropped axis in result.
         result_grid_entry = []
         result_grid_shape = []
         result_rect = []
@@ -198,7 +199,9 @@ class Block(object):
             result_rect = list(reversed(result_rect))
             result_shape = tuple(reversed(result_shape))
 
-        dtype = np.bool if bool_op else array_utils.get_output_type(self.dtype, other.dtype)
+        dtype = np.bool if bool_op else array_utils.get_bop_output_type(op,
+                                                                        self.dtype,
+                                                                        other.dtype)
         block = Block(grid_entry=result_grid_entry,
                       grid_shape=result_grid_shape,
                       rect=result_rect,
@@ -285,6 +288,7 @@ class Block(object):
 
     def astype(self, dtype):
         block = self.copy()
+        block.dtype = dtype
         block.oid = self._system.astype(self.oid,
                                         dtype.__name__,
                                         syskwargs={
@@ -300,7 +304,7 @@ class Block(object):
         return self.ufunc("sqrt")
 
     def syskwargs(self):
-        # TODO: This has a lot of potential scheduling bugs:
+        # TODO (hme): This has a lot of potential scheduling bugs:
         #  What if this block is transposed?
         return {
             "grid_entry": self.grid_entry,
