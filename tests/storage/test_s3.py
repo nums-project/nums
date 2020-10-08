@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 
 from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray
