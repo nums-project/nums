@@ -1,7 +1,4 @@
 [run]
-source=nums
-concurrency = multiprocessing
-parallel = True
 include =
     nums/*
 omit =
