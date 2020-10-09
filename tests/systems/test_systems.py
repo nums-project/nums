@@ -20,55 +20,44 @@
 # DEALINGS IN THE SOFTWARE.
 
 
-from setuptools import setup, find_packages
+import numpy as np
+
+from nums.core.systems.systems import RaySystem
+from nums.core.array.application import ArrayApplication
+from nums.core.array.blockarray import BlockArray, Block
 
 
-requirements = [
-    'numpy<=1.20.0',
-    'scipy<=1.5.0',
-    'ray==0.8.7',
-    'boto3<=1.15.0'
-]
+# pylint: disable=protected-access
 
 
-test_requirements = [
-    'pytest',
-    'pytest-pylint',
-]
+def test_options(app_inst):
+    result = app_inst._system.get_options(cluster_entry=(0, 0), cluster_shape=(1, 1))
+    assert len(result) > 0
 
 
-__version__ = None
+def test_warmup(app_inst):
+    sys = app_inst._system
+    if isinstance(sys, RaySystem):
+        sys.warmup(10)
+    assert True
 
 
-with open('nums/core/version.py') as f:
-    # pylint: disable=exec-used
-    exec(f.read(), globals())
-
-
-with open("README.md", "r") as fh:
-    long_description = fh.read()
-
-
-def main():
-
-    setup(
-        name='nums',
-        version=__version__,
-        description="A numerical computing library for Python that scales.",
-        long_description=long_description,
-        long_description_content_type="text/markdown",
-        url="https://github.com/nums-project/nums",
-        packages=find_packages(),
-        classifiers=[
-            "Programming Language :: Python :: 3",
-            "License :: OSI Approved :: MIT License",
-            "Operating System :: Unix",
-        ],
-        python_requires='>=3.6',
-        install_requires=requirements,
-        test_requirements=test_requirements
-    )
+def test_block_grid_entry(app_inst: ArrayApplication):
+    ba: BlockArray = app_inst.array(np.array([[1, 2, 3], [4, 5, 6]]), block_shape=(1, 3))
+    block1: Block = ba.T.blocks[0, 1]
+    assert block1.size() == 3
+    assert block1.transposed
+    assert block1.grid_entry == (0, 1)
+    assert block1.grid_shape == (1, 2)
+    assert block1.true_grid_entry() == (1, 0)
+    assert block1.true_grid_shape() == (2, 1)
 
 
 if __name__ == "__main__":
-    main()
+    # pylint: disable=import-error
+    from tests import conftest
+
+    app_inst = conftest.get_app("serial")
+    test_options(app_inst)
+    test_warmup(app_inst)
+    test_block_grid_entry(app_inst)
