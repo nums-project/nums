@@ -8,6 +8,6 @@ install:
 script:
   - coverage run -m pytest
   - coverage report
-  - coverege xml
+  - coverage xml
 after_success:
   - codecov
