@@ -264,9 +264,10 @@ class BlockArray(BlockArrayBase):
             result_block_shape.append(axis_block_size)
         result_shape = tuple(result_shape)
         result_block_shape = tuple(result_block_shape)
+        result_dtype = array_utils.get_reduce_output_type(op_name, self.dtype)
         result_grid = ArrayGrid(shape=result_shape,
                                 block_shape=result_block_shape,
-                                dtype=self.dtype.__name__)
+                                dtype=result_dtype.__name__)
         result = BlockArray(result_grid, self.system)
         op_func = np.__getattribute__(op_name)
         reduced_blocks = op_func(result_blocks, axis=axis, keepdims=keepdims)
