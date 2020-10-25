@@ -28,14 +28,22 @@ from nums.core.systems.schedulers import RayScheduler, TaskScheduler, BlockCycli
 from nums.core.array.application import ArrayApplication
 
 
-instance: ArrayApplication = None
+_instance: ArrayApplication = None
 
 
-def init():
+def instance():
     # pylint: disable=global-statement
-    global instance
+    global _instance
+    if _instance is None:
+        _instance = create()
+    return _instance
 
-    if instance is not None:
+
+def create():
+    # pylint: disable=global-statement
+    global _instance
+
+    if _instance is not None:
         raise Exception("init called more than once.")
 
     system_name = settings.system_name
@@ -61,8 +69,4 @@ def init():
     else:
         raise Exception()
     system.init()
-    instance = ArrayApplication(system=system, filesystem=FileSystem(system))
-
-
-if instance is None:
-    init()
+    return ArrayApplication(system=system, filesystem=FileSystem(system))

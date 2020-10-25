@@ -1,12 +1,14 @@
 import os
+import time
 
 import numpy as np
+import pytest
 
 from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray
 
 
-def test_text_basic(app_inst: ArrayApplication):
+def test_loadtxt(app_inst: ArrayApplication):
     seed = 1337
     rs = np.random.RandomState(seed)
 
@@ -58,10 +60,52 @@ def test_rwd(app_inst: ArrayApplication):
         assert delete_result_ba[grid_entry].get() == delete_result_np[grid_entry]
 
 
+def _read_serially(filename, has_header):
+    with open(filename) as fh:
+        rows = []
+        header_read = False
+        for line in fh:
+            if not header_read and has_header:
+                header_read = True
+                continue
+            row = line.strip("\n\r")
+            if row == "":
+                continue
+            row = row.split(",")
+            row = list(map(np.float, row))
+            rows.append(row)
+        return np.array(rows)
+
+
+def test_read_csv(app_inst: ArrayApplication):
+    path = os.path.abspath(__file__)
+    dir_path = os.path.dirname(path)
+    filename = os.path.join(dir_path, "test.csv")
+    ba_data: BlockArray = app_inst.read_csv(filename, has_header=True)
+    np_data = _read_serially(filename, has_header=True)
+    assert np.allclose(ba_data.get(), np_data)
+
+
+@pytest.mark.skip
+def test_higgs(app_inst: ArrayApplication):
+    from nums.core import settings
+    filename = os.path.join(settings.data_dir, "HIGGS.csv")
+    t = time.time()
+    ba: BlockArray = app_inst.read_csv(filename, num_workers=12)
+    ba.touch()
+    print("HIGGS nums load time", time.time() - t, ba.shape, ba.block_shape)
+    t = time.time()
+    np_data = _read_serially(filename, has_header=False)
+    print("HIGGS serial load time", time.time() - t, np_data.shape)
+    assert np.allclose(ba.get(), np_data)
+
+
 if __name__ == "__main__":
     # pylint: disable=import-error
     from tests import conftest
 
-    app_inst = conftest.get_app("serial")
-    test_text_basic(app_inst)
-    test_rwd(app_inst)
+    app_inst = conftest.get_app("ray-cyclic")
+    # test_loadtxt(app_inst)
+    # test_rwd(app_inst)
+    test_read_csv(app_inst)
+    # test_higgs(app_inst)

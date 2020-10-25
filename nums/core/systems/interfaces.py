@@ -97,6 +97,9 @@ class ComputeInterface(object):
     def diag(self, arr, syskwargs: Dict):
         raise NotImplementedError()
 
+    def arange(self, start, stop, step, dtype, syskwargs: Dict):
+        raise NotImplementedError()
+
     def sum_reduce(self, *arrs, syskwargs: Dict):
         raise NotImplementedError()
 
@@ -108,6 +111,9 @@ class ComputeInterface(object):
         raise NotImplementedError()
 
     def update_block(self, dst_arr, *src_arrs, src_params, dst_params, syskwargs: Dict):
+        raise NotImplementedError()
+
+    def update_block_by_index(self, dst_arr, src_arr, index_pairs, syskwargs: Dict):
         raise NotImplementedError()
 
     def bop(self, op, a1, a2, a1_shape, a2_shape, a1_T, a2_T, axes, syskwargs: Dict):
@@ -136,14 +142,15 @@ class ComputeInterface(object):
     def allclose(self, a, b, rtol, atol, syskwargs: Dict):
         raise NotImplementedError()
 
-    # This is essentially a map.
-    def ufunc(self, op_name, arr, syskwargs: Dict):
-        raise NotImplementedError()
-
-    def xlogy(self, arr_x, arr_y, syskwargs: Dict):
+    def map_uop(self, op_name, arr, args, kwargs, syskwargs: Dict):
         raise NotImplementedError()
 
     def reduce_axis(self, op_name, arr, axis, keepdims, transposed, syskwargs: Dict):
+        raise NotImplementedError()
+
+    # Scipy
+
+    def xlogy(self, arr_x, arr_y, syskwargs: Dict):
         raise NotImplementedError()
 
     # Lapack
@@ -158,6 +165,13 @@ class ComputeInterface(object):
         raise NotImplementedError()
 
     def astype(self, arr, dtype_str, syskwargs: Dict):
+        raise NotImplementedError()
+
+    def arg_op(self, op_name, arr, block_slice, other_argoptima, other_optima,
+               syskwargs: Dict):
+        raise NotImplementedError()
+
+    def reshape(self, arr, shape, syskwargs: Dict):
         raise NotImplementedError()
 
 

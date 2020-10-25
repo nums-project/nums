@@ -1,8 +1,13 @@
 import types
 import inspect
 from functools import wraps
+import multiprocessing
 
 import numpy as np
+
+
+def get_num_cores():
+    return multiprocessing.cpu_count()
 
 
 def method_meta(num_return_vals=1):
@@ -51,11 +56,10 @@ def check_implementation(interface_cls, imp):
 
 def get_module_functions(module):
     # From project JAX: https://github.com/google/jax/blob/master/jax/util.py
-    """Finds functions in module.
-    Args:
-      module: A Python module.
-    Returns:
-      module_fns: A dict of names mapped to functions, builtins or ufuncs in `module`.
+    """
+    Finds functions in module.
+    :param module: module: A Python module.
+    :return: A dict of names mapped to functions, builtins or ufuncs in `module`.
     """
     module_fns = {}
     for key in dir(module):

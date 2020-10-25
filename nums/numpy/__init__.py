@@ -19,11 +19,14 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+from nums.core.array.blockarray import BlockArray
+from nums.numpy import random as random
 from nums.numpy import linalg
-from nums.numpy import random
-from nums.numpy.nums_numpy import (
-    _not_implemented
-)
+from nums.numpy.api import _not_implemented
+from nums.numpy.api import *
+
+
+# TODO(hme): Generate __all__, or control import hints some other way.
 
 
 def _init():

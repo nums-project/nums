@@ -42,6 +42,40 @@
 
 
 import numpy as np
+import scipy.special
+
+from nums.core.array.application import ArrayApplication
+
+
+def test_stats(app_inst: ArrayApplication):
+    np_x = np.arange(100)
+    ba_x = app_inst.array(np_x, block_shape=np_x.shape)
+    assert np.allclose(np.mean(np_x), app_inst.mean(ba_x).get())
+    assert np.allclose(np.std(np_x), app_inst.std(ba_x).get())
+
+
+def test_uops(app_inst: ArrayApplication):
+    np_x = np.arange(100)
+    ba_x = app_inst.array(np_x, block_shape=np_x.shape)
+    assert np.allclose(np.abs(np_x), app_inst.abs(ba_x).get())
+    assert np.allclose(np.linalg.norm(np_x), app_inst.norm(ba_x).get())
+
+
+def test_bops(app_inst: ArrayApplication):
+    pairs = [(1, 2),
+             (2.0, 3.0),
+             (2, 3.0),
+             (2.0, 3)]
+    for a, b in pairs:
+        np_a, np_b = np.array(a), np.array(b)
+        ba_a, ba_b = app_inst.scalar(a), app_inst.scalar(b)
+        assert np.allclose(np_a + np_b, (ba_a + ba_b).get())
+        assert np.allclose(np_a - np_b, (ba_a - ba_b).get())
+        assert np.allclose(np_a * np_b, (ba_a * ba_b).get())
+        assert np.allclose(np_a / np_b, (ba_a / ba_b).get())
+        assert np.allclose(np_a ** np_b, (ba_a ** ba_b).get())
+        assert np.allclose(scipy.special.xlogy(np_a, np_b),
+                           app_inst.xlogy(ba_a, ba_b).get())
 
 
 def test_bools(app_inst):
@@ -60,4 +94,7 @@ if __name__ == "__main__":
     from tests import conftest
 
     app_inst = conftest.get_app("serial")
+    test_stats(app_inst)
+    test_uops(app_inst)
+    test_bops(app_inst)
     test_bools(app_inst)

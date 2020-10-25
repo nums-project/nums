@@ -96,7 +96,7 @@ if __name__ == "__main__":
     from tests import conftest
 
     app_inst = conftest.get_app("serial")
-    # test_array_integrity(app_inst)
-    # test_concatenate(app_inst)
-    # test_touch(app_inst)
+    test_array_integrity(app_inst)
+    test_concatenate(app_inst)
+    test_touch(app_inst)
     test_split(app_inst)

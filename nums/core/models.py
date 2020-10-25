@@ -199,7 +199,8 @@ class LogisticRegression(GLM):
     def hessian(self, X: BlockArray, y: BlockArray, mu: BlockArray = None):
         if mu is None:
             mu = self.forward(X)
-        s = (mu * (self._app.one - mu)).reshape(shape=(-1, 1), block_shape=(-1, 1))
+        dim, block_dim = mu.shape[0], mu.block_shape[0]
+        s = (mu * (self._app.one - mu)).reshape(shape=(dim, 1), block_shape=(block_dim, 1))
         if self._l2 is None:
             return X.T @ (s * X)
         else:
@@ -348,4 +349,8 @@ def irls(app: ArrayApplication, model: LogisticRegression, beta,
 
 
 def lbfgs():
+    raise NotImplementedError()
+
+
+def admm():
     raise NotImplementedError()

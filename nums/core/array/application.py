@@ -23,11 +23,15 @@
 from typing import List
 
 import numpy as np
+import scipy.special
 
-from nums.core.array.blockarray import BlockArray
+from nums.core.array.blockarray import BlockArray, Block
 from nums.core.array import utils as array_utils
 from nums.core.storage.storage import ArrayGrid, StoredArray, StoredArrayS3
-from nums.core.systems.systems import System
+# TODO(hme): Remove dependence on specific system and scheduler implementations.
+from nums.core.systems.systems import System, RaySystem
+from nums.core.systems.schedulers import BlockCyclicScheduler
+from nums.core.systems import utils as systems_utils
 from nums.core.systems.filesystem import FileSystem
 from nums.core.array.random import NumsRandomState
 
@@ -42,6 +46,92 @@ class ArrayApplication(object):
         self.two = self.scalar(2.0)
         self.one = self.scalar(1.0)
         self.zero = self.scalar(0.0)
+        self._block_shape_map = {}
+
+    def compute_block_shape(self,
+                            shape: tuple,
+                            dtype: np.dtype,
+                            cluster_shape=None,
+                            num_cores=None):
+        # TODO (hme): Add support for downstream optimizer to decide block shape.
+        if dtype in (np.float32, np.float64, float):
+            dtype = np.finfo(dtype).dtype
+        elif dtype in (np.int32, np.int64, int):
+            dtype = np.iinfo(dtype).dtype
+        elif dtype in (bool, np.bool_):
+            dtype = np.dtype(np.bool_)
+        else:
+            raise ValueError("dtype %s not supported" % str(dtype))
+
+        nbytes = dtype.alignment
+        size = np.product(shape) * nbytes
+        # If the object is less than 100 megabytes, there's not much value in constructing
+        # a block tensor.
+        if size < 10 ** 8:
+            block_shape = shape
+            return block_shape
+
+        if num_cores is not None:
+            pass
+        elif isinstance(self._system, RaySystem):
+            system: RaySystem = self._system
+            nodes = system.nodes()
+            num_cores = sum(map(lambda n: n["Resources"]["CPU"], nodes))
+        else:
+            num_cores = systems_utils.get_num_cores()
+            # raise NotImplementedError("NumPy API currently supports Ray only.")
+
+        if cluster_shape is not None:
+            pass
+        elif isinstance(self._system, RaySystem) \
+                and isinstance(self._system.scheduler, BlockCyclicScheduler):
+            # This configuration is the default.
+            cluster_shape = self._system.scheduler.cluster_shape
+        else:
+            cluster_shape = (1, 1)
+            # raise NotImplementedError("NumPy API currently supports block cyclic scheduling "
+            #                           "with Ray only.")
+
+        cluster_shape = list(cluster_shape)
+        for axis in range(len(shape)):
+            if axis >= len(cluster_shape):
+                cluster_shape.append(1)
+        cluster_shape = tuple(cluster_shape)
+
+        shape_np = np.array(shape, dtype=np.int)
+        # Softmax on cluster shape gives strong preference to larger dimensions.
+        cluster_weights = np.exp(np.array(cluster_shape)) / np.sum(np.exp(cluster_shape))
+        shape_fracs = np.array(shape) / np.sum(shape)
+        # cluster_weights weight the proportion of cores available along each axis,
+        # and shape_fracs is the proportion of data along each axis.
+        weighted_shape_fracs = cluster_weights * shape_fracs
+        weighted_shape_fracs = weighted_shape_fracs / np.sum(weighted_shape_fracs)
+
+        # Compute dimensions of grid shape
+        # so that the number of blocks are close to the number of cores.
+        grid_shape_frac = num_cores ** weighted_shape_fracs
+        grid_shape = np.floor(grid_shape_frac)
+        # Put remainder on largest axis.
+        remaining = np.sum(grid_shape_frac - grid_shape)
+        grid_shape[np.argmax(shape)] += remaining
+        grid_shape = np.ceil(grid_shape).astype(np.int)
+
+        # We use ceiling of floating block shape
+        # so that resulting grid shape is <= to what we compute above.
+        block_shape = tuple((shape_np + grid_shape - 1) // grid_shape)
+        return block_shape
+
+    def get_block_shape(self, shape, dtype: np.dtype):
+        # Simple way to ensure shape compatibility for basic linear algebra operations.
+        block_shape = self.compute_block_shape(shape, dtype)
+        final_block_shape = []
+        for axis in range(len(shape)):
+            shape_dim = shape[axis]
+            block_shape_dim = block_shape[axis]
+            if shape_dim not in self._block_shape_map:
+                self._block_shape_map[shape_dim] = block_shape_dim
+            final_block_shape.append(self._block_shape_map[shape_dim])
+        return tuple(final_block_shape)
 
     def _get_array_grid(self, filename: str, stored_array_cls) -> ArrayGrid:
         if filename not in self._array_grids:
@@ -163,6 +253,20 @@ class ArrayApplication(object):
                                                       })
         return rarr
 
+    def read_csv(self, filename, dtype=np.float, delimiter=',', has_header=False, num_workers=4):
+        arrays: list = self._filesystem.read_csv(filename, dtype, delimiter, has_header, num_workers)
+        shape = np.zeros(len(arrays[0].shape), dtype=int)
+        for array in arrays:
+            shape += np.array(array.shape, dtype=int)
+        shape = tuple(shape)
+        block_shape = self.get_block_shape(shape, dtype)
+        result = self.concatenate(arrays, axis=0, axis_block_size=block_shape[0])
+        # Release references immediately, in case we need to do another reshape.
+        del arrays
+        if result.block_shape[1] != block_shape[1]:
+            result = result.reshape(block_shape=block_shape)
+        return result
+
     def loadtxt(self, fname, dtype=float, comments='# ', delimiter=',',
                 converters=None, skiprows=0, usecols=None, unpack=False,
                 ndmin=0, encoding='bytes', max_rows=None, num_cpus=4) -> BlockArray:
@@ -267,6 +371,93 @@ class ArrayApplication(object):
             pos += delta
         return result_ba
 
+    def eye(self, shape: tuple, block_shape: tuple, dtype: np.dtype = None):
+        assert len(shape) == len(block_shape) == 2
+        if dtype is None:
+            dtype = np.float64
+        grid = ArrayGrid(shape, block_shape, dtype.__name__)
+        grid_meta = grid.to_meta()
+        rarr = BlockArray(grid, self._system)
+        for grid_entry in grid.get_entry_iterator():
+            syskwargs = {"grid_entry": grid_entry, "grid_shape": grid.grid_shape}
+            if np.all(np.diff(grid_entry) == 0):
+                # This is a diagonal block.
+                rarr.blocks[grid_entry].oid = self._system.new_block("eye",
+                                                                     grid_entry,
+                                                                     grid_meta,
+                                                                     syskwargs=syskwargs)
+            else:
+                rarr.blocks[grid_entry].oid = self._system.new_block("zeros",
+                                                                     grid_entry,
+                                                                     grid_meta,
+                                                                     syskwargs=syskwargs)
+        return rarr
+
+    def diag(self, X: BlockArray) -> BlockArray:
+        if len(X.shape) == 1:
+            shape = X.shape[0], X.shape[0]
+            block_shape = X.block_shape[0], X.block_shape[0]
+            grid = ArrayGrid(shape, block_shape, X.dtype.__name__)
+            grid_meta = grid.to_meta()
+            rarr = BlockArray(grid, self._system)
+            for grid_entry in grid.get_entry_iterator():
+                syskwargs = {"grid_entry": grid_entry, "grid_shape": grid.grid_shape}
+                if np.all(np.diff(grid_entry) == 0):
+                    # This is a diagonal block.
+                    rarr.blocks[grid_entry].oid = self._system.diag(X.blocks[grid_entry[0]].oid,
+                                                                    syskwargs=syskwargs)
+                else:
+                    rarr.blocks[grid_entry].oid = self._system.new_block("zeros",
+                                                                         grid_entry,
+                                                                         grid_meta,
+                                                                         syskwargs=syskwargs)
+        elif len(X.shape) == 2:
+            assert X.shape[0] == X.shape[1]
+            assert X.block_shape[0] == X.block_shape[1]
+            shape = X.shape[0],
+            block_shape = X.block_shape[0],
+            grid = ArrayGrid(shape, block_shape, X.dtype.__name__)
+            rarr = BlockArray(grid, self._system)
+            for grid_entry in X.grid.get_entry_iterator():
+                out_grid_entry = grid_entry[:1]
+                out_grid_shape = grid.grid_shape[:1]
+                syskwargs = {"grid_entry": out_grid_entry, "grid_shape": out_grid_shape}
+                if np.all(np.diff(grid_entry) == 0):
+                    # This is a diagonal block.
+                    rarr.blocks[out_grid_entry].oid = self._system.diag(X.blocks[grid_entry].oid,
+                                                                        syskwargs=syskwargs)
+        else:
+            raise ValueError("X must have 1 or 2 axes.")
+        return rarr
+
+    def arange(self, shape, block_shape, step=1, dtype=np.int64) -> BlockArray:
+        assert step == 1
+        # Generate ranges per block.
+        grid = ArrayGrid(shape, block_shape, dtype.__name__)
+        rarr = BlockArray(grid, self._system)
+        for block_index, grid_entry in enumerate(grid.get_entry_iterator()):
+            syskwargs = {"grid_entry": grid_entry, "grid_shape": grid.grid_shape}
+            start = block_shape[0] * grid_entry[0]
+            entry_shape = grid.get_block_shape(grid_entry)
+            stop = start + entry_shape[0]
+            rarr.blocks[grid_entry].oid = self._system.arange(start,
+                                                              stop,
+                                                              step,
+                                                              dtype,
+                                                              syskwargs=syskwargs)
+        return rarr
+
+    def linspace(self, start, stop, shape, block_shape, endpoint, retstep, dtype, axis):
+        assert axis == 0
+        assert endpoint is True
+        assert retstep is False
+        step_size = (stop - start) / (shape[0]-1)
+        result = self.arange(shape, block_shape)
+        result = start + result * step_size
+        if dtype is not None and dtype != result.dtype:
+            result = result.astype(dtype)
+        return result
+
     def log(self, X: BlockArray):
         return X.ufunc("log")
 
@@ -276,18 +467,73 @@ class ArrayApplication(object):
     def abs(self, X: BlockArray):
         return X.ufunc("abs")
 
-    def sum(self, X: BlockArray, axis=0, keepdims=False):
-        return X.reduce_axis("sum", axis, keepdims=keepdims)
+    def min(self, X: BlockArray, axis=None, keepdims=False):
+        return self.reduce("min", X, axis, keepdims)
 
-    def mean(self, X: BlockArray, axis=0, keepdims=False):
+    def max(self, X: BlockArray, axis=None, keepdims=False):
+        return self.reduce("max", X, axis, keepdims)
+
+    def argmin(self, X: BlockArray, axis=None):
+        pass
+
+    def sum(self, X: BlockArray, axis=None, keepdims=False, dtype=None):
+        return self.reduce("sum", X, axis, keepdims, dtype)
+
+    def reduce(self, op_name: str, X: BlockArray, axis=None, keepdims=False, dtype=None):
+        res = X.reduce_axis(op_name, axis, keepdims=keepdims)
+        if dtype is not None:
+            res = res.astype(dtype)
+        return res
+
+    def mean(self, X: BlockArray, axis=None, keepdims=False, dtype=None):
         if X.dtype not in (float, np.float32, np.float64):
             X = X.astype(np.float64)
-        return self.sum(X, axis=axis, keepdims=keepdims) / X.shape[axis]
+        num_summed = np.product(X.shape) if axis is None else X.shape[axis]
+        res = self.sum(X, axis=axis, keepdims=keepdims) / num_summed
+        if dtype is not None:
+            res = res.astype(dtype)
+        return res
 
-    def std(self, X: BlockArray, axis=0, keepdims=False):
+    def var(self, X: BlockArray, axis=None, ddof=0, keepdims=False, dtype=None):
         mean = self.mean(X, axis=axis, keepdims=True)
         ss = self.sum((X - mean)**self.two, axis=axis, keepdims=keepdims)
-        return self.sqrt(ss / X.shape[axis])
+        num_summed = (np.product(X.shape) if axis is None else X.shape[axis]) - ddof
+        res = ss / num_summed
+        if dtype is not None:
+            res = res.astype(dtype)
+        return res
+
+    def std(self, X: BlockArray, axis=None, ddof=0, keepdims=False, dtype=None):
+        res = self.sqrt(self.var(X, axis, ddof, keepdims))
+        if dtype is not None:
+            res = res.astype(dtype)
+        return res
+
+    def argop(self, op_name: str, arr: BlockArray, axis=None):
+        if len(arr.shape) > 1:
+            raise NotImplementedError("%s currently supports one-dimensional arrays." % op_name)
+        if axis is None:
+            axis = 0
+        assert axis == 0
+        grid = ArrayGrid(shape=(), block_shape=(), dtype=np.int64.__name__)
+        result = BlockArray(grid, self._system)
+        reduction_result = None, None
+        for grid_entry in arr.grid.get_entry_iterator():
+            block_slice: slice = arr.grid.get_slice(grid_entry)[0]
+            block: Block = arr.blocks[grid_entry]
+            syskwargs = {
+                "grid_entry": grid_entry,
+                "grid_shape": arr.grid.grid_shape,
+                "options": {"num_return_vals": 2},
+            }
+            reduction_result = self._system.arg_op(op_name,
+                                                   block.oid,
+                                                   block_slice,
+                                                   *reduction_result,
+                                                   syskwargs=syskwargs)
+        argoptima, optima = reduction_result
+        result.blocks[()].oid = argoptima
+        return result
 
     def sqrt(self, X):
         if X.dtype not in (float, np.float32, np.float64):
@@ -302,23 +548,119 @@ class ArrayApplication(object):
             x = x.astype(np.float64)
         if x.dtype not in (float, np.float32, np.float64):
             y = y.astype(np.float64)
-        return self._block_map_bop("xlogy", x, y)
+        return self.map_bop("xlogy", x, y)
 
-    def _block_map_bop(self, op_name: str, arr_a: BlockArray, arr_b: BlockArray) -> BlockArray:
-        shape = arr_a.shape
-        block_shape = arr_a.block_shape
-        dtype = array_utils.get_bop_output_type("log", arr_a.dtype, arr_b.dtype)
+    def map_uop(self,
+                op_name: str,
+                arr: BlockArray,
+                out: BlockArray = None,
+                where=True,
+                args=None,
+                kwargs=None) -> BlockArray:
+        """
+        A map, for unary operators, that applies to every entry of an array.
+        :param op_name: An element-wise unary operator.
+        :param arr: A BlockArray.
+        :param out: A BlockArray to which the result is written.
+        :param where: An indicator specifying the indices to which op is applied.
+        :param args: Args provided to op.
+        :param kwargs: Keyword args provided to op.
+        :return: A BlockArray.
+        """
+        if where is not True:
+            raise NotImplementedError("'where' argument is not yet supported.")
+        args = () if args is None else args
+        kwargs = {} if kwargs is None else kwargs
+        shape = arr.shape
+        block_shape = arr.block_shape
+        dtype = array_utils.get_uop_output_type(op_name, arr.dtype)
         assert len(shape) == len(block_shape)
-        grid = ArrayGrid(shape, block_shape, dtype.__name__)
-        rarr = BlockArray(grid, self._system)
-        op = self._system.__getattribute__(op_name)
+        if out is None:
+            grid = ArrayGrid(shape, block_shape, dtype.__name__)
+            rarr = BlockArray(grid, self._system)
+        else:
+            rarr = out
+            grid = rarr.grid
+            assert rarr.shape == arr.shape and rarr.block_shape == arr.block_shape
         for grid_entry in grid.get_entry_iterator():
-            rarr.blocks[grid_entry].oid = op(arr_a.blocks[grid_entry].oid,
-                                             arr_b.blocks[grid_entry].oid,
-                                             syskwargs={
-                                                 "grid_entry": grid_entry,
-                                                 "grid_shape": grid.grid_shape
-                                             })
+            # TODO(hme): Faster to create ndarray first,
+            #  and instantiate block array on return
+            #  to avoid instantiating blocks on BlockArray initialization.
+            rarr.blocks[grid_entry] = arr.blocks[grid_entry].uop_map(op_name,
+                                                                     args=args,
+                                                                     kwargs=kwargs)
+        return rarr
+
+    def map_bop(self,
+                op_name: str,
+                arr_1: BlockArray,
+                arr_2: BlockArray,
+                out: BlockArray = None,
+                where=True,
+                args=None,
+                kwargs=None) -> BlockArray:
+        # TODO (hme): Move this into BlockArray, and invoke on operator implementations.
+        """
+        A map, for binary operators, that applies element-wise to every entry of the input arrays.
+        :param op_name: An element-wise binary operator.
+        :param arr_1: A BlockArray.
+        :param arr_2: A BlockArray.
+        :param out: A BlockArray to which the result is written.
+        :param where: An indicator specifying the indices to which op is applied.
+        :param args: Args provided to op.
+        :param kwargs: Keyword args provided to op.
+        :return: A BlockArray.
+        """
+        if where is not True:
+            raise NotImplementedError("'where' argument is not yet supported.")
+        if args is not None:
+            raise NotImplementedError("'args' is not yet supported.")
+        if not (kwargs is None or len(kwargs) == 0):
+            raise NotImplementedError("'kwargs' is not yet supported.")
+
+        try:
+            ufunc = np.__getattribute__(op_name)
+            if (op_name.endswith("max") or op_name == "maximum"
+                    or op_name.endswith("min") or op_name == "minimum"
+                    or op_name.startswith("logical")):
+                rarr = self._broadcast_bop(op_name, arr_1, arr_2)
+            else:
+                result_blocks: np.ndarray = ufunc(arr_1.blocks, arr_2.blocks)
+                rarr = BlockArray.from_blocks(result_blocks,
+                                              result_shape=None,
+                                              system=self._system)
+        except Exception as e:
+            rarr = self._broadcast_bop(op_name, arr_1, arr_2)
+        if out is not None:
+            assert out.grid.grid_shape == rarr.grid.grid_shape
+            assert out.shape == rarr.shape
+            assert out.block_shape == rarr.block_shape
+            out.blocks[:] = rarr.blocks[:]
+            rarr = out
+        return rarr
+
+    def _broadcast_bop(self, op_name, arr_1, arr_2) -> BlockArray:
+        """
+        We want to avoid invoking this op whenever possible; NumPy's imp is faster.
+        :param op_name: Name of binary operation.
+        :param arr_1: A BlockArray.
+        :param arr_2: A BlockArray.
+        :return: A BlockArray.
+        """
+        if arr_1.shape != arr_2.shape:
+            output_grid_shape = array_utils.broadcast_shape(arr_1.grid.grid_shape,
+                                                            arr_2.grid.grid_shape)
+            arr_1 = arr_1.broadcast_to(output_grid_shape)
+            arr_2 = arr_2.broadcast_to(output_grid_shape)
+        dtype = array_utils.get_bop_output_type(op_name,
+                                                arr_1.dtype,
+                                                arr_2.dtype)
+        grid = ArrayGrid(arr_1.shape, arr_1.block_shape, dtype.__name__)
+        rarr = BlockArray(grid, self._system)
+        for grid_entry in rarr.grid.get_entry_iterator():
+            block_1: Block = arr_1.blocks[grid_entry]
+            block_2: Block = arr_2.blocks[grid_entry]
+            rarr.blocks[grid_entry] = block_1.bop(op_name, block_2, {})
         return rarr
 
     def get(self, *arrs):

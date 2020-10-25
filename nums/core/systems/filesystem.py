@@ -25,6 +25,7 @@ import pickle
 from typing import Any, AnyStr, Tuple, Dict
 
 import numpy as np
+from numpy.compat import asbytes, asstr, asunicode
 
 from nums.core import settings
 from nums.core.storage.storage import ArrayGrid, StoredArrayS3
@@ -59,19 +60,6 @@ def read_block_s3(filename: AnyStr, grid_entry: Tuple, grid_meta: Dict):
 def delete_block_s3(filename: AnyStr, grid_entry: Tuple, grid_meta: Dict):
     return np.array(StoredArrayS3(filename, ArrayGrid.from_meta(grid_meta)).delete(grid_entry),
                     dtype=dict)
-
-
-##############
-# NumPy API
-##############
-def loadtxt_block(fname, dtype, comments, delimiter,
-                  converters, skiprows, usecols, unpack,
-                  ndmin, encoding, max_rows):
-    return np.loadtxt(
-        fname, dtype=dtype, comments=comments, delimiter=delimiter,
-        converters=converters, skiprows=skiprows, usecols=usecols, unpack=unpack,
-        ndmin=ndmin, encoding=encoding, max_rows=max_rows
-    )
 
 
 ###################
@@ -156,6 +144,80 @@ def delete_block_fs(filename, grid_entry: Tuple):
     return np.array(os.remove(filepath), dtype=object)
 
 
+##############
+# NumPy API
+##############
+def loadtxt_block(fname, dtype, comments, delimiter,
+                  converters, skiprows, usecols, unpack,
+                  ndmin, encoding, max_rows):
+    return np.loadtxt(
+        fname, dtype=dtype, comments=comments, delimiter=delimiter,
+        converters=converters, skiprows=skiprows, usecols=usecols, unpack=unpack,
+        ndmin=ndmin, encoding=encoding, max_rows=max_rows
+    )
+
+
+##############
+# CSV API
+##############
+def read_csv_block(filename, file_start, file_end, dtype, delimiter, has_header):
+
+    def _getconv(_dtype):
+        """ Adapted from numpy/lib/npyio.py """
+
+        def floatconv(x):
+            x.lower()
+            if '0x' in x:
+                return float.fromhex(x)
+            return float(x)
+
+        if issubclass(_dtype, np.bool_):
+            return lambda x: bool(int(x))
+        if issubclass(_dtype, np.uint64):
+            return np.uint64
+        if issubclass(_dtype, np.int64):
+            return np.int64
+        if issubclass(_dtype, np.integer) or _dtype is int:
+            return lambda x: int(float(x))
+        elif issubclass(_dtype, np.longdouble):
+            return np.longdouble
+        elif issubclass(_dtype, np.floating) or _dtype is float:
+            return floatconv
+        elif issubclass(_dtype, complex):
+            return lambda x: complex(asstr(x).replace('+-', '-'))
+        elif issubclass(_dtype, np.bytes_):
+            return asbytes
+        elif issubclass(_dtype, np.unicode_):
+            return asunicode
+        else:
+            return asstr
+
+    lines = []
+    converter = _getconv(dtype)
+    with open(filename, "r") as fh:
+        try:
+            fh.seek(file_start)
+            if file_start != 0:
+                char = None
+                while char != "\n":
+                    char = fh.read(1)
+            header_skipped = False
+            while fh.tell() < file_end:
+                line = fh.readline().strip("\r\n")
+                if file_start == 0 and has_header and not header_skipped:
+                    header_skipped = True
+                    continue
+                line = line.split(delimiter)
+                if len(line) == 0:
+                    continue
+                line = list(map(converter, line))
+                lines.append(line)
+        except StopIteration:
+            pass
+    array = np.array(lines, dtype=dtype)
+    return array, array.shape
+
+
 class FileSystem(object):
     # pylint: disable=unused-argument
     # TODO (hme):
@@ -171,7 +233,7 @@ class FileSystem(object):
                      write_block_s3, read_block_s3, delete_block_s3,
                      write_meta_fs, read_meta_fs, delete_meta_fs,
                      write_block_fs, read_block_fs, delete_block_fs,
-                     loadtxt_block]:
+                     loadtxt_block, read_csv_block]:
             self.system.register(func.__name__, func, {})
 
     ##################################################
@@ -342,3 +404,42 @@ class FileSystem(object):
                 }
             )
         return result
+
+    def read_csv(self, filename, dtype=np.float, delimiter=',', has_header=False, num_workers=4):
+        file_size = storage_utils.get_file_size(filename)
+        file_batches: storage_utils.Batch = storage_utils.Batch.from_num_batches(file_size,
+                                                                                 num_workers)
+        blocks = []
+        shape_oids = []
+        for i, batch in enumerate(file_batches.batches):
+            file_start, file_end = batch
+            block_oid, shape_oid = self.system.call("read_csv_block",
+                                                    filename,
+                                                    file_start,
+                                                    file_end,
+                                                    dtype,
+                                                    delimiter,
+                                                    has_header,
+                                                    syskwargs={
+                                                        "grid_entry": (i,),
+                                                        "grid_shape": (num_workers,),
+                                                        "options": {"num_return_vals": 2}
+                                                    })
+            blocks.append(block_oid)
+            shape_oids.append(shape_oid)
+        shapes = self.system.get(shape_oids)
+        arrays = []
+        for i in range(len(shapes)):
+            shape = shapes[i]
+            if shape[0] == 0:
+                continue
+            block = blocks[i]
+            grid = ArrayGrid(shape=shape, block_shape=shape, dtype=dtype.__name__)
+            arr = BlockArray(grid, self.system)
+            iter_one = True
+            for grid_entry in grid.get_entry_iterator():
+                assert iter_one
+                iter_one = False
+                arr.blocks[grid_entry].oid = block
+            arrays.append(arr)
+        return arrays

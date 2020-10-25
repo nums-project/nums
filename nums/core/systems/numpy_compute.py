@@ -31,6 +31,7 @@ import scipy.special
 
 from nums.core.storage.storage import ArrayGrid
 from nums.core.systems.interfaces import ComputeImp, RNGInterface
+from nums.core.settings import np_ufunc_map
 
 
 def block_rng(seed, jump_index):
@@ -109,24 +110,20 @@ class ComputeCls(ComputeImp):
         block_shape = grid.get_block_shape(grid_entry)
         if op_name == "eye":
             assert np.all(np.diff(grid_entry) == 0)
-            return op_func(block_shape[0], dtype=grid.dtype)
+            return op_func(*block_shape, dtype=grid.dtype)
         else:
             return op_func(block_shape, dtype=grid.dtype)
 
     def random_block(self, rng_params, rfunc_name, rfunc_args, shape, dtype):
         rng: Generator = block_rng(*rng_params)
         op_func = rng.__getattribute__(rfunc_name)
-        if rfunc_name == "multinomial" or rfunc_name == "dirichlet":
-            assert isinstance(rng_params[0], list)
-            shape = tuple(list(shape) + [len(rng_params[0])])
         result = op_func(*rfunc_args).reshape(shape)
         if rfunc_name not in ("random", "integers"):
-            # Only random supports sampling of a specific type.
+            # Only random and integer supports sampling of a specific type.
             result = result.astype(dtype)
         return result
 
     def create_block(self, *src_arrs, src_params, dst_params, dst_shape, dst_shape_bc):
-        # TODO (hme): Test putting dst_shape as first param.
         result = np.empty(shape=dst_shape, dtype=src_arrs[0].dtype)
         assert len(src_params) == len(dst_params)
         for i in range(len(src_params)):
@@ -161,8 +158,17 @@ class ComputeCls(ComputeImp):
                 dst_arr[dst_sel] = src_arr[src_sel]
         return dst_arr
 
+    def update_block_by_index(self, dst_arr, src_arr, index_pairs):
+        result = dst_arr.copy()
+        for dst_index, src_index in index_pairs:
+            result[tuple(dst_index)] = src_arr[tuple(src_index)]
+        return result
+
     def diag(self, arr):
         return np.diag(arr)
+
+    def arange(self, start, stop, step, dtype):
+        return np.arange(start, stop, step, dtype)
 
     def reduce_axis(self, op_name, arr, axis, keepdims, transposed):
         op_func = np.__getattribute__(op_name)
@@ -171,9 +177,9 @@ class ComputeCls(ComputeImp):
         return op_func(arr, axis=axis, keepdims=keepdims)
 
     # This is essentially a map.
-    def ufunc(self, op_name, arr):
+    def map_uop(self, op_name, arr, args, kwargs):
         ufunc = np.__getattribute__(op_name)
-        return ufunc(arr)
+        return ufunc(arr, *args, **kwargs)
 
     def xlogy(self, arr_x, arr_y):
         return scipy.special.xlogy(arr_x, arr_y)
@@ -202,21 +208,15 @@ class ComputeCls(ComputeImp):
             a1 = a1.reshape(a1_shape)
         if a2.shape != a2_shape:
             a2 = a2.reshape(a2_shape)
-        return {
-            "add": lambda a, b: a + b,
-            "sub": lambda a, b: a - b,
-            "mul": lambda a, b: a * b,
-            "truediv": lambda a, b: a / b,
-            "pow": lambda a, b: a ** b,
-            "tensordot": lambda a, b: np.tensordot(a, b, axes=axes),
-            # bool ops
-            "ge": lambda a, b: a >= b,
-            "gt": lambda a, b: a > b,
-            "le": lambda a, b: a <= b,
-            "lt": lambda a, b: a < b,
-            "eq": lambda a, b: a == b,
-            "ne": lambda a, b: a != b,
-        }[op](a1, a2)
+
+        if op == "tensordot":
+            return np.tensordot(a1, a2, axes=axes)
+        op = np_ufunc_map.get(op, op)
+        try:
+            ufunc = np.__getattribute__(op)
+        except Exception as _:
+            ufunc = scipy.special.__getattribute__(op)
+        return ufunc(a1, a2)
 
     def qr(self, *arrays, mode="reduced", axis=None):
         if len(arrays) > 1:
@@ -272,3 +272,22 @@ class ComputeCls(ComputeImp):
 
     def logical_and(self, *bool_list):
         return np.all(bool_list)
+
+    def arg_op(self, op_name, arr, block_slice, other_argoptima=None, other_optima=None):
+        if op_name == "argmin":
+            arr_argmin = np.argmin(arr)
+            arr_min = arr[arr_argmin]
+            if other_optima is not None and other_optima < arr_min:
+                return other_argoptima, other_optima
+            return block_slice.start + arr_argmin, arr_min
+        elif op_name == "argmax":
+            arr_argmax = np.argmax(arr)
+            arr_max = arr[arr_argmax]
+            if other_optima is not None and other_optima > arr_max:
+                return other_argoptima, other_optima
+            return block_slice.start + arr_argmax, arr_max
+        else:
+            raise Exception("Unsupported arg op.")
+
+    def reshape(self, arr, shape):
+        return arr.reshape(shape)

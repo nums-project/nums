@@ -25,6 +25,7 @@ import ray
 
 from nums.core.systems import numpy_compute
 from nums.core.systems.systems import System, SerialSystem, RaySystem
+from nums.core.systems import utils as systems_utils
 from nums.core.systems.filesystem import FileSystem
 from nums.core.systems.schedulers import RayScheduler, TaskScheduler, BlockCyclicScheduler
 from nums.core.array.application import ArrayApplication
@@ -39,11 +40,23 @@ def app_inst(request):
     ray.shutdown()
 
 
+@pytest.fixture(scope="function", params=["ray-cyclic"])
+def nps_app_inst(request):
+    # pylint: disable=protected-access
+    from nums.core import application_manager
+    yield application_manager.instance()
+    # application_manager._instance = application_manager.create()
+    # yield application_manager._instance
+    # application_manager._instance._system.shutdown()
+    # ray.shutdown()
+    # application_manager._instance = None
+
+
 def get_app(mode):
     if mode == "serial":
         system: System = SerialSystem(compute_module=numpy_compute)
     elif mode.startswith("ray"):
-        ray.init(num_cpus=4)
+        ray.init(num_cpus=systems_utils.get_num_cores())
         if mode == "ray-task":
             scheduler: RayScheduler = TaskScheduler(compute_module=numpy_compute,
                                                     use_head=True)

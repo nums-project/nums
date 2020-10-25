@@ -353,8 +353,8 @@ if __name__ == "__main__":
     from tests import conftest
 
     app_inst = conftest.get_app("serial")
-    test_inv_assumptions(app_inst)
-    test_inv(app_inst)
+    # test_inv_assumptions(app_inst)
+    # test_inv(app_inst)
     # test_qr(app_inst)
     # test_svd(app_inst)
     # test_lr(app_inst)
@@ -362,5 +362,5 @@ if __name__ == "__main__":
     # test_logistic(app_inst)
     # test_logistic_cv(app_inst)
     # test_glm_lr(app_inst)
-    # test_poisson_basic(app_inst)
+    test_poisson_basic(app_inst)
     # test_poisson(app_inst)
