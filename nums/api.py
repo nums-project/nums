@@ -20,7 +20,8 @@
 # DEALINGS IN THE SOFTWARE.
 
 
-from nums.core.application_manager import instance
+from nums.core.application_manager import instance as _instance
+from nums.core.systems import utils as _systems_utils
 from nums.core.array.blockarray import BlockArray
 import numpy as np
 
@@ -33,9 +34,9 @@ def read(filename: str) -> BlockArray:
     """
     if filename.lower().startswith("s3://"):
         filename = filename.split("s3://")[-1]
-        return instance().read_s3(filename)
+        return _instance().read_s3(filename)
     else:
-        return instance().read_fs(filename)
+        return _instance().read_fs(filename)
 
 
 def write(filename: str, ba: BlockArray) -> BlockArray:
@@ -46,9 +47,9 @@ def write(filename: str, ba: BlockArray) -> BlockArray:
     """
     if filename.lower().startswith("s3://"):
         filename = filename.split("s3://")[-1]
-        return instance().write_s3(ba, filename)
+        return _instance().write_s3(ba, filename)
     else:
-        return instance().write_fs(ba, filename)
+        return _instance().write_fs(ba, filename)
 
 
 def delete(filename: str) -> BlockArray:
@@ -59,9 +60,9 @@ def delete(filename: str) -> BlockArray:
     """
     if filename.lower().startswith("s3://"):
         filename = filename.split("s3://")[-1]
-        return instance().delete_s3(filename)
+        return _instance().delete_s3(filename)
     else:
-        return instance().delete_fs(filename)
+        return _instance().delete_fs(filename)
 
 
 def read_csv(filename, dtype=np.float, delimiter=',', has_header=False) -> BlockArray:
@@ -73,4 +74,4 @@ def read_csv(filename, dtype=np.float, delimiter=',', has_header=False) -> Block
     :param has_header: Whether the csv file has a header. The header is discarded.
     :return: A BlockArray instance.
     """
-    return instance().read_csv(filename, dtype, delimiter, has_header)
+    return _instance().read_csv(filename, dtype, delimiter, has_header)

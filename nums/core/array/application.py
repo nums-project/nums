@@ -48,6 +48,16 @@ class ArrayApplication(object):
         self.zero = self.scalar(0.0)
         self._block_shape_map = {}
 
+    def num_cores_total(self):
+        if isinstance(self._system, RaySystem):
+            system: RaySystem = self._system
+            nodes = system.nodes()
+            num_cores = sum(map(lambda n: n["Resources"]["CPU"], nodes))
+        else:
+            # raise NotImplementedError("NumPy API currently supports Ray only.")
+            num_cores = systems_utils.get_num_cores()
+        return num_cores
+
     def compute_block_shape(self,
                             shape: tuple,
                             dtype: np.dtype,
@@ -73,13 +83,8 @@ class ArrayApplication(object):
 
         if num_cores is not None:
             pass
-        elif isinstance(self._system, RaySystem):
-            system: RaySystem = self._system
-            nodes = system.nodes()
-            num_cores = sum(map(lambda n: n["Resources"]["CPU"], nodes))
         else:
-            num_cores = systems_utils.get_num_cores()
-            # raise NotImplementedError("NumPy API currently supports Ray only.")
+            num_cores = self.num_cores_total()
 
         if cluster_shape is not None:
             pass
@@ -253,7 +258,9 @@ class ArrayApplication(object):
                                                       })
         return rarr
 
-    def read_csv(self, filename, dtype=np.float, delimiter=',', has_header=False, num_workers=4):
+    def read_csv(self, filename, dtype=np.float, delimiter=',', has_header=False, num_workers=None):
+        if num_workers is None:
+            num_workers = self.num_cores_total()
         arrays: list = self._filesystem.read_csv(filename, dtype, delimiter, has_header, num_workers)
         shape = np.zeros(len(arrays[0].shape), dtype=int)
         for array in arrays:
@@ -269,12 +276,14 @@ class ArrayApplication(object):
 
     def loadtxt(self, fname, dtype=float, comments='# ', delimiter=',',
                 converters=None, skiprows=0, usecols=None, unpack=False,
-                ndmin=0, encoding='bytes', max_rows=None, num_cpus=4) -> BlockArray:
+                ndmin=0, encoding='bytes', max_rows=None, num_workers=None) -> BlockArray:
+        if num_workers is None:
+            num_workers = self.num_cores_total()
         return self._filesystem.loadtxt(
             fname, dtype=dtype, comments=comments, delimiter=delimiter,
             converters=converters, skiprows=skiprows,
             usecols=usecols, unpack=unpack, ndmin=ndmin,
-            encoding=encoding, max_rows=max_rows, num_cpus=num_cpus)
+            encoding=encoding, max_rows=max_rows, num_cpus=num_workers)
 
     ######################################
     # Array Operations API
