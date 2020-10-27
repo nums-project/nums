@@ -85,6 +85,7 @@ class TaskScheduler(RayScheduler):
     def init(self):
         # Compute available nodes, based on CPU resource.
         local_ip = self.get_private_ip()
+        total_cpus = 0
         for node in ray.nodes():
             node_key = list(filter(lambda key: "node" in key, node["Resources"].keys()))
             assert len(node_key) == 1
@@ -94,11 +95,13 @@ class TaskScheduler(RayScheduler):
                 print("head node", node_ip)
                 self.head_node = node
                 if self.use_head and has_cpu_resources:
+                    total_cpus += node["Resources"]["CPU"]
                     self.available_nodes.append(node)
             elif has_cpu_resources:
                 print("worker node", node_ip)
+                total_cpus += node["Resources"]["CPU"]
                 self.available_nodes.append(node)
-
+        print("total cpus", total_cpus)
         # Collect compute functions.
         module_functions = extract_functions(self.compute_imp)
         function_signatures: dict = {}
