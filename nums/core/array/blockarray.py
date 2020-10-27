@@ -29,6 +29,7 @@ from nums.core.storage.storage import ArrayGrid
 from nums.core.array import utils as array_utils
 from nums.core.array.base import BlockArrayBase, Block
 from nums.core.array.view import ArrayView
+from nums.core.array import selection
 
 
 class BlockArray(BlockArrayBase):
@@ -153,9 +154,118 @@ class BlockArray(BlockArrayBase):
         return rarrT
 
     def __getitem__(self, item):
+        if not isinstance(item, tuple):
+            ss = (item,)
+        else:
+            ss = item
+        # We need to fetch any block arrays.
+        tmp = []
+        for entry in ss:
+            if isinstance(entry, BlockArray):
+                tmp.append(entry.get())
+            else:
+                tmp.append(entry)
+        ss = tmp
+        is_handled_advanced = True
+        if len(ss) > 1:
+            # Check if all entries are full slices except the last entry.
+            for entry in ss[:-1]:
+                is_handled_advanced = is_handled_advanced and (isinstance(entry, slice)
+                                                               and entry.start is None
+                                                               and entry.stop is None)
+        if is_handled_advanced and selection.is_advanced_selection((ss[-1],)):
+            # Treat this as a shuffle.
+            return self._advanced_single_array_subscript(sel=(ss[-1],), axis=len(ss)-1)
+
         av: ArrayView = ArrayView.from_block_array(self)
         # TODO (hme): We don't have to create, but do so for now until we need to optimize.
         return av[item].create(BlockArray)
+
+    def _advanced_single_array_subscript(self, sel: tuple, block_size=None, axis=0):
+
+        def group_by_block(dst_grid_entry,
+                           dst_slice_tuples,
+                           src_grid,
+                           dst_index_list,
+                           src_index_list,
+                           axis=0):
+            # Block grid entries needed to write to given dst_slice_selection.
+            src_blocks = {}
+            dst_slice_np = np.array(dst_slice_tuples).T
+            dst_index_arr = np.array(dst_index_list)
+            src_index_arr = np.array(src_index_list)
+            # Pick the smallest type to represent indices.
+            # A set of these indices may be transmitted over the network,
+            # so we want to pick the smallest encoding possible.
+            index_types = [(2 ** 8, np.uint8), (2 ** 16, np.uint16),
+                           (2 ** 32, np.uint32), (2 ** 64, np.uint64)]
+            index_type = None
+            for bound, curr_index_type in index_types:
+                if np.all(np.array(src_grid.block_shape[axis]) < bound) and np.all(
+                        dst_slice_np[1][axis] < bound):
+                    index_type = curr_index_type
+                    break
+            if index_type is None:
+                raise Exception("Unable to encode block indices, blocks are too large.")
+            dst_entry_test = list(dst_grid_entry[:axis]) + list(dst_grid_entry[axis + 1:])
+            num_pairs_check = 0
+            for grid_entry in src_grid.get_entry_iterator():
+                # Must match on every entry except axis.
+                src_entry_test = list(grid_entry[:axis]) + list(grid_entry[axis+1:])
+                if dst_entry_test != src_entry_test:
+                    # Skip this block.
+                    continue
+                src_slice_np = np.array(src_grid.get_slice_tuples(grid_entry)).T
+                index_pairs = []
+                for i in range(src_index_arr.shape[0]):
+                    src_index = src_index_arr[i]
+                    dst_index = dst_index_arr[i]
+                    if np.all((src_slice_np[0][axis] <= src_index) & (src_index < src_slice_np[1][axis])):
+                        index_pair = (np.array(dst_index - dst_slice_np[0][axis], dtype=index_type),
+                                      np.array(src_index - src_slice_np[0][axis], dtype=index_type))
+                        index_pairs.append(index_pair)
+                        num_pairs_check += 1
+                if len(index_pairs) > 0:
+                    src_blocks[grid_entry] = index_pairs
+            assert num_pairs_check == len(dst_index_list)
+            return src_blocks
+
+        array = sel[0]
+        assert len(array.shape) == 1
+        assert np.all(0 <= array) and np.all(array < array.shape[0])
+        if block_size is None:
+            block_size = self.block_shape[axis]
+        axis_dim = len(array)
+        shape = tuple(list(self.shape[:axis]) + [axis_dim] + list(self.shape[axis+1:]))
+        block_shape = tuple(list(self.block_shape[:axis]) + [block_size] + list(self.block_shape[axis+1:]))
+        dst_arr = BlockArray.empty(shape=shape,  block_shape=block_shape,
+                                   dtype=self.dtype,  system=self.system)
+
+        for dst_grid_entry in dst_arr.grid.get_entry_iterator():
+            dst_block: Block = dst_arr.blocks[dst_grid_entry]
+            dst_slice_selection = dst_arr.grid.get_slice(dst_grid_entry)
+            dst_index_array = selection.slice_to_range(dst_slice_selection[axis], shape[axis])
+            src_index_array = array[dst_slice_selection[axis]]
+            assert len(dst_index_array) == len(src_index_array)
+            # Can this be sped up by grouping all src blocks outside of this loop?
+            src_blocks = group_by_block(
+                dst_grid_entry,
+                dst_arr.grid.get_slice_tuples(dst_grid_entry),
+                self.grid,
+                dst_index_array,
+                src_index_array,
+                axis
+            )
+            for src_grid_entry in src_blocks:
+                src_block: Block = self.blocks[src_grid_entry]
+                index_pairs = src_blocks[src_grid_entry]
+                syskwargs = {"grid_entry": dst_grid_entry, "grid_shape": dst_arr.grid.grid_shape}
+                dst_block.oid = self.system.update_block_along_axis(dst_block.oid,
+                                                                    src_block.oid,
+                                                                    index_pairs,
+                                                                    axis,
+                                                                    syskwargs=syskwargs)
+        return dst_arr
 
     def __setitem__(self, key, value):
         av: ArrayView = ArrayView.from_block_array(self)

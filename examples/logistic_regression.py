@@ -16,7 +16,7 @@ y = nps.concatenate([y1, y2], axis=0)
 
 
 # Train Logistic Regression Model.
-model = LogisticRegression(nps.app, opt="newton", opt_params={"tol": 1e-8, "max_iter": 1})
+model = LogisticRegression(nps.instance(), opt="newton", opt_params={"tol": 1e-8, "max_iter": 1})
 model.fit(X, y)
 y_pred = model.predict(X) > 0.5
 print("accuracy", (nps.sum(y == y_pred) / X.shape[0]).get())

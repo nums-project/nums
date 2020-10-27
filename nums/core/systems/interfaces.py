@@ -94,6 +94,9 @@ class ComputeInterface(object):
     def random_block(self, rng_params, rfunc_name, rfunc_args, shape, dtype, syskwargs: Dict):
         raise NotImplementedError()
 
+    def permutation(self, rng_params, size, syskwargs: Dict):
+        raise NotImplementedError()
+
     def diag(self, arr, syskwargs: Dict):
         raise NotImplementedError()
 
@@ -114,6 +117,9 @@ class ComputeInterface(object):
         raise NotImplementedError()
 
     def update_block_by_index(self, dst_arr, src_arr, index_pairs, syskwargs: Dict):
+        raise NotImplementedError()
+
+    def update_block_along_axis(self, dst_arr, src_arr, index_pairs, axis, syskwargs: Dict):
         raise NotImplementedError()
 
     def bop(self, op, a1, a2, a1_shape, a2_shape, a1_T, a2_T, axes, syskwargs: Dict):

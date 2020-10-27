@@ -174,3 +174,19 @@ class NumsRandomState(object):
                                                       "grid_shape": grid.grid_shape
                                                   })
         return ba
+
+    def permutation(self, size, block_size):
+        shape = (size,)
+        block_shape = (block_size,)
+        grid: ArrayGrid = ArrayGrid(shape=shape, block_shape=block_shape, dtype=np.int64.__name__)
+        ba = BlockArray(grid, self._system)
+        for grid_entry in ba.grid.get_entry_iterator():
+            rng_params = list(self._rng.new_block_rng_params())
+            block: Block = ba.blocks[grid_entry]
+            block.oid = self._system.permutation(rng_params,
+                                                 size,
+                                                 syskwargs={
+                                                      "grid_entry": grid_entry,
+                                                      "grid_shape": grid.grid_shape
+                                                  })
+        return ba.reshape(block_shape=block_shape)

@@ -40,16 +40,15 @@ def app_inst(request):
     ray.shutdown()
 
 
-@pytest.fixture(scope="function", params=["ray-cyclic"])
+@pytest.fixture(scope="module", params=["ray-cyclic"])
 def nps_app_inst(request):
+    # This triggers initialization; it's not to be mixed with the app_inst fixture.
     # pylint: disable=protected-access
     from nums.core import application_manager
     yield application_manager.instance()
-    # application_manager._instance = application_manager.create()
-    # yield application_manager._instance
-    # application_manager._instance._system.shutdown()
-    # ray.shutdown()
-    # application_manager._instance = None
+    application_manager._instance._system.shutdown()
+    ray.shutdown()
+    application_manager._instance = None
 
 
 def get_app(mode):

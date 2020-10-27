@@ -21,6 +21,7 @@
 
 from nums.core.application_manager import instance
 from nums.core.array import utils as array_utils
+from nums.core.array.blockarray import BlockArray
 import numpy as np
 
 
@@ -64,3 +65,16 @@ class RandomState(object):
     def random_integers(self):
         # This requires endpoint to be implemented by integers.
         raise NotImplementedError()
+
+    def permutation(self, x):
+        app = instance()
+        if array_utils.is_int(x):
+            shape = (x, )
+            block_shape = app.compute_block_shape(shape=shape, dtype=np.int64)
+            return self.rs.permutation(shape[0], block_shape[0])
+        else:
+            assert isinstance(x, BlockArray)
+            shape = x.shape
+            block_shape = x.shape
+            arr_perm = self.rs.permutation(shape[0], block_shape[0]).get()
+            return x[arr_perm]

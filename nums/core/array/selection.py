@@ -45,22 +45,29 @@ def get_array_order(array, axis=0):
 
 
 def is_advanced_selection(subscript: tuple):
-    num_arrays = 0
+    assert isinstance(subscript, tuple)
+    num_ordered_arrays = 0
     num_indexes = 0
     for obj in subscript:
         if array_utils.is_array_like(obj):
-            # TODO (hme): This is inefficient.
-            array_shape = np.array(obj, dtype=np.intp).shape
-            if len(array_shape) > 1:
+            if isinstance(obj, np.ndarray):
+                array = obj
+            else:
+                # TODO (hme): This is inefficient.
+                array = np.array(obj, dtype=np.intp)
+            if len(array.shape) > 1:
                 return True
-            num_arrays += 1
+            elif get_array_order(array, axis=0) == 0:
+                return True
+            num_ordered_arrays += 1
         elif isinstance(obj, (int, np.intp)):
             num_indexes += 1
-    if num_arrays > 1:
+    if num_ordered_arrays > 1:
         return True
-    if num_arrays == 1:
+    if num_ordered_arrays == 1:
         # In this case, indexes is considered an advanced index.
         return num_indexes > 0
+    # We can compute ordered arrays fast, so don't consider ordered arrays as advanced.
     return False
 
 

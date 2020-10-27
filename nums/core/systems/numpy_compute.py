@@ -123,6 +123,10 @@ class ComputeCls(ComputeImp):
             result = result.astype(dtype)
         return result
 
+    def permutation(self, rng_params, size):
+        rng: Generator = block_rng(*rng_params)
+        return rng.permutation(size)
+
     def create_block(self, *src_arrs, src_params, dst_params, dst_shape, dst_shape_bc):
         result = np.empty(shape=dst_shape, dtype=src_arrs[0].dtype)
         assert len(src_params) == len(dst_params)
@@ -162,6 +166,17 @@ class ComputeCls(ComputeImp):
         result = dst_arr.copy()
         for dst_index, src_index in index_pairs:
             result[tuple(dst_index)] = src_arr[tuple(src_index)]
+        return result
+
+    def update_block_along_axis(self, dst_arr, src_arr, index_pairs, axis):
+        # Assume shape along axes != axis are of equal dim.
+        result = dst_arr.copy()
+        dst_sel = [slice(None, None)] * len(dst_arr.shape)
+        src_sel = [slice(None, None)] * len(src_arr.shape)
+        for dst_index, src_index in index_pairs:
+            dst_sel[axis] = dst_index
+            src_sel[axis] = src_index
+            result[tuple(dst_sel)] = src_arr[tuple(src_sel)]
         return result
 
     def diag(self, arr):

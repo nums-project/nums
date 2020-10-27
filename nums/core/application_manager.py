@@ -33,6 +33,7 @@ _instance: ArrayApplication = None
 
 def instance():
     # pylint: disable=global-statement
+    # Lazy-initialize to initialize on use instead of initializing on import.
     global _instance
     if _instance is None:
         _instance = create()
@@ -44,7 +45,7 @@ def create():
     global _instance
 
     if _instance is not None:
-        raise Exception("init called more than once.")
+        raise Exception("create() called more than once.")
 
     system_name = settings.system_name
 
