@@ -56,7 +56,7 @@ class ArrayApplication(object):
         else:
             # raise NotImplementedError("NumPy API currently supports Ray only.")
             num_cores = systems_utils.get_num_cores()
-        return num_cores
+        return int(num_cores)
 
     def compute_block_shape(self,
                             shape: tuple,
