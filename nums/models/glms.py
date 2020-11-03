@@ -1,23 +1,17 @@
 # coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
 import numpy as np
@@ -62,14 +56,47 @@ from nums.core.array.application import ArrayApplication
 #   g(mu) = (b')^{-1}(mu) = ln(mu/(1-mu)) = ln(p/(1-p)) = theta(p)
 
 
+from nums.core.application_manager import instance as _instance
+from nums.core.array import utils as array_utils
+from nums.core.array.random import NumsRandomState
+
+
 class GLM(object):
 
-    def __init__(self, app_inst: ArrayApplication, opt: str, opt_params: dict):
-        self._app = app_inst
-        self._opt = opt
-        self._opt_params = opt_params
-        self._l2 = self._opt_params.get("l2", None)
-        self._l2_vec = None
+    def __init__(self,
+                 penalty='none',
+                 C=1.0,
+                 tol=0.0001,
+                 max_iter=100,
+                 solver="newton-cg",
+                 lr=0.01,
+                 random_state=None,
+                 fit_intercept=True,
+                 normalize=False):
+
+        if fit_intercept is False:
+            raise NotImplementedError("fit_incercept=False currently not supported.")
+        if normalize is True:
+            raise NotImplementedError("normalize=True currently not supported.")
+
+        self._app = _instance()
+        if random_state is None:
+            self.rs: NumsRandomState = self._app.random
+        elif array_utils.is_int(random_state):
+            self.rs: NumsRandomState = NumsRandomState(system=self._app._system, seed=random_state)
+        elif isinstance(random_state, NumsRandomState):
+            self.rs: NumsRandomState = random_state
+        else:
+            raise Exception("Unexpected type for random_state %s" % str(type(random_state)))
+        self._penalty = None if penalty == 'none' else penalty
+        if not (self._penalty is None or self._penalty == "l2"):
+            raise NotImplementedError("%s penalty not supported" % self._penalty)
+        self._lambda = 1.0 / C
+        self._lambda_vec = None
+        self._tol = tol
+        self._max_iter = max_iter
+        self._opt = solver
+        self._lr = lr
         self._beta = None
         self._beta0 = None
 
@@ -85,25 +112,28 @@ class GLM(object):
                                   axis_block_size=X.block_shape[1])
         assert len(X.shape) == 2 and len(y.shape) == 1
         beta: BlockArray = self._app.zeros((X.shape[1],), (X.block_shape[1],), dtype=X.dtype)
-        tol: BlockArray = self._app.scalar(self._opt_params.get("tol", 1e-8))
-        max_iter: int = self._opt_params.get("max_iter", 10)
-        if self._l2 is not None:
-            self._l2_vec = self._app.ones(beta.shape, beta.block_shape, beta.dtype) * self._l2
-        if self._opt == "gd" or self._opt == "block_sync_sgd" or self._opt == "block_async_sgd":
-            assert "lr" in self._opt_params
-            lr: BlockArray = self._app.scalar(self._opt_params["lr"])
+        tol: BlockArray = self._app.scalar(self._tol)
+        max_iter: int = self._max_iter
+        if self._penalty == "l2":
+            self._lambda_vec = self._app.ones(beta.shape,
+                                              beta.block_shape,
+                                              beta.dtype) * self._lambda
+        if self._opt == "gd" or self._opt == "sgd" or self._opt == "block_sgd":
+            lr: BlockArray = self._app.scalar(self._lr)
             if self._opt == "gd":
                 beta = gd(self, beta, X, y, tol, max_iter, lr)
-            elif self._opt == "block_sync_sgd":
-                beta = block_sync_sgd(self, beta, X, y, tol, max_iter, lr)
+            elif self._opt == "sgd":
+                beta = sgd(self, beta, X, y, tol, max_iter, lr)
             else:
-                beta = block_async_sgd(self, beta, X, y, tol, max_iter, lr)
-        elif self._opt == "newton":
+                beta = block_sgd(self, beta, X, y, tol, max_iter, lr)
+        elif self._opt == "newton" or self._opt == "newton-cg":
             beta = newton(self._app, self, beta, X, y, tol, max_iter)
         elif self._opt == "irls":
             # TODO (hme): Provide irls for all GLMs.
             assert isinstance(self, LogisticRegression)
             beta = irls(self._app, self, beta, X, y, tol, max_iter)
+        else:
+            raise Exception("Unsupported optimizer specified %s." % self._opt)
         self._beta0 = beta[-1]
         self._beta = beta[:-1]
 
@@ -117,7 +147,7 @@ class GLM(object):
         return g.T @ g
 
     def predict(self, X):
-        return self.forward(X)
+        raise NotImplementedError()
 
     def link_inv(self, eta: BlockArray):
         raise NotImplementedError()
@@ -174,6 +204,9 @@ class LinearRegression(GLM):
     def deviance(self, y, y_pred):
         return self._app.sum((y - y_pred) ** self._app.two)
 
+    def predict(self, X):
+        return self.forward(X)
+
 
 class LogisticRegression(GLM):
 
@@ -190,24 +223,32 @@ class LogisticRegression(GLM):
                  mu: BlockArray = None, beta: BlockArray = None):
         if mu is None:
             mu = self.forward(X)
-        if self._l2 is None:
+        if self._penalty is None:
             return X.T @ (mu - y)
         else:
             assert beta is not None
-            return X.T @ (mu - y) + self._l2 * beta
+            return X.T @ (mu - y) + self._lambda_vec * beta
 
     def hessian(self, X: BlockArray, y: BlockArray, mu: BlockArray = None):
         if mu is None:
             mu = self.forward(X)
         dim, block_dim = mu.shape[0], mu.block_shape[0]
         s = (mu * (self._app.one - mu)).reshape(shape=(dim, 1), block_shape=(block_dim, 1))
-        if self._l2 is None:
+        if self._penalty is None:
             return X.T @ (s * X)
         else:
-            return X.T @ (s * X) + self._l2_vec
+            return X.T @ (s * X) + self._lambda_vec
 
     def deviance(self, y, y_pred):
         raise NotImplementedError()
+
+    def predict(self, X):
+        return (self.forward(X) > 0.5).astype(np.int)
+
+    def predict_proba(self, X):
+        y_pos = self.forward(X).reshape(shape=(X.shape[0], 1), block_shape=(X.block_shape[0], 1))
+        y_neg = 1 - y_pos
+        return self._app.concatenate([y_pos, y_neg], axis=1, axis_block_size=2)
 
 
 class PoissonRegression(GLM):
@@ -238,6 +279,9 @@ class PoissonRegression(GLM):
     def deviance(self, y, y_pred):
         return self._app.sum(self._app.two * self._app.xlogy(y, y / y_pred) - y + y_pred)
 
+    def predict(self, X):
+        return self.forward(X)
+
 
 class ExponentialRegression(GLM):
     # canonical parameter: theta = - lambda
@@ -260,59 +304,57 @@ class ExponentialRegression(GLM):
         raise NotImplementedError()
 
 
+# Scikit-Learn aliases.
+PoissonRegressor = PoissonRegression
+
+
 def line_search():
     raise NotImplementedError()
 
 
-def block_sync_sgd(model: GLM, beta,
-                   X: BlockArray, y: BlockArray,
-                   tol: BlockArray, max_iter: int, lr: BlockArray):
+def sgd(model: GLM, beta,
+        X: BlockArray, y: BlockArray,
+        tol: BlockArray, max_iter: int, lr: BlockArray):
+    # Classic SGD.
+    app = _instance()
+    for _ in range(max_iter):
+        # Sample an entry uniformly at random.
+        idx = model.rs.numpy().integers(X.shape[0])
+        X_sample, y_sample = X[idx:idx+1], y[idx:idx+1]
+        mu = model.forward(X_sample, beta)
+        g = model.gradient(X_sample, y_sample, mu, beta=beta)
+        beta += - lr * g
+        if app.max(app.abs(g)) <= tol:
+            # sklearn uses max instead of l2 norm.
+            break
+    return beta
+
+
+def block_sgd(model: GLM, beta,
+              X: BlockArray, y: BlockArray,
+              tol: BlockArray, max_iter: int, lr: BlockArray):
+    # SGD with batches equal to block shape along first axis.
+    app = _instance()
     for _ in range(max_iter):
         for (start, stop) in X.grid.grid_slices[0]:
             X_batch, y_batch = X[start:stop], y[start:stop]
             mu = model.forward(X_batch, beta)
             g = model.gradient(X_batch, y_batch, mu, beta=beta)
             beta += - lr * g
-            if g.T @ g < tol:
+            if app.max(app.abs(g)) <= tol:
                 break
-    return beta
-
-
-def block_async_sgd(model: GLM, beta,
-                    X: BlockArray, y: BlockArray,
-                    tol: BlockArray, max_iter: int, lr: BlockArray):
-    max_staleness = 5
-    staleness = 0
-    for _ in range(max_iter):
-        beta0 = beta
-        randomized_slices = np.random.permutation(X.grid.grid_slices[0])
-        for (start, stop) in randomized_slices:
-            X_batch, y_batch = X[start:stop], y[start:stop]
-            mu = model.forward(X_batch, beta0)
-            g = model.gradient(X_batch, y_batch, mu, beta=beta)
-            # Computing on the same beta enables parallelization of this inner loop,
-            # achieving a controlled "async" sgd.
-            # With an array-based wait operation, we could update beta0 as
-            # computations of betas complete.
-            beta += - lr * g
-            if g.T @ g < tol:
-                break
-            staleness += 1
-            if staleness >= max_staleness:
-                # Force use of current beta once max staleness is reached.
-                staleness = 0
-                beta0 = beta
     return beta
 
 
 def gd(model: GLM, beta,
        X: BlockArray, y: BlockArray,
        tol: BlockArray, max_iter: int, lr: BlockArray):
+    app = _instance()
     for _ in range(max_iter):
         mu = model.forward(X, beta)
         g = model.gradient(X, y, mu, beta=beta)
         beta += - lr * g
-        if g.T @ g < tol:
+        if app.max(app.abs(g)) <= tol:
             break
     return beta
 
@@ -325,7 +367,7 @@ def newton(app: ArrayApplication, model: GLM, beta,
         g = model.gradient(X, y, mu, beta=beta)
         # These are PSD, but inv is faster than psd inv.
         beta += - app.inv(model.hessian(X, y, mu)) @ g
-        if g.T @ g < tol:
+        if app.max(app.abs(g)) <= tol:
             break
     return beta
 
@@ -342,8 +384,8 @@ def irls(app: ArrayApplication, model: LogisticRegression, beta,
         XTsX_inv = app.inv(XT_s @ X)
         z = eta + (y-mu)/s
         beta = XTsX_inv @ XT_s @ z
-        gnorm = model.grad_norm_sq(X, y, beta)
-        if gnorm < tol:
+        g = model.gradient(X, y, mu, beta)
+        if app.max(app.abs(g)) <= tol:
             break
     return beta
 

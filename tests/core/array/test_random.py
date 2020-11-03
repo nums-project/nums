@@ -1,23 +1,17 @@
 # coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
 import numpy as np
@@ -145,12 +139,46 @@ def test_np_integer(app_inst: ArrayApplication):
     assert -10 <= np.min(arr) <= np.max(arr) < 20
 
 
+def test_default_random(app_inst: ArrayApplication):
+    import warnings
+    num1 = app_inst.random_state().random()
+    num2 = app_inst.random_state().random()
+    num_iters = 0
+    max_iters = 10
+    while app_inst.allclose(num1, num2) and num_iters < max_iters:
+        num_iters += 1
+        num2 = app_inst.random_state().random()
+    if num_iters > 0:
+        warnings.warn("More than one iteration required to generate unequal random numbers.")
+    assert not app_inst.allclose(num1, num2)
+
+    # Test default random seed.
+    app_inst.random.seed(1337)
+    num1 = app_inst.random.random()
+    app_inst.random.seed(1337)
+    num2 = app_inst.random.random()
+    assert app_inst.allclose(num1, num2)
+
+
+def test_numpy_random(app_inst: ArrayApplication):
+    # Make sure the numpy version of our RNG works properly.
+    # This uses the underlying RNG to generate a numpy array instead of a block array.
+    # This ensures deterministic behavior when we need random numbers on the driver node.
+    app_inst.random.seed(1337)
+    nps_num = app_inst.random.random()
+    app_inst.random.seed(1337)
+    np_num = app_inst.random.numpy().random()
+    assert np.allclose(nps_num.get(), np_num)
+
+
 if __name__ == "__main__":
     # pylint: disable=import-error
     from tests import conftest
 
     app_inst = conftest.get_app("serial")
-    test_basic(app_inst)
+    # test_basic(app_inst)
     # test_np_random(app_inst)
     # test_np_distributions(app_inst)
     # test_np_integer(app_inst)
+    # test_default_random(app_inst)
+    # test_numpy_random(app_inst)
