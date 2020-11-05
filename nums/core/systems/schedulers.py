@@ -14,7 +14,6 @@
 # limitations under the License.
 
 
-import socket
 import itertools
 from types import FunctionType
 from typing import Tuple
@@ -24,7 +23,7 @@ import ray
 import numpy as np
 
 from nums.core.systems.interfaces import ComputeInterface, ComputeImp
-from nums.core.systems.utils import check_implementation, extract_functions
+from nums.core.systems.utils import check_implementation, extract_functions, get_private_ip
 
 
 class RayScheduler(ComputeInterface):
@@ -71,14 +70,9 @@ class TaskScheduler(RayScheduler):
         self.use_head = use_head
         self.head_node = None
 
-    def get_private_ip(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        return s.getsockname()[0]
-
     def init(self):
         # Compute available nodes, based on CPU resource.
-        local_ip = self.get_private_ip()
+        local_ip = get_private_ip()
         total_cpus = 0
         for node in ray.nodes():
             node_key = list(filter(lambda key: "node" in key, node["Resources"].keys()))

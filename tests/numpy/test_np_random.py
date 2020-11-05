@@ -78,6 +78,19 @@ def test_shuffle_subscript_ops(nps_app_inst):
     assert np.all(np_arr_shuffle == arr_shuffle.get())
 
 
+def test_default_random(nps_app_inst):
+    import nums.numpy as nps
+    num1 = nps.random.random_sample()
+    num2 = nps.random.random_sample()
+    assert not nps.allclose(num1, num2)
+    # Test default random seed.
+    nps.random.seed(1337)
+    num1 = nps.random.random_sample()
+    nps.random.seed(1337)
+    num2 = nps.random.random_sample()
+    assert nps.allclose(num1, num2)
+
+
 if __name__ == "__main__":
     import nums.core.settings
     nums.core.settings.system_name = "serial"
@@ -86,3 +99,4 @@ if __name__ == "__main__":
     test_basic(nps_app_inst)
     test_shuffle(nps_app_inst)
     test_shuffle_subscript_ops(nps_app_inst)
+    test_default_random(nps_app_inst)

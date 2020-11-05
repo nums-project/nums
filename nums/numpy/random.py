@@ -14,62 +14,78 @@
 # limitations under the License.
 
 
-from nums.core.application_manager import instance
-from nums.core.array import utils as array_utils
+from nums.core.application_manager import instance as _instance
+from nums.core.array import utils as _array_utils
 from nums.core.array.blockarray import BlockArray
-import numpy as np
+import numpy as _np
 
 
 class RandomState(object):
 
     def __init__(self, seed=None):
-        self.rs = instance().random_state(seed)
+        self._seed = seed
+        self._rs = None
+
+    def rs(self):
+        if self._rs is None:
+            self._rs = _instance().random_state(self._seed)
+        return self._rs
+
+    def seed(self, _seed):
+        self._seed = _seed
+        self._rs = None
 
     def _get_shapes(self, size=None, dtype=None):
         if dtype is None:
-            dtype = np.float64
+            dtype = _np.float64
         if size is None:
             size = ()
         if not isinstance(size, tuple):
-            assert array_utils.is_int(size)
+            assert _array_utils.is_int(size)
             shape = (size,)
         else:
             shape = size
-        block_shape = instance().get_block_shape(shape, dtype)
+        block_shape = _instance().get_block_shape(shape, dtype)
         return shape, block_shape
 
     def random_sample(self, size=None):
-        shape, block_shape = self._get_shapes(size, np.float64)
-        return self.rs.random(shape=shape, block_shape=block_shape)
+        shape, block_shape = self._get_shapes(size, _np.float64)
+        return self.rs().random(shape=shape, block_shape=block_shape)
 
     def rand(self, *shape):
-        shape, block_shape = self._get_shapes(shape, np.float64)
-        return self.rs.random(shape=shape, block_shape=block_shape)
+        shape, block_shape = self._get_shapes(shape, _np.float64)
+        return self.rs().random(shape=shape, block_shape=block_shape)
 
     def randn(self, *shape):
-        shape, block_shape = self._get_shapes(shape, np.float64)
-        return self.rs.normal(shape=shape, block_shape=block_shape)
+        shape, block_shape = self._get_shapes(shape, _np.float64)
+        return self.rs().normal(shape=shape, block_shape=block_shape)
 
     def randint(self, low, high=None, size=None, dtype=None):
         if high is None:
             high = low
             low = 0
         shape, block_shape = self._get_shapes(size, dtype)
-        return self.rs.integers(low, high, shape=shape, block_shape=block_shape)
-
-    def random_integers(self):
-        # This requires endpoint to be implemented by integers.
-        raise NotImplementedError()
+        return self.rs().integers(low, high, shape=shape, block_shape=block_shape)
 
     def permutation(self, x):
-        app = instance()
-        if array_utils.is_int(x):
+        app = _instance()
+        if _array_utils.is_int(x):
             shape = (x, )
-            block_shape = app.compute_block_shape(shape=shape, dtype=np.int64)
-            return self.rs.permutation(shape[0], block_shape[0])
+            block_shape = app.compute_block_shape(shape=shape, dtype=_np.int64)
+            return self.rs().permutation(shape[0], block_shape[0])
         else:
             assert isinstance(x, BlockArray)
             shape = x.shape
             block_shape = x.shape
-            arr_perm = self.rs.permutation(shape[0], block_shape[0]).get()
+            arr_perm = self.rs().permutation(shape[0], block_shape[0]).get()
             return x[arr_perm]
+
+
+# Default imp.
+_default_random = RandomState()
+seed = _default_random.seed
+random_sample = _default_random.random_sample
+rand = _default_random.rand
+randn = _default_random.randn
+randint = _default_random.randint
+permutation = _default_random.permutation

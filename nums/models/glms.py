@@ -204,7 +204,7 @@ class LinearRegression(GLM):
     def deviance(self, y, y_pred):
         return self._app.sum((y - y_pred) ** self._app.two)
 
-    def predict(self, X):
+    def predict(self, X: BlockArray) -> BlockArray:
         return self.forward(X)
 
 
@@ -242,10 +242,10 @@ class LogisticRegression(GLM):
     def deviance(self, y, y_pred):
         raise NotImplementedError()
 
-    def predict(self, X):
+    def predict(self, X: BlockArray) -> BlockArray:
         return (self.forward(X) > 0.5).astype(np.int)
 
-    def predict_proba(self, X):
+    def predict_proba(self, X: BlockArray) -> BlockArray:
         y_pos = self.forward(X).reshape(shape=(X.shape[0], 1), block_shape=(X.block_shape[0], 1))
         y_neg = 1 - y_pos
         return self._app.concatenate([y_pos, y_neg], axis=1, axis_block_size=2)
@@ -276,10 +276,10 @@ class PoissonRegression(GLM):
         # TODO (hme): This is sub-optimal as it forces the computation of X.T.
         return (X.T * mu) @ X
 
-    def deviance(self, y, y_pred):
+    def deviance(self, y: BlockArray, y_pred: BlockArray) -> BlockArray:
         return self._app.sum(self._app.two * self._app.xlogy(y, y / y_pred) - y + y_pred)
 
-    def predict(self, X):
+    def predict(self, X: BlockArray) -> BlockArray:
         return self.forward(X)
 
 

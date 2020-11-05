@@ -63,7 +63,7 @@ def main():
         test_requirements=test_requirements,
         entry_points={
             'console_scripts': [
-                'nums-coverage=nums.core.cmd.api_coverage:main',
+                'nums-coverage=nums.core.cmds.api_coverage:main',
             ],
         }
     )

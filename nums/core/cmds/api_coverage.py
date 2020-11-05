@@ -16,23 +16,84 @@
 
 import argparse
 
-
-import numpy as np
-
 from nums.core.systems import utils as systems_utils
-from nums.numpy import api as numpy_api
 
 
-def execute(print_missing, count_fallback):
+def execute(module_name, print_missing, count_fallback):
+    if module_name == "api":
+        return api_coverage(print_missing, count_fallback)
+    elif module_name == "random":
+        import numpy.random as numpy_module
+        import nums.numpy.random as nums_module
+    elif module_name == "linalg":
+        import numpy.linalg as numpy_module
+        import nums.numpy.linalg as nums_module
+    elif module_name == "fft":
+        import numpy.fft as numpy_module
+        import nums.numpy.fft as nums_module
+    else:
+        raise Exception("Unknown module %s" % module_name)
+    return module_coverage(module_name, print_missing, count_fallback,
+                           numpy_module, nums_module)
 
-    for name, func in systems_utils.get_module_functions(numpy_api).items():
+
+def module_coverage(module_name, print_missing, count_fallback,
+                    numpy_module, nums_module, ignore=None, fallback=None):
+
+    print()
+    print("-"*75)
+    print(module_name)
+    print("-"*75)
+
+    for name, func in systems_utils.get_module_functions(nums_module).items():
         if name in ("_not_implemented", "_instance"):
             continue
-        if getattr(np, name, None) is None:
+        if getattr(numpy_module, name, None) is None:
             raise Exception("Implemented method that does not exist! %s" % name)
 
-    coverage = 0
-    total = 0
+    ignore = [] if ignore is None else ignore
+    fallback = [] if fallback is None else fallback
+    coverage = 0.0
+    total = 0.0
+    missing = []
+    for name, func in systems_utils.get_module_functions(numpy_module).items():
+        if name in ignore:
+            continue
+        total += 1.0
+        if count_fallback and name in fallback:
+            coverage += 1.0
+            continue
+        try:
+            doc_lines = func.__doc__.split("\n")
+            descr = ""
+            for line in doc_lines:
+                descr = line.strip()
+                if len(descr) != 0:
+                    break
+            print_tuple = name, descr
+        except Exception as e:
+            print_tuple = name, func.__code__.co_varnames
+        if print_tuple is None:
+            continue
+        if name in fallback:
+            print("Fallback %s: %s" % print_tuple)
+        elif getattr(nums_module, name, None) is None:
+            print("Missing %s: %s" % print_tuple)
+            missing.append("%s" % name)
+        else:
+            coverage += 1.0
+
+    print("-"*75)
+    print(module_name)
+    print("-"*75)
+    print("coverage", coverage)
+    print("total", total)
+    print("percent covered", "%.1f" % (coverage / total * 100))
+    if print_missing:
+        print(str(missing))
+
+
+def api_coverage(print_missing, count_fallback):
     # Functions ignored for various reasons.
     ignore = {
         '_add_newdoc_ufunc', 'add_docstring', 'add_newdoc', 'add_newdoc_ufunc',
@@ -51,12 +112,14 @@ def execute(print_missing, count_fallback):
         'getbufsize', 'geterr', 'geterrcall', 'geterrobj',
         'info', 'is_busday', 'isfortran', 'isnat',
         'issctype', 'issubclass_', 'issubdtype', 'issubsctype', 'iterable',
-        'loads', 'lookfor',
+        'lookfor',
         'mat', 'may_share_memory',
         'ndfromtxt', 'nested_iters',
         'printoptions', 'recfromcsv', 'recfromtxt',
         'safe_eval', 'set_numeric_ops', 'set_printoptions', 'set_string_function', 'setbufsize',
-        'seterr', 'seterrcall', 'seterrobj', 'show_config', 'source', 'typename'
+        'seterr', 'seterrcall', 'seterrobj', 'show_config', 'source', 'typename',
+        'loads',  # Not sure what this does.
+        'mafromtxt', 'mask_indices',
     }
 
     not_implemented = {
@@ -69,11 +132,10 @@ def execute(print_missing, count_fallback):
     # This is achieved by converting the block array to a single block, performing the operation,
     # and converting back to the original block shape.
     fallback = {
-        # TODO (hme): Organize API according to below.
-        # Basic Unsupported
-        # Manipulation
         # I/O
-        # Unusual
+        'load', 'save', 'savez', 'savez_compressed',
+        'genfromtxt', 'fromregex', 'fromstring',
+        # Rest
         'all', 'alltrue', 'angle', 'any', 'append', 'apply_along_axis', 'apply_over_axes',
         'argpartition', 'argsort', 'argwhere', 'around', 'array_equal', 'array_equiv',
         'array_split', 'asarray', 'asarray_chkfinite', 'asscalar', 'atleast_1d',
@@ -85,16 +147,16 @@ def execute(print_missing, count_fallback):
         'divmod', 'dot', 'dsplit', 'dstack',
         'ediff1d', 'einsum', 'einsum_path', 'expand_dims', 'extract',
         'fill_diagonal', 'fix', 'flatnonzero', 'flip', 'fliplr', 'flipud', 'frexp', 'frombuffer',
-        'fromfile', 'fromfunction', 'fromiter', 'frompyfunc', 'fromregex', 'fromstring', 'full',
+        'fromfile', 'fromfunction', 'fromiter', 'frompyfunc', 'full',
         'full_like', 'fv',
-        'genfromtxt', 'geomspace', 'gradient',
+        'geomspace', 'gradient',
         'hamming', 'hanning',
         'histogram', 'histogram2d', 'histogram_bin_edges', 'histogramdd', 'hsplit', 'hstack', 'i0',
         'imag', 'in1d', 'indices', 'inner', 'insert', 'interp', 'intersect1d', 'ipmt',
         'irr', 'isclose', 'iscomplex', 'iscomplexobj', 'isin',
         'isneginf', 'isposinf', 'isreal', 'isrealobj', 'isscalar',
-        'ix_', 'kaiser', 'kron', 'lexsort', 'load',
-        'mafromtxt', 'mask_indices', 'matmul', 'maximum_sctype',
+        'ix_', 'kaiser', 'kron', 'lexsort',
+        'matmul', 'maximum_sctype',
         'median', 'meshgrid', 'min_scalar_type', 'mintypecode', 'mirr', 'modf', 'moveaxis', 'msort',
         'nan_to_num', 'nanargmax', 'nanargmin', 'nancumprod', 'nancumsum',
         'nanmax', 'nanmean', 'nanmedian', 'nanmin', 'nanpercentile', 'nanprod', 'nanquantile',
@@ -108,7 +170,7 @@ def execute(print_missing, count_fallback):
         'quantile', 'rate', 'ravel', 'ravel_multi_index', 'real',
         'real_if_close', 'repeat', 'require', 'reshape', 'resize',
         'result_type', 'roll', 'rollaxis', 'roots', 'rot90', 'round', 'round_', 'row_stack',
-        'save', 'savez', 'savez_compressed', 'sctype2char', 'searchsorted',
+        'sctype2char', 'searchsorted',
         'select', 'setdiff1d', 'setxor1d',
         'sinc', 'sometrue', 'sort', 'sort_complex', 'squeeze',
         'stack', 'swapaxes', 'take', 'take_along_axis', 'tensordot', 'tile', 'trace', 'transpose',
@@ -117,44 +179,23 @@ def execute(print_missing, count_fallback):
         'unravel_index', 'unwrap', 'vander', 'vdot', 'vsplit', 'vstack', 'where', 'who'
     }
 
-    missing = []
-    for name, func in systems_utils.get_module_functions(np).items():
-        if name in ignore or (count_fallback and name in fallback):
-            continue
-        total += 1
-        print_tuple = None
-        try:
-            doc_lines = func.__doc__.split("\n")
-            for line in doc_lines:
-                descr = line.strip()
-                if len(descr) != 0:
-                    break
-                print_tuple = name, descr
-        except Exception as e:
-            print_tuple = name, func.__code__.co_varnames
-        if print_tuple is None:
-            continue
-        if name in fallback:
-            print("Fallback %s: %s" % print_tuple)
-        elif getattr(numpy_api, name, None) is None:
-            print("Missing %s: %s" % print_tuple)
-            missing.append("%s" % name)
-        else:
-            coverage += 1
-
-    print("coverage", coverage)
-    print("total", total)
-    print("percent covered", "%.1f" % (coverage / total * 100))
-    if print_missing:
-        print(str(missing))
+    import numpy as numpy_module
+    import nums.numpy.api as nums_module
+    module_coverage("api", print_missing, count_fallback,
+                    numpy_module, nums_module, ignore=ignore, fallback=fallback)
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--fallback', action="store_true", help='Include fallback functions '
-                                                                'in converage.')
+    parser.add_argument('--module-name', default="api", help='Which module to test.',
+                        choices={"api", "random", "linalg", "fft"})
+
+    parser.add_argument('--count-fallback', action="store_true", help='Include fallback functions '
+                                                                      'in converage.')
+
     parser.add_argument('--print-missing', action="store_true", help='Output array of missing '
                                                                      'values.')
+
     args = parser.parse_args()
     args_dict = dict(vars(args).items())
     execute(**args_dict)

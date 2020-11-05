@@ -15,11 +15,10 @@
 
 
 from nums.core.systems import utils as systems_utils
-from nums.numpy import api as numpy_api
 from nums.numpy import numpy_utils
 
 
-def _stub():
+def api_stub():
     import numpy as np
 
     def _uop_template(op_name):
@@ -74,3 +73,20 @@ def {op_name}(x1: BlockArray, x2: BlockArray,
     for sig in uops + bops:
         print(sig)
     print("num ufuncs", len(uops + bops))
+
+
+def random_stub():
+    import numpy.random as numpy_module
+    from nums.core.array.random import NumsRandomState
+    from nums.core.application_manager import instance
+    app = instance()
+    sys = app._system
+    rs_inst = NumsRandomState(system=sys, seed=1337)
+    numpy_items = sorted(systems_utils.get_module_functions(numpy_module).items())
+    nums_items = sorted(systems_utils.get_instance_functions(rs_inst).items())
+    raise NotImplementedError()
+
+
+def api_fallback():
+    # I/O
+    pass
