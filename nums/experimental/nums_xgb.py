@@ -13,6 +13,7 @@ from nums.core.application_manager import instance as _instance
 from nums.core.array.application import ArrayApplication
 from nums.core.systems.systems import System
 from nums.core.storage.storage import ArrayGrid
+import nums.numpy as nps
 
 
 def _start_rabit_tracker(num_workers: int):
@@ -193,7 +194,6 @@ class XGBClassifier(object):
 if __name__ == "__main__":
     from nums.core import settings
     import nums
-    import nums.numpy as nps
     filename = settings.pj(settings.project_root, "tests", "core", "storage", "test.csv")
     X: BlockArray = nums.read_csv(filename, has_header=True)
     y: BlockArray = nps.random.random_sample(X.shape[0])
