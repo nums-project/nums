@@ -7,6 +7,7 @@ omit =
   nums/core/application_manager.py
   nums/core/settings.py
   nums/numpy/*
+  nums/experimental
 
 [report]
 exclude_lines =
