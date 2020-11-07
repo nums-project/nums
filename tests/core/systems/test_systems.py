@@ -25,12 +25,12 @@ from nums.core.array.blockarray import BlockArray, Block
 
 
 def test_options(app_inst):
-    result = app_inst._system.get_options(cluster_entry=(0, 0), cluster_shape=(1, 1))
+    result = app_inst.system.get_options(cluster_entry=(0, 0), cluster_shape=(1, 1))
     assert len(result) > 0
 
 
 def test_warmup(app_inst):
-    sys = app_inst._system
+    sys = app_inst.system
     if isinstance(sys, RaySystem):
         sys.warmup(10)
     assert True

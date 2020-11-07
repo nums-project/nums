@@ -83,7 +83,7 @@ class GLM(object):
         if random_state is None:
             self.rs: NumsRandomState = self._app.random
         elif array_utils.is_int(random_state):
-            self.rs: NumsRandomState = NumsRandomState(system=self._app._system, seed=random_state)
+            self.rs: NumsRandomState = NumsRandomState(system=self._app.system, seed=random_state)
         elif isinstance(random_state, NumsRandomState):
             self.rs: NumsRandomState = random_state
         else:

@@ -30,7 +30,7 @@ def app_inst(request):
     # pylint: disable=protected-access
     app_inst = get_app(request.param)
     yield app_inst
-    app_inst._system.shutdown()
+    app_inst.system.shutdown()
     ray.shutdown()
 
 
@@ -40,7 +40,7 @@ def nps_app_inst(request):
     # pylint: disable=protected-access
     from nums.core import application_manager
     yield application_manager.instance()
-    application_manager._instance._system.shutdown()
+    application_manager._instance.system.shutdown()
     ray.shutdown()
     application_manager._instance = None
 

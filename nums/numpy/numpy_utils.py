@@ -64,8 +64,8 @@ def ufunc_op_signatures():
 
 
 def get_num_cores(app: ArrayApplication):
-    if isinstance(app._system, RaySystem):
-        system: RaySystem = app._system
+    if isinstance(app.system, RaySystem):
+        system: RaySystem = app.system
         nodes = system.nodes()
         return sum(map(lambda n: n["Resources"]["CPU"], nodes))
     else:

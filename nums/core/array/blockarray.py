@@ -227,7 +227,7 @@ class BlockArray(BlockArrayBase):
 
         array = sel[0]
         assert len(array.shape) == 1
-        assert np.all(0 <= array) and np.all(array < self.shape[0])
+        assert np.all(0 <= array) and np.all(array < self.shape[axis])
         if block_size is None:
             block_size = self.block_shape[axis]
         axis_dim = len(array)

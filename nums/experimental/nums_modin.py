@@ -21,7 +21,7 @@ def from_modin(df):
     frame: PandasOnRayFrame = df._query_compiler._modin_frame
 
     app: ArrayApplication = _instance()
-    system = app._system
+    system = app.system
 
     # Make sure the partitions are numeric.
     dtype = frame.dtypes[0]

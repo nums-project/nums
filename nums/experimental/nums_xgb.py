@@ -51,12 +51,12 @@ class RabitContext:
         xgb.rabit.finalize()
 
 
-def xgb_train_remote(X, y, rabit_args, params, args, kwargs, *evals):
+def xgb_train_remote(X, y, rabit_args, params, args, kwargs, *evals_flat):
     local_params = params
     dtrain = xgb.DMatrix(X, y)
     evals = []
-    for i in range(0, len(evals), 3):
-        eval_X, eval_y, eval_method = evals[i:i+3]
+    for i in range(0, len(evals_flat), 3):
+        eval_X, eval_y, eval_method = evals_flat[i:i+3]
         evals.append((xgb.DMatrix(eval_X, eval_y), eval_method))
     evals_result = dict()
 
@@ -102,7 +102,7 @@ def train(params: Dict,
     assert len(y.shape) == 1 or (len(y.shape) == 2 and y.shape[1] == 1)
 
     app: ArrayApplication = _instance()
-    sys: System = app._system
+    sys: System = app.system
     sys.register("xgb_train", xgb_train_remote, {})
 
     # Start tracker
@@ -164,15 +164,15 @@ class XGBClassifier(object):
     def fit(self, X: BlockArray, y: BlockArray):
         dtrain = NumsDMatrix(X, y)
         self.model = train({'max_depth': self.max_depth,
-                             'eta': self.learning_rate,
-                             'tree_method': self.tree_method,
-                             'booster': self.booster,
-                             'objective': self.objective}, dtrain, self.n_estimators)
+                            'eta': self.learning_rate,
+                            'tree_method': self.tree_method,
+                            'booster': self.booster,
+                            'objective': self.objective}, dtrain, self.n_estimators)
         return self
 
     def predict(self, X: BlockArray):
         app: ArrayApplication = _instance()
-        sys: System = app._system
+        sys: System = app.system
         sys.register("xgb_predict", xgb_predict_remote, {})
         model_block: Block = self.model.blocks[0]
         result: BlockArray = BlockArray(ArrayGrid(shape=(X.shape[0],),

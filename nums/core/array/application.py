@@ -33,7 +33,7 @@ from nums.core.array.random import NumsRandomState
 class ArrayApplication(object):
 
     def __init__(self, system: System, filesystem: FileSystem):
-        self._system: System = system
+        self.system: System = system
         self._filesystem: FileSystem = filesystem
         self._array_grids: (str, ArrayGrid) = {}
         self.random = self.random_state()
@@ -45,8 +45,8 @@ class ArrayApplication(object):
         self._block_shape_map = {}
 
     def num_cores_total(self):
-        if isinstance(self._system, RaySystem):
-            system: RaySystem = self._system
+        if isinstance(self.system, RaySystem):
+            system: RaySystem = self.system
             nodes = system.nodes()
             num_cores = sum(map(lambda n: n["Resources"]["CPU"], nodes))
         else:
@@ -84,10 +84,10 @@ class ArrayApplication(object):
 
         if cluster_shape is not None:
             pass
-        elif isinstance(self._system, RaySystem) \
-                and isinstance(self._system.scheduler, BlockCyclicScheduler):
+        elif isinstance(self.system, RaySystem) \
+                and isinstance(self.system.scheduler, BlockCyclicScheduler):
             # This configuration is the default.
-            cluster_shape = self._system.scheduler.cluster_shape
+            cluster_shape = self.system.scheduler.cluster_shape
         else:
             cluster_shape = (1, 1)
             # raise NotImplementedError("NumPy API currently supports block cyclic scheduling "
@@ -154,7 +154,7 @@ class ArrayApplication(object):
         addresses = meta["addresses"]
         grid_meta = meta["grid_meta"]
         grid = ArrayGrid.from_meta(grid_meta)
-        ba: BlockArray = BlockArray(grid, self._system)
+        ba: BlockArray = BlockArray(grid, self.system)
         for grid_entry in addresses:
             node_address = addresses[grid_entry]
             options = {"resources": {node_address: 1.0 / 10 ** 4}}
@@ -172,7 +172,7 @@ class ArrayApplication(object):
         result_grid = ArrayGrid(grid.grid_shape,
                                 tuple(np.ones_like(grid.shape, dtype=np.int)),
                                 dtype=dict.__name__)
-        rarr = BlockArray(result_grid, self._system)
+        rarr = BlockArray(result_grid, self.system)
         for grid_entry in addresses:
             node_address = addresses[grid_entry]
             options = {"resources": {node_address: 1.0 / 10 ** 4}}
@@ -191,7 +191,7 @@ class ArrayApplication(object):
                                                     "grid_entry": grid_entry,
                                                     "grid_shape": ba.grid.grid_shape
                                                 })
-        assert "ETag" in self._system.get(result).item(), "Metadata write failed."
+        assert "ETag" in self.system.get(result).item(), "Metadata write failed."
         return self._write(ba, filename, self._filesystem.write_block_s3)
 
     def _write(self, ba: BlockArray, filename, remote_func):
@@ -199,7 +199,7 @@ class ArrayApplication(object):
         result_grid = ArrayGrid(grid.grid_shape,
                                 tuple(np.ones_like(grid.shape, dtype=np.int)),
                                 dtype=dict.__name__)
-        rarr = BlockArray(result_grid, self._system)
+        rarr = BlockArray(result_grid, self.system)
         for grid_entry in grid.get_entry_iterator():
             rarr.blocks[grid_entry].oid = remote_func(ba.blocks[grid_entry].oid,
                                                       filename,
@@ -216,7 +216,7 @@ class ArrayApplication(object):
         grid = self._get_array_grid(filename, store_cls)
         grid_meta = grid.to_meta()
         grid_entry_iterator = grid.get_entry_iterator()
-        rarr = BlockArray(grid, self._system)
+        rarr = BlockArray(grid, self.system)
         for grid_entry in grid_entry_iterator:
             rarr.blocks[grid_entry].oid = remote_func(filename, grid_entry, grid_meta,
                                                       syskwargs={
@@ -233,7 +233,7 @@ class ArrayApplication(object):
                                                      "grid_entry": grid_entry,
                                                      "grid_shape": grid.grid_shape
                                                  })
-        deleted_key = self._system.get(result).item()["Deleted"][0]["Key"]
+        deleted_key = self.system.get(result).item()["Deleted"][0]["Key"]
         assert deleted_key == StoredArrayS3(filename, grid).get_meta_key()
         results: BlockArray = self._delete(filename,
                                            StoredArrayS3,
@@ -245,7 +245,7 @@ class ArrayApplication(object):
         result_grid = ArrayGrid(grid.grid_shape,
                                 tuple(np.ones_like(grid.shape, dtype=np.int)),
                                 dtype=dict.__name__)
-        rarr = BlockArray(result_grid, self._system)
+        rarr = BlockArray(result_grid, self.system)
         for grid_entry in grid.get_entry_iterator():
             rarr.blocks[grid_entry].oid = remote_func(filename, grid_entry, grid.to_meta(),
                                                       syskwargs={
@@ -286,14 +286,14 @@ class ArrayApplication(object):
     ######################################
 
     def scalar(self, value):
-        return BlockArray.from_scalar(value, self._system)
+        return BlockArray.from_scalar(value, self.system)
 
     def array(self, array: np.ndarray, block_shape: tuple = None):
         assert len(array.shape) == len(block_shape)
         return BlockArray.from_np(array,
                                   block_shape=block_shape,
                                   copy=False,
-                                  system=self._system)
+                                  system=self.system)
 
     def zeros(self, shape: tuple, block_shape: tuple, dtype: np.dtype = None):
         return self._new_array("zeros", shape, block_shape, dtype)
@@ -310,12 +310,12 @@ class ArrayApplication(object):
             dtype = np.float64
         grid = ArrayGrid(shape, block_shape, dtype.__name__)
         grid_meta = grid.to_meta()
-        rarr = BlockArray(grid, self._system)
+        rarr = BlockArray(grid, self.system)
         for grid_entry in grid.get_entry_iterator():
-            rarr.blocks[grid_entry].oid = self._system.new_block(op_name,
-                                                                 grid_entry,
-                                                                 grid_meta,
-                                                                 syskwargs={
+            rarr.blocks[grid_entry].oid = self.system.new_block(op_name,
+                                                                grid_entry,
+                                                                grid_meta,
+                                                                syskwargs={
                                                                      "grid_entry": grid_entry,
                                                                      "grid_shape": grid.grid_shape
                                                                  })
@@ -382,20 +382,20 @@ class ArrayApplication(object):
             dtype = np.float64
         grid = ArrayGrid(shape, block_shape, dtype.__name__)
         grid_meta = grid.to_meta()
-        rarr = BlockArray(grid, self._system)
+        rarr = BlockArray(grid, self.system)
         for grid_entry in grid.get_entry_iterator():
             syskwargs = {"grid_entry": grid_entry, "grid_shape": grid.grid_shape}
             if np.all(np.diff(grid_entry) == 0):
                 # This is a diagonal block.
-                rarr.blocks[grid_entry].oid = self._system.new_block("eye",
-                                                                     grid_entry,
-                                                                     grid_meta,
-                                                                     syskwargs=syskwargs)
+                rarr.blocks[grid_entry].oid = self.system.new_block("eye",
+                                                                    grid_entry,
+                                                                    grid_meta,
+                                                                    syskwargs=syskwargs)
             else:
-                rarr.blocks[grid_entry].oid = self._system.new_block("zeros",
-                                                                     grid_entry,
-                                                                     grid_meta,
-                                                                     syskwargs=syskwargs)
+                rarr.blocks[grid_entry].oid = self.system.new_block("zeros",
+                                                                    grid_entry,
+                                                                    grid_meta,
+                                                                    syskwargs=syskwargs)
         return rarr
 
     def diag(self, X: BlockArray) -> BlockArray:
@@ -404,33 +404,33 @@ class ArrayApplication(object):
             block_shape = X.block_shape[0], X.block_shape[0]
             grid = ArrayGrid(shape, block_shape, X.dtype.__name__)
             grid_meta = grid.to_meta()
-            rarr = BlockArray(grid, self._system)
+            rarr = BlockArray(grid, self.system)
             for grid_entry in grid.get_entry_iterator():
                 syskwargs = {"grid_entry": grid_entry, "grid_shape": grid.grid_shape}
                 if np.all(np.diff(grid_entry) == 0):
                     # This is a diagonal block.
-                    rarr.blocks[grid_entry].oid = self._system.diag(X.blocks[grid_entry[0]].oid,
-                                                                    syskwargs=syskwargs)
+                    rarr.blocks[grid_entry].oid = self.system.diag(X.blocks[grid_entry[0]].oid,
+                                                                   syskwargs=syskwargs)
                 else:
-                    rarr.blocks[grid_entry].oid = self._system.new_block("zeros",
-                                                                         grid_entry,
-                                                                         grid_meta,
-                                                                         syskwargs=syskwargs)
+                    rarr.blocks[grid_entry].oid = self.system.new_block("zeros",
+                                                                        grid_entry,
+                                                                        grid_meta,
+                                                                        syskwargs=syskwargs)
         elif len(X.shape) == 2:
             assert X.shape[0] == X.shape[1]
             assert X.block_shape[0] == X.block_shape[1]
             shape = X.shape[0],
             block_shape = X.block_shape[0],
             grid = ArrayGrid(shape, block_shape, X.dtype.__name__)
-            rarr = BlockArray(grid, self._system)
+            rarr = BlockArray(grid, self.system)
             for grid_entry in X.grid.get_entry_iterator():
                 out_grid_entry = grid_entry[:1]
                 out_grid_shape = grid.grid_shape[:1]
                 syskwargs = {"grid_entry": out_grid_entry, "grid_shape": out_grid_shape}
                 if np.all(np.diff(grid_entry) == 0):
                     # This is a diagonal block.
-                    rarr.blocks[out_grid_entry].oid = self._system.diag(X.blocks[grid_entry].oid,
-                                                                        syskwargs=syskwargs)
+                    rarr.blocks[out_grid_entry].oid = self.system.diag(X.blocks[grid_entry].oid,
+                                                                       syskwargs=syskwargs)
         else:
             raise ValueError("X must have 1 or 2 axes.")
         return rarr
@@ -439,17 +439,17 @@ class ArrayApplication(object):
         assert step == 1
         # Generate ranges per block.
         grid = ArrayGrid(shape, block_shape, dtype.__name__)
-        rarr = BlockArray(grid, self._system)
+        rarr = BlockArray(grid, self.system)
         for block_index, grid_entry in enumerate(grid.get_entry_iterator()):
             syskwargs = {"grid_entry": grid_entry, "grid_shape": grid.grid_shape}
             start = block_shape[0] * grid_entry[0]
             entry_shape = grid.get_block_shape(grid_entry)
             stop = start + entry_shape[0]
-            rarr.blocks[grid_entry].oid = self._system.arange(start,
-                                                              stop,
-                                                              step,
-                                                              dtype,
-                                                              syskwargs=syskwargs)
+            rarr.blocks[grid_entry].oid = self.system.arange(start,
+                                                             stop,
+                                                             step,
+                                                             dtype,
+                                                             syskwargs=syskwargs)
         return rarr
 
     def linspace(self, start, stop, shape, block_shape, endpoint, retstep, dtype, axis):
@@ -521,7 +521,7 @@ class ArrayApplication(object):
             axis = 0
         assert axis == 0
         grid = ArrayGrid(shape=(), block_shape=(), dtype=np.int64.__name__)
-        result = BlockArray(grid, self._system)
+        result = BlockArray(grid, self.system)
         reduction_result = None, None
         for grid_entry in arr.grid.get_entry_iterator():
             block_slice: slice = arr.grid.get_slice(grid_entry)[0]
@@ -531,11 +531,11 @@ class ArrayApplication(object):
                 "grid_shape": arr.grid.grid_shape,
                 "options": {"num_return_vals": 2},
             }
-            reduction_result = self._system.arg_op(op_name,
-                                                   block.oid,
-                                                   block_slice,
-                                                   *reduction_result,
-                                                   syskwargs=syskwargs)
+            reduction_result = self.system.arg_op(op_name,
+                                                  block.oid,
+                                                  block_slice,
+                                                  *reduction_result,
+                                                  syskwargs=syskwargs)
         argoptima, optima = reduction_result
         result.blocks[()].oid = argoptima
         return result
@@ -582,7 +582,7 @@ class ArrayApplication(object):
         assert len(shape) == len(block_shape)
         if out is None:
             grid = ArrayGrid(shape, block_shape, dtype.__name__)
-            rarr = BlockArray(grid, self._system)
+            rarr = BlockArray(grid, self.system)
         else:
             rarr = out
             grid = rarr.grid
@@ -633,7 +633,7 @@ class ArrayApplication(object):
                 result_blocks: np.ndarray = ufunc(arr_1.blocks, arr_2.blocks)
                 rarr = BlockArray.from_blocks(result_blocks,
                                               result_shape=None,
-                                              system=self._system)
+                                              system=self.system)
         except Exception as e:
             rarr = self._broadcast_bop(op_name, arr_1, arr_2)
         if out is not None:
@@ -661,7 +661,7 @@ class ArrayApplication(object):
                                                 arr_1.dtype,
                                                 arr_2.dtype)
         grid = ArrayGrid(arr_1.shape, arr_1.block_shape, dtype.__name__)
-        rarr = BlockArray(grid, self._system)
+        rarr = BlockArray(grid, self.system)
         for grid_entry in rarr.grid.get_entry_iterator():
             block_1: Block = arr_1.blocks[grid_entry]
             block_2: Block = arr_2.blocks[grid_entry]
@@ -689,14 +689,14 @@ class ArrayApplication(object):
         grid_shape = a.grid.grid_shape
         for grid_entry in a.grid.get_entry_iterator():
             a_block, b_block = a.blocks[grid_entry].oid, b.blocks[grid_entry].oid
-            bool_list.append(self._system.allclose(a_block, b_block, rtol, atol,
-                                                   syskwargs={
+            bool_list.append(self.system.allclose(a_block, b_block, rtol, atol,
+                                                  syskwargs={
                                                        "grid_entry": grid_entry,
                                                        "grid_shape": grid_shape
                                                    }))
-        oid = self._system.logical_and(*bool_list,
-                                       syskwargs={"grid_entry": (0, 0), "grid_shape": (1, 1)})
-        return BlockArray.from_oid(oid, (), np.bool, self._system)
+        oid = self.system.logical_and(*bool_list,
+                                      syskwargs={"grid_entry": (0, 0), "grid_shape": (1, 1)})
+        return BlockArray.from_oid(oid, (), np.bool, self.system)
 
     def qr(self, X: BlockArray):
         return self.indirect_tsqr(X)
@@ -718,10 +718,10 @@ class ArrayApplication(object):
             row = []
             for j in range(grid_shape[1]):
                 row.append(X.blocks[i, j].oid)
-            R_oids.append(self._system.qr(*row,
-                                          mode="r",
-                                          axis=1,
-                                          syskwargs={
+            R_oids.append(self.system.qr(*row,
+                                         mode="r",
+                                         axis=1,
+                                         syskwargs={
                                               "grid_entry": (i, 0),
                                               "grid_shape": (grid_shape[0], 1),
                                               "options": {"num_return_vals": 1}
@@ -735,11 +735,11 @@ class ArrayApplication(object):
         tsR = BlockArray(ArrayGrid(shape=R_shape,
                                    block_shape=R_shape,
                                    dtype=X.dtype.__name__),
-                         self._system)
-        tsR.blocks[0, 0].oid = self._system.qr(*R_oids,
-                                               mode="r",
-                                               axis=0,
-                                               syskwargs={
+                         self.system)
+        tsR.blocks[0, 0].oid = self.system.qr(*R_oids,
+                                              mode="r",
+                                              axis=0,
+                                              syskwargs={
                                                    "grid_entry": (0, 0),
                                                    "grid_shape": (1, 1),
                                                    "options": {"num_return_vals": 1}
@@ -802,10 +802,10 @@ class ArrayApplication(object):
             Q2_shape[0] += K
             # Run each row on separate nodes along first axis.
             # This maintains some data locality.
-            Q_oid, R_oid = self._system.qr(*row,
-                                           mode="reduced",
-                                           axis=1,
-                                           syskwargs={
+            Q_oid, R_oid = self.system.qr(*row,
+                                          mode="reduced",
+                                          axis=1,
+                                          syskwargs={
                                                "grid_entry": (i, 0),
                                                "grid_shape": (grid_shape[0], 1),
                                                "options": {"num_return_vals": 2}
@@ -815,10 +815,10 @@ class ArrayApplication(object):
 
         # TODO (hme): This pulls several order N^2 R matrices on a single node.
         #  A solution is the recursive extension to direct TSQR.
-        Q2_oid, R2_oid = self._system.qr(*R_oids,
-                                         mode="reduced",
-                                         axis=0,
-                                         syskwargs={
+        Q2_oid, R2_oid = self.system.qr(*R_oids,
+                                        mode="reduced",
+                                        axis=0,
+                                        syskwargs={
                                              "grid_entry": (0, 0),
                                              "grid_shape": (1, 1),
                                              "options": {"num_return_vals": 2}
@@ -841,11 +841,11 @@ class ArrayApplication(object):
             Q_dims, R_dims = QR_dims[i]
             Q1_block_shape = Q_dims
             Q2_block_shape = R_dims
-            Q.blocks[grid_entry].oid = self._system.bop("tensordot", Q_oids[i], Q2_oids[i],
-                                                        a1_shape=Q1_block_shape,
-                                                        a2_shape=Q2_block_shape,
-                                                        a1_T=False, a2_T=False, axes=1,
-                                                        syskwargs={"grid_entry": grid_entry,
+            Q.blocks[grid_entry].oid = self.system.bop("tensordot", Q_oids[i], Q2_oids[i],
+                                                       a1_shape=Q1_block_shape,
+                                                       a2_shape=Q2_block_shape,
+                                                       a1_T=False, a2_T=False, axes=1,
+                                                       syskwargs={"grid_entry": grid_entry,
                                                                    "grid_shape": Q.grid.grid_shape})
 
         # Construct R.
@@ -875,8 +875,8 @@ class ArrayApplication(object):
         R_block_shape = (block_shape[1], block_shape[1])
         Q, R = self.direct_tsqr(X, reshape_output=False)
         assert R.shape == R.block_shape
-        R_U, S, VT = self._system.svd(R.blocks[(0, 0)].oid,
-                                      syskwargs={"grid_entry": (0, 0),
+        R_U, S, VT = self.system.svd(R.blocks[(0, 0)].oid,
+                                     syskwargs={"grid_entry": (0, 0),
                                                  "grid_shape": (1, 1)})
         R_U: BlockArray = self._vec_from_oids([R_U], R_shape, R_block_shape, X.dtype)
         S: BlockArray = self._vec_from_oids([S], R_shape[:1], R_block_shape[:1], X.dtype)
@@ -889,9 +889,9 @@ class ArrayApplication(object):
         # TODO (hme): Implement scalable version.
         assert X.dtype in (np.float32, np.float64)
         if X.dtype == np.float64:
-            lapack_func = self._system.lapack_dtrtri
+            lapack_func = self.system.lapack_dtrtri
         elif X.dtype == np.float32:
-            lapack_func = self._system.lapack_strtri
+            lapack_func = self.system.lapack_strtri
         else:
             raise ValueError("Unsupported data type %s" % str(X.dtype))
         return self._inv(lapack_func, {
@@ -901,7 +901,7 @@ class ArrayApplication(object):
         }, X)
 
     def inv(self, X: BlockArray):
-        return self._inv(self._system.inv, {}, X)
+        return self._inv(self.system.inv, {}, X)
 
     def _inv(self, remote_func, kwargs, X: BlockArray):
         # TODO (hme): Implement scalable version.
@@ -938,8 +938,8 @@ class ArrayApplication(object):
             result = X.copy()
         else:
             result = X.reshape(block_shape=X.shape)
-        result.blocks[0, 0].oid = self._system.cholesky(result.blocks[0, 0].oid,
-                                                        syskwargs={
+        result.blocks[0, 0].oid = self.system.cholesky(result.blocks[0, 0].oid,
+                                                       syskwargs={
                                                             "grid_entry": (0, 0),
                                                             "grid_shape": (1, 1)
                                                         })
@@ -957,8 +957,8 @@ class ArrayApplication(object):
             result = X.copy()
         else:
             result = X.reshape(block_shape=X.shape)
-        result.blocks[0, 0].oid = self._system.inv_sym_psd(result.blocks[0, 0].oid,
-                                                           syskwargs={
+        result.blocks[0, 0].oid = self.system.inv_sym_psd(result.blocks[0, 0].oid,
+                                                          syskwargs={
                                                                "grid_entry": (0, 0),
                                                                "grid_shape": (1, 1)
                                                            })
@@ -1016,7 +1016,7 @@ class ArrayApplication(object):
         arr = BlockArray(ArrayGrid(shape=shape,
                                    block_shape=shape,
                                    dtype=dtype.__name__),
-                         self._system)
+                         self.system)
         # Make sure resulting grid shape is a vector (1 dimensional).
         assert np.sum(arr.grid.grid_shape) == (max(arr.grid.grid_shape)
                                                + len(arr.grid.grid_shape) - 1)
@@ -1027,4 +1027,4 @@ class ArrayApplication(object):
         return arr
 
     def random_state(self, seed=None):
-        return NumsRandomState(self._system, seed)
+        return NumsRandomState(self.system, seed)

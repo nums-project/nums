@@ -80,7 +80,7 @@ def random_stub():
     from nums.core.array.random import NumsRandomState
     from nums.core.application_manager import instance
     app = instance()
-    sys = app._system
+    sys = app.system
     rs_inst = NumsRandomState(system=sys, seed=1337)
     numpy_items = sorted(systems_utils.get_module_functions(numpy_module).items())
     nums_items = sorted(systems_utils.get_instance_functions(rs_inst).items())
