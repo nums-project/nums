@@ -93,11 +93,14 @@ class ArrayApplication(object):
             # raise NotImplementedError("NumPy API currently supports block cyclic scheduling "
             #                           "with Ray only.")
 
-        cluster_shape = list(cluster_shape)
-        for axis in range(len(shape)):
-            if axis >= len(cluster_shape):
-                cluster_shape.append(1)
-        cluster_shape = tuple(cluster_shape)
+        if len(shape) < len(cluster_shape):
+            cluster_shape = cluster_shape[:len(shape)]
+        elif len(shape) > len(cluster_shape):
+            cluster_shape = list(cluster_shape)
+            for axis in range(len(shape)):
+                if axis >= len(cluster_shape):
+                    cluster_shape.append(1)
+            cluster_shape = tuple(cluster_shape)
 
         shape_np = np.array(shape, dtype=np.int)
         # Softmax on cluster shape gives strong preference to larger dimensions.
