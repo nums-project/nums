@@ -187,6 +187,21 @@ class ComputeCls(ComputeImp):
         ufunc = np.__getattribute__(op_name)
         return ufunc(arr, *args, **kwargs)
 
+    def where(self, arr, x, y, block_slice_tuples):
+        if x is None:
+            assert y is None
+            res = np.where(arr)
+            for i, (start, stop) in enumerate(block_slice_tuples):
+                arr = res[i]
+                arr += start
+        else:
+            assert isinstance(x, np.ndarray) and isinstance(y, np.ndarray)
+            res = np.where(arr, x, y)
+        shape = res[0].shape
+        res = list(res)
+        res.append(shape)
+        return tuple(res)
+
     def xlogy(self, arr_x, arr_y):
         return scipy.special.xlogy(arr_x, arr_y)
 

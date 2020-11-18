@@ -335,6 +335,11 @@ def std(a: BlockArray, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     return _instance().std(a, axis=axis, ddof=ddof, keepdims=keepdims, dtype=dtype)
 
 
+def where(condition, x=None, y=None):
+    assert x is None and y is None, "x and y parameters not supported."
+    return _instance().where(condition)
+
+
 ############################################
 # Utility Ops
 ############################################

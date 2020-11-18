@@ -41,7 +41,11 @@ class ArrayGrid(object):
         for i in range(len(self.shape)):
             dim = self.shape[i]
             block_dim = block_shape[i]
-            axis_slices = Batch(dim, block_dim).batches
+            if dim == 0:
+                # Special case of empty array.
+                axis_slices = []
+            else:
+                axis_slices = Batch(dim, block_dim).batches
             self.grid_slices.append(axis_slices)
             self.grid_shape.append(len(axis_slices))
         self.grid_shape = tuple(self.grid_shape)

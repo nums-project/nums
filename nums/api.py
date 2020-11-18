@@ -14,10 +14,10 @@
 # limitations under the License.
 
 
-from nums.core.application_manager import instance as _instance
-from nums.core.systems import utils as _systems_utils
-from nums.core.array.blockarray import BlockArray
 import numpy as np
+
+from nums.core.application_manager import instance as _instance
+from nums.core.array.blockarray import BlockArray
 
 
 def read(filename: str) -> BlockArray:

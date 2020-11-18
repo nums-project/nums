@@ -145,6 +145,9 @@ class ComputeInterface(object):
     def map_uop(self, op_name, arr, args, kwargs, syskwargs: Dict):
         raise NotImplementedError()
 
+    def where(self, arr, x, y, block_slice_tuples, syskwargs: Dict):
+        raise NotImplementedError()
+
     def reduce_axis(self, op_name, arr, axis, keepdims, transposed, syskwargs: Dict):
         raise NotImplementedError()
 
