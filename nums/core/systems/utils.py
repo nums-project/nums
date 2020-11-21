@@ -1,7 +1,25 @@
+# coding=utf-8
+# Copyright (C) 2020 NumS Development Team.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 import types
 import inspect
 from functools import wraps
 import multiprocessing
+import socket
+import errno
 
 import numpy as np
 
@@ -19,7 +37,7 @@ def method_meta(num_return_vals=1):
     return inner
 
 
-def extract_functions(imp, remove_self=True):
+def extract_functions(imp_cls, remove_self=True):
 
     def wrap_func(func):
         # This works for Ray, because ray.remote extracts signatures by following wrapped functions.
@@ -29,7 +47,7 @@ def extract_functions(imp, remove_self=True):
         return wrapper
 
     imp_functions = {}
-    for name, obj in inspect.getmembers(imp()):
+    for name, obj in inspect.getmembers(imp_cls()):
         if inspect.ismethod(obj):
             if remove_self:
                 imp_functions[name] = wrap_func(obj)
@@ -71,3 +89,30 @@ def get_module_functions(module):
         if isinstance(attr, (types.BuiltinFunctionType, types.FunctionType, np.ufunc)):
             module_fns[key] = attr
     return module_fns
+
+
+def get_instance_functions(class_inst):
+    class_inst_funcs = {}
+    for name, obj in inspect.getmembers(class_inst):
+        if inspect.ismethod(obj):
+            class_inst_funcs[name] = obj
+    return class_inst_funcs
+
+
+def get_private_ip():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        private_ip = s.getsockname()[0]
+    except OSError as e:
+        private_ip = "127.0.0.1"
+        # [Errno 101] Network is unreachable
+        if e.errno == errno.ENETUNREACH:
+            try:
+                host_name = socket.getfqdn(socket.gethostname())
+                private_ip = socket.gethostbyname(host_name)
+            except Exception as _:
+                pass
+    finally:
+        s.close()
+    return private_ip

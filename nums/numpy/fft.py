@@ -14,24 +14,4 @@
 # limitations under the License.
 
 
-from nums.core.array.blockarray import BlockArray
-from nums.numpy import random as random
-from nums.numpy import linalg
-from nums.numpy.api import _not_implemented
-from nums.numpy.api import *
-
-
-# TODO(hme): Generate __all__, or control import hints some other way.
-
-
-def _init():
-    # pylint: disable=import-outside-toplevel
-    import numpy as np
-    from nums.core.systems import utils as system_utils
-    for name, func in system_utils.get_module_functions(np).items():
-        if name not in globals():
-            globals()[name] = _not_implemented(func)
-
-
-_init()
-del _init
+from nums.core.application_manager import instance as _instance

@@ -1,23 +1,17 @@
 # coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
 import time
@@ -28,7 +22,7 @@ from scipy.linalg import lapack
 
 from nums.core.storage.storage import BimodalGaussian
 from nums.core.array.application import ArrayApplication
-from nums.core.models import LogisticRegression, LinearRegression, PoissonRegression
+from nums.models.glms import LogisticRegression, LinearRegression, PoissonRegression
 
 
 # pylint: disable=protected-access
@@ -199,155 +193,6 @@ def test_rr(app_inst: ArrayApplication):
     assert robust_theta_error < theta_error
 
 
-def test_logistic(app_inst: ArrayApplication):
-    num_samples, num_features = 1000, 10
-    real_X, real_y = BimodalGaussian.get_dataset(num_samples, num_features)
-    X = app_inst.array(real_X, block_shape=(100, 3))
-    y = app_inst.array(real_y, block_shape=(100,))
-    opt_param_set = [
-        ("gd", {"lr": 1e-6, "tol": 1e-8, "max_iter": 10}),
-        ("block_sync_sgd", {"lr": 1e-6, "tol": 1e-8, "max_iter": 10}),
-        ("block_async_sgd", {"lr": 1e-6, "tol": 1e-8, "max_iter": 10}),
-        ("newton", {"tol": 1e-8, "max_iter": 10}),
-        ("irls", {"tol": 1e-8, "max_iter": 10})
-    ]
-    for opt, opt_params in opt_param_set:
-        runtime = time.time()
-        lr_model: LogisticRegression = LogisticRegression(app_inst, opt, opt_params)
-        lr_model.fit(X, y)
-        runtime = time.time() - runtime
-        y_pred = (lr_model.predict(X).get() > 0.5).astype(int)
-        print("opt", opt)
-        print("runtime", runtime)
-        print("norm", lr_model.grad_norm_sq(X, y).get())
-        print("objective", lr_model.objective(X, y).get())
-        print("accuracy", np.sum(y.get() == y_pred)/num_samples)
-
-
-def test_logistic_cv(app_inst: ArrayApplication):
-    num_samples, num_features = 1000, 10
-    num_bad = 100
-    block_shape = (200, 10)
-    folds = num_samples // block_shape[0]
-    rs = np.random.RandomState(1337)
-
-    real_X, real_y = BimodalGaussian.get_dataset(num_samples-num_bad, num_features, p=0.5)
-    extra_X, extra_y = BimodalGaussian.get_dataset(num_bad, num_features, p=0.5)
-
-    # Perturb some examples.
-    extra_X = extra_X * rs.random_sample(np.product(extra_X.shape)).reshape(extra_X.shape)
-    extra_y = rs.randint(0, 2, extra_y.shape).reshape(extra_y.shape)
-    perm = rs.permutation(np.arange(num_samples))
-    real_X = np.concatenate([real_X, extra_X], axis=0)[perm]
-    real_y = np.concatenate([real_y, extra_y], axis=0)[perm]
-
-    # real_X, real_y = BimodalGaussian.get_dataset(num_samples, num_features)
-    X = app_inst.array(real_X, block_shape=block_shape)
-    y = app_inst.array(real_y, block_shape=(block_shape[0],))
-    opt_param_set = [
-        ("newton", {"l2": None, "tol": 1e-8, "max_iter": 10}),
-        ("newton", {"l2": 0.1, "tol": 1e-8, "max_iter": 10}),
-        ("newton", {"l2": 0.2, "tol": 1e-8, "max_iter": 10}),
-        ("newton", {"l2": 0.4, "tol": 1e-8, "max_iter": 10}),
-        ("newton", {"l2": 0.8, "tol": 1e-8, "max_iter": 10}),
-    ]
-    X_train = app_inst.empty((num_samples - X.block_shape[0], num_features), X.block_shape, X.dtype)
-    y_train = app_inst.empty((num_samples - y.block_shape[0],), y.block_shape, y.dtype)
-    num_hps = len(opt_param_set)
-    mean_accuracies = app_inst.empty((num_hps,), (num_hps,))
-    for i, (opt, opt_params) in enumerate(opt_param_set):
-        accuracies = app_inst.empty((folds,), (folds,))
-        for fold in range(folds):
-            print(i, fold)
-            pos = X.block_shape[0]*fold
-            block_size, _ = X.grid.get_block_shape((fold, 0))
-            start = pos
-            stop = pos + block_size
-            X_train[:start] = X[:start]
-            X_train[start:] = X[stop:]
-            y_train[:start] = y[:start]
-            y_train[start:] = y[stop:]
-            X_test, y_test = X[start:stop], y[start:stop]
-            lr_model: LogisticRegression = LogisticRegression(app_inst, opt, opt_params)
-            lr_model.fit(X_train, y_train)
-            y_pred = lr_model.predict(X_test) > 0.5
-            accuracies[fold] = app_inst.sum(y_test == y_pred) / (stop-start)
-        mean_accuracies[i] = app_inst.mean(accuracies)
-    print(mean_accuracies.get())
-
-
-def test_glm_lr(app_inst: ArrayApplication):
-    num_samples, num_features = 1000, 10
-    num_features = 13
-    rs = np.random.RandomState(1337)
-    real_theta = rs.random_sample(num_features)
-    real_X, real_y = BimodalGaussian.get_dataset(233, num_features, theta=real_theta)
-    X = app_inst.array(real_X, block_shape=(100, 3))
-    y = app_inst.array(real_y, block_shape=(100,))
-    opt_param_set = [
-        ("gd", {"lr": 1e-6, "tol": 1e-8, "max_iter": 100}),
-        ("newton", {"tol": 1e-8, "max_iter": 10})
-    ]
-    for opt, opt_params in opt_param_set:
-        runtime = time.time()
-        model: LinearRegression = LinearRegression(app_inst, opt, opt_params)
-        model.fit(X, y)
-        assert model._beta.shape == real_theta.shape and model._beta0.shape == ()
-        runtime = time.time() - runtime
-        y_pred = model.predict(X).get()
-        print("opt", opt)
-        print("runtime", runtime)
-        print("norm", model.grad_norm_sq(X, y).get())
-        print("objective", model.objective(X, y).get())
-        print("error", np.sum((y.get() - y_pred)**2)/num_samples)
-        print("D^2", model.deviance_sqr(X, y))
-
-
-def test_poisson_basic(app_inst):
-    coef = np.array([0.2, -0.1])
-    X_real = np.array([[0, 1, 2, 3, 4]]).T
-    y_real = np.exp(np.dot(X_real, coef[0]) + coef[1]).reshape(-1)
-    X = app_inst.array(X_real, block_shape=X_real.shape)
-    y = app_inst.array(y_real, block_shape=y_real.shape)
-    model: PoissonRegression = PoissonRegression(app_inst, "newton", {"tol": 1e-8, "max_iter": 10})
-    model.fit(X, y)
-    print("norm", model.grad_norm_sq(X, y).get())
-    print("objective", model.objective(X, y).get())
-    print("D^2", model.deviance_sqr(X, y).get())
-    assert app_inst.allclose(model._beta,
-                             app_inst.array(coef[:-1], block_shape=(1,)), rtol=1e-4).get()
-    assert app_inst.allclose(model._beta0,
-                             app_inst.scalar(coef[-1]), rtol=1e-4).get()
-
-
-def test_poisson(app_inst: ArrayApplication):
-    # TODO (hme): Is there a more appropriate distribution for testing Poisson?
-    num_samples, num_features = 1000, 1
-    rs = np.random.RandomState(1337)
-    real_beta = rs.random_sample(num_features)
-    real_model: PoissonRegression = PoissonRegression(app_inst, "newton", {})
-    real_model._beta = app_inst.array(real_beta, block_shape=(3,))
-    real_model._beta0 = app_inst.scalar(rs.random_sample())
-    real_X = rs.random_sample(size=(num_samples, num_features))
-    X = app_inst.array(real_X, block_shape=(100, 3))
-    y = real_model.predict(X)
-    opt_param_set = [
-        ("newton", {"tol": 1e-8, "max_iter": 10})
-    ]
-    for opt, opt_params in opt_param_set:
-        runtime = time.time()
-        model: PoissonRegression = PoissonRegression(app_inst, opt, opt_params)
-        model.fit(X, y)
-        runtime = time.time() - runtime
-        print("opt", opt)
-        print("runtime", runtime)
-        print("norm", model.grad_norm_sq(X, y).get())
-        print("objective", model.objective(X, y).get())
-        print("D^2", model.deviance_sqr(X, y))
-        assert app_inst.allclose(real_model._beta, model._beta).get()
-        assert app_inst.allclose(real_model._beta0, model._beta0).get()
-
-
 if __name__ == "__main__":
     # pylint: disable=import-error
     from tests import conftest
@@ -359,8 +204,3 @@ if __name__ == "__main__":
     # test_svd(app_inst)
     # test_lr(app_inst)
     # test_rr(app_inst)
-    # test_logistic(app_inst)
-    # test_logistic_cv(app_inst)
-    # test_glm_lr(app_inst)
-    test_poisson_basic(app_inst)
-    # test_poisson(app_inst)

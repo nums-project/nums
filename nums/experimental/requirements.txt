@@ -1,0 +1,2 @@
+xgboost
+modin[ray]==0.8.1

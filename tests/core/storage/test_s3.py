@@ -1,3 +1,20 @@
+# coding=utf-8
+# Copyright (C) 2020 NumS Development Team.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+import pytest
 import numpy as np
 
 from nums.core.array.application import ArrayApplication
@@ -5,6 +22,10 @@ from nums.core.array.blockarray import BlockArray
 from nums.core.storage.storage import StoredArrayS3, ArrayGrid
 
 
+# Note: We have to skip these tests for now.
+
+
+@pytest.mark.skip
 def test_rwd(app_inst: ArrayApplication):
     array: np.ndarray = np.random.random(35).reshape(7, 5)
     ba: BlockArray = app_inst.array(array, block_shape=(3, 4))
@@ -22,6 +43,7 @@ def test_rwd(app_inst: ArrayApplication):
         assert deleted_key == StoredArrayS3(filename, delete_result.grid).get_key(grid_entry)
 
 
+@pytest.mark.skip
 def test_array_rwd():
     X: np.ndarray = np.random.random(3)
     stored_X = StoredArrayS3("darrays/%s_X" % "__test__")
