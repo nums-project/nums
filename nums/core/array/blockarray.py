@@ -141,6 +141,8 @@ class BlockArray(BlockArrayBase):
         if item == "__array_priority__" or item == "__array_struct__":
             # This is triggered by a numpy array on the LHS.
             raise ValueError("Unable to covert numpy array to block array.")
+        if item == "ndim":
+            return len(self.shape)
         if item != "T":
             raise NotImplementedError(item)
         metaT = self.grid.to_meta()

@@ -600,6 +600,17 @@ class ArrayApplication(object):
                                                                      kwargs=kwargs)
         return rarr
 
+    def matmul(self,
+               arr_1: BlockArray,
+               arr_2: BlockArray) -> BlockArray:
+        return arr_1 @ arr_2
+
+    def tensordot(self,
+                  arr_1: BlockArray,
+                  arr_2: BlockArray,
+                  axes: int = 2) -> BlockArray:
+        return arr_1.tensordot(arr_2, axes)
+
     def map_bop(self,
                 op_name: str,
                 arr_1: BlockArray,
