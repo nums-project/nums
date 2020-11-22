@@ -62,6 +62,15 @@ def test_bools(app_inst):
     assert (ba_one != ba_two) == (np_one != np_two)
 
 
+def test_bool_reduction(app_inst):
+    np_arr = np.array([True, False, True, True, False, False], dtype=np.bool_)
+    ba = app_inst.array(np_arr, block_shape=(2,))
+    result_sum = app_inst.sum(ba, axis=0).get()
+    np_sum = np.sum(np_arr)
+    assert result_sum.dtype == np_sum.dtype
+    assert result_sum == np_sum
+
+
 if __name__ == "__main__":
     # pylint: disable=import-error
     from tests import conftest
@@ -71,3 +80,4 @@ if __name__ == "__main__":
     test_uops(app_inst)
     test_bops(app_inst)
     test_bools(app_inst)
+    test_bool_reduction(app_inst)

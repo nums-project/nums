@@ -44,6 +44,12 @@ def is_int(val):
     return isinstance(val, (int, np.int, np.int8, np.int16, np.int32, np.int64))
 
 
+def get_reduce_output_type(op_name, dtype):
+    a = np.array([0, 1], dtype=dtype)
+    dtype = np.__getattribute__(op_name)(a).dtype
+    return np.__getattribute__(str(dtype))
+
+
 def shape_from_block_array(arr: np.ndarray):
     grid_shape = arr.shape
     num_axes = len(arr.shape)
