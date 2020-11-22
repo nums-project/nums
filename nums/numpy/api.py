@@ -285,14 +285,6 @@ def matmul(x1: BlockArray, x2: BlockArray,
 def ndim(x: BlockArray):
     return x.ndim
 
-def metadata(x: BlockArray):
-    """
-    For autograd compatibility
-    This API follows the metadata convetion of autograd.
-    output: shape, ndim, dtype, is_complex
-    """
-    return x.shape, x.ndim, x.dtype, False
-
 def reshape(x: BlockArray, shape, block_shape):
     return x.reshape(shape, block_shape)
 

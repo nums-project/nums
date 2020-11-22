@@ -164,19 +164,20 @@ class BlockArray(BlockArrayBase):
         if item == "__array_priority__" or item == "__array_struct__":
             # This is triggered by a numpy array on the LHS.
             raise ValueError("Unable to covert numpy array to block array.")
-        if item == "ndim":
+        elif item == "ndim":
             return len(self.shape)
-        if item != "T":
+        elif item == "T":
+            metaT = self.grid.to_meta()
+            metaT["shape"] = tuple(reversed(metaT["shape"]))
+            metaT["block_shape"] = tuple(reversed(metaT["block_shape"]))
+            gridT = ArrayGrid.from_meta(metaT)
+            rarrT = BlockArray(gridT, self.system)
+            rarrT.blocks = np.copy(self.blocks.T)
+            for grid_entry in rarrT.grid.get_entry_iterator():
+                rarrT.blocks[grid_entry] = rarrT.blocks[grid_entry].transpose()
+            return rarrT
+        else:
             raise NotImplementedError(item)
-        metaT = self.grid.to_meta()
-        metaT["shape"] = tuple(reversed(metaT["shape"]))
-        metaT["block_shape"] = tuple(reversed(metaT["block_shape"]))
-        gridT = ArrayGrid.from_meta(metaT)
-        rarrT = BlockArray(gridT, self.system)
-        rarrT.blocks = np.copy(self.blocks.T)
-        for grid_entry in rarrT.grid.get_entry_iterator():
-            rarrT.blocks[grid_entry] = rarrT.blocks[grid_entry].transpose()
-        return rarrT
 
     def __getitem__(self, item):
         if not isinstance(item, tuple):
