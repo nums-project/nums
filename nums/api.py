@@ -27,7 +27,7 @@ def read(filename: str) -> BlockArray:
     :return: An instance of BlockArray.
     """
     if filename.lower().startswith("s3://"):
-        filename = filename.split("s3://")[-1]
+        filename = filename.lower().split("s3://")[-1]
         return _instance().read_s3(filename)
     else:
         return _instance().read_fs(filename)
@@ -40,7 +40,7 @@ def write(filename: str, ba: BlockArray) -> BlockArray:
     :return: A BlockArray indicating the outcome of this operation.
     """
     if filename.lower().startswith("s3://"):
-        filename = filename.split("s3://")[-1]
+        filename = filename.lower().split("s3://")[-1]
         return _instance().write_s3(ba, filename)
     else:
         return _instance().write_fs(ba, filename)
@@ -53,7 +53,7 @@ def delete(filename: str) -> BlockArray:
     :return: A BlockArray indicating the outcome of this operation.
     """
     if filename.lower().startswith("s3://"):
-        filename = filename.split("s3://")[-1]
+        filename = filename.lower().split("s3://")[-1]
         return _instance().delete_s3(filename)
     else:
         return _instance().delete_fs(filename)

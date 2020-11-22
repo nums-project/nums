@@ -14,7 +14,8 @@
 # limitations under the License.
 
 
-import pytest
+import boto3
+from moto import mock_s3
 import numpy as np
 
 from nums.core.array.application import ArrayApplication
@@ -22,11 +23,15 @@ from nums.core.array.blockarray import BlockArray
 from nums.core.storage.storage import StoredArrayS3, ArrayGrid
 
 
-# Note: We have to skip these tests for now.
+@mock_s3
+def test_rwd():
+    from tests import conftest
+    app_inst = conftest.get_app("serial")
 
+    conn = boto3.resource('s3', region_name='us-east-1')
+    assert conn.Bucket('darrays') not in conn.buckets.all()
+    conn.create_bucket(Bucket='darrays')
 
-@pytest.mark.skip
-def test_rwd(app_inst: ArrayApplication):
     array: np.ndarray = np.random.random(35).reshape(7, 5)
     ba: BlockArray = app_inst.array(array, block_shape=(3, 4))
     filename = "darrays/read_write_delete_array_test"
@@ -43,8 +48,12 @@ def test_rwd(app_inst: ArrayApplication):
         assert deleted_key == StoredArrayS3(filename, delete_result.grid).get_key(grid_entry)
 
 
-@pytest.mark.skip
+@mock_s3
 def test_array_rwd():
+    conn = boto3.resource('s3', region_name='us-east-1')
+    assert conn.Bucket('darrays') not in conn.buckets.all()
+    conn.create_bucket(Bucket='darrays')
+
     X: np.ndarray = np.random.random(3)
     stored_X = StoredArrayS3("darrays/%s_X" % "__test__")
     stored_X.put_grid(ArrayGrid(shape=X.shape,
@@ -64,9 +73,6 @@ def test_grid_copy():
 
 if __name__ == "__main__":
     # pylint: disable=import-error
-    from tests import conftest
-
-    app_inst = conftest.get_app("serial")
-    test_rwd(app_inst)
+    test_rwd()
     test_array_rwd()
     test_grid_copy()
