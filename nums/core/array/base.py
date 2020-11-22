@@ -132,11 +132,12 @@ class Block(object):
             result_rect.append(self.rect[curr_axis])
             result_shape.append(self.shape[curr_axis])
 
+        dtype = array_utils.get_reduce_output_type(op_name, self.dtype)
         block = Block(grid_entry=result_grid_entry,
                       grid_shape=result_grid_shape,
                       rect=result_rect,
                       shape=result_shape,
-                      dtype=self.dtype,
+                      dtype=dtype,
                       # This is false because we invoke the transpose before
                       # applying the reduction operation, so the resulting
                       # remote object will be transposed.

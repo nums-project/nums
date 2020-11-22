@@ -28,6 +28,8 @@ requirements = [
 test_requirements = [
     'pytest',
     'pytest-pylint',
+    'coverage',
+    'moto',
 ]
 
 

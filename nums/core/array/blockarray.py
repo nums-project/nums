@@ -338,9 +338,10 @@ class BlockArray(BlockArrayBase):
             result_block_shape.append(axis_block_size)
         result_shape = tuple(result_shape)
         result_block_shape = tuple(result_block_shape)
+        result_dtype = array_utils.get_reduce_output_type(op_name, self.dtype)
         result_grid = ArrayGrid(shape=result_shape,
                                 block_shape=result_block_shape,
-                                dtype=self.dtype.__name__)
+                                dtype=result_dtype.__name__)
         result = BlockArray(result_grid, self.system)
 
         if op_name in settings.np_pairwise_reduction_map:
