@@ -132,21 +132,52 @@ class BlockArray(BlockArrayBase):
             block_shape = self.block_shape
         return Reshape()(self, shape, block_shape)
 
+    def expand_dims(self, axis):
+        """
+        This function refers to the numpy implementation of expand_dims.
+        """
+        if type(axis) not in (tuple, list):
+            axis = (axis,)
+        out_ndim = len(axis) + self.ndim
+        axis = np.core.numeric.normalize_axis_tuple(axis, out_ndim)
+
+        shape_it = iter(self.shape)
+        block_shape_it = iter(self.block_shape)
+        shape = [1 if ax in axis else next(shape_it) for ax in range(out_ndim)]
+        block_shape = [1 if ax in axis else next(block_shape_it) for ax in range(out_ndim)]
+        return self.reshape(shape, block_shape)
+
+    def squeeze(self):
+        shape = self.shape
+        block_shape = self.block_shape
+        new_shape = []
+        new_block_shape = []
+        for s, b in zip(shape, block_shape):
+            if s == 1:
+                assert b == 1
+                continue
+            new_shape.append(s)
+            new_block_shape.append(b)
+        return self.reshape(new_shape, new_block_shape)
+
     def __getattr__(self, item):
         if item == "__array_priority__" or item == "__array_struct__":
             # This is triggered by a numpy array on the LHS.
             raise ValueError("Unable to covert numpy array to block array.")
-        if item != "T":
+        elif item == "ndim":
+            return len(self.shape)
+        elif item == "T":
+            metaT = self.grid.to_meta()
+            metaT["shape"] = tuple(reversed(metaT["shape"]))
+            metaT["block_shape"] = tuple(reversed(metaT["block_shape"]))
+            gridT = ArrayGrid.from_meta(metaT)
+            rarrT = BlockArray(gridT, self.system)
+            rarrT.blocks = np.copy(self.blocks.T)
+            for grid_entry in rarrT.grid.get_entry_iterator():
+                rarrT.blocks[grid_entry] = rarrT.blocks[grid_entry].transpose()
+            return rarrT
+        else:
             raise NotImplementedError(item)
-        metaT = self.grid.to_meta()
-        metaT["shape"] = tuple(reversed(metaT["shape"]))
-        metaT["block_shape"] = tuple(reversed(metaT["block_shape"]))
-        gridT = ArrayGrid.from_meta(metaT)
-        rarrT = BlockArray(gridT, self.system)
-        rarrT.blocks = np.copy(self.blocks.T)
-        for grid_entry in rarrT.grid.get_entry_iterator():
-            rarrT.blocks[grid_entry] = rarrT.blocks[grid_entry].transpose()
-        return rarrT
 
     def __getitem__(self, item):
         if not isinstance(item, tuple):

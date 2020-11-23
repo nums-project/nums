@@ -258,6 +258,42 @@ def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None, axis=0):
         ba = ba.astype(dtype)
     return ba
 
+############################################
+# Matrix Ops
+############################################
+
+def tensordot(x1: BlockArray, x2: BlockArray,
+        out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+    if out is not None:
+        raise NotImplementedError("'out' argument is not yet supported for tensordot API.")
+    axes = kwargs.pop('axes', 2)
+    return _instance().tensordot(arr_1=x1,
+                                 arr_2=x2,
+                                 axes=axes)
+
+def matmul(x1: BlockArray, x2: BlockArray,
+        out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+    if out is not None:
+        raise NotImplementedError("'out' argument is not yet supported for tensordot API.")
+    return _instance().matmul(arr_1=x1,
+                              arr_2=x2)
+
+############################################
+# Shape Ops
+############################################
+
+def ndim(x: BlockArray):
+    return x.ndim
+
+def reshape(x: BlockArray, shape, block_shape):
+    return x.reshape(shape, block_shape)
+
+def expand_dims(x: BlockArray, axis):
+    return x.expand_dims(axis)
+
+def squeeze(x: BlockArray):
+    return x.squeeze()
+
 
 ############################################
 # Reduction Ops
