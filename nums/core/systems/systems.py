@@ -21,7 +21,6 @@ from typing import Any, Union, List, Dict
 import ray
 import numpy as np
 
-from nums.core import settings
 from nums.core.storage.storage import ArrayGrid
 from nums.core.systems.schedulers import RayScheduler, TaskScheduler, BlockCyclicScheduler
 from nums.core.systems.interfaces import SystemInterface, ComputeInterface, RNGInterface

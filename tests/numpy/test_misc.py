@@ -19,8 +19,14 @@ import numpy as np
 from nums.numpy import BlockArray
 
 
+# pylint: disable=import-outside-toplevel
+
+
 def test_where(nps_app_inst):
     import nums.numpy as nps
+
+    assert nps_app_inst is not None
+
     shapes = [
         (),
         (10**6,),

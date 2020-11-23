@@ -22,7 +22,6 @@ from scipy.linalg import lapack
 
 from nums.core.storage.storage import BimodalGaussian
 from nums.core.array.application import ArrayApplication
-from nums.models.glms import LogisticRegression, LinearRegression, PoissonRegression
 
 
 # pylint: disable=protected-access

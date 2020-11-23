@@ -14,10 +14,11 @@
 # limitations under the License.
 
 
+import numpy as _np
+
 from nums.core.application_manager import instance as _instance
 from nums.core.array import utils as _array_utils
 from nums.core.array.blockarray import BlockArray
-import numpy as _np
 
 
 class RandomState(object):

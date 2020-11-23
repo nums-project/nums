@@ -19,6 +19,9 @@ import argparse
 from nums.core.systems import utils as systems_utils
 
 
+# pylint: disable = import-outside-toplevel
+
+
 def execute(module_name, print_missing, count_fallback):
     if module_name == "api":
         return api_coverage(print_missing, count_fallback)
@@ -71,7 +74,7 @@ def module_coverage(module_name, print_missing, count_fallback,
                 if len(descr) != 0:
                     break
             print_tuple = name, descr
-        except Exception as e:
+        except Exception as _:
             print_tuple = name, func.__code__.co_varnames
         if print_tuple is None:
             continue
@@ -94,6 +97,8 @@ def module_coverage(module_name, print_missing, count_fallback,
 
 
 def api_coverage(print_missing, count_fallback):
+    # pylint: disable = unused-variable
+
     # Functions ignored for various reasons.
     ignore = {
         '_add_newdoc_ufunc', 'add_docstring', 'add_newdoc', 'add_newdoc_ufunc',

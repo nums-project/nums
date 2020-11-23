@@ -19,6 +19,9 @@ import numpy as np
 from nums.numpy import BlockArray
 
 
+# pylint: disable=import-outside-toplevel, protected-access
+
+
 def test_basic(nps_app_inst):
     import nums.numpy as nps
     app = nps_app_inst
@@ -42,6 +45,9 @@ def test_basic(nps_app_inst):
 
 def test_shuffle(nps_app_inst):
     import nums.numpy as nps
+
+    assert nps_app_inst is not None
+
     shape = (12, 34, 56)
     block_shape = (2, 5, 7)
     arr: BlockArray = nps.arange(np.product(shape)).reshape(shape=shape, block_shape=block_shape)
@@ -66,6 +72,9 @@ def test_shuffle(nps_app_inst):
 
 def test_shuffle_subscript_ops(nps_app_inst):
     import nums.numpy as nps
+
+    assert nps_app_inst is not None
+
     shape = (123, 45)
     block_shape = (10, 20)
     arr: BlockArray = nps.arange(np.product(shape)).reshape(shape=shape, block_shape=block_shape)
@@ -80,6 +89,9 @@ def test_shuffle_subscript_ops(nps_app_inst):
 
 def test_default_random(nps_app_inst):
     import nums.numpy as nps
+
+    assert nps_app_inst is not None
+
     num1 = nps.random.random_sample()
     num2 = nps.random.random_sample()
     assert not nps.allclose(num1, num2)

@@ -36,8 +36,9 @@ def app_inst(request):
 
 @pytest.fixture(scope="module", params=["ray-cyclic"])
 def nps_app_inst(request):
+    assert request is not None
     # This triggers initialization; it's not to be mixed with the app_inst fixture.
-    # pylint: disable=protected-access
+    # pylint: disable = protected-access, import-outside-toplevel
     from nums.core import application_manager
     yield application_manager.instance()
     application_manager._instance.system.shutdown()

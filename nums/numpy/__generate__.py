@@ -18,6 +18,9 @@ from nums.core.systems import utils as systems_utils
 from nums.numpy import numpy_utils
 
 
+# pylint: disable = import-outside-toplevel
+
+
 def api_stub():
     import numpy as np
 
@@ -45,7 +48,7 @@ def {op_name}(x1: BlockArray, x2: BlockArray,
                        kwargs=numpy_utils.ufunc_kwargs(kwargs))"""
         return s.format(op_name=op_name)
 
-    uops, bops, rest = numpy_utils.ufunc_op_signatures()
+    uops, bops = numpy_utils.ufunc_op_signatures()
     for name, func in sorted(systems_utils.get_module_functions(np).items()):
         if name in ("deprecate_with_doc", "loads"):
             continue
@@ -68,7 +71,7 @@ def {op_name}(x1: BlockArray, x2: BlockArray,
                 bops.append(_bop_template(name))
             else:
                 print(name, op_name, args)
-        except Exception as e:
+        except Exception as _:
             print("FAILED", name)
     for sig in uops + bops:
         print(sig)
@@ -76,6 +79,7 @@ def {op_name}(x1: BlockArray, x2: BlockArray,
 
 
 def random_stub():
+    # pylint: disable = unused-variable
     import numpy.random as numpy_module
     from nums.core.array.random import NumsRandomState
     from nums.core.application_manager import instance

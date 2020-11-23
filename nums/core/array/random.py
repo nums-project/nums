@@ -32,6 +32,7 @@ class NumsRandomState(object):
         self._rng = self._system.get_rng(seed)
 
     def numpy(self):
+        # pylint: disable = import-outside-toplevel
         from nums.core.systems.numpy_compute import block_rng
         return block_rng(*self._rng.new_block_rng_params())
 

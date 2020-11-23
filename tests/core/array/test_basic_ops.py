@@ -35,6 +35,7 @@ def test_uops(app_inst: ArrayApplication):
 
 
 def test_bops(app_inst: ArrayApplication):
+    # pylint: disable=no-member
     pairs = [(1, 2),
              (2.0, 3.0),
              (2, 3.0),

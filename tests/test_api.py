@@ -14,15 +14,14 @@
 # limitations under the License.
 
 
-import os
-import time
-
 import boto3
 from moto import mock_s3
 import numpy as np
 
-from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray
+
+
+# pylint: disable=import-outside-toplevel
 
 
 def test_rwd():
@@ -74,12 +73,10 @@ def test_rwd_s3():
         assert delete_result_ba[grid_entry].get() == delete_result_np[grid_entry]
 
 
-def test_loadtxt():
+def test_read_csv():
     import nums
-    from nums.core import application_manager
     from nums.core import settings
     settings.system_name = "serial"
-    nps_app_inst = application_manager.instance()
 
     filename = settings.pj(settings.project_root, "tests", "core", "storage", "test.csv")
     ba = nums.read_csv(filename, has_header=True)
@@ -95,4 +92,4 @@ if __name__ == "__main__":
     nps_app_inst = application_manager.instance()
     # test_rwd()
     test_rwd_s3()
-    # test_loadtxt()
+    # test_read_csv()

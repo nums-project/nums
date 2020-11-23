@@ -14,16 +14,20 @@
 # limitations under the License.
 
 
+# pylint: disable=import-outside-toplevel, no-member
+
+
 def test_ufunc(nps_app_inst):
     import numpy as np
 
     from nums.numpy import BlockArray
-    from nums.core.storage.storage import ArrayGrid
     from nums.numpy import numpy_utils
     from nums import numpy as nps
 
+    assert nps_app_inst is not None
+
     uops, bops = numpy_utils.ufunc_op_signatures()
-    for name, args in sorted(uops):
+    for name, _ in sorted(uops):
         if name in ("arccosh", "arcsinh"):
             np_val = np.array([np.e])
         elif name == "invert" or name.startswith("bitwise") or name.startswith("logical"):
@@ -48,7 +52,7 @@ def test_ufunc(nps_app_inst):
         _ns_result = ns_ufunc(_ns_a, _ns_b)
         assert np.allclose(_np_result, _ns_result.get())
 
-    for name, args in bops:
+    for name, _ in bops:
         if name.startswith("bitwise") or name.startswith("logical"):
             np_a = np.array([True, False, True, False], dtype=np.bool_)
             np_b = np.array([True, True, False, False], dtype=np.bool_)
@@ -72,6 +76,43 @@ def test_ufunc(nps_app_inst):
             ]
             for np_a, np_b in pairs:
                 check_bop(name, np_a, np_b)
+
+
+def test_matmul_tensordot(nps_app_inst):
+    import numpy as np
+
+    from nums import numpy as nps
+
+    assert nps_app_inst is not None
+
+    def check_matmul_op(_np_a, _np_b):
+        _name = 'matmul'
+        np_ufunc = np.__getattribute__(_name)
+        ns_ufunc = nps.__getattribute__(_name)
+        _ns_a = nps.array(_np_a)
+        _ns_b = nps.array(_np_b)
+        _np_result = np_ufunc(_np_a, _np_b)
+        _ns_result = ns_ufunc(_ns_a, _ns_b)
+        assert np.allclose(_np_result, _ns_result.get())
+
+    def check_tensordot_op(_np_a, _np_b, axes):
+        _name = 'tensordot'
+        np_ufunc = np.__getattribute__(_name)
+        ns_ufunc = nps.__getattribute__(_name)
+        _ns_a = nps.array(_np_a)
+        _ns_b = nps.array(_np_b)
+        _np_result = np_ufunc(_np_a, _np_b, axes=axes)
+        _ns_result = ns_ufunc(_ns_a, _ns_b, axes=axes)
+        assert np.allclose(_np_result, _ns_result.get())
+
+    np_v = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+    np_w = np.array([5, 6, 7, 8, 9, 0, 1, 2, 3, 4])
+    check_tensordot_op(np_v, np_w, axes=1)
+    check_tensordot_op(np_v, np_v, axes=1)
+
+    np_A = np.stack([np_v + i for i in range(20)])
+    np_B = np.transpose(np.stack([np_w + i for i in range(20)]))
+    check_matmul_op(np_A, np_B)
 
 
 # TODO(hme): Add broadcast tests.

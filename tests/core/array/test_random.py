@@ -14,6 +14,8 @@
 # limitations under the License.
 
 
+import warnings
+
 import numpy as np
 from scipy import stats
 
@@ -140,7 +142,6 @@ def test_np_integer(app_inst: ArrayApplication):
 
 
 def test_default_random(app_inst: ArrayApplication):
-    import warnings
     num1 = app_inst.random_state().random()
     num2 = app_inst.random_state().random()
     num_iters = 0

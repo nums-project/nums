@@ -246,7 +246,8 @@ class BlockArray(BlockArrayBase):
                 for i in range(src_index_arr.shape[0]):
                     src_index = src_index_arr[i]
                     dst_index = dst_index_arr[i]
-                    if np.all((src_slice_np[0][axis] <= src_index) & (src_index < src_slice_np[1][axis])):
+                    if np.all((src_slice_np[0][axis] <= src_index)
+                              & (src_index < src_slice_np[1][axis])):
                         index_pair = (np.array(dst_index - dst_slice_np[0][axis], dtype=index_type),
                                       np.array(src_index - src_slice_np[0][axis], dtype=index_type))
                         index_pairs.append(index_pair)
@@ -263,7 +264,9 @@ class BlockArray(BlockArrayBase):
             block_size = self.block_shape[axis]
         axis_dim = len(array)
         shape = tuple(list(self.shape[:axis]) + [axis_dim] + list(self.shape[axis+1:]))
-        block_shape = tuple(list(self.block_shape[:axis]) + [block_size] + list(self.block_shape[axis+1:]))
+        block_shape = tuple(list(self.block_shape[:axis])
+                            + [block_size]
+                            + list(self.block_shape[axis+1:]))
         dst_arr = BlockArray.empty(shape=shape,  block_shape=block_shape,
                                    dtype=self.dtype,  system=self.system)
 

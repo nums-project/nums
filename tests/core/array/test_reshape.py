@@ -14,12 +14,10 @@
 # limitations under the License.
 
 
-import itertools
 import time
 
 import numpy as np
 
-from nums.core.storage.storage import BimodalGaussian, ArrayGrid
 from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray, Block
 from nums.core.array import utils as array_utils

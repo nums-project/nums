@@ -17,7 +17,6 @@
 from typing import List
 
 import numpy as np
-import scipy.special
 
 from nums.core.array.blockarray import BlockArray, Block
 from nums.core.array import utils as array_utils
@@ -28,6 +27,9 @@ from nums.core.systems.schedulers import BlockCyclicScheduler
 from nums.core.systems import utils as systems_utils
 from nums.core.systems.filesystem import FileSystem
 from nums.core.array.random import NumsRandomState
+
+
+# pylint: disable = too-many-lines
 
 
 class ArrayApplication(object):
@@ -260,7 +262,8 @@ class ArrayApplication(object):
     def read_csv(self, filename, dtype=np.float, delimiter=',', has_header=False, num_workers=None):
         if num_workers is None:
             num_workers = self.num_cores_total()
-        arrays: list = self._filesystem.read_csv(filename, dtype, delimiter, has_header, num_workers)
+        arrays: list = self._filesystem.read_csv(filename, dtype, delimiter, has_header,
+                                                 num_workers)
         shape = np.zeros(len(arrays[0].shape), dtype=int)
         for array in arrays:
             shape += np.array(array.shape, dtype=int)
@@ -443,7 +446,7 @@ class ArrayApplication(object):
         # Generate ranges per block.
         grid = ArrayGrid(shape, block_shape, dtype.__name__)
         rarr = BlockArray(grid, self.system)
-        for block_index, grid_entry in enumerate(grid.get_entry_iterator()):
+        for _, grid_entry in enumerate(grid.get_entry_iterator()):
             syskwargs = {"grid_entry": grid_entry, "grid_shape": grid.grid_shape}
             start = block_shape[0] * grid_entry[0]
             entry_shape = grid.get_block_shape(grid_entry)
@@ -539,7 +542,7 @@ class ArrayApplication(object):
                                                   block_slice,
                                                   *reduction_result,
                                                   syskwargs=syskwargs)
-        argoptima, optima = reduction_result
+        argoptima, _ = reduction_result
         result.blocks[()].oid = argoptima
         return result
 
@@ -697,7 +700,7 @@ class ArrayApplication(object):
                 rarr = BlockArray.from_blocks(result_blocks,
                                               result_shape=None,
                                               system=self.system)
-        except Exception as e:
+        except Exception as _:
             rarr = self._broadcast_bop(op_name, arr_1, arr_2)
         if out is not None:
             assert out.grid.grid_shape == rarr.grid.grid_shape

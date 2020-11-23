@@ -21,6 +21,8 @@ import numpy as np
 import scipy.special
 from nums.core.settings import np_ufunc_map
 
+# pylint: disable = no-member
+
 
 def get_uop_output_type(op_name, dtype):
     a = np.array(1, dtype=dtype)
@@ -35,7 +37,7 @@ def get_bop_output_type(op_name, dtype_a, dtype_b):
     try:
         dtype = np.__getattribute__(op_name)(a, b).dtype
         return np.__getattribute__(str(dtype))
-    except Exception as e:
+    except Exception as _:
         dtype = scipy.special.__getattribute__(op_name)(a, b).dtype
         return np.__getattribute__(str(dtype))
 
