@@ -29,10 +29,18 @@ def test_basic_creation(nps_app_inst):
     assert nps_app_inst is not None
 
     ops = "empty", "zeros", "ones"
+    shape = (2, 3, 4)
     for op in ops:
-        ba: BlockArray = nps.__getattribute__(op)(shape=(100, 200, 3000))
-        grid: ArrayGrid = ba.grid
-        assert grid.grid_shape[0] <= grid.grid_shape[1] < grid.grid_shape[2]
+        ba: BlockArray = nps.__getattribute__(op)(shape=shape)
+        if "zeros" in op:
+            assert nps.allclose(nps.zeros(shape), ba)
+        if "ones" in op:
+            assert nps.allclose(nps.ones(shape), ba)
+
+        ba2: BlockArray = nps.__getattribute__(op + "_like")(ba)
+        assert ba.shape == ba2.shape
+        assert ba.dtype == ba2.dtype
+        assert ba.block_shape == ba2.block_shape
 
 
 def test_eye(nps_app_inst):

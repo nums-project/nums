@@ -18,7 +18,7 @@ import numpy as np
 
 from nums.core.array.application import ArrayApplication
 from nums.core.systems import utils as systems_utils
-from nums.core.systems.systems import RaySystem
+from nums.core.systems.systems import RaySystem, SerialSystem
 
 
 def ufunc_kwargs(kwargs):
@@ -69,4 +69,5 @@ def get_num_cores(app: ArrayApplication):
         nodes = system.nodes()
         return sum(map(lambda n: n["Resources"]["CPU"], nodes))
     else:
-        raise NotImplementedError("NumPy API currently supports Ray only.")
+        assert isinstance(app.system, SerialSystem)
+        return systems_utils.get_num_cores()

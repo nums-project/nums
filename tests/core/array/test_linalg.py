@@ -110,11 +110,7 @@ def test_inv(app_inst: ArrayApplication):
     shape = (5, 5)
     for dtype in (np.float32, np.float64):
         mat = app_inst.array(sample_sym_pd_mat(shape=shape).astype(dtype), block_shape=shape)
-        mat_inv = app_inst.inv_sym_psd(mat).get()
-        assert np.allclose(np.linalg.inv(mat.get()), mat_inv, rtol=1e-4, atol=1e-4)
         _, r = np.linalg.qr(mat.get())
-        r_inv = app_inst.inverse_triangular(app_inst.array(r, block_shape=shape), lower=False).get()
-        assert np.allclose(np.linalg.inv(r), r_inv, rtol=1e-4, atol=1e-4)
         L = app_inst.cholesky(mat).get()
         assert np.allclose(np.linalg.cholesky(mat.get()), L, rtol=1e-4, atol=1e-4)
 

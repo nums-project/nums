@@ -15,10 +15,13 @@
 
 
 from nums.core.systems import utils as systems_utils
+from nums.core.systems import numpy_compute
 
 
 def test_utils():
     r = systems_utils.get_module_functions(systems_utils)
+    assert len(r) > 0
+    r = systems_utils.get_instance_functions(numpy_compute.ComputeCls())
     assert len(r) > 0
 
 

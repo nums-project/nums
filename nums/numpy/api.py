@@ -79,7 +79,7 @@ complex128 = np.complex128
 ############################################
 
 
-def loadtxt(fname, dtype=float, comments='# ', delimiter=',',
+def loadtxt(fname, dtype=float, comments='# ', delimiter=' ',
             converters=None, skiprows=0, usecols=None, unpack=False,
             ndmin=0, encoding='bytes', max_rows=None) -> BlockArray:
     app = _instance()

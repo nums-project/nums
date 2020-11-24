@@ -129,9 +129,6 @@ class ComputeInterface(object):
     def cholesky(self, arr, syskwargs: Dict):
         raise NotImplementedError()
 
-    def inv_sym_psd(self, arr, syskwargs: Dict):
-        raise NotImplementedError()
-
     @method_meta(num_return_vals=3)
     def svd(self, arr, syskwargs: Dict):
         raise NotImplementedError()
@@ -154,14 +151,6 @@ class ComputeInterface(object):
     # Scipy
 
     def xlogy(self, arr_x, arr_y, syskwargs: Dict):
-        raise NotImplementedError()
-
-    # Lapack
-
-    def lapack_dtrtri(self, arr, lower, unitdiag, overwrite_c, syskwargs: Dict):
-        raise NotImplementedError()
-
-    def lapack_strtri(self, arr, lower, unitdiag, overwrite_c, syskwargs: Dict):
         raise NotImplementedError()
 
     def logical_and(self, *bool_list, syskwargs: Dict):

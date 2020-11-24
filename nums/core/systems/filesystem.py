@@ -354,9 +354,9 @@ class FileSystem(object):
         """
         raise NotImplementedError()
 
-    def loadtxt(self, fname, dtype=float, comments='# ', delimiter=',',
+    def loadtxt(self, fname, dtype=float, comments='# ', delimiter=' ',
                 converters=None, skiprows=0, usecols=None, unpack=False,
-                ndmin=0, encoding='bytes', max_rows=None, num_cpus=4) -> BlockArray:
+                ndmin=0, encoding='bytes', max_rows=None, num_workers=4) -> BlockArray:
         # pylint: disable=unused-variable
         bytes_per_char, bytes_per_row, bytes_per_col, num_cols = storage_utils.get_np_txt_info(
             fname, comments, delimiter
@@ -377,7 +377,7 @@ class FileSystem(object):
         if max_rows is not None:
             num_rows_final = (num_rows_final, max_rows)
         row_batches: storage_utils.Batch = storage_utils.Batch.from_num_batches(num_rows_final,
-                                                                                num_cpus)
+                                                                                num_workers)
         grid = ArrayGrid(shape=(num_rows_final, num_cols),
                          block_shape=(row_batches.batch_size, num_cols),
                          dtype=np.float64.__name__ if dtype is float else dtype.__name__)

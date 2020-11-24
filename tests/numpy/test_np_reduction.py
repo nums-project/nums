@@ -87,8 +87,8 @@ def test_argops(nps_app_inst):
 
 if __name__ == "__main__":
     from nums.core import application_manager
-    nps_app_inst = application_manager.instance()
     import nums.core.settings
     nums.core.settings.system_name = "serial"
+    nps_app_inst = application_manager.instance()
     test_reductions(nps_app_inst)
     test_argops(nps_app_inst)

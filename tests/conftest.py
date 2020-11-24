@@ -34,16 +34,27 @@ def app_inst(request):
     ray.shutdown()
 
 
-@pytest.fixture(scope="module", params=["ray-cyclic"])
+@pytest.fixture(scope="module", params=["serial", "ray-cyclic"])
 def nps_app_inst(request):
-    assert request is not None
     # This triggers initialization; it's not to be mixed with the app_inst fixture.
-    # pylint: disable = protected-access, import-outside-toplevel
+    # pylint: disable = import-outside-toplevel
+    from nums.core import settings
     from nums.core import application_manager
+    settings.system_name = request.param
     yield application_manager.instance()
-    application_manager._instance.system.shutdown()
-    ray.shutdown()
-    application_manager._instance = None
+    application_manager.destroy()
+
+
+@pytest.fixture(scope="module", params=["serial"])
+def serial_nps_app_inst(request):
+    # pylint: disable = import-outside-toplevel
+    from nums.core import settings
+    from nums.core import application_manager
+    assert request.param == "serial"
+    assert not application_manager.is_initialized()
+    settings.system_name = request.param
+    yield application_manager.instance()
+    application_manager.destroy()
 
 
 def get_app(mode):

@@ -21,3 +21,10 @@ __all__ = [
     "numpy",
     "read", "write", "delete", "read_csv"
 ]
+
+
+def init():
+    # pylint: disable = import-outside-toplevel
+    # Explicitly initialize application instance.
+    from nums.core.application_manager import instance
+    return instance()
