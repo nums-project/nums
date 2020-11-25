@@ -37,6 +37,9 @@ def app_inst(request):
 @pytest.fixture(scope="module", params=["serial", "ray-cyclic"])
 def nps_app_inst(request):
     # This triggers initialization; it's not to be mixed with the app_inst fixture.
+    # Observed (core dumped) after updating this fixture to run functions with "serial" backend.
+    # Last time this happened, it was due poor control over the
+    # scope and duration of ray resources.
     # pylint: disable = import-outside-toplevel
     from nums.core import settings
     from nums.core import application_manager
