@@ -20,7 +20,7 @@ import numpy as np
 from nums.numpy import BlockArray
 
 
-# pylint: disable=import-outside-toplevel, accessed-protected
+# pylint: disable=import-outside-toplevel
 
 
 def test_explicit_init():

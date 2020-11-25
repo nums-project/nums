@@ -19,7 +19,6 @@ import numpy as np
 from numpy.random import PCG64
 from numpy.random import Generator
 import scipy.linalg
-from scipy.linalg import lapack
 import scipy.special
 
 from nums.core.storage.storage import ArrayGrid

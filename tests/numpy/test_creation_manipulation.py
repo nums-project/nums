@@ -17,7 +17,6 @@
 import numpy as np
 
 from nums.numpy import BlockArray
-from nums.core.storage.storage import ArrayGrid
 
 
 # pylint: disable = import-outside-toplevel, no-member

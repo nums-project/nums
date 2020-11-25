@@ -24,7 +24,7 @@ from nums.core.array.application import ArrayApplication
 from nums.models.glms import LogisticRegression, LinearRegression, PoissonRegression
 
 
-# pylint: disable = protected-access, import-outside-toplevel
+# pylint: disable = protected-access, import-outside-toplevel, import-error
 
 
 def test_logistic(nps_app_inst: ArrayApplication):
