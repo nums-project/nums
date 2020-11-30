@@ -179,38 +179,9 @@ class BlockArray(BlockArrayBase):
         for idx, j in np.ndenumerate(rarr_src):
             rarr_tgt[idx] = j.copy()
 
-        print(self)
-        print(rarr_swap)
-        print('---')
-        for grid_entry in rarr_swap.grid.get_entry_iterator():
-            print(rarr_swap.blocks[grid_entry].get().shape, id(rarr_swap.blocks[grid_entry]))
-        print('---')
-        for grid_entry in self.grid.get_entry_iterator():
-            print(self.blocks[grid_entry].get().shape, id(self.blocks[grid_entry]))
-        print('---')
-        print(self.block_shape)
-        print(self.shape)
         for grid_entry in rarr_swap.grid.get_entry_iterator():
             rarr_swap.blocks[grid_entry].swapaxes(axis1, axis2)
-            print('%%')
-            for grid_entry in self.grid.get_entry_iterator():
-                print(self.blocks[grid_entry].get().shape, self.blocks[grid_entry].oid)
-            print('%%')
-            for grid_entry in rarr_swap.grid.get_entry_iterator():
-                print(rarr_swap.blocks[grid_entry].get().shape, rarr_swap.blocks[grid_entry].oid)
-            print('&&&&')
-        print('---')
-        for grid_entry in self.grid.get_entry_iterator():
-            print(self.blocks[grid_entry].get().shape)
-        print('---')
         
-
-        print(self.shape)
-        print(self.block_shape)
-        print(rarr_swap.shape)
-        print(rarr_swap.block_shape)
-        print(self.get())
-
         return rarr_swap
 
 
