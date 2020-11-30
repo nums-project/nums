@@ -48,18 +48,6 @@ def nps_app_inst(request):
     application_manager.destroy()
 
 
-@pytest.fixture(scope="module", params=["serial"])
-def serial_nps_app_inst(request):
-    # pylint: disable = import-outside-toplevel
-    from nums.core import settings
-    from nums.core import application_manager
-    assert request.param == "serial"
-    assert not application_manager.is_initialized()
-    settings.system_name = request.param
-    yield application_manager.instance()
-    application_manager.destroy()
-
-
 def get_app(mode):
     if mode == "serial":
         system: System = SerialSystem(compute_module=numpy_compute)

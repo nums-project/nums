@@ -35,7 +35,7 @@ We are working on providing support for conda installations, but in the meantime
 run the following with your conda environment activated. 
 
 ```shell script
-pip install --upgrade nums
+pip install nums
 # Run below to have NumPy use MKL.
 conda install -fy mkl
 conda install -fy numpy scipy
@@ -82,3 +82,5 @@ are difficult to support, follow the convention we use to raise errors for unsup
 arguments in functions like `nums.numpy.api.min`.
 7. If you run into any issues and need help with your implementation, open an issue describing
 the issue you're experiencing.
+
+We encourage you to follow the `nums.numpy.api.arange` implementation as a reference.
