@@ -84,6 +84,25 @@ class Block(object):
         blockT.oid = self.oid
         return blockT
 
+    def swapaxes(self, axis1, axis2):
+        grid_entry = list(self.grid_entry)
+        grid_shape = list(self.grid_shape)
+        shape = list(self.shape)
+        rect = self.rect
+
+        grid_entry[axis1], grid_entry[axis2] = grid_entry[axis2], grid_entry[axis1]
+        grid_shape[axis1], grid_shape[axis2] = grid_shape[axis2], grid_shape[axis1]
+        shape[axis1], shape[axis2] = shape[axis2], shape[axis1]
+        rect[axis1], rect[axis2] = rect[axis2], rect[axis1]
+
+        self.grid_entry = tuple(grid_entry)
+        self.grid_shape = tuple(grid_shape)
+        self.shape = tuple(shape)
+        self.rect = rect
+
+        block = self.get().swapaxes(axis1, axis2)
+        self.oid = self._system.put(block)
+
     def ufunc(self, op_name, options=None):
         return self.uop_map(op_name, options=options)
 

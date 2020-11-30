@@ -160,6 +160,60 @@ class BlockArray(BlockArrayBase):
             new_block_shape.append(b)
         return self.reshape(new_shape, new_block_shape)
 
+    def swapaxes(self, axis1, axis2):
+        meta_swap = self.grid.to_meta()
+        shape = list(meta_swap["shape"])
+        block_shape = list(meta_swap["block_shape"])
+        dim = len(shape)
+        if axis1 >= dim or axis2 >= dim:
+            raise ValueError("axis is larger than the array dimension")
+        #swap_index = [axis2 if i == axis1 else axis1 if i == axis2 else i for i in range(dim)] 
+        shape[axis1], shape[axis2] = shape[axis2], shape[axis1]
+        block_shape[axis1], block_shape[axis2] = block_shape[axis2], block_shape[axis1]
+        meta_swap["shape"] = tuple(shape)
+        meta_swap["block_shape"] = tuple(block_shape)
+        grid_swap = ArrayGrid.from_meta(meta_swap)
+        rarr_swap = BlockArray(grid_swap, self.system)
+        rarr_src = self.blocks.swapaxes(axis1, axis2).reshape(-1)
+        rarr_tgt = rarr_swap.blocks.reshape(-1)
+        for idx, j in np.ndenumerate(rarr_src):
+            rarr_tgt[idx] = j.copy()
+
+        print(self)
+        print(rarr_swap)
+        print('---')
+        for grid_entry in rarr_swap.grid.get_entry_iterator():
+            print(rarr_swap.blocks[grid_entry].get().shape, id(rarr_swap.blocks[grid_entry]))
+        print('---')
+        for grid_entry in self.grid.get_entry_iterator():
+            print(self.blocks[grid_entry].get().shape, id(self.blocks[grid_entry]))
+        print('---')
+        print(self.block_shape)
+        print(self.shape)
+        for grid_entry in rarr_swap.grid.get_entry_iterator():
+            rarr_swap.blocks[grid_entry].swapaxes(axis1, axis2)
+            print('%%')
+            for grid_entry in self.grid.get_entry_iterator():
+                print(self.blocks[grid_entry].get().shape, self.blocks[grid_entry].oid)
+            print('%%')
+            for grid_entry in rarr_swap.grid.get_entry_iterator():
+                print(rarr_swap.blocks[grid_entry].get().shape, rarr_swap.blocks[grid_entry].oid)
+            print('&&&&')
+        print('---')
+        for grid_entry in self.grid.get_entry_iterator():
+            print(self.blocks[grid_entry].get().shape)
+        print('---')
+        
+
+        print(self.shape)
+        print(self.block_shape)
+        print(rarr_swap.shape)
+        print(rarr_swap.block_shape)
+        print(self.get())
+
+        return rarr_swap
+
+
     def __getattr__(self, item):
         if item == "__array_priority__" or item == "__array_struct__":
             # This is triggered by a numpy array on the LHS.
