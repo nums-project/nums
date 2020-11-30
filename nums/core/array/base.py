@@ -100,8 +100,11 @@ class Block(object):
         self.shape = tuple(shape)
         self.rect = rect
 
-        block = self.get().swapaxes(axis1, axis2)
-        self.oid = self._system.put(block)
+        self.oid = self._system.swapaxes(self.oid, axis1, axis2,
+                                         syskwargs={
+                                             "grid_entry": self.grid_entry,
+                                             "grid_shape": self.grid_shape
+                                         })
 
     def ufunc(self, op_name, options=None):
         return self.uop_map(op_name, options=options)

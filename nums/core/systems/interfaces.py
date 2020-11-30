@@ -103,6 +103,9 @@ class ComputeInterface(object):
     def transpose(self, arr, syskwargs: Dict):
         raise NotImplementedError()
 
+    def swapaxes(self, arr, axis1, axis2, syskwargs: Dict):
+        raise NotImplementedError()
+
     def create_block(self, *src_arrs, src_params, dst_params, dst_shape, dst_shape_bc,
                      syskwargs: Dict):
         raise NotImplementedError()
