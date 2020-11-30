@@ -167,7 +167,6 @@ class BlockArray(BlockArrayBase):
         dim = len(shape)
         if axis1 >= dim or axis2 >= dim:
             raise ValueError("axis is larger than the array dimension")
-        #swap_index = [axis2 if i == axis1 else axis1 if i == axis2 else i for i in range(dim)] 
         shape[axis1], shape[axis2] = shape[axis2], shape[axis1]
         block_shape[axis1], block_shape[axis2] = block_shape[axis2], block_shape[axis1]
         meta_swap["shape"] = tuple(shape)
