@@ -394,4 +394,3 @@ class BlockArrayBase(object):
             broadcast = it.itviews[0]
         result.blocks = broadcast
         return result
-

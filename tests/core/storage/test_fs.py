@@ -22,6 +22,7 @@ import pytest
 
 from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray
+from nums.core import settings
 
 
 def test_loadtxt(app_inst: ArrayApplication):
@@ -105,7 +106,6 @@ def test_read_csv(app_inst: ArrayApplication):
 
 @pytest.mark.skip
 def test_higgs(app_inst: ArrayApplication):
-    from nums.core import settings
     filename = os.path.join(settings.data_dir, "HIGGS.csv")
     t = time.time()
     ba: BlockArray = app_inst.read_csv(filename, num_workers=12)

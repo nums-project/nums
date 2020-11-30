@@ -14,11 +14,11 @@
 # limitations under the License.
 
 
+import numpy as np
+
 from nums.core.array.application import ArrayApplication
 from nums.core.systems import utils as systems_utils
-from nums.core.systems.systems import RaySystem
-from nums.core.systems.schedulers import BlockCyclicScheduler
-import numpy as np
+from nums.core.systems.systems import RaySystem, SerialSystem
 
 
 def ufunc_kwargs(kwargs):
@@ -39,7 +39,7 @@ def ufunc_op_signatures():
             continue
         try:
             sig: str = func.__doc__.split("\n")[0].strip()
-            op_name, args = sig.split("(")
+            _, args = sig.split("(")
             args = args.split(")")[0]
             has_subok = "subok" in args
             if has_subok:
@@ -57,7 +57,7 @@ def ufunc_op_signatures():
             else:
                 pass
                 # print(name, op_name, args)
-        except Exception as e:
+        except Exception as _:
             pass
             # print("FAILED", name)
     return uops, bops
@@ -69,6 +69,5 @@ def get_num_cores(app: ArrayApplication):
         nodes = system.nodes()
         return sum(map(lambda n: n["Resources"]["CPU"], nodes))
     else:
-        raise NotImplementedError("NumPy API currently supports Ray only.")
-
-
+        assert isinstance(app.system, SerialSystem)
+        return systems_utils.get_num_cores()

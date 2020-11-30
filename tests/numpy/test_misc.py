@@ -13,14 +13,57 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 
 import numpy as np
 
 from nums.numpy import BlockArray
 
 
+# pylint: disable=import-outside-toplevel
+
+
+def test_explicit_init():
+    import nums
+    import nums.core.application_manager as am
+
+    nums.init()
+    assert am.is_initialized()
+    am.destroy()
+
+
+def test_array_copy(nps_app_inst):
+    import nums.numpy as nps
+    assert nps_app_inst is not None
+
+    ba = nps.arange(10)
+    ba2 = nps.array(ba, copy=True)
+    assert ba is not ba2
+
+
+def test_loadtxt(nps_app_inst):
+    import nums.numpy as nps
+    assert nps_app_inst is not None
+
+    seed = 1337
+    rs = np.random.RandomState(seed)
+
+    fname = "test_text.out"
+    data = rs.random_sample(99).reshape(33, 3)
+
+    np.savetxt(fname=fname, X=data)
+    da: BlockArray = nps.loadtxt(fname)
+    assert np.allclose(da.get(), data)
+
+    os.remove(fname)
+    assert not os.path.exists(fname)
+
+
 def test_where(nps_app_inst):
     import nums.numpy as nps
+
+    assert nps_app_inst is not None
+
     shapes = [
         (),
         (10**6,),
@@ -44,9 +87,19 @@ def test_where(nps_app_inst):
             assert np.allclose(np_results[i], results[i].get())
 
 
+def test_reshape(nps_app_inst):
+    import nums.numpy as nps
+    assert nps_app_inst is not None
+    ba = nps.arange(2*3*4).reshape((2, 3, 4), (2, 3, 4))
+    assert nps.allclose(ba.reshape(shape=(6, 4), block_shape=(6, 4)),
+                        nps.reshape(ba, shape=(6, 4)))
+
+
 if __name__ == "__main__":
     from nums.core import application_manager
     from nums.core import settings
     settings.system_name = "serial"
     nps_app_inst = application_manager.instance()
     test_where(nps_app_inst)
+    # test_loadtxt(nps_app_inst)
+    test_reshape(nps_app_inst)

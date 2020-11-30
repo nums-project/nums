@@ -19,6 +19,9 @@ import numpy as np
 from nums.numpy import BlockArray
 
 
+# pylint: disable=import-outside-toplevel, protected-access
+
+
 def test_basic(nps_app_inst):
     import nums.numpy as nps
     app = nps_app_inst
@@ -42,6 +45,9 @@ def test_basic(nps_app_inst):
 
 def test_shuffle(nps_app_inst):
     import nums.numpy as nps
+
+    assert nps_app_inst is not None
+
     shape = (12, 34, 56)
     block_shape = (2, 5, 7)
     arr: BlockArray = nps.arange(np.product(shape)).reshape(shape=shape, block_shape=block_shape)
@@ -66,6 +72,9 @@ def test_shuffle(nps_app_inst):
 
 def test_shuffle_subscript_ops(nps_app_inst):
     import nums.numpy as nps
+
+    assert nps_app_inst is not None
+
     shape = (123, 45)
     block_shape = (10, 20)
     arr: BlockArray = nps.arange(np.product(shape)).reshape(shape=shape, block_shape=block_shape)
@@ -78,8 +87,30 @@ def test_shuffle_subscript_ops(nps_app_inst):
     assert np.all(np_arr_shuffle == arr_shuffle.get())
 
 
+def test_blockarray_perm(nps_app_inst):
+    import nums.numpy as nps
+
+    assert nps_app_inst is not None
+
+    shape = (12, 34)
+    block_shape = (5, 10)
+    arr: BlockArray = nps.arange(np.product(shape)).reshape(shape=shape, block_shape=block_shape)
+    np_arr = arr.get()
+    rs = nps.random.RandomState(1337)
+    np_arr_shuffle: BlockArray = rs.permutation(arr).get()
+    for i in range(shape[0]):
+        num_found = 0
+        for j in range(shape[0]):
+            if np.allclose(np_arr[i], np_arr_shuffle[j]):
+                num_found += 1
+        assert num_found == 1
+
+
 def test_default_random(nps_app_inst):
     import nums.numpy as nps
+
+    assert nps_app_inst is not None
+
     num1 = nps.random.random_sample()
     num2 = nps.random.random_sample()
     assert not nps.allclose(num1, num2)
@@ -100,3 +131,4 @@ if __name__ == "__main__":
     test_shuffle(nps_app_inst)
     test_shuffle_subscript_ops(nps_app_inst)
     test_default_random(nps_app_inst)
+    test_blockarray_perm(nps_app_inst)

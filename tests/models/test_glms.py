@@ -18,15 +18,13 @@ import time
 
 import pytest
 import numpy as np
-import scipy.linalg
-from scipy.linalg import lapack
 
 from nums.core.storage.storage import BimodalGaussian
 from nums.core.array.application import ArrayApplication
 from nums.models.glms import LogisticRegression, LinearRegression, PoissonRegression
 
 
-# pylint: disable=protected-access
+# pylint: disable = protected-access, import-outside-toplevel, import-error
 
 
 def test_logistic(nps_app_inst: ArrayApplication):
@@ -185,7 +183,8 @@ def test_poisson(nps_app_inst: ArrayApplication):
 @pytest.mark.skip
 def test_sklearn_linear_regression(nps_app_inst: ArrayApplication):
     from sklearn.linear_model import LinearRegression as SKLinearRegression
-    num_samples, num_features = 1000, 10
+
+    _, num_features = 1000, 10
     rs = np.random.RandomState(1337)
     real_theta = rs.random_sample(num_features)
     real_X, real_y = BimodalGaussian.get_dataset(233, num_features, theta=real_theta)

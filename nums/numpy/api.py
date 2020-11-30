@@ -16,12 +16,15 @@
 
 import warnings
 
-from nums.core.application_manager import instance as _instance
-from nums.core.array.blockarray import BlockArray
-from nums.core.storage.storage import ArrayGrid
 import numpy as np
 import scipy.stats
-from nums.numpy import numpy_utils as numpy_utils
+
+from nums.core.application_manager import instance as _instance
+from nums.core.array.blockarray import BlockArray
+from nums.numpy import numpy_utils
+
+
+# pylint: disable = redefined-builtin, too-many-lines
 
 
 def _not_implemented(fun):
@@ -76,7 +79,7 @@ complex128 = np.complex128
 ############################################
 
 
-def loadtxt(fname, dtype=float, comments='# ', delimiter=',',
+def loadtxt(fname, dtype=float, comments='# ', delimiter=' ',
             converters=None, skiprows=0, usecols=None, unpack=False,
             ndmin=0, encoding='bytes', max_rows=None) -> BlockArray:
     app = _instance()
@@ -86,7 +89,7 @@ def loadtxt(fname, dtype=float, comments='# ', delimiter=',',
             fname, dtype=dtype, comments=comments, delimiter=delimiter,
             converters=converters, skiprows=skiprows,
             usecols=usecols, unpack=unpack, ndmin=ndmin,
-            encoding=encoding, max_rows=max_rows, num_cpus=num_rows)
+            encoding=encoding, max_rows=max_rows, num_workers=num_rows)
         shape = ba.shape
         block_shape = app.compute_block_shape(shape, dtype)
         return ba.reshape(block_shape=block_shape)
@@ -296,6 +299,44 @@ def squeeze(x: BlockArray):
 
 def swapaxes(x: BlockArray, axis1: int, axis2: int):
     return x.swapaxes(axis1, axis2)
+
+
+############################################
+# Matrix Ops
+############################################
+
+
+def tensordot(x1: BlockArray, x2: BlockArray, axes=2) -> BlockArray:
+    return _instance().tensordot(arr_1=x1,
+                                 arr_2=x2,
+                                 axes=axes)
+
+
+def matmul(x1: BlockArray, x2: BlockArray) -> BlockArray:
+    return _instance().matmul(arr_1=x1,
+                              arr_2=x2)
+
+
+############################################
+# Shape Ops
+############################################
+
+
+def ndim(x: BlockArray):
+    return x.ndim
+
+
+def reshape(x: BlockArray, shape):
+    block_shape = _instance().compute_block_shape(shape, x.dtype)
+    return x.reshape(shape, block_shape)
+
+
+def expand_dims(x: BlockArray, axis):
+    return x.expand_dims(axis)
+
+
+def squeeze(x: BlockArray):
+    return x.squeeze()
 
 
 ############################################

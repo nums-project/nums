@@ -6,14 +6,14 @@ from nums.core.application_manager import instance as _instance
 
 
 def from_modin(df):
+    # pylint: disable = import-outside-toplevel, protected-access, unidiomatic-typecheck
     try:
-        import modin
         from modin.pandas.dataframe import DataFrame
-        from modin.backends.pandas.query_compiler import PandasQueryCompiler
         from modin.engines.ray.pandas_on_ray.frame.data import PandasOnRayFrame
         from modin.engines.ray.pandas_on_ray.frame.partition import PandasOnRayFramePartition
     except Exception as e:
-        raise Exception("Unable to import modin. Install modin with command 'pip install modin'")
+        raise Exception("Unable to import modin. Install modin with command 'pip install modin'") \
+            from e
 
     assert isinstance(df, DataFrame), "Unexpected dataframe type %s" % str(type(df))
     assert isinstance(df._query_compiler._modin_frame, PandasOnRayFrame), \

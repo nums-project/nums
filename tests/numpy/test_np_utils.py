@@ -18,10 +18,11 @@ import itertools
 
 import numpy as np
 
-from nums.numpy import BlockArray
 from nums.core.storage.storage import ArrayGrid
 from nums.core.systems import utils as systems_utils
-from nums.numpy import numpy_utils
+
+
+# pylint: disable=import-outside-toplevel
 
 
 def _inspect_block_shape(nps_app_inst):
@@ -89,7 +90,7 @@ def test_block_shape(nps_app_inst):
     grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype.__name__)
     assert grid.grid_shape == (int(num_cores**.5), int(num_cores**.5))
 
-    shape = (10**4, 10**4//dtype().nbytes)
+    shape = (10**4, 10**4//dtype(0).nbytes)
     block_shape = app.compute_block_shape(shape=shape,
                                           dtype=dtype,
                                           cluster_shape=cluster_shape,
@@ -97,7 +98,7 @@ def test_block_shape(nps_app_inst):
     grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype.__name__)
     assert grid.grid_shape != (1, 1)
 
-    shape = (10**4, 10**4//dtype().nbytes-1)
+    shape = (10**4, 10**4//dtype(0).nbytes-1)
     block_shape = app.compute_block_shape(shape=shape,
                                           dtype=dtype,
                                           cluster_shape=cluster_shape,

@@ -15,12 +15,10 @@
 
 
 import random
-import secrets
 import numpy as np
 from numpy.random import PCG64
 from numpy.random import Generator
 import scipy.linalg
-from scipy.linalg import lapack
 import scipy.special
 
 from nums.core.storage.storage import ArrayGrid
@@ -258,36 +256,10 @@ class ComputeCls(ComputeImp):
     def inv(self, arr):
         return np.linalg.inv(arr)
 
-    def inv_sym_psd(self, arr: np.ndarray):
-        if arr.dtype == np.float32:
-            lapack_func = lapack.strtri
-        elif arr.dtype == np.float64:
-            lapack_func = lapack.dtrtri
-        else:
-            raise ValueError("Unsupported dtype %s" % str(arr.dtype))
-        L_inv, info = lapack_func(scipy.linalg.cholesky(np.asfortranarray(arr),
-                                                        lower=True,
-                                                        overwrite_a=True,
-                                                        check_finite=False),
-                                  lower=1,
-                                  unitdiag=0,
-                                  overwrite_c=1)
-        return L_inv.T @ L_inv
-
     # Boolean
 
     def allclose(self, a: np.ndarray, b: np.ndarray, rtol, atol):
         return np.allclose(a, b, rtol, atol)
-
-    # Lapack
-
-    def lapack_dtrtri(self, arr, lower=0, unitdiag=0, overwrite_c=0):
-        inv, info = lapack.dtrtri(arr, lower, unitdiag, overwrite_c)
-        return inv
-
-    def lapack_strtri(self, arr, lower=0, unitdiag=0, overwrite_c=0):
-        inv, info = lapack.strtri(arr, lower, unitdiag, overwrite_c)
-        return inv
 
     # Logic
 

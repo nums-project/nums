@@ -22,11 +22,17 @@ from nums.core.systems.schedulers import RayScheduler, TaskScheduler, BlockCycli
 from nums.core.array.application import ArrayApplication
 
 
+# pylint: disable=global-statement
+
+
 _instance: ArrayApplication = None
 
 
+def is_initialized():
+    return _instance is not None
+
+
 def instance():
-    # pylint: disable=global-statement
     # Lazy-initialize to initialize on use instead of initializing on import.
     global _instance
     if _instance is None:
@@ -35,7 +41,6 @@ def instance():
 
 
 def create():
-    # pylint: disable=global-statement
     global _instance
 
     if _instance is not None:
@@ -65,3 +70,13 @@ def create():
         raise Exception()
     system.init()
     return ArrayApplication(system=system, filesystem=FileSystem(system))
+
+
+def destroy():
+    global _instance
+    if _instance is None:
+        return
+    # This will shutdown ray if ray was started by NumS.
+    _instance.system.shutdown()
+    del _instance
+    _instance = None

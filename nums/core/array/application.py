@@ -17,17 +17,19 @@
 from typing import List
 
 import numpy as np
-import scipy.special
 
 from nums.core.array.blockarray import BlockArray, Block
 from nums.core.array import utils as array_utils
 from nums.core.storage.storage import ArrayGrid, StoredArray, StoredArrayS3
 # TODO(hme): Remove dependence on specific system and scheduler implementations.
-from nums.core.systems.systems import System, RaySystem
+from nums.core.systems.systems import System, RaySystem, SerialSystem
 from nums.core.systems.schedulers import BlockCyclicScheduler
 from nums.core.systems import utils as systems_utils
 from nums.core.systems.filesystem import FileSystem
 from nums.core.array.random import NumsRandomState
+
+
+# pylint: disable = too-many-lines
 
 
 class ArrayApplication(object):
@@ -50,7 +52,7 @@ class ArrayApplication(object):
             nodes = system.nodes()
             num_cores = sum(map(lambda n: n["Resources"]["CPU"], nodes))
         else:
-            # raise NotImplementedError("NumPy API currently supports Ray only.")
+            assert isinstance(self.system, SerialSystem)
             num_cores = systems_utils.get_num_cores()
         return int(num_cores)
 
@@ -89,9 +91,8 @@ class ArrayApplication(object):
             # This configuration is the default.
             cluster_shape = self.system.scheduler.cluster_shape
         else:
+            assert isinstance(self.system, SerialSystem)
             cluster_shape = (1, 1)
-            # raise NotImplementedError("NumPy API currently supports block cyclic scheduling "
-            #                           "with Ray only.")
 
         if len(shape) < len(cluster_shape):
             cluster_shape = cluster_shape[:len(shape)]
@@ -260,7 +261,8 @@ class ArrayApplication(object):
     def read_csv(self, filename, dtype=np.float, delimiter=',', has_header=False, num_workers=None):
         if num_workers is None:
             num_workers = self.num_cores_total()
-        arrays: list = self._filesystem.read_csv(filename, dtype, delimiter, has_header, num_workers)
+        arrays: list = self._filesystem.read_csv(filename, dtype, delimiter, has_header,
+                                                 num_workers)
         shape = np.zeros(len(arrays[0].shape), dtype=int)
         for array in arrays:
             shape += np.array(array.shape, dtype=int)
@@ -273,7 +275,7 @@ class ArrayApplication(object):
             result = result.reshape(block_shape=block_shape)
         return result
 
-    def loadtxt(self, fname, dtype=float, comments='# ', delimiter=',',
+    def loadtxt(self, fname, dtype=float, comments='# ', delimiter=' ',
                 converters=None, skiprows=0, usecols=None, unpack=False,
                 ndmin=0, encoding='bytes', max_rows=None, num_workers=None) -> BlockArray:
         if num_workers is None:
@@ -282,7 +284,7 @@ class ArrayApplication(object):
             fname, dtype=dtype, comments=comments, delimiter=delimiter,
             converters=converters, skiprows=skiprows,
             usecols=usecols, unpack=unpack, ndmin=ndmin,
-            encoding=encoding, max_rows=max_rows, num_cpus=num_workers)
+            encoding=encoding, max_rows=max_rows, num_workers=num_workers)
 
     ######################################
     # Array Operations API
@@ -443,7 +445,7 @@ class ArrayApplication(object):
         # Generate ranges per block.
         grid = ArrayGrid(shape, block_shape, dtype.__name__)
         rarr = BlockArray(grid, self.system)
-        for block_index, grid_entry in enumerate(grid.get_entry_iterator()):
+        for _, grid_entry in enumerate(grid.get_entry_iterator()):
             syskwargs = {"grid_entry": grid_entry, "grid_shape": grid.grid_shape}
             start = block_shape[0] * grid_entry[0]
             entry_shape = grid.get_block_shape(grid_entry)
@@ -539,7 +541,7 @@ class ArrayApplication(object):
                                                   block_slice,
                                                   *reduction_result,
                                                   syskwargs=syskwargs)
-        argoptima, optima = reduction_result
+        argoptima, _ = reduction_result
         result.blocks[()].oid = argoptima
         return result
 
@@ -697,7 +699,7 @@ class ArrayApplication(object):
                 rarr = BlockArray.from_blocks(result_blocks,
                                               result_shape=None,
                                               system=self.system)
-        except Exception as e:
+        except Exception as _:
             rarr = self._broadcast_bop(op_name, arr_1, arr_2)
         if out is not None:
             assert out.grid.grid_shape == rarr.grid.grid_shape
@@ -948,21 +950,6 @@ class ArrayApplication(object):
 
         return U, S, VT
 
-    def inverse_triangular(self, X: BlockArray, lower: bool):
-        # TODO (hme): Implement scalable version.
-        assert X.dtype in (np.float32, np.float64)
-        if X.dtype == np.float64:
-            lapack_func = self.system.lapack_dtrtri
-        elif X.dtype == np.float32:
-            lapack_func = self.system.lapack_strtri
-        else:
-            raise ValueError("Unsupported data type %s" % str(X.dtype))
-        return self._inv(lapack_func, {
-            "lower": int(lower),
-            "unitdiag": 0,
-            "overwrite_c": 0
-        }, X)
-
     def inv(self, X: BlockArray):
         return self._inv(self.system.inv, {}, X)
 
@@ -1010,25 +997,6 @@ class ArrayApplication(object):
             result = result.reshape(block_shape=block_shape)
         return result
 
-    def inv_sym_psd(self, X: BlockArray):
-        # Assumes X is symmetric PSD.
-        # TODO (hme): Implement scalable version.
-        assert len(X.shape) == 2
-        assert X.shape[0] == X.shape[1]
-        single_block = X.shape[0] == X.block_shape[0] and X.shape[1] == X.block_shape[1]
-        if single_block:
-            result = X.copy()
-        else:
-            result = X.reshape(block_shape=X.shape)
-        result.blocks[0, 0].oid = self.system.inv_sym_psd(result.blocks[0, 0].oid,
-                                                          syskwargs={
-                                                               "grid_entry": (0, 0),
-                                                               "grid_shape": (1, 1)
-                                                           })
-        if not single_block:
-            result = result.reshape(block_shape=X.block_shape)
-        return result
-
     def fast_linear_regression(self, X: BlockArray, y: BlockArray):
         assert len(X.shape) == 2
         assert len(y.shape) == 1
@@ -1070,8 +1038,6 @@ class ArrayApplication(object):
         lamb_vec = self.array(lamb*np.eye(R_shape[0]), block_shape=R_block_shape)
         # TODO (hme): A better solution exists, which inverts R by augmenting X and y.
         #  See Murphy 7.5.2.
-        # (lamb_vec + R.T @ R) happens to be symmetric PSD since A.T @ A (= R.T @ R) is PSD
-        # and lamb_vec is positive diag.
         theta = self.inv(lamb_vec + R.T @ R) @ (X.T @ y)
         return theta
 

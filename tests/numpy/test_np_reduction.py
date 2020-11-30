@@ -16,15 +16,18 @@
 
 import itertools
 
-import pytest
 import numpy as np
 
-from nums.core.storage.storage import ArrayGrid
+
+# pylint: disable=import-outside-toplevel, no-member
 
 
 def test_reductions(nps_app_inst):
     from nums import numpy as nps
     from nums.numpy import BlockArray
+
+    assert nps_app_inst is not None
+
     ba: BlockArray = nps.array([[5, -2, 4, 8],
                                 [3, 6, 1, 7]])
     block_shapes = [(1, 1),
@@ -57,6 +60,9 @@ def test_reductions(nps_app_inst):
 def test_argops(nps_app_inst):
     from nums import numpy as nps
     from nums.numpy import BlockArray
+
+    assert nps_app_inst is not None
+
     bas = [nps.array([5, -2, 4, 8]),
            nps.array([1, 2, 3, 4]),
            nps.array([3, 2, 1, 0]),
@@ -81,8 +87,8 @@ def test_argops(nps_app_inst):
 
 if __name__ == "__main__":
     from nums.core import application_manager
-    nps_app_inst = application_manager.instance()
     import nums.core.settings
     nums.core.settings.system_name = "serial"
+    nps_app_inst = application_manager.instance()
     test_reductions(nps_app_inst)
     test_argops(nps_app_inst)

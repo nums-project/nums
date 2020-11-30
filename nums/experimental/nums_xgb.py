@@ -1,8 +1,7 @@
-import os
 import uuid
 import time
 from threading import Thread
-from typing import Dict, Any, Optional
+from typing import Dict
 
 import numpy as np
 import xgboost as xgb
@@ -81,7 +80,9 @@ def xgb_predict_remote(result, X):
 
 
 class NumsDMatrix(xgb.DMatrix):
+
     def __init__(self, X, y):
+        super().__init__(None)
         self.X: BlockArray = X
         self.y: BlockArray = y
 

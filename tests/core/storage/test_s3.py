@@ -23,10 +23,13 @@ from nums.core.array.blockarray import BlockArray
 from nums.core.storage.storage import StoredArrayS3, ArrayGrid
 
 
+# pylint: disable = import-outside-toplevel, import-error
+
+
 @mock_s3
 def test_rwd():
     from tests import conftest
-    app_inst = conftest.get_app("serial")
+    app_inst: ArrayApplication = conftest.get_app("serial")
 
     conn = boto3.resource('s3', region_name='us-east-1')
     assert conn.Bucket('darrays') not in conn.buckets.all()

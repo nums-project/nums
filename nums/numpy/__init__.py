@@ -14,8 +14,11 @@
 # limitations under the License.
 
 
+# pylint: disable = redefined-builtin
+
+
 from nums.core.array.blockarray import BlockArray
-from nums.numpy import random as random
+from nums.numpy import random
 from nums.numpy import linalg
 from nums.numpy.api import _not_implemented
 from nums.numpy.api import *

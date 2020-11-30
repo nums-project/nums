@@ -17,20 +17,36 @@
 import numpy as np
 
 from nums.numpy import BlockArray
-from nums.core.storage.storage import ArrayGrid
+
+
+# pylint: disable = import-outside-toplevel, no-member
 
 
 def test_basic_creation(nps_app_inst):
     import nums.numpy as nps
+
+    assert nps_app_inst is not None
+
     ops = "empty", "zeros", "ones"
+    shape = (2, 3, 4)
     for op in ops:
-        ba: BlockArray = nps.__getattribute__(op)(shape=(100, 200, 3000))
-        grid: ArrayGrid = ba.grid
-        assert grid.grid_shape[0] <= grid.grid_shape[1] < grid.grid_shape[2]
+        ba: BlockArray = nps.__getattribute__(op)(shape=shape)
+        if "zeros" in op:
+            assert nps.allclose(nps.zeros(shape), ba)
+        if "ones" in op:
+            assert nps.allclose(nps.ones(shape), ba)
+
+        ba2: BlockArray = nps.__getattribute__(op + "_like")(ba)
+        assert ba.shape == ba2.shape
+        assert ba.dtype == ba2.dtype
+        assert ba.block_shape == ba2.block_shape
 
 
 def test_eye(nps_app_inst):
     import nums.numpy as nps
+
+    assert nps_app_inst is not None
+
     eyes = [
         (10, 10),
         (7, 10),
@@ -48,6 +64,9 @@ def test_eye(nps_app_inst):
 
 def test_diag(nps_app_inst):
     import nums.numpy as nps
+
+    assert nps_app_inst is not None
+
     ba: BlockArray = nps.array([1.0, 2.0, 3.0])
     np_arr = ba.get()
     # Make a diag matrix.
@@ -62,6 +81,9 @@ def test_diag(nps_app_inst):
 
 def test_arange(nps_app_inst):
     import nums.numpy as nps
+
+    assert nps_app_inst is not None
+
     ba: BlockArray = nps.arange(5)
     np_arr = np.arange(5)
     assert np.allclose(ba.get(), np_arr)
@@ -69,6 +91,9 @@ def test_arange(nps_app_inst):
 
 def test_concatenate(nps_app_inst):
     import nums.numpy as nps
+
+    assert nps_app_inst is not None
+
     ba1: BlockArray = nps.arange(5)
     ba2: BlockArray = nps.arange(6)
     ba = nps.concatenate((ba1, ba2))
@@ -78,6 +103,9 @@ def test_concatenate(nps_app_inst):
 
 def test_split(nps_app_inst):
     import nums.numpy as nps
+
+    assert nps_app_inst is not None
+
     ba: BlockArray = nps.arange(10)
     np_arr = np.arange(10)
     ba_list = nps.split(ba, 2)
@@ -88,12 +116,51 @@ def test_split(nps_app_inst):
 
 def test_func_space(nps_app_inst):
     import nums.numpy as nps
+
+    assert nps_app_inst is not None
+
     ba: BlockArray = nps.linspace(12.3, 45.6, 23).reshape(block_shape=(10,))
     np_arr = np.linspace(12.3, 45.6, 23)
     assert np.allclose(ba.get(), np_arr)
     ba: BlockArray = nps.logspace(12.3, 45.6, 23).reshape(block_shape=(10,))
     np_arr = np.logspace(12.3, 45.6, 23)
     assert np.allclose(ba.get(), np_arr)
+
+
+def test_expand_squeeze(nps_app_inst):
+    from nums import numpy as nps
+
+    assert nps_app_inst is not None
+
+    def check_expand_and_squeeze(_np_a, axes):
+        _name = 'matmul'
+        np_expand_dims = np.__getattribute__('expand_dims')
+        ns_expand_dims = nps.__getattribute__('expand_dims')
+        np_squeeze = np.__getattribute__('squeeze')
+        ns_squeeze = nps.__getattribute__('squeeze')
+        _ns_a = nps.array(_np_a)
+        _np_result = np_expand_dims(_np_a, axes)
+        _ns_result = ns_expand_dims(_ns_a, axes)
+        assert np.allclose(_np_result, _ns_result.get())
+        check_dim(_np_result, _ns_result)
+        _np_result = np_squeeze(_np_a)
+        _ns_result = ns_squeeze(_ns_a)
+        assert np.allclose(_np_result, _ns_result.get())
+        check_dim(_np_result, _ns_result)
+
+    def check_dim(_np_a, _ns_a):
+        np_ndim = np.__getattribute__('ndim')
+        ns_ndim = nps.__getattribute__('ndim')
+        assert np_ndim(_np_a) == ns_ndim(_ns_a)
+
+    np_A = np.ones((10, 20, 30, 40))
+    check_expand_and_squeeze(np_A, axes=0)
+    check_expand_and_squeeze(np_A, axes=2)
+    check_expand_and_squeeze(np_A, axes=4)
+    check_expand_and_squeeze(np_A, axes=(2, 3))
+    check_expand_and_squeeze(np_A, axes=(0, 5))
+    check_expand_and_squeeze(np_A, axes=(0, 5, 6))
+    check_expand_and_squeeze(np_A, axes=(2, 3, 5, 6, 7))
 
 
 if __name__ == "__main__":
