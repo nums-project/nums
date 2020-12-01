@@ -15,6 +15,7 @@
 
 
 import itertools
+import warnings
 
 import numpy as np
 
@@ -129,6 +130,8 @@ class BlockArray(BlockArrayBase):
         if shape is None:
             shape = self.shape
         if block_shape is None:
+            warnings.warn("block_shape is None; Please use nums.numpy.reshape instead "
+                          "to avoid unexpected behavior.")
             block_shape = self.block_shape
         return Reshape()(self, shape, block_shape)
 
