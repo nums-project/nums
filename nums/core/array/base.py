@@ -101,7 +101,7 @@ class Block(object):
         block.shape = tuple(shape)
         block.rect = rect
 
-        block.oid = self._system.swapaxes(block.oid, axis1, axis2,
+        block.oid = block._system.swapaxes(block.oid, axis1, axis2,
                                          syskwargs={
                                              "grid_entry": block.grid_entry,
                                              "grid_shape": block.grid_shape

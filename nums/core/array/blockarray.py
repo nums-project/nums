@@ -172,12 +172,13 @@ class BlockArray(BlockArrayBase):
         meta_swap["shape"] = tuple(shape)
         meta_swap["block_shape"] = tuple(block_shape)
         grid_swap = ArrayGrid.from_meta(meta_swap)
-        rarr_swap = BlockArray(grid_swap, self.system)
-        rarr_src = self.blocks.swapaxes(axis1, axis2).reshape(-1)
-        rarr_tgt = rarr_swap.blocks.reshape(-1)
-        for idx, j in np.ndenumerate(rarr_src):
-            rarr_tgt[idx] = j.swapaxes(axis1, axis2)
+        rarr_src = np.ndarray(self.blocks.shape, dtype='O')
+        
+        for grid_entry in self.grid.get_entry_iterator():
+            rarr_src[grid_entry] = self.blocks[grid_entry].swapaxes(axis1, axis2)
+        rarr_src = rarr_src.swapaxes(axis1, axis2)
 
+        rarr_swap = BlockArray(grid_swap, self.system, rarr_src)
         return rarr_swap
 
 
