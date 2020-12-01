@@ -176,11 +176,8 @@ class BlockArray(BlockArrayBase):
         rarr_src = self.blocks.swapaxes(axis1, axis2).reshape(-1)
         rarr_tgt = rarr_swap.blocks.reshape(-1)
         for idx, j in np.ndenumerate(rarr_src):
-            rarr_tgt[idx] = j.copy()
+            rarr_tgt[idx] = j.swapaxes(axis1, axis2)
 
-        for grid_entry in rarr_swap.grid.get_entry_iterator():
-            rarr_swap.blocks[grid_entry].swapaxes(axis1, axis2)
-        
         return rarr_swap
 
 
