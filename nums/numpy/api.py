@@ -302,22 +302,6 @@ def swapaxes(x: BlockArray, axis1: int, axis2: int):
 
 
 ############################################
-# Matrix Ops
-############################################
-
-
-def tensordot(x1: BlockArray, x2: BlockArray, axes=2) -> BlockArray:
-    return _instance().tensordot(arr_1=x1,
-                                 arr_2=x2,
-                                 axes=axes)
-
-
-def matmul(x1: BlockArray, x2: BlockArray) -> BlockArray:
-    return _instance().matmul(arr_1=x1,
-                              arr_2=x2)
-
-
-############################################
 # Reduction Ops
 ############################################
 
