@@ -318,28 +318,6 @@ def matmul(x1: BlockArray, x2: BlockArray) -> BlockArray:
 
 
 ############################################
-# Shape Ops
-############################################
-
-
-def ndim(x: BlockArray):
-    return x.ndim
-
-
-def reshape(x: BlockArray, shape):
-    block_shape = _instance().compute_block_shape(shape, x.dtype)
-    return x.reshape(shape, block_shape)
-
-
-def expand_dims(x: BlockArray, axis):
-    return x.expand_dims(axis)
-
-
-def squeeze(x: BlockArray):
-    return x.squeeze()
-
-
-############################################
 # Reduction Ops
 ############################################
 
