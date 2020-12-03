@@ -1,23 +1,17 @@
 # coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
 from typing import Tuple
@@ -272,7 +266,7 @@ class ArrayView(object):
             # The value has already been created, so just leverage value's existing grid iterator.
             if value.shape != dst_sel.get_output_shape():
                 # Need to broadcast.
-                src_ba: BlockArrayBase = broadcast_to(value, dst_sel.get_output_shape())
+                src_ba: BlockArrayBase = value.broadcast_to(dst_sel.get_output_shape())
             else:
                 src_ba: BlockArrayBase = value
             src_inflated_shape = dst_sel.get_broadcastable_shape()
@@ -304,9 +298,9 @@ class ArrayView(object):
         # The result is a block array with replicated blocks,
         # which match the output shape of dst_sel.
         if isinstance(value, ArrayView):
-            src_ba_bc: BlockArrayBase = broadcast_to(value.create(), dst_sel.get_output_shape())
+            src_ba_bc: BlockArrayBase = value.create().broadcast_to(dst_sel.get_output_shape())
         elif isinstance(value, BlockArrayBase):
-            src_ba_bc: BlockArrayBase = broadcast_to(value, dst_sel.get_output_shape())
+            src_ba_bc: BlockArrayBase = value.broadcast_to(dst_sel.get_output_shape())
         else:
             raise Exception("Unexpected value type %s." % type(value))
         # Different lengths occur when an index is used to perform
@@ -376,22 +370,3 @@ class ArrayView(object):
 
     def advanced_assign(self, subscript: tuple, value):
         raise NotImplementedError()
-
-
-def broadcast_to(ba: BlockArrayBase, shape):
-    # TODO (hme): Test this to ensure nothing is copied.
-    b = array_utils.broadcast(ba.shape, shape)
-    result_block_shape = array_utils.broadcast_block_shape(ba.shape, shape, ba.block_shape)
-    result: BlockArrayBase = BlockArrayBase(ArrayGrid(b.shape,
-                                                      result_block_shape,
-                                                      ba.grid.dtype.__name__), ba.system)
-    extras = []
-    # Below taken directly from _broadcast_to in numpy's stride_tricks.py.
-    it = np.nditer(
-        (ba.blocks,), flags=['multi_index', 'refs_ok', 'zerosize_ok'] + extras,
-        op_flags=['readonly'], itershape=result.grid.grid_shape, order='C')
-    with it:
-        # never really has writebackifcopy semantics
-        broadcast = it.itviews[0]
-    result.blocks = broadcast
-    return result

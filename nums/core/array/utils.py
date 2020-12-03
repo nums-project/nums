@@ -1,32 +1,30 @@
 # coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
 from typing import Tuple, Iterator
 
 import itertools
 import numpy as np
+import scipy.special
+from nums.core.settings import np_ufunc_map
+
+# pylint: disable = no-member
 
 
-def get_ufunc_output_type(op_name, dtype):
+def get_uop_output_type(op_name, dtype):
     a = np.array(1, dtype=dtype)
     result_dtype = np.__getattribute__(op_name)(a).dtype
     return np.__getattribute__(str(result_dtype))
@@ -35,15 +33,17 @@ def get_ufunc_output_type(op_name, dtype):
 def get_bop_output_type(op_name, dtype_a, dtype_b):
     a = np.array(1, dtype=dtype_a)
     b = np.array(2, dtype=dtype_b)
-    op_name = {"truediv": "true_divide",
-               "sub": "subtract",
-               "pow": "power",
-               "mult": "multiply",
-               "mul": "multiply",
-               "tensordot": "multiply",
-               }.get(op_name, op_name)
-    dtype = np.__getattribute__(op_name)(a, b).dtype
-    return np.__getattribute__(str(dtype))
+    op_name = np_ufunc_map.get(op_name, op_name)
+    try:
+        dtype = np.__getattribute__(op_name)(a, b).dtype
+        return np.__getattribute__(str(dtype))
+    except Exception as _:
+        dtype = scipy.special.__getattribute__(op_name)(a, b).dtype
+        return np.__getattribute__(str(dtype))
+
+
+def is_int(val):
+    return isinstance(val, (int, np.int, np.int8, np.int16, np.int32, np.int64))
 
 
 def get_reduce_output_type(op_name, dtype):
@@ -202,3 +202,40 @@ class OrderedGrid(object):
         if 0 in self.shape:
             return []
         return itertools.product(*map(range, self.grid_shape))
+
+
+def idx2addr(index: tuple, shape: tuple):
+    strides = [np.product(shape[i:]) for i in range(1, len(shape))] + [1]
+    addr: int = sum(np.array(index) * strides)
+    return addr
+
+
+def addr2idx(addr: int, shape: tuple):
+    strides = [np.product(shape[i:]) for i in range(1, len(shape))] + [1]
+    index = []
+    val = addr
+    for i in range(len(strides)):
+        stride = strides[i]
+        axis_index = int(val/stride)
+        index.append(axis_index)
+        val %= stride
+    return tuple(index)
+
+
+def slice_sel_to_index_list(slice_selection: tuple):
+    slice_ranges = []
+    for slice_or_index in slice_selection:
+        if isinstance(slice_or_index, slice):
+            slice_ranges.append(list(range(slice_or_index.start, slice_or_index.stop)))
+        elif isinstance(slice_or_index, int):
+            slice_ranges.append([slice_or_index])
+    index_list = list(itertools.product(*slice_ranges))
+    return index_list
+
+
+def translate_index_list(from_index_list, from_shape, to_shape):
+    to_index_list = []
+    for src_index in from_index_list:
+        addr = idx2addr(src_index, from_shape)
+        to_index_list.append(addr2idx(addr, to_shape))
+    return to_index_list

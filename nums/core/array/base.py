@@ -1,23 +1,17 @@
 # coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
 import numpy as np
@@ -53,7 +47,7 @@ class Block(object):
             self.id = block_id_counter
 
     def __repr__(self):
-        return str(self.oid)
+        return "Block("+str(self.oid)+")"
 
     def size(self):
         return np.product(self.shape)
@@ -91,18 +85,28 @@ class Block(object):
         return blockT
 
     def ufunc(self, op_name, options=None):
+        return self.uop_map(op_name, options=options)
+
+    def uop_map(self, op_name, args=None, kwargs=None, options=None):
+        # This retains transpose.
         block = self.copy()
-        block.dtype = array_utils.get_ufunc_output_type(op_name, self.dtype)
+        block.dtype = array_utils.get_uop_output_type(op_name, self.dtype)
+        args = () if args is None else args
+        kwargs = {} if kwargs is None else kwargs
         if options is None:
-            block.oid = self._system.ufunc(op_name,
-                                           self.oid,
-                                           syskwargs={
-                                               "grid_entry": block.grid_entry,
-                                               "grid_shape": block.grid_shape
-                                           })
+            block.oid = self._system.map_uop(op_name,
+                                             self.oid,
+                                             args,
+                                             kwargs,
+                                             syskwargs={
+                                                 "grid_entry": block.grid_entry,
+                                                 "grid_shape": block.grid_shape
+                                             })
         else:
             block.oid = self._system.call_with_options("ufunc",
-                                                       [op_name, self.oid],
+                                                       [op_name, self.oid,
+                                                        args,
+                                                        kwargs],
                                                        {},
                                                        options)
         return block
@@ -116,7 +120,7 @@ class Block(object):
         result_rect = []
         result_shape = []
         for curr_axis in range(len(self.shape)):
-            if curr_axis == axis:
+            if curr_axis == axis or axis is None:
                 if keepdims:
                     result_grid_entry.append(0)
                     result_grid_shape.append(1)
@@ -160,7 +164,7 @@ class Block(object):
         block.oid = self._system.put(np.array(other, dtype=self.dtype))
         return block
 
-    def bop(self, op, other, args: dict, bool_op=False, options=None):
+    def bop(self, op, other, args: dict, options=None):
         if not isinstance(other, Block):
             other = self._block_from_other(other)
         if op == "tensordot":
@@ -200,9 +204,9 @@ class Block(object):
             result_rect = list(reversed(result_rect))
             result_shape = tuple(reversed(result_shape))
 
-        dtype = np.bool if bool_op else array_utils.get_bop_output_type(op,
-                                                                        self.dtype,
-                                                                        other.dtype)
+        dtype = array_utils.get_bop_output_type(op,
+                                                self.dtype,
+                                                other.dtype)
         block = Block(grid_entry=result_grid_entry,
                       grid_shape=result_grid_shape,
                       rect=result_rect,
@@ -263,22 +267,22 @@ class Block(object):
         return self.bop("pow", other, args={})
 
     def __ge__(self, other):
-        return self.bop("ge", other, args={}, bool_op=True)
+        return self.bop("ge", other, args={})
 
     def __gt__(self, other):
-        return self.bop("gt", other, args={}, bool_op=True)
+        return self.bop("gt", other, args={})
 
     def __le__(self, other):
-        return self.bop("le", other, args={}, bool_op=True)
+        return self.bop("le", other, args={})
 
     def __lt__(self, other):
-        return self.bop("lt", other, args={}, bool_op=True)
+        return self.bop("lt", other, args={})
 
     def __eq__(self, other):
-        return self.bop("eq", other, args={}, bool_op=True)
+        return self.bop("eq", other, args={})
 
     def __ne__(self, other):
-        return self.bop("ne", other, args={}, bool_op=True)
+        return self.bop("ne", other, args={})
 
     __iadd__ = __add__
     __isub__ = __sub__
@@ -312,6 +316,9 @@ class Block(object):
             "grid_shape": self.grid_shape
         }
 
+    def get(self):
+        return self._system.get(self.oid)
+
 
 class BlockArrayBase(object):
 
@@ -323,6 +330,8 @@ class BlockArrayBase(object):
         self.dtype = self.grid.dtype
         self.blocks = blocks
         if self.blocks is None:
+            # TODO (hme): Subclass np.ndarray for self.blocks instances,
+            #  and override key methods to better integrate with NumPy's ufuncs.
             self.blocks = np.empty(shape=self.grid.grid_shape, dtype=Block)
             for grid_entry in self.grid.get_entry_iterator():
                 self.blocks[grid_entry] = Block(grid_entry=grid_entry,
@@ -334,7 +343,7 @@ class BlockArrayBase(object):
                                                 system=self.system)
 
     def __repr__(self):
-        return str(self.blocks)
+        return "BlockArray("+str(self.blocks)+")"
 
     def get(self):
         result = np.zeros(shape=self.grid.shape, dtype=self.grid.dtype)
@@ -348,4 +357,21 @@ class BlockArrayBase(object):
             slices = tuple(map(lambda item: slice(*item), zip(*(start, end))))
             block = self.blocks[grid_entry]
             result[slices] = blocks[block_index].reshape(block.shape)
+        return result
+
+    def broadcast_to(self, shape):
+        b = array_utils.broadcast(self.shape, shape)
+        result_block_shape = array_utils.broadcast_block_shape(self.shape, shape, self.block_shape)
+        result: BlockArrayBase = BlockArrayBase(ArrayGrid(b.shape,
+                                                          result_block_shape,
+                                                          self.grid.dtype.__name__), self.system)
+        extras = []
+        # Below taken directly from _broadcast_to in numpy's stride_tricks.py.
+        it = np.nditer(
+            (self.blocks,), flags=['multi_index', 'refs_ok', 'zerosize_ok'] + extras,
+            op_flags=['readonly'], itershape=result.grid.grid_shape, order='C')
+        with it:
+            # never really has writebackifcopy semantics
+            broadcast = it.itviews[0]
+        result.blocks = broadcast
         return result

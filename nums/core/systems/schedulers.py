@@ -1,26 +1,19 @@
 # coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
-import socket
 import itertools
 from types import FunctionType
 from typing import Tuple
@@ -30,7 +23,7 @@ import ray
 import numpy as np
 
 from nums.core.systems.interfaces import ComputeInterface, ComputeImp
-from nums.core.systems.utils import check_implementation, extract_functions
+from nums.core.systems.utils import check_implementation, extract_functions, get_private_ip
 
 
 class RayScheduler(ComputeInterface):
@@ -77,14 +70,10 @@ class TaskScheduler(RayScheduler):
         self.use_head = use_head
         self.head_node = None
 
-    def get_private_ip(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        return s.getsockname()[0]
-
     def init(self):
         # Compute available nodes, based on CPU resource.
-        local_ip = self.get_private_ip()
+        local_ip = get_private_ip()
+        total_cpus = 0
         for node in ray.nodes():
             node_key = list(filter(lambda key: "node" in key, node["Resources"].keys()))
             assert len(node_key) == 1
@@ -94,11 +83,13 @@ class TaskScheduler(RayScheduler):
                 print("head node", node_ip)
                 self.head_node = node
                 if self.use_head and has_cpu_resources:
+                    total_cpus += node["Resources"]["CPU"]
                     self.available_nodes.append(node)
             elif has_cpu_resources:
                 print("worker node", node_ip)
+                total_cpus += node["Resources"]["CPU"]
                 self.available_nodes.append(node)
-
+        print("total cpus", total_cpus)
         # Collect compute functions.
         module_functions = extract_functions(self.compute_imp)
         function_signatures: dict = {}

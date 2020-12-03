@@ -1,23 +1,17 @@
 # coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
 from nums.core import settings
@@ -28,15 +22,29 @@ from nums.core.systems.schedulers import RayScheduler, TaskScheduler, BlockCycli
 from nums.core.array.application import ArrayApplication
 
 
-instance: ArrayApplication = None
+# pylint: disable=global-statement
 
 
-def init():
-    # pylint: disable=global-statement
-    global instance
+_instance: ArrayApplication = None
 
-    if instance is not None:
-        raise Exception("init called more than once.")
+
+def is_initialized():
+    return _instance is not None
+
+
+def instance():
+    # Lazy-initialize to initialize on use instead of initializing on import.
+    global _instance
+    if _instance is None:
+        _instance = create()
+    return _instance
+
+
+def create():
+    global _instance
+
+    if _instance is not None:
+        raise Exception("create() called more than once.")
 
     system_name = settings.system_name
 
@@ -61,8 +69,14 @@ def init():
     else:
         raise Exception()
     system.init()
-    instance = ArrayApplication(system=system, filesystem=FileSystem(system))
+    return ArrayApplication(system=system, filesystem=FileSystem(system))
 
 
-if instance is None:
-    init()
+def destroy():
+    global _instance
+    if _instance is None:
+        return
+    # This will shutdown ray if ray was started by NumS.
+    _instance.system.shutdown()
+    del _instance
+    _instance = None

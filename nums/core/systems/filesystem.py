@@ -1,23 +1,17 @@
 # coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
 import os
@@ -25,6 +19,7 @@ import pickle
 from typing import Any, AnyStr, Tuple, Dict
 
 import numpy as np
+from numpy.compat import asbytes, asstr, asunicode
 
 from nums.core import settings
 from nums.core.storage.storage import ArrayGrid, StoredArrayS3
@@ -61,19 +56,6 @@ def delete_block_s3(filename: AnyStr, grid_entry: Tuple, grid_meta: Dict):
                     dtype=dict)
 
 
-##############
-# NumPy API
-##############
-def loadtxt_block(fname, dtype, comments, delimiter,
-                  converters, skiprows, usecols, unpack,
-                  ndmin, encoding, max_rows):
-    return np.loadtxt(
-        fname, dtype=dtype, comments=comments, delimiter=delimiter,
-        converters=converters, skiprows=skiprows, usecols=usecols, unpack=unpack,
-        ndmin=ndmin, encoding=encoding, max_rows=max_rows
-    )
-
-
 ###################
 # DFS
 ###################
@@ -81,17 +63,12 @@ def loadtxt_block(fname, dtype, comments, delimiter,
 ARRAY_FILETYPE = "pkl"
 
 
-def exists(filename: AnyStr):
-    return os.path.exists(filename)
-
-
 def write_meta_fs(meta: Dict, filename: AnyStr):
     """
     Write meta data to disk.
     """
-    file_dir = settings.pj(settings.fs_meta, filename)
-    settings.Path(file_dir).mkdir(parents=True, exist_ok=True)
-    filepath = settings.pj(file_dir, "meta.pkl")
+    settings.Path(filename).mkdir(parents=True, exist_ok=True)
+    filepath = settings.pj(filename, "meta.pkl")
     with open(filepath, "wb") as fh:
         return np.array(pickle.dump(meta, fh), dtype=object)
 
@@ -100,9 +77,8 @@ def read_meta_fs(filename: AnyStr):
     """
     Read meta data from disk.
     """
-    file_dir = settings.pj(settings.fs_meta, filename)
-    settings.Path(file_dir).mkdir(parents=True, exist_ok=True)
-    filepath = settings.pj(file_dir, "meta.pkl")
+    settings.Path(filename).mkdir(parents=True, exist_ok=True)
+    filepath = settings.pj(filename, "meta.pkl")
     with open(filepath, "rb") as fh:
         return pickle.load(fh)
 
@@ -111,9 +87,8 @@ def delete_meta_fs(filename: AnyStr):
     """
     Delete meta data from disk.
     """
-    file_dir = settings.pj(settings.fs_meta, filename)
-    settings.Path(file_dir).mkdir(parents=True, exist_ok=True)
-    filepath = settings.pj(file_dir, "meta.pkl")
+    settings.Path(filename).mkdir(parents=True, exist_ok=True)
+    filepath = settings.pj(filename, "meta.pkl")
     return np.array(os.remove(filepath), dtype=object)
 
 
@@ -137,10 +112,9 @@ def write_block_fs(block: Any, filename: AnyStr, grid_entry: Tuple):
     """
     Write block to disk.
     """
-    file_dir = settings.pj(settings.fs_data, filename)
-    settings.Path(file_dir).mkdir(parents=True, exist_ok=True)
+    settings.Path(filename).mkdir(parents=True, exist_ok=True)
     entry_name = "_".join(list(map(str, grid_entry))) + "." + ARRAY_FILETYPE
-    filepath = settings.pj(file_dir, entry_name)
+    filepath = settings.pj(filename, entry_name)
     return np.array(save(block, filepath), dtype=object)
 
 
@@ -148,10 +122,9 @@ def read_block_fs(filename, grid_entry: Tuple):
     """
     Read block from disk.
     """
-    file_dir = settings.pj(settings.fs_data, filename)
-    settings.Path(file_dir).mkdir(parents=True, exist_ok=True)
+    settings.Path(filename).mkdir(parents=True, exist_ok=True)
     entry_name = "_".join(list(map(str, grid_entry))) + "." + ARRAY_FILETYPE
-    filepath = settings.pj(file_dir, entry_name)
+    filepath = settings.pj(filename, entry_name)
     return load(filepath)
 
 
@@ -159,11 +132,84 @@ def delete_block_fs(filename, grid_entry: Tuple):
     """
     Delete block from disk.
     """
-    file_dir = settings.pj(settings.fs_data, filename)
-    settings.Path(file_dir).mkdir(parents=True, exist_ok=True)
+    settings.Path(filename).mkdir(parents=True, exist_ok=True)
     entry_name = "_".join(list(map(str, grid_entry))) + "." + ARRAY_FILETYPE
-    filepath = settings.pj(file_dir, entry_name)
+    filepath = settings.pj(filename, entry_name)
     return np.array(os.remove(filepath), dtype=object)
+
+
+##############
+# NumPy API
+##############
+def loadtxt_block(fname, dtype, comments, delimiter,
+                  converters, skiprows, usecols, unpack,
+                  ndmin, encoding, max_rows):
+    return np.loadtxt(
+        fname, dtype=dtype, comments=comments, delimiter=delimiter,
+        converters=converters, skiprows=skiprows, usecols=usecols, unpack=unpack,
+        ndmin=ndmin, encoding=encoding, max_rows=max_rows
+    )
+
+
+##############
+# CSV API
+##############
+def read_csv_block(filename, file_start, file_end, dtype, delimiter, has_header):
+
+    def _getconv(_dtype):
+        """ Adapted from numpy/lib/npyio.py """
+
+        def floatconv(x):
+            x.lower()
+            if '0x' in x:
+                return float.fromhex(x)
+            return float(x)
+
+        if issubclass(_dtype, np.bool_):
+            return lambda x: bool(int(x))
+        if issubclass(_dtype, np.uint64):
+            return np.uint64
+        if issubclass(_dtype, np.int64):
+            return np.int64
+        if issubclass(_dtype, np.integer) or _dtype is int:
+            return lambda x: int(float(x))
+        elif issubclass(_dtype, np.longdouble):
+            return np.longdouble
+        elif issubclass(_dtype, np.floating) or _dtype is float:
+            return floatconv
+        elif issubclass(_dtype, complex):
+            return lambda x: complex(asstr(x).replace('+-', '-'))
+        elif issubclass(_dtype, np.bytes_):
+            return asbytes
+        elif issubclass(_dtype, np.unicode_):
+            return asunicode
+        else:
+            return asstr
+
+    lines = []
+    converter = _getconv(dtype)
+    with open(filename, "r") as fh:
+        try:
+            fh.seek(file_start)
+            if file_start != 0:
+                char = None
+                while char != "\n":
+                    char = fh.read(1)
+            header_skipped = False
+            while fh.tell() < file_end:
+                line = fh.readline().strip("\r\n")
+                if file_start == 0 and has_header and not header_skipped:
+                    header_skipped = True
+                    continue
+                line = line.split(delimiter)
+                if len(line) == 0:
+                    continue
+                line = list(map(converter, line))
+                lines.append(line)
+        except StopIteration:
+            pass
+    array = np.array(lines, dtype=dtype)
+    return array, array.shape
 
 
 class FileSystem(object):
@@ -181,15 +227,8 @@ class FileSystem(object):
                      write_block_s3, read_block_s3, delete_block_s3,
                      write_meta_fs, read_meta_fs, delete_meta_fs,
                      write_block_fs, read_block_fs, delete_block_fs,
-                     loadtxt_block]:
+                     loadtxt_block, read_csv_block]:
             self.system.register(func.__name__, func, {})
-
-    ##################################################
-    # Private filesystem-like operations
-    ##################################################
-
-    def exists(self, filename: AnyStr, syskwargs):
-        raise NotImplementedError()
 
     ##################################################
     # Block-level (remote) operations
@@ -315,9 +354,9 @@ class FileSystem(object):
         """
         raise NotImplementedError()
 
-    def loadtxt(self, fname, dtype=float, comments='# ', delimiter=',',
+    def loadtxt(self, fname, dtype=float, comments='# ', delimiter=' ',
                 converters=None, skiprows=0, usecols=None, unpack=False,
-                ndmin=0, encoding='bytes', max_rows=None, num_cpus=4) -> BlockArray:
+                ndmin=0, encoding='bytes', max_rows=None, num_workers=4) -> BlockArray:
         # pylint: disable=unused-variable
         bytes_per_char, bytes_per_row, bytes_per_col, num_cols = storage_utils.get_np_txt_info(
             fname, comments, delimiter
@@ -338,7 +377,7 @@ class FileSystem(object):
         if max_rows is not None:
             num_rows_final = (num_rows_final, max_rows)
         row_batches: storage_utils.Batch = storage_utils.Batch.from_num_batches(num_rows_final,
-                                                                                num_cpus)
+                                                                                num_workers)
         grid = ArrayGrid(shape=(num_rows_final, num_cols),
                          block_shape=(row_batches.batch_size, num_cols),
                          dtype=np.float64.__name__ if dtype is float else dtype.__name__)
@@ -359,3 +398,42 @@ class FileSystem(object):
                 }
             )
         return result
+
+    def read_csv(self, filename, dtype=np.float, delimiter=',', has_header=False, num_workers=4):
+        file_size = storage_utils.get_file_size(filename)
+        file_batches: storage_utils.Batch = storage_utils.Batch.from_num_batches(file_size,
+                                                                                 num_workers)
+        blocks = []
+        shape_oids = []
+        for i, batch in enumerate(file_batches.batches):
+            file_start, file_end = batch
+            block_oid, shape_oid = self.system.call("read_csv_block",
+                                                    filename,
+                                                    file_start,
+                                                    file_end,
+                                                    dtype,
+                                                    delimiter,
+                                                    has_header,
+                                                    syskwargs={
+                                                        "grid_entry": (i,),
+                                                        "grid_shape": (num_workers,),
+                                                        "options": {"num_return_vals": 2}
+                                                    })
+            blocks.append(block_oid)
+            shape_oids.append(shape_oid)
+        shapes = self.system.get(shape_oids)
+        arrays = []
+        for i in range(len(shapes)):
+            shape = shapes[i]
+            if shape[0] == 0:
+                continue
+            block = blocks[i]
+            grid = ArrayGrid(shape=shape, block_shape=shape, dtype=dtype.__name__)
+            arr = BlockArray(grid, self.system)
+            iter_one = True
+            for grid_entry in grid.get_entry_iterator():
+                assert iter_one
+                iter_one = False
+                arr.blocks[grid_entry].oid = block
+            arrays.append(arr)
+        return arrays

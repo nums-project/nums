@@ -1,23 +1,17 @@
 # coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
 import numpy as np
@@ -32,6 +26,15 @@ class NumsRandomState(object):
     def __init__(self, system: System, seed):
         self._system = system
         self._rng = self._system.get_rng(seed)
+
+    def seed(self, seed=None):
+        # New RNG based on given seed.
+        self._rng = self._system.get_rng(seed)
+
+    def numpy(self):
+        # pylint: disable = import-outside-toplevel
+        from nums.core.systems.numpy_compute import block_rng
+        return block_rng(*self._rng.new_block_rng_params())
 
     def random(self, shape=None, block_shape=None, dtype=None):
         if dtype is None:
@@ -174,3 +177,19 @@ class NumsRandomState(object):
                                                       "grid_shape": grid.grid_shape
                                                   })
         return ba
+
+    def permutation(self, size, block_size):
+        shape = (size,)
+        block_shape = (block_size,)
+        grid: ArrayGrid = ArrayGrid(shape=shape, block_shape=block_shape, dtype=np.int64.__name__)
+        ba = BlockArray(grid, self._system)
+        for grid_entry in ba.grid.get_entry_iterator():
+            rng_params = list(self._rng.new_block_rng_params())
+            block: Block = ba.blocks[grid_entry]
+            block.oid = self._system.permutation(rng_params,
+                                                 size,
+                                                 syskwargs={
+                                                      "grid_entry": grid_entry,
+                                                      "grid_shape": grid.grid_shape
+                                                  })
+        return ba.reshape(block_shape=block_shape)

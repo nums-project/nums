@@ -1,23 +1,17 @@
 # coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
 from types import FunctionType
@@ -94,7 +88,13 @@ class ComputeInterface(object):
     def random_block(self, rng_params, rfunc_name, rfunc_args, shape, dtype, syskwargs: Dict):
         raise NotImplementedError()
 
+    def permutation(self, rng_params, size, syskwargs: Dict):
+        raise NotImplementedError()
+
     def diag(self, arr, syskwargs: Dict):
+        raise NotImplementedError()
+
+    def arange(self, start, stop, step, dtype, syskwargs: Dict):
         raise NotImplementedError()
 
     def sum_reduce(self, *arrs, syskwargs: Dict):
@@ -110,6 +110,12 @@ class ComputeInterface(object):
     def update_block(self, dst_arr, *src_arrs, src_params, dst_params, syskwargs: Dict):
         raise NotImplementedError()
 
+    def update_block_by_index(self, dst_arr, src_arr, index_pairs, syskwargs: Dict):
+        raise NotImplementedError()
+
+    def update_block_along_axis(self, dst_arr, src_arr, index_pairs, axis, syskwargs: Dict):
+        raise NotImplementedError()
+
     def bop(self, op, a1, a2, a1_shape, a2_shape, a1_T, a2_T, axes, syskwargs: Dict):
         raise NotImplementedError()
 
@@ -123,9 +129,6 @@ class ComputeInterface(object):
     def cholesky(self, arr, syskwargs: Dict):
         raise NotImplementedError()
 
-    def inv_sym_psd(self, arr, syskwargs: Dict):
-        raise NotImplementedError()
-
     @method_meta(num_return_vals=3)
     def svd(self, arr, syskwargs: Dict):
         raise NotImplementedError()
@@ -136,28 +139,31 @@ class ComputeInterface(object):
     def allclose(self, a, b, rtol, atol, syskwargs: Dict):
         raise NotImplementedError()
 
-    # This is essentially a map.
-    def ufunc(self, op_name, arr, syskwargs: Dict):
+    def map_uop(self, op_name, arr, args, kwargs, syskwargs: Dict):
         raise NotImplementedError()
 
-    def xlogy(self, arr_x, arr_y, syskwargs: Dict):
+    def where(self, arr, x, y, block_slice_tuples, syskwargs: Dict):
         raise NotImplementedError()
 
     def reduce_axis(self, op_name, arr, axis, keepdims, transposed, syskwargs: Dict):
         raise NotImplementedError()
 
-    # Lapack
+    # Scipy
 
-    def lapack_dtrtri(self, arr, lower, unitdiag, overwrite_c, syskwargs: Dict):
-        raise NotImplementedError()
-
-    def lapack_strtri(self, arr, lower, unitdiag, overwrite_c, syskwargs: Dict):
+    def xlogy(self, arr_x, arr_y, syskwargs: Dict):
         raise NotImplementedError()
 
     def logical_and(self, *bool_list, syskwargs: Dict):
         raise NotImplementedError()
 
     def astype(self, arr, dtype_str, syskwargs: Dict):
+        raise NotImplementedError()
+
+    def arg_op(self, op_name, arr, block_slice, other_argoptima, other_optima,
+               syskwargs: Dict):
+        raise NotImplementedError()
+
+    def reshape(self, arr, shape, syskwargs: Dict):
         raise NotImplementedError()
 
 
