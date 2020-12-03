@@ -299,6 +299,9 @@ def expand_dims(x: BlockArray, axis):
 def squeeze(x: BlockArray):
     return x.squeeze()
 
+def swapaxes(x: BlockArray, axis1: int, axis2: int):
+    return x.swapaxes(axis1, axis2)
+
 
 ############################################
 # Reduction Ops
