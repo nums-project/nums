@@ -28,8 +28,10 @@ requirements = [
 test_requirements = [
     'pytest',
     'pytest-pylint',
-    'coverage',
     'moto',
+    'coverage',
+    'codecov',
+    'tqdm'
 ]
 
 
@@ -60,9 +62,11 @@ def main():
             "License :: OSI Approved :: MIT License",
             "Operating System :: Unix",
         ],
-        python_requires='>=3.6',
+        python_requires='>=3.6,<3.9',
         install_requires=requirements,
-        test_requirements=test_requirements,
+        extras_require={
+            'testing': test_requirements
+        },
         entry_points={
             'console_scripts': [
                 'nums-coverage=nums.core.cmds.api_coverage:main',

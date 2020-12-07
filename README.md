@@ -21,8 +21,8 @@ S3 and distributed filesystems for storage,
 and [NumPy](https://github.com/numpy/numpy) as a backend for CPU-based array operations.
 
 # Installation
-Currently, NumS only supports CPU-based workloads; 
-we are working on providing GPU support.
+NumS is currently supported on Linux-based systems running Python 3.6, 3.7, and 3.8.
+Currently, only CPU-based workloads are supported; we are working on providing GPU support.
 
 #### pip installation
 To install NumS on Ray with CPU support, simply run the following command.
@@ -52,10 +52,9 @@ we recommend cloning the repository and installing the project in developer mode
 using the following set of commands:
 
 ```shell script
-conda create --name nums python=3.6 -y
+conda create --name nums python=3.7 -y
 source activate nums
-pip install ray==0.8.7
-python setup.py develop
+pip install -e .[testing]
 ```
 
 #### Contributing NumPy Functionality
