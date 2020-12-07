@@ -15,6 +15,7 @@
 
 
 import itertools
+import logging
 from types import FunctionType
 from typing import Tuple
 import inspect
@@ -80,16 +81,16 @@ class TaskScheduler(RayScheduler):
             node_ip = node_key[0].split(":")[1]
             has_cpu_resources = "CPU" in node["Resources"] and node["Resources"]["CPU"] >= 1.0
             if local_ip == node_ip:
-                print("head node", node_ip)
+                logging.getLogger().info("head node %s", node_ip)
                 self.head_node = node
                 if self.use_head and has_cpu_resources:
                     total_cpus += node["Resources"]["CPU"]
                     self.available_nodes.append(node)
             elif has_cpu_resources:
-                print("worker node", node_ip)
+                logging.getLogger().info("worker node %s", node_ip)
                 total_cpus += node["Resources"]["CPU"]
                 self.available_nodes.append(node)
-        print("total cpus", total_cpus)
+        logging.getLogger().info("total cpus %s", total_cpus)
         # Collect compute functions.
         module_functions = extract_functions(self.compute_imp)
         function_signatures: dict = {}
@@ -158,8 +159,10 @@ class BlockCyclicScheduler(TaskScheduler):
         assert len(self.available_nodes) >= np.prod(self.cluster_shape), err_str
         for i, cluster_entry in enumerate(self.get_cluster_entry_iterator()):
             self.cluster_grid[cluster_entry] = self.available_nodes[i]
-            print("cluster_grid", cluster_entry, self.get_node_key(cluster_entry))
-        print("cluster_shape", self.cluster_shape)
+            logging.getLogger().info("cluster_grid %s %s",
+                                     cluster_entry,
+                                     self.get_node_key(cluster_entry))
+        logging.getLogger().info("cluster_shape %s", str(self.cluster_shape))
 
     def get_cluster_entry_iterator(self):
         return itertools.product(*map(range, self.cluster_shape))
@@ -226,18 +229,18 @@ class BlockCyclicScheduler(TaskScheduler):
         if self.verbose:
             if name == "bop":
                 fname = args[0]
-                print_str = "BCS: bop_name=%s, " \
-                            "grid_entry=%s, grid_shape=%s " \
-                            "on cluster_grid[%s] == %s"
-                print(print_str % (fname, str(grid_entry),
-                                   str(grid_shape), str(cluster_entry),
-                                   node_key))
+                log_str = "BCS: bop_name=%s, " \
+                          "grid_entry=%s, grid_shape=%s " \
+                          "on cluster_grid[%s] == %s"
+                logging.getLogger().info(log_str, fname, str(grid_entry),
+                                         str(grid_shape), str(cluster_entry),
+                                         node_key)
             else:
-                print_str = "BCS: remote_name=%s, " \
-                            "grid_entry=%s, grid_shape=%s " \
-                            "on cluster_grid[%s] == %s"
-                print(print_str % (name, str(grid_entry),
-                                   str(grid_shape), str(cluster_entry),
-                                   node_key))
+                log_str = "BCS: remote_name=%s, " \
+                          "grid_entry=%s, grid_shape=%s " \
+                          "on cluster_grid[%s] == %s"
+                logging.getLogger().info(log_str, name, str(grid_entry),
+                                         str(grid_shape), str(cluster_entry),
+                                         node_key)
 
         return self.call_with_options(name, args, kwargs, options)
