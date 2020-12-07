@@ -31,7 +31,7 @@ class RayScheduler(ComputeInterface):
     def init(self):
         raise NotImplementedError()
 
-    def put(self, value, weakref=False):
+    def put(self, value):
         raise NotImplementedError()
 
     def get(self, object_ids, timeout=None):
@@ -104,8 +104,8 @@ class TaskScheduler(RayScheduler):
                 remote_params = {}
             self.remote_functions[name] = self.remote(func, remote_params)
 
-    def put(self, value, weakref=False):
-        return ray.put(value, weakref=weakref)
+    def put(self, value):
+        return ray.put(value)
 
     def get(self, object_ids, timeout=None):
         return ray.get(object_ids, timeout=timeout)

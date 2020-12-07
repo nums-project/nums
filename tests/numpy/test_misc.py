@@ -90,7 +90,7 @@ def test_where(nps_app_inst):
 def test_reshape(nps_app_inst):
     import nums.numpy as nps
     assert nps_app_inst is not None
-    ba = nps.arange(2*3*4).reshape((2, 3, 4), (2, 3, 4))
+    ba = nps.arange(2*3*4).reshape((2, 3, 4), block_shape=(2, 3, 4))
     assert nps.allclose(ba.reshape(shape=(6, 4), block_shape=(6, 4)),
                         nps.reshape(ba, shape=(6, 4)))
 

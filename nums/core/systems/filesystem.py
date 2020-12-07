@@ -417,7 +417,7 @@ class FileSystem(object):
                                                     syskwargs={
                                                         "grid_entry": (i,),
                                                         "grid_shape": (num_workers,),
-                                                        "options": {"num_return_vals": 2}
+                                                        "options": {"num_returns": 2}
                                                     })
             blocks.append(block_oid)
             shape_oids.append(shape_oid)

@@ -28,10 +28,10 @@ def get_num_cores():
     return multiprocessing.cpu_count()
 
 
-def method_meta(num_return_vals=1):
+def method_meta(num_returns=1):
     def inner(func):
         func.remote_params = {
-            "num_return_vals": num_return_vals
+            "num_returns": num_returns
         }
         return func
     return inner

@@ -20,8 +20,8 @@ from setuptools import setup, find_packages
 requirements = [
     'numpy<=1.20.0',
     'scipy<=1.5.0',
-    'ray==0.8.7',
-    'boto3<=1.15.0'
+    'ray>=1.0.0,<1.1.0',
+    'boto3'
 ]
 
 
