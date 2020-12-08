@@ -18,18 +18,20 @@ from setuptools import setup, find_packages
 
 
 requirements = [
-    'numpy<=1.20.0',
-    'scipy<=1.5.0',
-    'ray==0.8.7',
-    'boto3<=1.15.0'
+    'numpy>1.18.0,<=1.20.0',
+    'ray>=1.0.0,<1.1.0',
+    'scipy',
+    'boto3'
 ]
 
 
 test_requirements = [
-    'pytest',
-    'pytest-pylint',
-    'coverage',
-    'moto',
+    'pytest==6.1.1',
+    'pytest-pylint==0.17.0',
+    'moto==1.3.16',
+    'coverage==5.3',
+    'codecov==2.1.9',
+    'tqdm'
 ]
 
 
@@ -60,9 +62,11 @@ def main():
             "License :: OSI Approved :: MIT License",
             "Operating System :: Unix",
         ],
-        python_requires='>=3.6',
+        python_requires='>=3.6,<3.9',
         install_requires=requirements,
-        test_requirements=test_requirements,
+        extras_require={
+            'testing': test_requirements
+        },
         entry_points={
             'console_scripts': [
                 'nums-coverage=nums.core.cmds.api_coverage:main',

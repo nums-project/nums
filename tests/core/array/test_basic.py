@@ -68,7 +68,7 @@ def test_split(app_inst: ArrayApplication):
     # TODO (hme): Implement a split leveraging block_shape param in reshape op.
     x = app_inst.array(np.array([1.0, 2.0, 3.0, 4.0]), block_shape=(4,))
     syskwargs = x.blocks[0].syskwargs()
-    syskwargs["options"] = {"num_return_vals": 2}
+    syskwargs["options"] = {"num_returns": 2}
     res1, res2 = x.system.split(x.blocks[0].oid,
                                 2,
                                 axis=0,

@@ -14,6 +14,9 @@
 # limitations under the License.
 
 
+import logging
+import sys
+
 from nums.core import settings
 from nums.core.systems.filesystem import FileSystem
 from nums.core.systems import numpy_compute
@@ -41,6 +44,8 @@ def instance():
 
 
 def create():
+    configure_logging()
+
     global _instance
 
     if _instance is not None:
@@ -80,3 +85,11 @@ def destroy():
     _instance.system.shutdown()
     del _instance
     _instance = None
+
+
+def configure_logging():
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG)
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.DEBUG)
+    root.addHandler(handler)

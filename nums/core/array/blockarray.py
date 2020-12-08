@@ -15,7 +15,6 @@
 
 
 import itertools
-import warnings
 
 import numpy as np
 
@@ -126,14 +125,31 @@ class BlockArray(BlockArrayBase):
         self.system.get(oids)
         return self
 
-    def reshape(self, shape=None, block_shape=None):
+    def reshape(self, shape=None, **kwargs):
+        block_shape = kwargs.get("block_shape", None)
+        if array_utils.is_int(shape):
+            shape = (shape,)
+        if (block_shape is None or self.block_shape == block_shape) \
+                and (shape is None or self.shape == shape):
+            return Reshape()(self, self.shape, self.block_shape)
         if shape is None:
             shape = self.shape
+        else:
+            shape = Reshape.compute_shape(self.shape, shape)
         if block_shape is None:
-            warnings.warn("block_shape is None; Please use nums.numpy.reshape instead "
-                          "to avoid unexpected behavior.")
-            block_shape = self.block_shape
+            block_shape = self._get_and_register_block_shape(shape)
         return Reshape()(self, shape, block_shape)
+
+    # TODO (hme): Remove this during engine/sys refactor.
+    # Temporary hack to obtain block_shape for reshape invocations.
+    def _get_and_register_block_shape(self, shape):
+        # pylint: disable=import-outside-toplevel
+        # Only allow this to be used if app manager is maintaining an app instance.
+        import nums.core.application_manager as am
+        assert am.is_initialized(), "Unexpected application state: " \
+                                    "application instance doesn't exist."
+        app = am.instance()
+        return app.get_block_shape(shape, self.dtype)
 
     def expand_dims(self, axis):
         """
@@ -148,7 +164,7 @@ class BlockArray(BlockArrayBase):
         block_shape_it = iter(self.block_shape)
         shape = [1 if ax in axis else next(shape_it) for ax in range(out_ndim)]
         block_shape = [1 if ax in axis else next(block_shape_it) for ax in range(out_ndim)]
-        return self.reshape(shape, block_shape)
+        return self.reshape(shape, block_shape=block_shape)
 
     def squeeze(self):
         shape = self.shape
@@ -161,7 +177,7 @@ class BlockArray(BlockArrayBase):
                 continue
             new_shape.append(s)
             new_block_shape.append(b)
-        return self.reshape(new_shape, new_block_shape)
+        return self.reshape(new_shape, block_shape=new_block_shape)
 
     def __getattr__(self, item):
         if item == "__array_priority__" or item == "__array_struct__":

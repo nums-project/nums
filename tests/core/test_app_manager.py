@@ -32,3 +32,7 @@ def test_app_manager():
             application_manager.destroy()
             assert not application_manager.is_initialized()
             time.sleep(1)
+
+
+if __name__ == "__main__":
+    test_app_manager()

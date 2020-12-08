@@ -1,6 +1,6 @@
 import subprocess
 
-from nums import __version__
+from nums.core.version import __version__
 
 
 def runproc(*args):
@@ -32,7 +32,8 @@ def execute():
         print(version)
     print("")
 
-    v = __version__
+    # Prefix versions with "v"
+    v = "v" + __version__
     if v in versions:
         r = input_handler("%s already tagged, force update (y/n)?" % v)
         if r != "y":

@@ -289,7 +289,7 @@ def ndim(x: BlockArray):
 
 def reshape(x: BlockArray, shape):
     block_shape = _instance().compute_block_shape(shape, x.dtype)
-    return x.reshape(shape, block_shape)
+    return x.reshape(shape, block_shape=block_shape)
 
 
 def expand_dims(x: BlockArray, axis):

@@ -122,14 +122,14 @@ class ComputeInterface(object):
     def split(self, arr, indices_or_sections, axis, transposed, syskwargs: Dict):
         raise NotImplementedError()
 
-    @method_meta(num_return_vals=2)
+    @method_meta(num_returns=2)
     def qr(self, *arrays, mode="reduced", axis=None, syskwargs: Dict):
         raise NotImplementedError()
 
     def cholesky(self, arr, syskwargs: Dict):
         raise NotImplementedError()
 
-    @method_meta(num_return_vals=3)
+    @method_meta(num_returns=3)
     def svd(self, arr, syskwargs: Dict):
         raise NotImplementedError()
 
