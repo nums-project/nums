@@ -42,8 +42,28 @@ def get_bop_output_type(op_name, dtype_a, dtype_b):
         return np.__getattribute__(str(dtype))
 
 
-def is_int(val):
-    return isinstance(val, (int, np.int, np.int8, np.int16, np.int32, np.int64))
+def is_uint(val, type_test=False):
+    return is_type(type_test, val,
+                   (np.uint, np.uint8, np.uint16, np.uint32, np.uint64))
+
+
+def is_int(val, type_test=False):
+    return is_type(type_test, val,
+                   (int, np.int, np.int8, np.int16, np.int32, np.int64))
+
+
+def is_float(val, type_test=False):
+    return is_type(type_test, val,
+                   (float, np.float, np.float16, np.float32, np.float64))
+
+
+def is_complex(val, type_test=False):
+    return is_type(type_test, val,
+                   (np.complex64, np.complex128))
+
+
+def is_type(type_test, val, types):
+    return val in types if type_test else isinstance(val, types)
 
 
 def get_reduce_output_type(op_name, dtype):

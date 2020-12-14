@@ -82,7 +82,7 @@ def execute():
     print("-"*50)
 
     repo_name = input("Release %s to pypi or test.pypi (pypi/test.pypi)? " % __version__)
-    assert repo_name in ("pypi", "test.pypi")
+    assert repo_name in ("pypi", "test.pypi"), "repo_name=%s" % repo_name
 
     release_cmd = ["twine", "upload"]
     username = input("Username? ")

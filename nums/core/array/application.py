@@ -62,10 +62,13 @@ class ArrayApplication(object):
                             cluster_shape=None,
                             num_cores=None):
         # TODO (hme): Add support for downstream optimizer to decide block shape.
-        if dtype in (np.float32, np.float64, float):
+        if array_utils.is_float(dtype, type_test=True):
             dtype = np.finfo(dtype).dtype
-        elif dtype in (np.int32, np.int64, int):
+        elif array_utils.is_int(dtype, type_test=True) \
+                or array_utils.is_uint(dtype, type_test=True):
             dtype = np.iinfo(dtype).dtype
+        elif array_utils.is_complex(dtype, type_test=True):
+            dtype = np.dtype(dtype)
         elif dtype in (bool, np.bool_):
             dtype = np.dtype(np.bool_)
         else:

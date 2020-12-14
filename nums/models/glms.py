@@ -105,6 +105,8 @@ class GLM(object):
         # to maintain the original block shape of X below, along axis 1.
         # Otherwise, the concatenation operation will not construct the new X
         # by referencing X's existing blocks.
+        # TODO: Option to do concat.
+        # TODO: Provide support for batching.
         X = self._app.concatenate([X, self._app.ones(shape=(X.shape[0], 1),
                                                      block_shape=(X.block_shape[0], 1),
                                                      dtype=X.dtype)],
