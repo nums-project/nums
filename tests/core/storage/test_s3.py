@@ -27,9 +27,8 @@ from nums.core.storage.storage import StoredArrayS3, ArrayGrid
 
 
 @mock_s3
-def test_rwd():
-    from tests import conftest
-    app_inst: ArrayApplication = conftest.get_app("serial")
+def test_rwd(serial_app_inst):
+    app_inst: ArrayApplication = serial_app_inst
 
     conn = boto3.resource('s3', region_name='us-east-1')
     assert conn.Bucket('darrays') not in conn.buckets.all()

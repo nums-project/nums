@@ -133,6 +133,7 @@ class ArrayView(object):
 
         src_sel_arr: np.ndarray = selection.BasicSelection.block_selection(self._source.shape,
                                                                            self._source.block_shape)
+        # TODO(hme): The following op is very slow for integer subscripts of large arrays.
         src_sel_clipped: np.ndarray = src_sel_arr & self.sel
         assert src_sel_clipped.shape == self._source.grid.grid_shape
 

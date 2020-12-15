@@ -25,6 +25,15 @@ from nums.core.systems.schedulers import RayScheduler, TaskScheduler, BlockCycli
 from nums.core.array.application import ArrayApplication
 
 
+@pytest.fixture(scope="module", params=["serial"])
+def serial_app_inst(request):
+    # pylint: disable=protected-access
+    app_inst = get_app(request.param)
+    yield app_inst
+    app_inst.system.shutdown()
+    ray.shutdown()
+
+
 @pytest.fixture(scope="module", params=["serial", "ray-task", "ray-cyclic"])
 def app_inst(request):
     # pylint: disable=protected-access

@@ -42,10 +42,70 @@ providing a clear API with code hinting when used in conjunction with
 IDEs (e.g. PyCharm) and interpreters (e.g. iPython, Jupyter Notebook) 
 that provide such functionality.
 
-To demonstrate the simplicity of NumS, we provide an example of running 
-logistic regression on synthetic data, as well as the HIGGS dataset.
+## Basics
 
-##  Logistic Regression on Sampled Data
+Below is a quick snippet that simply samples a few large arrays and 
+performs basic array operations.
+
+```python
+import nums.numpy as nps
+
+# Compute some products.
+x = nps.random.rand(10**8)
+# Note below the use of `get`, which blocks the executing process until
+# an operation is completed, and constructs a numpy array
+# from the blocks that comprise the output of the operation.
+print((x.T @ x).get())
+x = nps.random.rand(10**4, 10**4)
+y = nps.random.rand(10**4)
+print((x @ y).shape)
+print((x.T @ x).shape)
+
+# NumS also provides a speedup on basic array operations,
+# such array search.
+x = nps.random.permutation(10**8)
+idx = nps.where(x == 10**8 // 2)
+
+# Whenever possible, NumS automatically evaluates boolean operations
+# to support Python branching.
+if x[idx] == 10**8 // 2:
+    print("The numbers are equal.")
+else:
+    raise Exception("This is impossible.")
+```
+
+## I/O
+
+NumS provides an optimized I/O interface for fast persistence of block arrays.
+See below for a basic example.
+
+```python
+import nums
+import nums.numpy as nps
+
+# Write an 800MB object in parallel, utilizing all available cores and
+# write speeds available to the OS file system.
+x1 = nps.random.rand(10**8)
+# We invoke `get` to block until the object is written.
+# The result of the write operation provides status of the write
+# for each block as a numpy array.
+print(nums.write("x.nps", x1).get())
+
+# Read the object back into memory in parallel, utilizing all available cores.
+x2 = nums.read("x.nps")
+assert nps.allclose(x1, x2)
+```
+
+NumS automatically loads CSV files in parallel as distinct arrays, 
+and intelligently constructs a partitioned array for block-parallel linear algebra operations.
+
+
+```python
+# Specifying has_header=True discards the first line of the CSV.
+dataset = nums.read_csv("path/to/csv", has_header=True)
+```
+
+##  Logistic Regression
 
 In this example, we'll run logistic regression on a 
 bimodal Gaussian. We'll begin by importing the necessary modules.
@@ -108,10 +168,8 @@ print("test accuracy", (nps.sum(y_test == model.predict(X_test)) / X_test.shape[
 We perform the `get` operation to transmit 
 the computed accuracy from distributed memory to "driver" (the locally running process) memory.
 
-#### HIGGS Example.
+#### Training on HIGGS
 
-NumS automatically loads CSV files in parallel as distinct arrays, 
-and intelligently constructs a partitioned array for block-parallel linear algebra operations.
 Below is an example of loading the HIGGS dataset
 (download [here](https://archive.ics.uci.edu/ml/machine-learning-databases/00280/)), 
 partitioning it for training, and running logistic regression.
