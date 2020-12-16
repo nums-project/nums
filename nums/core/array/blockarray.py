@@ -129,15 +129,15 @@ class BlockArray(BlockArrayBase):
         block_shape = kwargs.get("block_shape", None)
         if array_utils.is_int(shape):
             shape = (shape,)
-        if (block_shape is None or self.block_shape == block_shape) \
-                and (shape is None or self.shape == shape):
-            return Reshape()(self, self.shape, self.block_shape)
-        if shape is None:
+        elif shape is None:
             shape = self.shape
-        else:
-            shape = Reshape.compute_shape(self.shape, shape)
+        shape = Reshape.compute_shape(self.shape, shape)
         if block_shape is None:
-            block_shape = self._get_and_register_block_shape(shape)
+            if shape == self.shape:
+                # This is a noop.
+                block_shape = self.block_shape
+            else:
+                block_shape = self._get_and_register_block_shape(shape)
         return Reshape()(self, shape, block_shape)
 
     # TODO (hme): Remove this during engine/sys refactor.
@@ -210,7 +210,7 @@ class BlockArray(BlockArrayBase):
                 tmp.append(entry.get())
             else:
                 tmp.append(entry)
-        ss = tmp
+        ss = tuple(tmp)
         is_handled_advanced = True
         if len(ss) > 1:
             # Check if all entries are full slices except the last entry.
@@ -218,7 +218,7 @@ class BlockArray(BlockArrayBase):
                 is_handled_advanced = is_handled_advanced and (isinstance(entry, slice)
                                                                and entry.start is None
                                                                and entry.stop is None)
-        if is_handled_advanced and selection.is_advanced_selection((ss[-1],)):
+        if is_handled_advanced and array_utils.is_array_like(ss[-1]):
             # Treat this as a shuffle.
             return self._advanced_single_array_subscript(sel=(ss[-1],), axis=len(ss)-1)
 
@@ -721,7 +721,7 @@ class Reshape(object):
                     new_shape.append(dim)
         else:
             new_shape = input_shape
-        assert np.product(shape) == np.product(new_shape)
+        assert size == np.product(new_shape)
         return new_shape
 
     def _group_index_lists_by_block(self, dst_slice_tuples,

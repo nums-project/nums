@@ -86,7 +86,7 @@ def test_touch(app_inst: ArrayApplication):
 
 
 if __name__ == "__main__":
-    # pylint: disable=import-error
+    # pylint: disable=import-error, no-member
     from tests import conftest
 
     app_inst = conftest.get_app("serial")

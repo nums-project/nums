@@ -27,25 +27,23 @@ from nums.core.storage.storage import StoredArrayS3, ArrayGrid
 
 
 @mock_s3
-def test_rwd():
-    from tests import conftest
-    app_inst: ArrayApplication = conftest.get_app("serial")
+def test_rwd(serial_app_inst: ArrayApplication):
 
     conn = boto3.resource('s3', region_name='us-east-1')
     assert conn.Bucket('darrays') not in conn.buckets.all()
     conn.create_bucket(Bucket='darrays')
 
     array: np.ndarray = np.random.random(35).reshape(7, 5)
-    ba: BlockArray = app_inst.array(array, block_shape=(3, 4))
+    ba: BlockArray = serial_app_inst.array(array, block_shape=(3, 4))
     filename = "darrays/read_write_delete_array_test"
-    write_result: BlockArray = app_inst.write_s3(ba, filename)
-    write_result_arr = app_inst.get(write_result)
+    write_result: BlockArray = serial_app_inst.write_s3(ba, filename)
+    write_result_arr = serial_app_inst.get(write_result)
     for grid_entry in write_result.grid.get_entry_iterator():
         assert 'ETag' in write_result_arr[grid_entry]
-    ba_read: BlockArray = app_inst.read_s3(filename)
-    assert app_inst.get(app_inst.allclose(ba, ba_read))
-    delete_result: BlockArray = app_inst.delete_s3(filename)
-    delete_result_arr = app_inst.get(delete_result)
+    ba_read: BlockArray = serial_app_inst.read_s3(filename)
+    assert serial_app_inst.get(serial_app_inst.allclose(ba, ba_read))
+    delete_result: BlockArray = serial_app_inst.delete_s3(filename)
+    delete_result_arr = serial_app_inst.get(delete_result)
     for grid_entry in delete_result.grid.get_entry_iterator():
         deleted_key = delete_result_arr[grid_entry]["Deleted"][0]["Key"]
         assert deleted_key == StoredArrayS3(filename, delete_result.grid).get_key(grid_entry)
@@ -75,7 +73,11 @@ def test_grid_copy():
 
 
 if __name__ == "__main__":
-    # pylint: disable=import-error
-    test_rwd()
+    # pylint: disable=import-error, no-member
+    from tests import conftest
+
+    app_inst = conftest.get_app("serial")
+
+    test_rwd(app_inst)
     test_array_rwd()
     test_grid_copy()

@@ -57,6 +57,7 @@ nan = NAN = NaN = np.nan
 
 
 bool_ = np.bool_
+uint = np.uint
 uint8 = np.uint8
 uint16 = np.uint16
 uint32 = np.uint32

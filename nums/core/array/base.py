@@ -103,7 +103,7 @@ class Block(object):
                                                  "grid_shape": block.grid_shape
                                              })
         else:
-            block.oid = self._system.call_with_options("ufunc",
+            block.oid = self._system.call_with_options("map_uop",
                                                        [op_name, self.oid,
                                                         args,
                                                         kwargs],
