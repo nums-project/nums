@@ -114,7 +114,7 @@ def test_reshape_blocks_only(app_inst):
 
 
 if __name__ == "__main__":
-    # pylint: disable=import-error
+    # pylint: disable=import-error, no-member
     from tests import conftest
 
     app_inst = conftest.get_app("serial")
