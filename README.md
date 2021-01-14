@@ -219,9 +219,10 @@ we recommend cloning the repository and installing the project in developer mode
 using the following set of commands:
 
 ```shell script
+cd nums
 conda create --name nums python=3.7 -y
 source activate nums
-pip install -e .[testing]
+pip install -e ".[testing]"
 ```
 
 #### Contributing NumPy Functionality
