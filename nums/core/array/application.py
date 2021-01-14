@@ -1060,3 +1060,6 @@ class ArrayApplication(object):
 
     def random_state(self, seed=None):
         return NumsRandomState(self.system, seed)
+
+    def all(self, a: BlockArray, axis=None, keepdims=False):
+        return self.reduce("all", a, axis, keepdims)
