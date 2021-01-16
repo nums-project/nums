@@ -382,6 +382,11 @@ def where(condition, x=None, y=None):
     return _instance().where(condition)
 
 
+def all(a: BlockArray, axis=None, out=None, keepdims=False):
+    if out is not None:
+        raise NotImplementedError("'out' is currently not supported.")
+    return _instance().all(a, axis=axis, keepdims=keepdims)
+
 ############################################
 # Utility Ops
 ############################################

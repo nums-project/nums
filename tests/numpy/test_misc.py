@@ -95,6 +95,32 @@ def test_reshape(nps_app_inst):
                         nps.reshape(ba, shape=(6, 4)))
 
 
+def test_all(nps_app_inst):
+    import nums.numpy as nps
+    assert nps_app_inst is not None
+
+    true_int = nps.array([[1, 2, 3], [1, 2, 3]])
+    false_int = nps.array([[1, 2, 0], [1, 2, 3]])
+    true_bool = nps.array([True, True])
+    false_bool = nps.array([True, False])
+    true_float = nps.array([[1.0, 2.0, 3.0], [1.0, 2.0, 3.0]])
+    false_float = nps.array([[1.0, 2.0, 0.0], [1.0, 2.0, 3.0]])
+
+    assert nps.all(true_int)
+    assert not nps.all(false_int)
+    assert nps.all(true_bool)
+    assert not nps.all(false_bool)
+    assert nps.all(true_float).get() == np.all(np.array([[1.0, 2.0, 3.0], [1.0, 2.0, 3.0]]))
+    assert nps.all(false_float).get() == np.all(np.array([[1.0, 2.0, 0.0], [1.0, 2.0, 3.0]]))
+
+    assert nps.all(true_int).dtype is np.bool
+    assert nps.all(false_int).dtype is np.bool
+    assert nps.all(true_bool).dtype is np.bool
+    assert nps.all(false_bool).dtype is np.bool
+    assert nps.all(true_float).dtype is np.bool
+    assert nps.all(false_float).dtype is np.bool
+
+
 if __name__ == "__main__":
     from nums.core import application_manager
     from nums.core import settings
@@ -103,3 +129,4 @@ if __name__ == "__main__":
     test_where(nps_app_inst)
     # test_loadtxt(nps_app_inst)
     test_reshape(nps_app_inst)
+    test_all(nps_app_inst)
