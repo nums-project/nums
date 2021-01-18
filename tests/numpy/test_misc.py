@@ -99,12 +99,12 @@ def test_all(nps_app_inst):
     import nums.numpy as nps
     assert nps_app_inst is not None
 
-    true_int = nps.array([[1, 2, 3], [1, 2, 3]])
-    false_int = nps.array([[1, 2, 0], [1, 2, 3]])
+    true_int = nps.array([[1, 2, 3], [1, 2, 3]]).reshape(block_shape=(2, 2))
+    false_int = nps.array([[1, 2, 0], [1, 2, 3]]).reshape(block_shape=(2, 2))
     true_bool = nps.array([True, True])
     false_bool = nps.array([True, False])
-    true_float = nps.array([[1.0, 2.0, 3.0], [1.0, 2.0, 3.0]])
-    false_float = nps.array([[1.0, 2.0, 0.0], [1.0, 2.0, 3.0]])
+    true_float = nps.array([[1.0, 2.0, 3.0], [1.0, 2.0, 3.0]]).reshape(block_shape=(2, 2))
+    false_float = nps.array([[1.0, 2.0, 0.0], [1.0, 2.0, 3.0]]).reshape(block_shape=(2, 2))
 
     assert nps.all(true_int)
     assert not nps.all(false_int)
