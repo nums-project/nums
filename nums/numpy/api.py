@@ -385,7 +385,19 @@ def where(condition, x=None, y=None):
 def all(a: BlockArray, axis=None, out=None, keepdims=False):
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
-    return _instance().all(a, axis=axis, keepdims=keepdims)
+    return _instance().reduce("all", a, axis=axis, keepdims=keepdims)
+
+
+def alltrue(a: BlockArray, axis=None, out=None, dtype=None, keepdims=False):
+    if out is not None:
+        raise NotImplementedError("'out' is currently not supported.")
+    return _instance().reduce("alltrue", a, axis=axis, keepdims=keepdims, dtype=dtype)
+
+
+def any(a: BlockArray, axis=None, out=None, keepdims=False):
+    if out is not None:
+        raise NotImplementedError("'out' is currently not supported.")
+    return _instance().reduce("any", a, axis=axis, keepdims=keepdims)
 
 ############################################
 # Utility Ops
@@ -396,7 +408,6 @@ def allclose(a: BlockArray, b: BlockArray, rtol=1.e-5, atol=1.e-8, equal_nan=Fal
     if equal_nan is not False:
         raise NotImplementedError("equal_nan=True not supported.")
     return _instance().allclose(a, b, rtol, atol)
-
 
 ############################################
 # Generated Ops (Unary, Binary)

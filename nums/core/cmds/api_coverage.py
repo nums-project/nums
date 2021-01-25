@@ -141,7 +141,7 @@ def api_coverage(print_missing, count_fallback):
         'load', 'save', 'savez', 'savez_compressed',
         'genfromtxt', 'fromregex', 'fromstring',
         # Rest
-        'all', 'alltrue', 'angle', 'any', 'append', 'apply_along_axis', 'apply_over_axes',
+        'angle', 'append', 'apply_along_axis', 'apply_over_axes',
         'argpartition', 'argsort', 'argwhere', 'around', 'array_equal', 'array_equiv',
         'array_split', 'asarray', 'asarray_chkfinite', 'asscalar', 'atleast_1d',
         'atleast_2d', 'atleast_3d', 'average',
@@ -161,7 +161,7 @@ def api_coverage(print_missing, count_fallback):
         'irr', 'isclose', 'iscomplex', 'iscomplexobj', 'isin',
         'isneginf', 'isposinf', 'isreal', 'isrealobj', 'isscalar',
         'ix_', 'kaiser', 'kron', 'lexsort',
-        'matmul', 'maximum_sctype',
+        'maximum_sctype',
         'median', 'meshgrid', 'min_scalar_type', 'mintypecode', 'mirr', 'modf', 'moveaxis', 'msort',
         'nan_to_num', 'nanargmax', 'nanargmin', 'nancumprod', 'nancumsum',
         'nanmax', 'nanmean', 'nanmedian', 'nanmin', 'nanpercentile', 'nanprod', 'nanquantile',
@@ -181,7 +181,7 @@ def api_coverage(print_missing, count_fallback):
         'stack', 'swapaxes', 'take', 'take_along_axis', 'tensordot', 'tile', 'trace', 'transpose',
         'trapz', 'tri', 'tril', 'tril_indices', 'tril_indices_from', 'trim_zeros', 'triu',
         'triu_indices', 'triu_indices_from', 'union1d', 'unique', 'unpackbits',
-        'unravel_index', 'unwrap', 'vander', 'vdot', 'vsplit', 'vstack', 'where', 'who'
+        'unravel_index', 'unwrap', 'vander', 'vdot', 'vsplit', 'vstack', 'who'
     }
 
     import numpy as numpy_module
