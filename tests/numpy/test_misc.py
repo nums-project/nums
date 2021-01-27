@@ -66,9 +66,9 @@ def test_where(nps_app_inst):
 
     shapes = [
         (),
-        (10**6,),
-        (10**6, 1),
-        (10**5, 10)
+        (10 ** 6,),
+        (10 ** 6, 1),
+        (10 ** 5, 10)
     ]
     for shape in shapes:
         arr: BlockArray = nps.random.rand(*shape)
@@ -90,43 +90,52 @@ def test_where(nps_app_inst):
 def test_reshape(nps_app_inst):
     import nums.numpy as nps
     assert nps_app_inst is not None
-    ba = nps.arange(2*3*4).reshape((2, 3, 4), block_shape=(2, 3, 4))
+    ba = nps.arange(2 * 3 * 4).reshape((2, 3, 4), block_shape=(2, 3, 4))
     assert nps.allclose(ba.reshape(shape=(6, 4), block_shape=(6, 4)),
                         nps.reshape(ba, shape=(6, 4)))
 
 
-def test_all(nps_app_inst):
+def test_all_alltrue_any(nps_app_inst):
     import nums.numpy as nps
     assert nps_app_inst is not None
 
-    true_int = nps.array([[1, 2, 3], [1, 2, 3]]).reshape(block_shape=(2, 2))
-    false_int = nps.array([[1, 2, 0], [1, 2, 3]]).reshape(block_shape=(2, 2))
-    true_bool = nps.array([True, True])
-    false_bool = nps.array([True, False])
-    true_float = nps.array([[1.0, 2.0, 3.0], [1.0, 2.0, 3.0]]).reshape(block_shape=(2, 2))
-    false_float = nps.array([[1.0, 2.0, 0.0], [1.0, 2.0, 3.0]]).reshape(block_shape=(2, 2))
+    true_int = np.array([[1, 2, 3], [1, 2, 3]])
+    false_int = np.array([[1, 2, 0], [1, 2, 3]])
+    true_bool = np.array([[True, True, True], [True, True, True]])
+    false_bool = np.array([[True, False, False], [False, True, True]])
+    true_float = np.array([[1.0, 2.0, 3.0], [1.0, 2.0, 3.0]])
+    false_float = np.array([[1.0, 2.0, 0.0], [1.0, 2.0, 3.0]])
 
-    assert nps.all(true_int)
-    assert not nps.all(false_int)
-    assert nps.all(true_bool)
-    assert not nps.all(false_bool)
-    assert nps.all(true_float).get() == np.all(np.array([[1.0, 2.0, 3.0], [1.0, 2.0, 3.0]]))
-    assert nps.all(false_float).get() == np.all(np.array([[1.0, 2.0, 0.0], [1.0, 2.0, 3.0]]))
+    checks = [true_int, false_int, true_bool, false_bool, true_float, false_float]
 
-    assert nps.all(true_int).dtype is np.bool
-    assert nps.all(false_int).dtype is np.bool
-    assert nps.all(true_bool).dtype is np.bool
-    assert nps.all(false_bool).dtype is np.bool
-    assert nps.all(true_float).dtype is np.bool
-    assert nps.all(false_float).dtype is np.bool
+    for array in checks:
+        nps_array = nps.array(array).reshape(block_shape=(2, 2))
+        assert nps.all(nps_array).get() == np.all(array)
+        assert nps.alltrue(nps_array).get() == np.alltrue(array)
+
+        assert nps.all(nps_array).dtype is np.bool
+        assert nps.alltrue(nps_array).dtype is np.bool
+
+    false_int = np.array([[0, 0, 0], [0, 0, 0]])
+    false_bool = np.array([[False, False, False], [False, False, False]])
+    false_float = np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]])
+
+    checks = [true_int, false_int, true_bool, false_bool, true_float, false_float]
+
+    for array in checks:
+        nps_array = nps.array(array).reshape(block_shape=(2, 2))
+        assert nps.any(nps_array).get() == np.any(array)
+
+        assert nps.any(nps_array).dtype is np.bool
 
 
 if __name__ == "__main__":
     from nums.core import application_manager
     from nums.core import settings
+
     settings.system_name = "serial"
     nps_app_inst = application_manager.instance()
     test_where(nps_app_inst)
     # test_loadtxt(nps_app_inst)
     test_reshape(nps_app_inst)
-    test_all(nps_app_inst)
+    test_all_alltrue_any(nps_app_inst)
