@@ -258,8 +258,16 @@ class ComputeCls(ComputeImp):
 
     # Boolean
 
-    def allclose(self, a: np.ndarray, b: np.ndarray, rtol, atol):
-        return np.allclose(a, b, rtol, atol)
+    def array_compare(self, func_name: str, a: np.ndarray, b: np.ndarray, args):
+        eq_func = getattr(np, func_name)
+        if func_name == "allclose":
+            assert len(args) == 2
+            rtol = args[0]
+            atol = args[1]
+            return np.allclose(a, b, rtol, atol)
+
+        assert len(args) == 0
+        return eq_func(a, b)
 
     # Logic
 

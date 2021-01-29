@@ -404,6 +404,16 @@ def any(a: BlockArray, axis=None, out=None, keepdims=False):
 ############################################
 
 
+def array_equal(a: BlockArray, b: BlockArray, equal_nan=False) -> BlockArray:
+    if equal_nan is not False:
+        raise NotImplementedError("equal_nan=True not supported.")
+    return _instance().array_equal(a, b)
+
+
+def array_equiv(a: BlockArray, b: BlockArray) -> BlockArray:
+    return _instance().array_equiv(a, b)
+
+
 def allclose(a: BlockArray, b: BlockArray, rtol=1.e-5, atol=1.e-8, equal_nan=False) -> BlockArray:
     if equal_nan is not False:
         raise NotImplementedError("equal_nan=True not supported.")

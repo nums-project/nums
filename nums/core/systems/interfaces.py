@@ -136,7 +136,7 @@ class ComputeInterface(object):
     def inv(self, arr, syskwargs: Dict):
         raise NotImplementedError()
 
-    def allclose(self, a, b, rtol, atol, syskwargs: Dict):
+    def array_compare(self, func_name, a, b, args, syskwargs: Dict):
         raise NotImplementedError()
 
     def map_uop(self, op_name, arr, args, kwargs, syskwargs: Dict):
