@@ -142,7 +142,7 @@ def api_coverage(print_missing, count_fallback):
         'genfromtxt', 'fromregex', 'fromstring',
         # Rest
         'angle', 'append', 'apply_along_axis', 'apply_over_axes',
-        'argpartition', 'argsort', 'argwhere', 'around', 'array_equal', 'array_equiv',
+        'argpartition', 'argsort', 'argwhere', 'around',
         'array_split', 'asarray', 'asarray_chkfinite', 'asscalar', 'atleast_1d',
         'atleast_2d', 'atleast_3d', 'average',
         'bartlett', 'bincount', 'blackman',

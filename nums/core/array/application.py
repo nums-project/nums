@@ -324,9 +324,9 @@ class ArrayApplication(object):
                                                                 grid_entry,
                                                                 grid_meta,
                                                                 syskwargs={
-                                                                     "grid_entry": grid_entry,
-                                                                     "grid_shape": grid.grid_shape
-                                                                 })
+                                                                    "grid_entry": grid_entry,
+                                                                    "grid_shape": grid.grid_shape
+                                                                })
         return rarr
 
     def concatenate(self, arrays: List, axis: int, axis_block_size: int = None):
@@ -378,7 +378,7 @@ class ArrayApplication(object):
         pos = 0
         for arr in arrays:
             delta = arr.shape[axis]
-            axis_slice = slice(pos, pos+delta)
+            axis_slice = slice(pos, pos + delta)
             result_selector = tuple([slice(None, None) for _ in range(axis)] + [axis_slice, ...])
             result_ba[result_selector] = arr
             pos += delta
@@ -464,7 +464,7 @@ class ArrayApplication(object):
         assert axis == 0
         assert endpoint is True
         assert retstep is False
-        step_size = (stop - start) / (shape[0]-1)
+        step_size = (stop - start) / (shape[0] - 1)
         result = self.arange(shape, block_shape)
         result = start + result * step_size
         if dtype is not None and dtype != result.dtype:
@@ -509,7 +509,7 @@ class ArrayApplication(object):
 
     def var(self, X: BlockArray, axis=None, ddof=0, keepdims=False, dtype=None):
         mean = self.mean(X, axis=axis, keepdims=True)
-        ss = self.sum((X - mean)**self.two, axis=axis, keepdims=keepdims)
+        ss = self.sum((X - mean) ** self.two, axis=axis, keepdims=keepdims)
         num_summed = (np.product(X.shape) if axis is None else X.shape[axis]) - ddof
         res = ss / num_summed
         if dtype is not None:
@@ -580,7 +580,7 @@ class ArrayApplication(object):
                                       syskwargs={
                                           "grid_entry": grid_entry,
                                           "grid_shape": condition.grid.grid_shape,
-                                          "options": {"num_returns": num_axes+1}
+                                          "options": {"num_returns": num_axes + 1}
                                       })
             block_oids, shape_oid = roids[:-1], roids[-1]
             shape_oids.append(shape_oid)
@@ -751,20 +751,29 @@ class ArrayApplication(object):
                     r.append(item)
             return r
 
-    def allclose(self, a: BlockArray, b: BlockArray, rtol=1.e-5, atol=1.e-8):
+    def array_compare(self, func_name, a: BlockArray, b: BlockArray, *args):
         assert a.shape == b.shape and a.block_shape == b.block_shape
         bool_list = []
         grid_shape = a.grid.grid_shape
         for grid_entry in a.grid.get_entry_iterator():
             a_block, b_block = a.blocks[grid_entry].oid, b.blocks[grid_entry].oid
-            bool_list.append(self.system.allclose(a_block, b_block, rtol, atol,
-                                                  syskwargs={
-                                                       "grid_entry": grid_entry,
-                                                       "grid_shape": grid_shape
-                                                   }))
+            bool_list.append(self.system.array_compare(func_name, a_block, b_block, args,
+                                                       syskwargs={
+                                                           "grid_entry": grid_entry,
+                                                           "grid_shape": grid_shape
+                                                       }))
         oid = self.system.logical_and(*bool_list,
                                       syskwargs={"grid_entry": (0, 0), "grid_shape": (1, 1)})
         return BlockArray.from_oid(oid, (), np.bool, self.system)
+
+    def array_equal(self, a: BlockArray, b: BlockArray):
+        return self.array_compare("array_equal", a, b)
+
+    def array_equiv(self, a: BlockArray, b: BlockArray):
+        return self.array_compare("array_equiv", a, b)
+
+    def allclose(self, a: BlockArray, b: BlockArray, rtol=1.e-5, atol=1.e-8):
+        return self.array_compare("allclose", a, b, rtol, atol)
 
     def qr(self, X: BlockArray):
         return self.indirect_tsqr(X)
@@ -790,10 +799,10 @@ class ArrayApplication(object):
                                          mode="r",
                                          axis=1,
                                          syskwargs={
-                                              "grid_entry": (i, 0),
-                                              "grid_shape": (grid_shape[0], 1),
-                                              "options": {"num_returns": 1}
-                                          })
+                                             "grid_entry": (i, 0),
+                                             "grid_shape": (grid_shape[0], 1),
+                                             "options": {"num_returns": 1}
+                                         })
                           )
 
         # Construct R by summing over R blocks.
@@ -808,10 +817,10 @@ class ArrayApplication(object):
                                               mode="r",
                                               axis=0,
                                               syskwargs={
-                                                   "grid_entry": (0, 0),
-                                                   "grid_shape": (1, 1),
-                                                   "options": {"num_returns": 1}
-                                               })
+                                                  "grid_entry": (0, 0),
+                                                  "grid_shape": (1, 1),
+                                                  "options": {"num_returns": 1}
+                                              })
         # If blocking is "tall-skinny," then we're done.
         if R_shape != R_block_shape:
             if reshape_output:
@@ -874,10 +883,10 @@ class ArrayApplication(object):
                                           mode="reduced",
                                           axis=1,
                                           syskwargs={
-                                               "grid_entry": (i, 0),
-                                               "grid_shape": (grid_shape[0], 1),
-                                               "options": {"num_returns": 2}
-                                           })
+                                              "grid_entry": (i, 0),
+                                              "grid_shape": (grid_shape[0], 1),
+                                              "options": {"num_returns": 2}
+                                          })
             R_oids.append(R_oid)
             Q_oids.append(Q_oid)
 
@@ -887,10 +896,10 @@ class ArrayApplication(object):
                                         mode="reduced",
                                         axis=0,
                                         syskwargs={
-                                             "grid_entry": (0, 0),
-                                             "grid_shape": (1, 1),
-                                             "options": {"num_returns": 2}
-                                         })
+                                            "grid_entry": (0, 0),
+                                            "grid_shape": (1, 1),
+                                            "options": {"num_returns": 2}
+                                        })
 
         Q2_shape = tuple(Q2_shape)
         Q2_block_shape = (QR_dims[0][1][0], shape[1])
@@ -914,7 +923,7 @@ class ArrayApplication(object):
                                                        a2_shape=Q2_block_shape,
                                                        a1_T=False, a2_T=False, axes=1,
                                                        syskwargs={"grid_entry": grid_entry,
-                                                                   "grid_shape": Q.grid.grid_shape})
+                                                                  "grid_shape": Q.grid.grid_shape})
 
         # Construct R.
         shape = X.shape
@@ -945,7 +954,7 @@ class ArrayApplication(object):
         assert R.shape == R.block_shape
         R_U, S, VT = self.system.svd(R.blocks[(0, 0)].oid,
                                      syskwargs={"grid_entry": (0, 0),
-                                                 "grid_shape": (1, 1)})
+                                                "grid_shape": (1, 1)})
         R_U: BlockArray = self._vec_from_oids([R_U], R_shape, R_block_shape, X.dtype)
         S: BlockArray = self._vec_from_oids([S], R_shape[:1], R_block_shape[:1], X.dtype)
         VT = self._vec_from_oids([VT], R_shape, R_block_shape, X.dtype)
@@ -993,9 +1002,9 @@ class ArrayApplication(object):
             result = X.reshape(block_shape=X.shape)
         result.blocks[0, 0].oid = self.system.cholesky(result.blocks[0, 0].oid,
                                                        syskwargs={
-                                                            "grid_entry": (0, 0),
-                                                            "grid_shape": (1, 1)
-                                                        })
+                                                           "grid_entry": (0, 0),
+                                                           "grid_shape": (1, 1)
+                                                       })
         if not single_block:
             result = result.reshape(block_shape=block_shape)
         return result
@@ -1038,7 +1047,7 @@ class ArrayApplication(object):
         R_shape = (shape[1], shape[1])
         R_block_shape = (block_shape[1], block_shape[1])
         R = self.indirect_tsr(X)
-        lamb_vec = self.array(lamb*np.eye(R_shape[0]), block_shape=R_block_shape)
+        lamb_vec = self.array(lamb * np.eye(R_shape[0]), block_shape=R_block_shape)
         # TODO (hme): A better solution exists, which inverts R by augmenting X and y.
         #  See Murphy 7.5.2.
         theta = self.inv(lamb_vec + R.T @ R) @ (X.T @ y)
