@@ -400,6 +400,29 @@ def any(a: BlockArray, axis=None, out=None, keepdims=False):
     return _instance().reduce("any", a, axis=axis, keepdims=keepdims)
 
 ############################################
+# NaN Ops
+############################################
+
+
+def nanmax(a: BlockArray, axis=None, out=None, keepdims=False):
+    if out is not None:
+        raise NotImplementedError("'out' is currently not supported.")
+    return _instance().reduce("nanmax", a, axis=axis, keepdims=keepdims)
+
+
+def nanmin(a: BlockArray, axis=None, out=None, keepdims=False):
+    if out is not None:
+        raise NotImplementedError("'out' is currently not supported.")
+    return _instance().reduce("nanmin", a, axis=axis, keepdims=keepdims)
+
+
+def nansum(a: BlockArray, axis=None, dtype=None, out=None, keepdims=False):
+    if out is not None:
+        raise NotImplementedError("'out' is currently not supported.")
+    return _instance().reduce("nansum", a, axis=axis, dtype=dtype, keepdims=keepdims)
+
+
+############################################
 # Utility Ops
 ############################################
 

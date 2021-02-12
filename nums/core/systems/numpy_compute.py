@@ -178,6 +178,7 @@ class ComputeCls(ComputeImp):
         op_func = np.__getattribute__(op_name)
         if transposed:
             arr = arr.T
+
         return op_func(arr, axis=axis, keepdims=keepdims)
 
     # This is essentially a map.
@@ -236,6 +237,23 @@ class ComputeCls(ComputeImp):
         except Exception as _:
             ufunc = scipy.special.__getattribute__(op)
         return ufunc(a1, a2)
+
+    def bop_reduce(self, op, a1, a2, a1_T, a2_T):
+        if a1_T:
+            a1 = a1.T
+        if a2_T:
+            a2 = a2.T
+
+        reduce_op = np.__getattribute__(op)
+
+        a = np.stack([a1, a2], axis=0)
+        r = reduce_op(a, axis=0, keepdims=False)
+
+        if a1 is np.nan or a2 is np.nan or r is np.nan:
+            assert np.isscalar(a1) and np.isscalar(a2) and np.isscalar(r)
+        else:
+            assert a1.shape == a2.shape == r.shape
+        return r
 
     def qr(self, *arrays, mode="reduced", axis=None):
         if len(arrays) > 1:
