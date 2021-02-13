@@ -122,6 +122,9 @@ class ComputeInterface(object):
     def bop(self, op, a1, a2, a1_shape, a2_shape, a1_T, a2_T, axes, syskwargs: Dict):
         raise NotImplementedError()
 
+    def bop_reduce(self, op, a1, a2, a1_T, a2_T, syskwargs: Dict):
+        raise NotImplementedError()
+
     def split(self, arr, indices_or_sections, axis, transposed, syskwargs: Dict):
         raise NotImplementedError()
 

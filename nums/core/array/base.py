@@ -20,7 +20,6 @@ from nums.core.storage.storage import ArrayGrid
 from nums.core.systems.systems import System
 from nums.core.array import utils as array_utils
 
-
 block_id_counter = -1
 
 
@@ -47,7 +46,7 @@ class Block(object):
             self.id = block_id_counter
 
     def __repr__(self):
-        return "Block("+str(self.oid)+")"
+        return "Block(" + str(self.oid) + ")"
 
     def size(self):
         return np.product(self.shape)
@@ -157,10 +156,10 @@ class Block(object):
             result_shape.append(self.shape[curr_axis])
 
         dtype = array_utils.get_reduce_output_type(op_name, self.dtype)
-        block = Block(grid_entry=result_grid_entry,
-                      grid_shape=result_grid_shape,
+        block = Block(grid_entry=tuple(result_grid_entry),
+                      grid_shape=tuple(result_grid_shape),
                       rect=result_rect,
-                      shape=result_shape,
+                      shape=tuple(result_shape),
                       dtype=dtype,
                       # This is false because we invoke the transpose before
                       # applying the reduction operation, so the resulting
@@ -176,6 +175,31 @@ class Block(object):
                                                  "grid_entry": block.grid_entry,
                                                  "grid_shape": block.grid_shape
                                              })
+        return block
+
+    def bop_reduce(self, op_name, other):
+        other: Block = other
+
+        dtype = array_utils.get_reduce_output_type(op_name, self.dtype)
+        block = Block(grid_entry=self.grid_entry,
+                      grid_shape=self.grid_shape,
+                      rect=list(self.rect),
+                      shape=self.shape,
+                      dtype=dtype,
+                      # This is false because we invoke the transpose before
+                      # applying the reduction operation, so the resulting
+                      # remote object will be transposed.
+                      transposed=False,
+                      system=self._system)
+        block.oid = self._system.bop_reduce(op=op_name,
+                                            a1=self.oid,
+                                            a2=other.oid,
+                                            a1_T=self.transposed,
+                                            a2_T=other.transposed,
+                                            syskwargs={
+                                                "grid_entry": block.grid_entry,
+                                                "grid_shape": block.grid_shape
+                                            })
         return block
 
     def _block_from_other(self, other):
@@ -367,7 +391,7 @@ class BlockArrayBase(object):
                                                 system=self.system)
 
     def __repr__(self):
-        return "BlockArray("+str(self.blocks)+")"
+        return "BlockArray(" + str(self.blocks) + ")"
 
     def get(self):
         result = np.zeros(shape=self.grid.shape, dtype=self.grid.dtype)

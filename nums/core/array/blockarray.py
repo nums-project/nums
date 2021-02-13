@@ -388,9 +388,7 @@ class BlockArray(BlockArrayBase):
                                 dtype=result_dtype.__name__)
         result = BlockArray(result_grid, self.system)
 
-        if op_name in settings.np_pairwise_reduction_map:
-            # Do a pairwise reduction with the pairwise reduction op.
-            pairwise_op_name = settings.np_pairwise_reduction_map.get(op_name, op_name)
+        if op_name in settings.np_bop_reduction_set:
             if axis is None:
                 reduced_block: Block = None
                 for grid_entry in self.grid.get_entry_iterator():
@@ -398,7 +396,7 @@ class BlockArray(BlockArrayBase):
                         reduced_block = result_blocks[grid_entry]
                         continue
                     next_block = result_blocks[grid_entry]
-                    reduced_block = reduced_block.bop(pairwise_op_name, next_block, {})
+                    reduced_block = reduced_block.bop_reduce(op_name, other=next_block)
                 if result.shape == ():
                     result.blocks[()] = reduced_block
                 else:
@@ -418,7 +416,8 @@ class BlockArray(BlockArrayBase):
                         if reduced_block is None:
                             reduced_block = next_block
                         else:
-                            reduced_block = reduced_block.bop(pairwise_op_name, next_block, {})
+                            reduced_block = reduced_block.bop_reduce(op_name, other=next_block)
+
                     result.blocks[result_grid_entry] = reduced_block
         else:
             op_func = np.__getattribute__(op_name)
