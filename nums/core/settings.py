@@ -60,9 +60,12 @@ np_ufunc_map = {
     "ne": "not_equal"
 }
 
-np_pairwise_reduction_map = {
-    "min": "fmin",
-    "amin": "fmin",
-    "max": "fmax",
-    "amax": "fmax",
+np_bop_reduction_set = {
+    "min",
+    "amin",
+    "max",
+    "amax",
+    "nanmax",
+    "nanmin",
+    "nansum"
 }
