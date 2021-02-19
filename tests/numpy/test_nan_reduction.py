@@ -38,9 +38,9 @@ def test_nan_reductions(nps_app_inst):
     for block_shape in block_shapes:
         ba = ba.reshape(block_shape=block_shape)
         np_arr = ba.get()
-        op_params = ["nanmax", "nanmin", "nansum"]
+        op_params = ["nanmax", "nanmin", "nansum", "nanmean"]
         axis_params = [None, 0, 1]
-        # keepdims=True is a bug with some nan functions
+        # keepdims=True is buggy with some nan functions
         keepdims_params = [True, False]
 
         for op, axis, keepdims in itertools.product(op_params, axis_params, keepdims_params):
@@ -56,7 +56,8 @@ def test_nan_reductions(nps_app_inst):
 if __name__ == "__main__":
     from nums.core import application_manager
     import nums.core.settings
-    warnings.filterwarnings('ignore', r'All-NaN (slice|axis) encountered')
+    warnings.filterwarnings("ignore", "All-NaN (slice|axis) encountered")
+    warnings.filterwarnings("ignore", "Mean of empty slice")
     nums.core.settings.system_name = "serial"
     nps_app_inst = application_manager.instance()
     test_nan_reductions(nps_app_inst)

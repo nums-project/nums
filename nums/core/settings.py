@@ -67,5 +67,6 @@ np_bop_reduction_set = {
     "amax",
     "nanmax",
     "nanmin",
-    "nansum"
+    "nansum",
+    "nanmean"
 }
