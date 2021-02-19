@@ -164,7 +164,7 @@ def api_coverage(print_missing, count_fallback):
         'maximum_sctype',
         'median', 'meshgrid', 'min_scalar_type', 'mintypecode', 'mirr', 'modf', 'moveaxis', 'msort',
         'nan_to_num', 'nanargmax', 'nanargmin', 'nancumprod', 'nancumsum',
-        'nanmean', 'nanmedian', 'nanpercentile', 'nanprod', 'nanquantile',
+        'nanmedian', 'nanpercentile', 'nanprod', 'nanquantile',
         'nanstd', 'nanvar',
         'nonzero', 'nper', 'npv',
         'obj2sctype', 'outer',

@@ -1087,3 +1087,23 @@ class ArrayApplication(object):
 
     def random_state(self, seed=None):
         return NumsRandomState(self.system, seed)
+
+    def nanmean(self, a: BlockArray, axis=None, keepdims=False, dtype=None):
+        if not array_utils.is_float(a):
+            a = a.astype(np.float64)
+
+        num_summed = self.sum(~a.ufunc("isnan"), axis=axis, dtype=a.dtype, keepdims=keepdims)
+
+        if num_summed.ndim == 0 and num_summed == 0:
+            return self.scalar(np.nan)
+
+        if num_summed.ndim > 0:
+            num_summed = self.where(num_summed == 0,
+                                    self.empty(num_summed.shape, num_summed.block_shape) * np.nan,
+                                    num_summed)
+
+        res = self.reduce("nansum", a, axis=axis, dtype=dtype, keepdims=keepdims) / num_summed
+
+        if dtype is not None:
+            res = res.astype(dtype)
+        return res

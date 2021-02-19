@@ -323,6 +323,8 @@ class BlockArray(BlockArrayBase):
         if isinstance(other, BlockArray):
             return other
         if isinstance(other, np.ndarray):
+            # TODO (MWE): for self.shape (4,) self.block_shape: (1,),
+            #  other.shape: (1, 4) this fails due to a failure to broadcast block shape
             return self.from_np(other, self.block_shape, False, self.system)
         if isinstance(other, list):
             other = np.array(other)
@@ -604,6 +606,9 @@ class BlockArray(BlockArrayBase):
         return BlockArray.from_blocks(self.blocks ** other.blocks,
                                       result_shape=None,
                                       system=self.system)
+
+    def __invert__(self):
+        return self.ufunc("invert")
 
     __iadd__ = __add__
     __isub__ = __sub__
