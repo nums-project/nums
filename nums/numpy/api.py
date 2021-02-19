@@ -378,8 +378,7 @@ def std(a: BlockArray, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
 
 
 def where(condition, x=None, y=None):
-    assert x is None and y is None, "x and y parameters not supported."
-    return _instance().where(condition)
+    return _instance().where(condition, x, y)
 
 
 def all(a: BlockArray, axis=None, out=None, keepdims=False):

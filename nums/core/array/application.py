@@ -563,7 +563,10 @@ class ArrayApplication(object):
             y = y.astype(np.float64)
         return self.map_bop("xlogy", x, y)
 
-    def where(self, condition: BlockArray, x=None, y=None):
+    def where(self,
+              condition: BlockArray,
+              x: BlockArray = None,
+              y: BlockArray = None):
         result_oids = []
         shape_oids = []
         num_axes = max(1, len(condition.shape))
@@ -572,45 +575,59 @@ class ArrayApplication(object):
             assert x is not None and y is not None
             assert condition.shape == x.shape == y.shape
             assert condition.block_shape == x.block_shape == y.block_shape
-        for grid_entry in condition.grid.get_entry_iterator():
-            block: Block = condition.blocks[grid_entry]
-            block_slice_tuples = condition.grid.get_slice_tuples(grid_entry)
-            roids = self.system.where(block.oid, x, y,
-                                      block_slice_tuples,
-                                      syskwargs={
-                                          "grid_entry": grid_entry,
-                                          "grid_shape": condition.grid.grid_shape,
-                                          "options": {"num_returns": num_axes + 1}
-                                      })
-            block_oids, shape_oid = roids[:-1], roids[-1]
-            shape_oids.append(shape_oid)
-            result_oids.append(block_oids)
-        shapes = self.system.get(shape_oids)
-        result_shape = (np.sum(shapes),)
-        if result_shape == (0,):
-            return (self.array(np.array([], dtype=np.int64), block_shape=(0,)),)
-        # Remove empty shapes.
-        result_shape_pair = []
-        for i, shape in enumerate(shapes):
-            if np.sum(shape) > 0:
-                result_shape_pair.append((result_oids[i], shape))
-        result_block_shape = self.compute_block_shape(result_shape, np.int64)
-        result_arrays = []
-        for axis in range(num_axes):
-            block_arrays = []
-            for i in range(len(result_oids)):
-                if shapes[i] == (0,):
-                    continue
-                block_arrays.append(BlockArray.from_oid(result_oids[i][axis],
-                                                        shapes[i],
-                                                        np.int64,
-                                                        self.system))
-            if len(block_arrays) == 1:
-                axis_result = block_arrays[0]
-            else:
-                axis_result = self.concatenate(block_arrays, 0, result_block_shape[0])
-            result_arrays.append(axis_result)
-        return tuple(result_arrays)
+            assert x.dtype == y.dtype
+            result = BlockArray(x.grid.copy(), self.system)
+            for grid_entry in condition.grid.get_entry_iterator():
+                cond_oid = condition.blocks[grid_entry].oid
+                x_oid = x.blocks[grid_entry].oid
+                y_oid = y.blocks[grid_entry].oid
+                result.blocks[grid_entry].oid = self.system.where(cond_oid, x_oid, y_oid, None,
+                                                                  syskwargs={
+                                                                      "grid_entry": grid_entry,
+                                                                      "grid_shape": condition.grid.grid_shape,
+                                                                      "options": {"num_returns": num_axes + 1}
+                                                                  })
+            return result
+        else:
+            for grid_entry in condition.grid.get_entry_iterator():
+                block: Block = condition.blocks[grid_entry]
+                block_slice_tuples = condition.grid.get_slice_tuples(grid_entry)
+                roids = self.system.where(block.oid, None, None,
+                                          block_slice_tuples,
+                                          syskwargs={
+                                              "grid_entry": grid_entry,
+                                              "grid_shape": condition.grid.grid_shape,
+                                              "options": {"num_returns": num_axes + 1}
+                                          })
+                block_oids, shape_oid = roids[:-1], roids[-1]
+                shape_oids.append(shape_oid)
+                result_oids.append(block_oids)
+            shapes = self.system.get(shape_oids)
+            result_shape = (np.sum(shapes),)
+            if result_shape == (0,):
+                return (self.array(np.array([], dtype=np.int64), block_shape=(0,)),)
+            # Remove empty shapes.
+            result_shape_pair = []
+            for i, shape in enumerate(shapes):
+                if np.sum(shape) > 0:
+                    result_shape_pair.append((result_oids[i], shape))
+            result_block_shape = self.compute_block_shape(result_shape, np.int64)
+            result_arrays = []
+            for axis in range(num_axes):
+                block_arrays = []
+                for i in range(len(result_oids)):
+                    if shapes[i] == (0,):
+                        continue
+                    block_arrays.append(BlockArray.from_oid(result_oids[i][axis],
+                                                            shapes[i],
+                                                            np.int64,
+                                                            self.system))
+                if len(block_arrays) == 1:
+                    axis_result = block_arrays[0]
+                else:
+                    axis_result = self.concatenate(block_arrays, 0, result_block_shape[0])
+                result_arrays.append(axis_result)
+            return tuple(result_arrays)
 
     def map_uop(self,
                 op_name: str,
