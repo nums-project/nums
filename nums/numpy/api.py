@@ -421,6 +421,12 @@ def nansum(a: BlockArray, axis=None, dtype=None, out=None, keepdims=False):
     return _instance().reduce("nansum", a, axis=axis, dtype=dtype, keepdims=keepdims)
 
 
+def nanmean(a, axis=None, dtype=None, out=None, keepdims=False):
+    if out is not None:
+        raise NotImplementedError("'out' is currently not supported.")
+    return _instance().nanmean(a, axis=axis, dtype=dtype, keepdims=keepdims)
+
+
 ############################################
 # Utility Ops
 ############################################
