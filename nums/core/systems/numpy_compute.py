@@ -193,13 +193,14 @@ class ComputeCls(ComputeImp):
             for i, (start, stop) in enumerate(block_slice_tuples):
                 arr = res[i]
                 arr += start
+            shape = res[0].shape
+            res = list(res)
+            res.append(shape)
+            return tuple(res)
         else:
             assert isinstance(x, np.ndarray) and isinstance(y, np.ndarray)
-            res = np.where(arr, x, y)
-        shape = res[0].shape
-        res = list(res)
-        res.append(shape)
-        return tuple(res)
+            assert arr.shape == x.shape == y.shape
+            return np.where(arr, x, y)
 
     def xlogy(self, arr_x, arr_y):
         return scipy.special.xlogy(arr_x, arr_y)

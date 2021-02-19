@@ -72,11 +72,18 @@ def test_where(nps_app_inst):
     ]
     for shape in shapes:
         arr: BlockArray = nps.random.rand(*shape)
+        x: BlockArray = nps.random.rand(*shape)
+        y: BlockArray = nps.random.rand(*shape)
         if len(shape) == 1:
-            arr = arr.reshape(block_shape=(arr.shape[0] // 12,))
+            bs = (shape[0] // 12,)
+            arr = arr.reshape(block_shape=bs)
+            x = x.reshape(block_shape=bs)
+            y = y.reshape(block_shape=bs)
         elif len(shape) == 2:
-            arr = arr.reshape(block_shape=(arr.shape[0] // 12,
-                                           arr.shape[1]))
+            bs = (shape[0] // 12, shape[1])
+            arr = arr.reshape(block_shape=bs)
+            x = x.reshape(block_shape=bs)
+            y = y.reshape(block_shape=bs)
         results: tuple = nps.where(arr < 0.5)
         np_results = np.where(arr.get() < 0.5)
         for i in range(len(np_results)):
@@ -85,6 +92,15 @@ def test_where(nps_app_inst):
         np_results = np.where(arr.get() >= 0.5)
         for i in range(len(np_results)):
             assert np.allclose(np_results[i], results[i].get())
+
+        # Do an xy test.
+        np_results = np.where(arr.get() < 0.5, x.get(), y.get())
+        result = nps.where(arr < 0.5, x, y)
+        assert np.allclose(np_results, result.get())
+
+        np_results = np.where(arr.get() >= 0.5, x.get(), y.get())
+        result = nps.where(arr >= 0.5, x, y)
+        assert np.allclose(np_results, result.get())
 
 
 def test_reshape(nps_app_inst):
@@ -182,7 +198,7 @@ if __name__ == "__main__":
     from nums.core import application_manager
     from nums.core import settings
 
-    settings.system_name = "serial"
+    settings.system_name = "ray-task"
     nps_app_inst = application_manager.instance()
     test_where(nps_app_inst)
     # test_loadtxt(nps_app_inst)
