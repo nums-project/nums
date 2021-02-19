@@ -581,12 +581,13 @@ class ArrayApplication(object):
                 cond_oid = condition.blocks[grid_entry].oid
                 x_oid = x.blocks[grid_entry].oid
                 y_oid = y.blocks[grid_entry].oid
-                result.blocks[grid_entry].oid = self.system.where(cond_oid, x_oid, y_oid, None,
-                                                                  syskwargs={
-                                                                      "grid_entry": grid_entry,
-                                                                      "grid_shape": condition.grid.grid_shape,
-                                                                      "options": {"num_returns": num_axes + 1}
-                                                                  })
+                r_oid = self.system.where(cond_oid, x_oid, y_oid, None,
+                                          syskwargs={
+                                              "grid_entry": grid_entry,
+                                              "grid_shape": condition.grid.grid_shape,
+                                              "options": {"num_returns": 1}
+                                          })
+                result.blocks[grid_entry].oid = r_oid
             return result
         else:
             for grid_entry in condition.grid.get_entry_iterator():
