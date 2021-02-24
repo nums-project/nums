@@ -75,7 +75,10 @@ def module_coverage(module_name, print_missing, count_fallback,
                     break
             print_tuple = name, descr
         except Exception as _:
-            print_tuple = name, func.__code__.co_varnames
+            try:
+                print_tuple = name, func.__code__.co_varnames
+            except:
+                print_tuple = name, "Unavailable"
         if print_tuple is None:
             continue
         if name in fallback:
