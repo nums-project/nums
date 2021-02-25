@@ -77,7 +77,7 @@ def module_coverage(module_name, print_missing, count_fallback,
         except Exception as _:
             try:
                 print_tuple = name, func.__code__.co_varnames
-            except:
+            except Exception as _:
                 print_tuple = name, "Unavailable"
         if print_tuple is None:
             continue
