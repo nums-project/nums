@@ -39,7 +39,7 @@ def test_reshape_noops(nps_app_inst):
     arr = nps_app_inst.random_state(1337).random(shape, block_shape)
     new_arr = arr.reshape()
     assert arr is new_arr
-    new_arr = arr.reshape(shape=shape)
+    new_arr = arr.reshape(shape)
     assert arr is new_arr
     new_arr = arr.reshape(block_shape=block_shape)
     assert arr is new_arr

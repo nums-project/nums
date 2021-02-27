@@ -235,7 +235,7 @@ class LogisticRegression(GLM):
         if mu is None:
             mu = self.forward(X)
         dim, block_dim = mu.shape[0], mu.block_shape[0]
-        s = (mu * (self._app.one - mu)).reshape(shape=(dim, 1), block_shape=(block_dim, 1))
+        s = (mu * (self._app.one - mu)).reshape((dim, 1), block_shape=(block_dim, 1))
         if self._penalty is None:
             return X.T @ (s * X)
         else:
@@ -248,7 +248,7 @@ class LogisticRegression(GLM):
         return (self.forward(X) > 0.5).astype(np.int)
 
     def predict_proba(self, X: BlockArray) -> BlockArray:
-        y_pos = self.forward(X).reshape(shape=(X.shape[0], 1), block_shape=(X.block_shape[0], 1))
+        y_pos = self.forward(X).reshape((X.shape[0], 1), block_shape=(X.block_shape[0], 1))
         y_neg = 1 - y_pos
         return self._app.concatenate([y_pos, y_neg], axis=1, axis_block_size=2)
 

@@ -50,7 +50,7 @@ def test_shuffle(nps_app_inst):
 
     shape = (12, 34, 56)
     block_shape = (2, 5, 7)
-    arr: BlockArray = nps.arange(np.product(shape)).reshape(shape=shape, block_shape=block_shape)
+    arr: BlockArray = nps.arange(np.product(shape)).reshape(shape, block_shape=block_shape)
     np_arr = arr.get()
 
     for axis in range(3):
@@ -77,7 +77,7 @@ def test_shuffle_subscript_ops(nps_app_inst):
 
     shape = (123, 45)
     block_shape = (10, 20)
-    arr: BlockArray = nps.arange(np.product(shape)).reshape(shape=shape, block_shape=block_shape)
+    arr: BlockArray = nps.arange(np.product(shape)).reshape(shape, block_shape=block_shape)
     np_arr = arr.get()
     rs = nps.random.RandomState(1337)
     idx: BlockArray = rs.permutation(shape[1])
@@ -94,7 +94,7 @@ def test_blockarray_perm(nps_app_inst):
 
     shape = (12, 34)
     block_shape = (5, 10)
-    arr: BlockArray = nps.arange(np.product(shape)).reshape(shape=shape, block_shape=block_shape)
+    arr: BlockArray = nps.arange(np.product(shape)).reshape(shape, block_shape=block_shape)
     np_arr = arr.get()
     rs = nps.random.RandomState(1337)
     np_arr_shuffle: BlockArray = rs.permutation(arr).get()
