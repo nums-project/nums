@@ -10,7 +10,7 @@ Welcome to NumS's documentation!
    :maxdepth: 2
    :caption: Contents
 
-   source/hello_world.rst
+   hello_world.rst
 
 
 
