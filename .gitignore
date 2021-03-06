@@ -134,3 +134,6 @@ scratch
 notebooks
 data
 condaforge
+
+# Emacs
+.dir-locals.el
