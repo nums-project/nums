@@ -23,7 +23,7 @@ from nums.core.array.blockarray import BlockArray
 def read(filename: str) -> BlockArray:
     """
     :param filename: The name of the file to read. This must be the name of an array
-    that was previously written using the nums.write command.
+                     that was previously written using the nums.write command.
     :return: An instance of BlockArray.
     """
     if filename.lower().startswith("s3://"):

@@ -12,7 +12,7 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../nums'))
+sys.path.insert(0, os.path.abspath('../..'))
 
 
 # -- Project information -----------------------------------------------------
@@ -31,7 +31,8 @@ import sphinx_rtd_theme
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.coverage',
-    'sphinx.ext.napoleon'
+    'sphinx.ext.napoleon',
+    'sphinx_rtd_theme'
 ]
 
 # Theme
