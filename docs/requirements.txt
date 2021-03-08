@@ -3,9 +3,4 @@
 sphinx >=3, <4
 sphinx_rtd_theme
 sphinx-autodoc-typehints
-myst-nb
-
-# Packages used for CI tests
-pytest
-pytest-xdist
 
