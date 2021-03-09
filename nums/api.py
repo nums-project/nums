@@ -62,6 +62,7 @@ def delete(filename: str) -> BlockArray:
 def read_csv(filename, dtype=np.float, delimiter=',', has_header=False) -> BlockArray:
     """
     Read a csv text file.
+
     :param filename: The filename of the csv.
     :param dtype: The data type of the csv file's entries.
     :param delimiter: The value delimiter for each row; usually a comma.
