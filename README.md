@@ -193,7 +193,7 @@ Currently, only CPU-based workloads are supported; we are working on providing G
 
 #### pip installation
 To install NumS on Ray with CPU support, simply run the following command.
-```shell script
+```sh
 pip install nums
 ```
 
@@ -201,7 +201,7 @@ pip install nums
 We are working on providing support for conda installations, but in the meantime,
 run the following with your conda environment activated. 
 
-```shell script
+```sh
 pip install nums
 # Run below to have NumPy use MKL.
 conda install -fy mkl
@@ -218,7 +218,7 @@ To contribute to NumS on Ray,
 we recommend cloning the repository and installing the project in developer mode 
 using the following set of commands:
 
-```shell script
+```sh
 cd nums
 conda create --name nums python=3.7 -y
 source activate nums
