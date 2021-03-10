@@ -694,7 +694,7 @@ class ArrayApplication(object):
                 args=None,
                 kwargs=None) -> BlockArray:
         # TODO (hme): Move this into BlockArray, and invoke on operator implementations.
-        """A map, for binary operators, that applies element-wise to every entry of the input arrays.
+        """A map for binary operators that applies element-wise to every entry of the input arrays.
 
         Args:
             op_name (str): An element-wise binary operator.
