@@ -12,6 +12,7 @@ API Documentation
    :maxdepth: 2
 
    api.rst
+   application.rst
 
 
 Indices and Tables

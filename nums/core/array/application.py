@@ -637,15 +637,18 @@ class ArrayApplication(object):
                 where=True,
                 args=None,
                 kwargs=None) -> BlockArray:
-        """
-        A map, for unary operators, that applies to every entry of an array.
-        :param op_name: An element-wise unary operator.
-        :param arr: A BlockArray.
-        :param out: A BlockArray to which the result is written.
-        :param where: An indicator specifying the indices to which op is applied.
-        :param args: Args provided to op.
-        :param kwargs: Keyword args provided to op.
-        :return: A BlockArray.
+        """A map, for unary operators, that applies to every entry of an array.
+
+        Args:
+            op_name (str): An element-wise unary operator.
+            arr (BlockArray): A BlockArray.
+            out (BlockArray): A BlockArray to which the result is written.
+            where: An indicator specifying the indices to which op is applied.
+            args: Args provided to op.
+            kwargs: Keyword args provided to op.
+
+        Returns:
+            A BlockArray.
         """
         if where is not True:
             raise NotImplementedError("'where' argument is not yet supported.")
@@ -691,16 +694,19 @@ class ArrayApplication(object):
                 args=None,
                 kwargs=None) -> BlockArray:
         # TODO (hme): Move this into BlockArray, and invoke on operator implementations.
-        """
-        A map, for binary operators, that applies element-wise to every entry of the input arrays.
-        :param op_name: An element-wise binary operator.
-        :param arr_1: A BlockArray.
-        :param arr_2: A BlockArray.
-        :param out: A BlockArray to which the result is written.
-        :param where: An indicator specifying the indices to which op is applied.
-        :param args: Args provided to op.
-        :param kwargs: Keyword args provided to op.
-        :return: A BlockArray.
+        """A map, for binary operators, that applies element-wise to every entry of the input arrays.
+
+        Args:
+            op_name (str): An element-wise binary operator.
+            arr_1 (BlockArray): A BlockArray.
+            arr_2 (BlockArray): A BlockArray.
+            out (BlcokArray): A BlockArray to which the result is written.
+            where: An indicator specifying the indices to which op is applied.
+            args: Args provided to op.
+            kwargs: Keyword args provided to op.
+
+        Returns:
+            A BlockArray.
         """
         if where is not True:
             raise NotImplementedError("'where' argument is not yet supported.")
@@ -731,12 +737,15 @@ class ArrayApplication(object):
         return rarr
 
     def _broadcast_bop(self, op_name, arr_1, arr_2) -> BlockArray:
-        """
-        We want to avoid invoking this op whenever possible; NumPy's imp is faster.
-        :param op_name: Name of binary operation.
-        :param arr_1: A BlockArray.
-        :param arr_2: A BlockArray.
-        :return: A BlockArray.
+        """We want to avoid invoking this op whenever possible; NumPy's imp is faster.
+
+        Args:
+            op_name: Name of binary operation.
+            arr_1: A BlockArray.
+            arr_2: A BlockArray.
+
+        Returns:
+            A BlockArray.
         """
         if arr_1.shape != arr_2.shape:
             output_grid_shape = array_utils.broadcast_shape(arr_1.grid.grid_shape,

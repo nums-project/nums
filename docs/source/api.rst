@@ -1,5 +1,3 @@
-.. For testing purposes.
-
 nums.api
 ========
 
