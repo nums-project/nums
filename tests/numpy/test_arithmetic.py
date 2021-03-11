@@ -114,6 +114,7 @@ def test_matmul_tensordot(nps_app_inst):
     np_B = np.transpose(np.stack([np_w + i for i in range(20)]))
     check_matmul_op(np_A, np_B)
 
+# TODO(bcp): Add matmul tests for rank > 2
 
 # TODO(hme): Add broadcast tests.
 
