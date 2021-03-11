@@ -1,0 +1,31 @@
+# .readthedocs.yaml
+# Read the Docs configuration file
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details.
+
+# Required field.
+version: 2
+
+# Configuration for the documentation build process.
+build:
+  # The Docker image used for building the docs (stable/latest).
+  image: latest
+
+# Build documentation in the docs/ directory with Sphinx.
+sphinx:
+  configuration: docs/source/conf.py
+  fail_on_warning: false
+
+# Optionally build your docs in additional formats such as PDF.
+formats:
+  - pdf
+
+# Optionally set the version of Python and requirements required to build your docs.
+python:
+  version: 3.7
+  install:
+    - requirements: docs/requirements.txt
+    - method: pip
+      path: .
+      extra_requirements:
+        - testing
+  system_packages: true
