@@ -640,9 +640,9 @@ class ArrayApplication(object):
         """A map, for unary operators, that applies to every entry of an array.
 
         Args:
-            op_name (str): An element-wise unary operator.
-            arr (BlockArray): A BlockArray.
-            out (BlockArray): A BlockArray to which the result is written.
+            op_name: An element-wise unary operator.
+            arr: A BlockArray.
+            out: A BlockArray to which the result is written.
             where: An indicator specifying the indices to which op is applied.
             args: Args provided to op.
             kwargs: Keyword args provided to op.
@@ -697,10 +697,10 @@ class ArrayApplication(object):
         """A map for binary operators that applies element-wise to every entry of the input arrays.
 
         Args:
-            op_name (str): An element-wise binary operator.
-            arr_1 (BlockArray): A BlockArray.
-            arr_2 (BlockArray): A BlockArray.
-            out (BlcokArray): A BlockArray to which the result is written.
+            op_name: An element-wise binary operator.
+            arr_1: A BlockArray.
+            arr_2: A BlockArray.
+            out: A BlockArray to which the result is written.
             where: An indicator specifying the indices to which op is applied.
             args: Args provided to op.
             kwargs: Keyword args provided to op.

@@ -23,7 +23,7 @@ from nums.core.array.blockarray import BlockArray
 def read(filename: str) -> BlockArray:
     """
     Args:
-        filename (str): The name of the file to read. This must be the name of an array
+        filename: The name of the file to read. This must be the name of an array
             that was previously written using the nums.write command.
 
     Returns:
@@ -39,8 +39,8 @@ def read(filename: str) -> BlockArray:
 def write(filename: str, ba: BlockArray) -> BlockArray:
     """
     Args:
-        filename (str): The name of the file to write. Supports the s3 protocol.
-        ba (BlockArray): The BlockArray instance to write.
+        filename: The name of the file to write. Supports the s3 protocol.
+        ba: The BlockArray instance to write.
 
     Returns:
         A BlockArray indicating the outcome of this operation.
@@ -55,7 +55,7 @@ def write(filename: str, ba: BlockArray) -> BlockArray:
 def delete(filename: str) -> BlockArray:
     """
     Args:
-        filename (str): The name of the file to delete. This must be a file previously
+        filename: The name of the file to delete. This must be a file previously
             written to disk.
 
     Returns:
