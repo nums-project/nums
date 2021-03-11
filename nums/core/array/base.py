@@ -352,6 +352,7 @@ class BlockArrayBase(object):
         self.shape = self.grid.shape
         self.block_shape = self.grid.block_shape
         self.size = np.product(self.shape)
+        self.ndim = len(self.shape)
         self.dtype = self.grid.dtype
         self.blocks = blocks
         if self.blocks is None:

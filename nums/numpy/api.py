@@ -286,7 +286,7 @@ def inner(a: BlockArray, b: BlockArray):
 
 def outer(a: BlockArray, b: BlockArray):
     assert len(a.shape) == len(b.shape) == 1, "Only single-axis inputs supported."
-    return a @ b.T
+    return a.reshape((a.shape[0], 1)) @ b.reshape((1, b.shape[0]))
 
 
 ############################################
