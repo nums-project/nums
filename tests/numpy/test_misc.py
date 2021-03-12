@@ -194,14 +194,28 @@ def test_array_eq(nps_app_inst):
            np.array_equal(np.array([np.inf, np.NINF]), np.array([np.NINF, np.inf]))
 
 
+def test_properties(nps_app_inst):
+    import nums.numpy as nps
+    assert nps_app_inst is not None
+    A: BlockArray = nps.random.randn(10, 20, 1)
+    assert A.shape == nps.shape(A)
+    assert A.size == nps.size(A)
+    assert A.ndim == nps.ndim(A)
+    assert A.squeeze().shape == nps.squeeze(A).shape
+    assert nps.allclose(A.T, nps.transpose(A))
+    A_copy = nps.copy(A)
+    assert A_copy is not A
+
+
 if __name__ == "__main__":
     from nums.core import application_manager
     from nums.core import settings
 
-    settings.system_name = "ray-task"
+    settings.system_name = "serial"
     nps_app_inst = application_manager.instance()
-    test_where(nps_app_inst)
+    # test_where(nps_app_inst)
     # test_loadtxt(nps_app_inst)
-    test_reshape(nps_app_inst)
-    test_all_alltrue_any(nps_app_inst)
-    test_array_eq(nps_app_inst)
+    # test_reshape(nps_app_inst)
+    # test_all_alltrue_any(nps_app_inst)
+    # test_array_eq(nps_app_inst)
+    test_properties(nps_app_inst)

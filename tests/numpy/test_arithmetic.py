@@ -115,10 +115,25 @@ def test_matmul_tensordot(nps_app_inst):
     check_matmul_op(np_A, np_B)
 
 
+def test_inner_outer(nps_app_inst):
+    import numpy as np
+    from nums import numpy as nps
+    assert nps_app_inst is not None
+    A = np.random.randn(10)
+    B = np.random.randn(10)
+    nps_A = nps.array(A)
+    nps_B = nps.array(B)
+    assert np.allclose(np.inner(A, B), nps.inner(nps_A, nps_B).get())
+    assert np.allclose(np.outer(A, B), nps.outer(nps_A, nps_B).get())
+
+
 # TODO(hme): Add broadcast tests.
 
 
 if __name__ == "__main__":
     from nums.core import application_manager
+    from nums.core import settings
+
+    settings.system_name = "serial"
     nps_app_inst = application_manager.instance()
-    test_ufunc(nps_app_inst)
+    test_inner_outer(nps_app_inst)

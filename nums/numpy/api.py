@@ -264,7 +264,7 @@ def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None, axis=0):
 
 
 ############################################
-# Matrix Ops
+# Linear Algebra Ops
 ############################################
 
 
@@ -279,26 +279,60 @@ def matmul(x1: BlockArray, x2: BlockArray) -> BlockArray:
                               arr_2=x2)
 
 
+def inner(a: BlockArray, b: BlockArray):
+    assert len(a.shape) == len(b.shape) == 1, "Only single-axis inputs supported."
+    return a.T @ b
+
+
+def outer(a: BlockArray, b: BlockArray):
+    assert len(a.shape) == len(b.shape) == 1, "Only single-axis inputs supported."
+    return a.reshape((a.shape[0], 1)) @ b.reshape((1, b.shape[0]))
+
+
 ############################################
 # Shape Ops
 ############################################
 
 
-def ndim(x: BlockArray):
-    return x.ndim
+def shape(a: BlockArray):
+    return a.shape
 
 
-def reshape(x: BlockArray, shape):
-    block_shape = _instance().compute_block_shape(shape, x.dtype)
-    return x.reshape(shape, block_shape=block_shape)
+def size(a: BlockArray):
+    return a.size
 
 
-def expand_dims(x: BlockArray, axis):
-    return x.expand_dims(axis)
+def ndim(a: BlockArray):
+    return a.ndim
 
 
-def squeeze(x: BlockArray):
-    return x.squeeze()
+def reshape(a: BlockArray, shape):
+    block_shape = _instance().compute_block_shape(shape, a.dtype)
+    return a.reshape(shape, block_shape=block_shape)
+
+
+def expand_dims(a: BlockArray, axis):
+    return a.expand_dims(axis)
+
+
+def squeeze(a: BlockArray, axis=None):
+    assert axis is None, "axis not supported."
+    return a.squeeze()
+
+
+def transpose(a: BlockArray, axes=None):
+    assert axes is None, "axes not supported."
+    return a.T
+
+
+############################################
+# Misc
+############################################
+
+
+def copy(a: BlockArray, order='K', subok=False):
+    assert order == 'K' and not subok, "Only default args supported."
+    return a.copy()
 
 
 ############################################
@@ -340,7 +374,7 @@ def argmin(a: BlockArray, axis=None, out=None):
     return _instance().argop("argmin", a, axis=axis)
 
 
-def argmax(a, axis=None, out=None):
+def argmax(a: BlockArray, axis=None, out=None):
     if len(a.shape) > 1:
         raise NotImplementedError("argmax currently only supports one-dimensional arrays.")
     if out is not None:
@@ -377,7 +411,7 @@ def std(a: BlockArray, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     return _instance().std(a, axis=axis, ddof=ddof, keepdims=keepdims, dtype=dtype)
 
 
-def where(condition, x=None, y=None):
+def where(condition: BlockArray, x: BlockArray = None, y: BlockArray = None):
     return _instance().where(condition, x, y)
 
 
@@ -421,7 +455,7 @@ def nansum(a: BlockArray, axis=None, dtype=None, out=None, keepdims=False):
     return _instance().reduce("nansum", a, axis=axis, dtype=dtype, keepdims=keepdims)
 
 
-def nanmean(a, axis=None, dtype=None, out=None, keepdims=False):
+def nanmean(a: BlockArray, axis=None, dtype=None, out=None, keepdims=False):
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().nanmean(a, axis=axis, dtype=dtype, keepdims=keepdims)
