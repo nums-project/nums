@@ -115,6 +115,24 @@ def test_matmul_tensordot(nps_app_inst):
     check_matmul_op(np_A, np_B)
 
 
+def test_matmul_tensor(nps_app_inst):
+
+    from nums import numpy as nps
+
+    import pytest
+
+    assert nps_app_inst is not None
+
+    # TODO(bcp): Replace with matmul tests for rank > 2 once implemented.
+    def check_matmul_tensor(_ns_a, _ns_b):
+        with pytest.raises(NotImplementedError):
+            nps.matmul(_ns_a, _ns_b)
+
+    ns_a = nps.array([[[0, 1], [2, 3]], [[4, 5], [6, 7]]])
+    ns_b = nps.array([[[7, 6], [5, 4]], [[3, 2], [1, 0]]])
+    check_matmul_tensor(ns_a, ns_b)
+
+
 def test_inner_outer(nps_app_inst):
     import numpy as np
     from nums import numpy as nps
