@@ -411,7 +411,7 @@ class BlockArray(BlockArrayBase):
     def __matmul__(self, other):
         if len(self.shape) > 2:
             # TODO: (bcp) NumPy's implementation does a stacked matmul, which is not supported yet.
-            raise NotImplementedError("Matrix multiply for tensors of rank > 2 not supported yet")
+            raise NotImplementedError("Matrix multiply for tensors of rank > 2 not supported yet.")
         else:
             return self.tensordot(other, 1)
 
