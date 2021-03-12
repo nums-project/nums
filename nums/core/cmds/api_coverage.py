@@ -75,7 +75,10 @@ def module_coverage(module_name, print_missing, count_fallback,
                     break
             print_tuple = name, descr
         except Exception as _:
-            print_tuple = name, func.__code__.co_varnames
+            try:
+                print_tuple = name, func.__code__.co_varnames
+            except Exception as _:
+                print_tuple = name, "Unavailable"
         if print_tuple is None:
             continue
         if name in fallback:
@@ -123,23 +126,25 @@ def api_coverage(print_missing, count_fallback):
         'printoptions', 'recfromcsv', 'recfromtxt',
         'safe_eval', 'set_numeric_ops', 'set_printoptions', 'set_string_function', 'setbufsize',
         'seterr', 'seterrcall', 'seterrobj', 'show_config', 'source', 'typename',
-        'loads',  # Not sure what this does.
         'mafromtxt', 'mask_indices',
+        # unclear whether we'll ever support these I/O operations.
+        'loads', 'load', 'save',
+        'savez', 'savez_compressed',
+        'genfromtxt', 'fromregex', 'fromstring',
+        # Memory ops that can't be supported.
+        'copyto',
     }
 
     not_implemented = {
         'array_repr', 'array_str',
-        'can_cast', 'copy', 'copyto', 'find_common_type',
-        'ndim', 'savetxt', 'shares_memory', 'shape', 'size'
+        'can_cast', 'find_common_type',
+        'savetxt', 'shares_memory'
     }
 
     # Fallback on NumPy for these operations.
     # This is achieved by converting the block array to a single block, performing the operation,
     # and converting back to the original block shape.
     fallback = {
-        # I/O
-        'load', 'save', 'savez', 'savez_compressed',
-        'genfromtxt', 'fromregex', 'fromstring',
         # Rest
         'angle', 'append', 'apply_along_axis', 'apply_over_axes',
         'argpartition', 'argsort', 'argwhere', 'around',
@@ -150,14 +155,14 @@ def api_coverage(print_missing, count_fallback):
         'correlate', 'count_nonzero', 'cov', 'cross', 'cumprod', 'cumproduct', 'cumsum',
         'delete', 'diag_indices', 'diag_indices_from', 'diagflat', 'diagonal', 'diff', 'digitize',
         'divmod', 'dot', 'dsplit', 'dstack',
-        'ediff1d', 'einsum', 'einsum_path', 'expand_dims', 'extract',
+        'ediff1d', 'einsum', 'einsum_path', 'extract',
         'fill_diagonal', 'fix', 'flatnonzero', 'flip', 'fliplr', 'flipud', 'frexp', 'frombuffer',
         'fromfile', 'fromfunction', 'fromiter', 'frompyfunc', 'full',
         'full_like', 'fv',
         'geomspace', 'gradient',
         'hamming', 'hanning',
         'histogram', 'histogram2d', 'histogram_bin_edges', 'histogramdd', 'hsplit', 'hstack', 'i0',
-        'imag', 'in1d', 'indices', 'inner', 'insert', 'interp', 'intersect1d', 'ipmt',
+        'imag', 'in1d', 'indices', 'insert', 'interp', 'intersect1d', 'ipmt',
         'irr', 'isclose', 'iscomplex', 'iscomplexobj', 'isin',
         'isneginf', 'isposinf', 'isreal', 'isrealobj', 'isscalar',
         'ix_', 'kaiser', 'kron', 'lexsort',
@@ -167,18 +172,18 @@ def api_coverage(print_missing, count_fallback):
         'nanmedian', 'nanpercentile', 'nanprod', 'nanquantile',
         'nanstd', 'nanvar',
         'nonzero', 'nper', 'npv',
-        'obj2sctype', 'outer',
+        'obj2sctype',
         'packbits', 'pad', 'partition', 'percentile', 'piecewise', 'place',
         'pmt', 'poly', 'polyadd', 'polyder', 'polydiv', 'polyfit', 'polyint', 'polymul', 'polysub',
         'polyval', 'ppmt', 'prod', 'product', 'promote_types', 'ptp', 'put',
         'put_along_axis', 'putmask', 'pv',
         'quantile', 'rate', 'ravel', 'ravel_multi_index', 'real',
-        'real_if_close', 'repeat', 'require', 'reshape', 'resize',
+        'real_if_close', 'repeat', 'require', 'resize',
         'result_type', 'roll', 'rollaxis', 'roots', 'rot90', 'round', 'round_', 'row_stack',
         'sctype2char', 'searchsorted',
         'select', 'setdiff1d', 'setxor1d',
-        'sinc', 'sometrue', 'sort', 'sort_complex', 'squeeze',
-        'stack', 'swapaxes', 'take', 'take_along_axis', 'tensordot', 'tile', 'trace', 'transpose',
+        'sinc', 'sometrue', 'sort', 'sort_complex',
+        'stack', 'swapaxes', 'take', 'take_along_axis', 'tile', 'trace',
         'trapz', 'tri', 'tril', 'tril_indices', 'tril_indices_from', 'trim_zeros', 'triu',
         'triu_indices', 'triu_indices_from', 'union1d', 'unique', 'unpackbits',
         'unravel_index', 'unwrap', 'vander', 'vdot', 'vsplit', 'vstack', 'who'
