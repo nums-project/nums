@@ -43,7 +43,7 @@ def test_transpose(app_inst: ArrayApplication):
 def test_reshape(app_inst: ArrayApplication):
     real_X, _ = BimodalGaussian.get_dataset(1000, 9)
     X = app_inst.array(real_X, block_shape=(100, 9))
-    X = X.reshape(shape=(1000, 9), block_shape=(1000, 1))
+    X = X.reshape((1000, 9), block_shape=(1000, 1))
     assert np.allclose(X.get(), real_X)
 
 

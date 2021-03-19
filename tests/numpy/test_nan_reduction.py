@@ -20,6 +20,8 @@ import numpy as np
 
 warnings.filterwarnings("ignore", "All-NaN (slice|axis) encountered")
 warnings.filterwarnings("ignore", "Mean of empty slice")
+warnings.filterwarnings("ignore", "invalid value encountered in true_divide")
+warnings.filterwarnings("ignore", "Degrees of freedom <= 0 for slice.")
 
 
 # pylint: disable=import-outside-toplevel, no-member
@@ -41,7 +43,7 @@ def test_nan_reductions(nps_app_inst):
     for block_shape in block_shapes:
         ba = ba.reshape(block_shape=block_shape)
         np_arr = ba.get()
-        op_params = ["nanmax", "nanmin", "nansum", "nanmean"]
+        op_params = ["nanmax", "nanmin", "nansum", "nanmean", "nanvar", "nanstd"]
         axis_params = [None, 0, 1]
         keepdims_params = [True, False]
 
