@@ -8,36 +8,19 @@
 
 # What is NumS?
 
-NumS is a **Num**erical computing library for Python that **S**cales your workload to the cloud. 
-It is an array abstraction layer on top of distributed memory systems that implements the NumPy API, 
-extending NumPy to scale horizontally, as well as provide inter-operation parallelism 
-(e.g. automatic parallelization of Python loops).
-NumS differentiates itself from related solutions by implementing the NumPy API,
-and providing tighter integration with the Python programming language by supporting
-loop parallelism and branching.
-Currently, NumS implements a
-[Ray](https://github.com/ray-project/ray) system interface, 
-S3 and distributed filesystems for storage,
-and [NumPy](https://github.com/numpy/numpy) as a backend for CPU-based array operations.
-
-# Overview
-
-The NumS team takes inspiration from early innovations in programming language design,
-such as Fortran, Matlab, and NumPy. Thus, our goal is to simultaneously
-provide a simple and performant API by implementing the NumPy API as closely as possible,
-and maintaining a system architecture that enables runtime optimizations based on 
-state-of-the-art discrete optimization techniques.
-Below are a few key features that separate NumS from related libraries.
-1. NumS is an eager evaluation distributed array library, which allows for efficient and seamless integration with branch and loop commands in Python.
-2. The NumS BlockArray is a mutable data structure, just like NumPy arrays.
-3. The NumS optimizer eliminates the need to learn a new programming model to achieve 
-data (and model) parallel training. 
+**NumS** is a Numerical cloud computing library that translates Python and NumPy to distributed systems code at runtime. 
+NumS scales NumPy operations horizontally, and provides inter-operation (task) parallelism for those operations.
+NumS remains faithful to the NumPy API, and provides tight integration with the Python programming language 
+by supporting loop parallelism and branching.
+NumS' system-level operations are written against the [Ray](https://github.com/ray-project/ray) API;
+it supports S3 and basic distributed filesystem operations for storage
+and uses [NumPy](https://github.com/numpy/numpy) as a backend for CPU-based array operations.
 
 # Usage
 
-First, obtain the latest release of NumS by simply running `pip install nums`.
+Obtain the latest release of NumS using `pip install nums`.
 
-NumS provides concrete implementations of the NumPy API,
+NumS provides explicit implementations of the NumPy API,
 providing a clear API with code hinting when used in conjunction with
 IDEs (e.g. PyCharm) and interpreters (e.g. iPython, Jupyter Notebook) 
 that provide such functionality.
