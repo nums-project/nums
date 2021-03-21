@@ -229,7 +229,6 @@ def diag(v: BlockArray, k=0) -> BlockArray:
     return app.diag(v)
 
 def trace(a: BlockArray, offset=0, axis1=0, axis2=1, dtype=None, out=None):
-    app = _instance()
     if offset != 0:
         raise NotImplementedError("Only offset == 0 is currently supported")
     if out is not None:
