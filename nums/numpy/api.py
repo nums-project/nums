@@ -228,6 +228,16 @@ def diag(v: BlockArray, k=0) -> BlockArray:
         raise NotImplementedError("Only k==0 is currently supported.")
     return app.diag(v)
 
+def trace(a: BlockArray, offset=0, axis1=0, axis2=1, dtype=None, out=None):
+    app = _instance()
+    if offset != 0:
+        raise NotImplementedError("Only offset == 0 is currently supported")
+    if out is not None:
+        raise NotImplementedError("out is currently not supported for concatenate.")
+    if axis1 != 0 or axis1 != 1:
+        raise NotImplementedError("Only axis1 = 0 and axis2 = 1 supported.")
+    return self.sum(self.diag(a, offset))
+    
 
 def atleast_1d(*arys):
     return _instance().atleast_1d(*arys)
