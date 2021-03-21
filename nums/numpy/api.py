@@ -236,7 +236,7 @@ def trace(a: BlockArray, offset=0, axis1=0, axis2=1, dtype=None, out=None):
         raise NotImplementedError("out is currently not supported for concatenate.")
     if axis1 != 0 or axis1 != 1:
         raise NotImplementedError("Only axis1 = 0 and axis2 = 1 supported.")
-    return self.sum(self.diag(a, offset))
+    return sum(diag(a, offset))
     
 
 def atleast_1d(*arys):
