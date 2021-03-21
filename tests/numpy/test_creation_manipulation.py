@@ -210,4 +210,4 @@ if __name__ == "__main__":
     test_concatenate(nps_app_inst)
     test_split(nps_app_inst)
     test_func_space(nps_app_inst)
-    #test_shape(nps_app_inst)
+    test_shape(nps_app_inst)
