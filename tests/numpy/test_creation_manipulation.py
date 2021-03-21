@@ -133,6 +133,7 @@ def test_shape(nps_app_inst):
     from nums.core.storage.storage import ArrayGrid
     from nums.numpy import numpy_utils
     from nums import numpy as nps
+    from nums.core import application_manager
     shape = (10, 20, 30, 40)
     block_shape = (10, 10, 10, 10)
     ns_ins = application_manager.instance()
