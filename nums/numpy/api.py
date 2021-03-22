@@ -233,8 +233,10 @@ def trace(a: BlockArray, offset=0, axis1=0, axis2=1, dtype=None, out=None):
         raise NotImplementedError("Only offset == 0 is currently supported")
     if out is not None:
         raise NotImplementedError("out is currently not supported for concatenate.")
-    if axis1 != 0 or axis1 != 1:
+    if axis1 != 0 or axis2 != 1:
         raise NotImplementedError("Only axis1 = 0 and axis2 = 1 supported.")
+    if len(a.shape) != 2:
+        raise ValueError("Trace only supports 2-dimensional matrix")
     return sum(diag(a, offset))
     
 

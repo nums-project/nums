@@ -18,6 +18,7 @@ import numpy as np
 
 from nums.numpy import BlockArray
 
+import pytest
 
 # pylint: disable = import-outside-toplevel, no-member
 
@@ -78,6 +79,37 @@ def test_diag(nps_app_inst):
     np_arr = np.diag(np_arr)
     assert np.allclose(ba.get(), np_arr)
 
+def test_trace(nps_app_inst):
+    import nums.numpy as nps
+
+    assert nps_app_inst is not None
+
+    a: BlockArray = nps.array([1.0, 2.0, 3.0, 4.0])
+
+    # Test that trace doesn't work with 1-dimensional vectors
+    with pytest.raises(ValueError):
+        nps.trace(a)
+        
+    # Create Diagonal Matrices
+    a_diag = nps.diag(a) # Nums Version
+    a_diag_np = np.diag(a.get()) # Numpy version
+
+    # Apply on Trace on each of the Diagonal matrices
+    a_diag_trace = nps.trace(a_diag).get()
+    a_diag_np_trace = np.trace(a_diag_np)
+
+    assert np.allclose(a_diag_trace, a_diag_np_trace)
+
+    # Use pre-created diagonal matrices
+    b: BlockArray = nps.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
+
+    # Call trace
+    b_diag_trace = nps.trace(b).get() # Nums Version
+    b_diag_np_trace = np.trace(b.get()) # Numpy version
+
+    assert np.allclose(b_diag_trace, b_diag_np_trace)
+
+    
 
 def test_arange(nps_app_inst):
     import nums.numpy as nps
