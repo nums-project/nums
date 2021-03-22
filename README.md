@@ -208,6 +208,18 @@ source activate nums
 pip install -e ".[testing]"
 ```
 
+For Windows, follow the steps below if you do not have Anaconda already downloaded. 
+1. Follow the steps to download the Anaconda Installer. https://docs.anaconda.com/anaconda/install/windows/
+2. During the setup, select that you want Anaconda to be added to the PATH variable. 
+3. Fork/Clone the nums-project repository
+4. Open Command Prompt and follow the instructions below:
+    ```sh
+    cd nums
+    conda create --name nums python=3.7 -y
+    conda activate nums
+    pip install -e ".[testing]"
+    ```
+
 #### Contributing NumPy Functionality
 
 To make basic contributions to the NumPy API, follow these steps:
