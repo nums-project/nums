@@ -15,6 +15,7 @@
 
 
 import itertools
+from nums.numpy.api import shape
 
 import numpy as np
 
@@ -85,6 +86,57 @@ def test_argops(nps_app_inst):
                 assert np.allclose(ba_result.get(), np_result)
 
 
+def test_average(nps_app_inst):
+    from nums import numpy as nps
+    from nums.numpy import BlockArray
+
+    assert nps_app_inst is not None
+
+    bas = [
+        nps.array([[5, -2, 4, 8],
+                   [1, 2, 3, 4],
+                   [3, 2, 1, 0],
+                   [-1, -2, -3, 0]]),
+        nps.array([[5, -2, 4, 8],
+                   [1, 2, 3, 4],
+                   [3, 2, 1, 0],
+                   [-1, -2, -3, 0]]),
+    ]
+    ba_wts = [
+        None,
+        nps.array([[1, 2, 3, 4],
+                   [1, 2, 3, 4],
+                   [1, 2, 3, 4],
+                   [1, 2, 3, 4]]),
+    ]
+    for ba, ba_wt in zip(bas, ba_wts):
+        np_arr = ba.get()
+        np_wt = ba_wt.get() if ba_wt else None
+        op_params = ["average"]
+        axis_params = [None, 0, 1]
+        returned = [True, False]
+
+        for op, axis, ret in itertools.product(op_params, axis_params, returned):
+            ns_op = nps.__getattribute__(op)
+            np_op = np.__getattribute__(op)
+            np_result = np_op(np_arr, axis=axis, weights=np_wt, returned=ret)
+            ba_result: BlockArray = ns_op(ba, axis=axis, weights=ba_wt, returned=ret)
+            if ret:
+                np_avg, np_ws = np_result[0], np_result[1]
+                ba_avg, ba_ws = ba_result[0], ba_result[1]
+                # if type(ba_ws) == np.float64:
+                #     assert ba_ws == np_ws
+                # else:
+                assert np.allclose(ba_ws.get(), np_ws)
+                assert ba_avg.grid.grid_shape == ba_avg.blocks.shape
+                assert ba_avg.shape == np_avg.shape
+                assert np.allclose(ba_avg.get(), np_avg)
+            else:
+                assert ba_result.grid.grid_shape == ba_result.blocks.shape
+                assert ba_result.shape == np_result.shape
+                assert np.allclose(ba_result.get(), np_result)
+
+
 if __name__ == "__main__":
     from nums.core import application_manager
     import nums.core.settings
@@ -92,3 +144,4 @@ if __name__ == "__main__":
     nps_app_inst = application_manager.instance()
     test_reductions(nps_app_inst)
     test_argops(nps_app_inst)
+    test_average(nps_app_inst)

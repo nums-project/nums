@@ -19,6 +19,8 @@ import warnings
 import numpy as np
 import scipy.stats
 
+from typing import Tuple, Union
+
 from nums.core.application_manager import instance as _instance
 from nums.core.array.blockarray import BlockArray
 from nums.numpy import numpy_utils
@@ -431,6 +433,33 @@ def any(a: BlockArray, axis=None, out=None, keepdims=False):
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().reduce("any", a, axis=axis, keepdims=keepdims)
+
+
+def average(a: BlockArray,
+            axis: Union[None, int, Tuple[int, ...]] = None,
+            weights: Union[None, BlockArray] = None,
+            returned: bool = False):
+    __doc__ = np.average.__doc__
+
+    # References numpy implementation.
+    if weights is None:
+        avg = mean(a, axis)
+        weights_sum = BlockArray.from_scalar(a.size / avg.size, a.system)
+    else:
+        if a.shape != weights.shape:
+            raise NotImplementedError("'average' currently does not support broadcasting;"
+                                      "dimensions of 'a' and 'weights' must match.")
+        weights_sum = sum(weights, axis=axis)
+        if not all(weights_sum):
+            raise ZeroDivisionError("Weights along one or more axes sum to zero.")
+        avg = divide(sum(multiply(a, weights), axis=axis), weights_sum)
+
+    if returned:
+        if avg.shape != weights_sum.shape:
+            weights_sum = weights_sum.broadcast_to(avg.shape)
+        return avg, weights_sum
+    return avg
+
 
 ############################################
 # NaN Ops
