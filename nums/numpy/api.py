@@ -231,6 +231,17 @@ def diag(v: BlockArray, k=0) -> BlockArray:
     return app.diag(v)
 
 
+def atleast_1d(*arys):
+    return _instance().atleast_1d(*arys)
+
+
+def atleast_2d(*arys):
+    return _instance().atleast_2d(*arys)
+
+
+def atleast_3d(*arys):
+    return _instance().atleast_3d(*arys)
+
 ############################################
 # Manipulation Ops
 ############################################
@@ -489,6 +500,17 @@ def nanmean(a: BlockArray, axis=None, dtype=None, out=None, keepdims=False):
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().nanmean(a, axis=axis, dtype=dtype, keepdims=keepdims)
 
+
+def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+    if out is not None:
+        raise NotImplementedError("'out' is currently not supported.")
+    return _instance().nanvar(a, axis=axis, dtype=dtype, ddof=ddof, keepdims=keepdims)
+
+
+def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+    if out is not None:
+        raise NotImplementedError("'out' is currently not supported.")
+    return _instance().nanstd(a, axis=axis, dtype=dtype, ddof=ddof, keepdims=keepdims)
 
 ############################################
 # Utility Ops

@@ -851,7 +851,7 @@ class ArrayApplication(object):
         # If blocking is "tall-skinny," then we're done.
         if R_shape != R_block_shape:
             if reshape_output:
-                R = tsR.reshape(shape=R_shape, block_shape=R_block_shape)
+                R = tsR.reshape(R_shape, block_shape=R_block_shape)
             else:
                 R = tsR
         else:
@@ -869,9 +869,9 @@ class ArrayApplication(object):
         tsR_inverse = self.inv(tsR)
         # If blocking is "tall-skinny," then we're done.
         if R_shape != R_block_shape:
-            R_inverse = tsR_inverse.reshape(shape=R_shape, block_shape=R_block_shape)
+            R_inverse = tsR_inverse.reshape(R_shape, block_shape=R_block_shape)
             if reshape_output:
-                R = tsR.reshape(shape=R_shape, block_shape=R_block_shape)
+                R = tsR.reshape(R_shape, block_shape=R_block_shape)
             else:
                 R = tsR
         else:
@@ -961,10 +961,10 @@ class ArrayApplication(object):
         if R_shape == R_block_shape or not reshape_output:
             R = tsR
         else:
-            R = tsR.reshape(shape=R_shape, block_shape=R_block_shape)
+            R = tsR.reshape(R_shape, block_shape=R_block_shape)
 
         if Q.shape != block_shape or not reshape_output:
-            Q = Q.reshape(shape=shape, block_shape=block_shape)
+            Q = Q.reshape(shape, block_shape=block_shape)
 
         return Q, R
 
@@ -1046,7 +1046,7 @@ class ArrayApplication(object):
         Q, R = self.indirect_tsqr(X, reshape_output=False)
         R_inv = self.inv(R)
         if R_shape != R_block_shape:
-            R_inv = R_inv.reshape(shape=R_shape, block_shape=R_block_shape)
+            R_inv = R_inv.reshape(R_shape, block_shape=R_block_shape)
         theta = R_inv @ (Q.T @ y)
         return theta
 
@@ -1061,7 +1061,7 @@ class ArrayApplication(object):
         # Invert R.
         R_inv = self.inv(R)
         if R_shape != R_block_shape:
-            R_inv = R_inv.reshape(shape=R_shape, block_shape=R_block_shape)
+            R_inv = R_inv.reshape(R_shape, block_shape=R_block_shape)
         theta = R_inv @ (Q.T @ y)
         return theta
 
@@ -1116,3 +1116,86 @@ class ArrayApplication(object):
         if dtype is not None:
             res = res.astype(dtype)
         return res
+
+    def nanvar(self, a: BlockArray, axis=None, ddof=0, keepdims=False, dtype=None):
+        mean = self.nanmean(a, axis=axis, keepdims=True)
+        ss = self.reduce("nansum", (a - mean)**self.two, axis=axis, dtype=dtype, keepdims=keepdims)
+        num_summed = self.sum(~a.ufunc("isnan"), axis=axis, dtype=a.dtype, keepdims=keepdims) - ddof
+        res = ss / num_summed
+        if dtype is not None:
+            res = res.astype(dtype)
+        return res
+
+    def nanstd(self, a: BlockArray, axis=None, ddof=0, keepdims=False, dtype=None):
+        res = self.sqrt(self.nanvar(a, axis, ddof, keepdims))
+        if dtype is not None:
+            res = res.astype(dtype)
+        return res
+
+    def atleast_1d(self, *arys):
+        # TODO (hme): Refactor this to use check_or_convert_other
+        res = []
+        for ary in arys:
+            if not isinstance(ary, BlockArray):
+                ary = np.array(ary)
+                block_shape = self.compute_block_shape(ary.shape, ary.dtype)
+                ary = self.array(ary, block_shape)
+            if ary.ndim == 0:
+                result = ary.reshape(1)
+            else:
+                result = ary
+            res.append(result)
+        if len(res) == 1:
+            return res[0]
+        else:
+            return res
+
+    def atleast_2d(self, *arys):
+        # TODO (hme): Refactor this to use check_or_convert_other
+        res = []
+        for ary in arys:
+            if not isinstance(ary, BlockArray):
+                ary = np.array(ary)
+                block_shape = self.compute_block_shape(ary.shape, ary.dtype)
+                ary = self.array(ary, block_shape)
+            if ary.ndim == 0:
+                result = ary.reshape(1, 1)
+
+            # TODO (MWE): Implement this using newaxis when supported
+            # This is because ary.base needs to stay consistent,
+            # which reshape will not accomplish
+            elif ary.ndim == 1:
+                result = ary.reshape(1, ary.shape[0])
+            else:
+                result = ary
+            res.append(result)
+        if len(res) == 1:
+            return res[0]
+        else:
+            return res
+
+    def atleast_3d(self, *arys):
+        # TODO (hme): Refactor this to use check_or_convert_other
+        res = []
+        for ary in arys:
+            if not isinstance(ary, BlockArray):
+                ary = np.array(ary)
+                block_shape = self.compute_block_shape(ary.shape, ary.dtype)
+                ary = self.array(ary, block_shape)
+            if ary.ndim == 0:
+                result = ary.reshape(1, 1, 1)
+
+            # TODO (MWE): Implement this using newaxis when supported
+            # This is because ary.base needs to stay consistent,
+            # which reshape will not accomplish
+            elif ary.ndim == 1:
+                result = ary.reshape(1, ary.shape[0], 1)
+            elif ary.ndim == 2:
+                result = ary.reshape(ary.shape[0], ary.shape[1], 1)
+            else:
+                result = ary
+            res.append(result)
+        if len(res) == 1:
+            return res[0]
+        else:
+            return res
