@@ -16,10 +16,10 @@
 
 import warnings
 
+from typing import Union
+
 import numpy as np
 import scipy.stats
-
-from typing import Union
 
 from nums.core.application_manager import instance as _instance
 from nums.core.array.blockarray import BlockArray

@@ -15,7 +15,6 @@
 
 
 import itertools
-from nums.numpy.api import shape
 
 import numpy as np
 
