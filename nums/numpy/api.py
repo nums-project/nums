@@ -19,7 +19,7 @@ import warnings
 import numpy as np
 import scipy.stats
 
-from typing import Tuple, Union
+from typing import Union
 
 from nums.core.application_manager import instance as _instance
 from nums.core.array.blockarray import BlockArray
@@ -447,12 +447,12 @@ def any(a: BlockArray, axis=None, out=None, keepdims=False):
 
 
 def average(a: BlockArray,
-            axis: Union[None, int, Tuple[int, ...]] = None,
+            axis: Union[None, int] = None,
             weights: Union[None, BlockArray] = None,
             returned: bool = False):
-    __doc__ = np.average.__doc__
-
     # References numpy implementation.
+    if axis and type(axis) != int:
+        raise NotImplementedError("'average currently does not support multiple axes.")
     if weights is None:
         avg = mean(a, axis)
         weights_sum = BlockArray.from_scalar(a.size / avg.size, a.system)
