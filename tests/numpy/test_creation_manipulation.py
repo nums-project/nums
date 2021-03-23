@@ -15,10 +15,10 @@
 
 
 import numpy as np
+import pytest
 
 from nums.numpy import BlockArray
 
-import pytest
 
 # pylint: disable = import-outside-toplevel, no-member
 
@@ -109,7 +109,25 @@ def test_trace(nps_app_inst):
 
     assert np.allclose(b_diag_trace, b_diag_np_trace)
 
+    # Test that trace doesn't work for 3+ axes
+    mat: BlockArray = nps.zeros((2, 3, 2))
+    with pytest.raises(ValueError):
+        nps.trace(mat)
     
+    # Test that trace doesn't work for non-zero offset
+    mat:  BlockArray = nps.array([1.0, 2.0, 3.0, 4.0])
+    mat_diag = nps.diag(mat)
+    with pytest.raises(NotImplementedError):
+        nps.trace(mat_diag, offset=2)
+
+    # Test data type of the return type
+    mat_diag = nps.diag(nps.array([1.01, 2.02, 3.03, 4.04]))
+    mat_diag_np = np.diag(np.array([1.01, 2.02, 3.03, 4.04]))
+    mat_diag_trace = nps.trace(mat_diag, dtype=int).get()
+    mat_diag_np_trace = np.trace(mat_diag_np, dtype=int)
+
+    assert np.allclose(mat_diag_trace, mat_diag_np_trace)
+
 
 def test_arange(nps_app_inst):
     import nums.numpy as nps

@@ -237,7 +237,7 @@ def trace(a: BlockArray, offset=0, axis1=0, axis2=1, dtype=None, out=None):
         raise NotImplementedError("Only axis1 = 0 and axis2 = 1 supported.")
     if len(a.shape) != 2:
         raise ValueError("Trace only supports 2-dimensional matrix")
-    return sum(diag(a, offset))
+    return sum(diag(a, offset), dtype=dtype, out=out)
     
 
 def atleast_1d(*arys):
