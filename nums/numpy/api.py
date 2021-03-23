@@ -450,9 +450,6 @@ def average(a: BlockArray,
             axis: Union[None, int] = None,
             weights: Union[None, BlockArray] = None,
             returned: bool = False):
-    # References numpy implementation.
-    if axis and type(axis) != int:
-        raise NotImplementedError("'average currently does not support multiple axes.")
     if weights is None:
         avg = mean(a, axis)
         weights_sum = BlockArray.from_scalar(a.size / avg.size, a.system)
