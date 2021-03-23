@@ -127,13 +127,11 @@ def test_func_space(nps_app_inst):
     assert np.allclose(ba.get(), np_arr)
 
 def test_shape(nps_app_inst):
-    import numpy as np
-
-    from nums.numpy import BlockArray
-    from nums.core.storage.storage import ArrayGrid
-    from nums.numpy import numpy_utils
     from nums import numpy as nps
     from nums.core import application_manager
+
+    assert nps_app_inst is not None
+
     shape = (10, 20, 30, 40)
     block_shape = (10, 10, 10, 10)
     ns_ins = application_manager.instance()
@@ -165,7 +163,6 @@ def test_shape(nps_app_inst):
 
     def check_dim(_np_a, _ns_a):
         np_ndim = np.__getattribute__('ndim')
-        ns_ndim = nps.__getattribute__('ndim')
         assert np_ndim(_np_a) == np_ndim(_ns_a)
 
     def check_swapaxes(_np_a, axis1, axis2):
