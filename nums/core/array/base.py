@@ -83,6 +83,31 @@ class Block(object):
         blockT.oid = self.oid
         return blockT
 
+
+    def swapaxes(self, axis1, axis2):
+        block = self.copy()
+        grid_entry = list(block.grid_entry)
+        grid_shape = list(block.grid_shape)
+        shape = list(block.shape)
+        rect = block.rect
+
+        grid_entry[axis1], grid_entry[axis2] = grid_entry[axis2], grid_entry[axis1]
+        grid_shape[axis1], grid_shape[axis2] = grid_shape[axis2], grid_shape[axis1]
+        shape[axis1], shape[axis2] = shape[axis2], shape[axis1]
+        rect[axis1], rect[axis2] = rect[axis2], rect[axis1]
+
+        block.grid_entry = tuple(grid_entry)
+        block.grid_shape = tuple(grid_shape)
+        block.shape = tuple(shape)
+        block.rect = rect
+
+        block.oid = self._system.swapaxes(block.oid, axis1, axis2,
+                                         syskwargs={
+                                             "grid_entry": block.grid_entry,
+                                             "grid_shape": block.grid_shape
+                                         })
+        return block
+
     def ufunc(self, op_name, options=None):
         return self.uop_map(op_name, options=options)
 

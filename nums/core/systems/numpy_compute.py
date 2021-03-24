@@ -215,6 +215,9 @@ class ComputeCls(ComputeImp):
     def transpose(self, arr):
         return arr.T
 
+    def swapaxes(self, arr, axis1, axis2):
+        return arr.swapaxes(axis1, axis2)
+
     def split(self, arr, indices_or_sections, axis, transposed):
         if transposed:
             arr = arr.T
