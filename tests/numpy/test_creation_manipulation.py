@@ -188,14 +188,9 @@ def test_shape(nps_app_inst):
     check_expand_and_squeeze(np_A, axes=(0, 5, 6))
     check_expand_and_squeeze(np_A, axes=(2, 3, 5, 6, 7))
 
-    check_swapaxes(np_A, axis1=0, axis2=1)
-    check_swapaxes(np_A, axis1=0, axis2=2)
-    check_swapaxes(np_A, axis1=0, axis2=3)
-    check_swapaxes(np_A, axis1=1, axis2=2)
-    check_swapaxes(np_A, axis1=1, axis2=3)
-    check_swapaxes(np_A, axis1=2, axis2=3)
-    check_swapaxes(np_A, axis1=3, axis2=3)
-
+    for a1 in range(4):
+        for a2 in range(4):
+            check_swapaxes(np_A, axis1=a1, axis2=a2)
 
 if __name__ == "__main__":
     from nums.core import application_manager
