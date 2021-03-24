@@ -331,7 +331,7 @@ def squeeze(a: BlockArray, axis=None):
     return a.squeeze()
 
 def swapaxes(a: BlockArray, axis1: int, axis2: int):
-    return x.swapaxes(axis1, axis2)
+    return a.swapaxes(axis1, axis2)
 
 
 def transpose(a: BlockArray, axes=None):
