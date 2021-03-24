@@ -330,7 +330,7 @@ def squeeze(a: BlockArray, axis=None):
     assert axis is None, "axis not supported."
     return a.squeeze()
 
-def swapaxes(x: BlockArray, axis1: int, axis2: int):
+def swapaxes(a: BlockArray, axis1: int, axis2: int):
     return x.swapaxes(axis1, axis2)
 
 
