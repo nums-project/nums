@@ -452,21 +452,24 @@ def average(a: BlockArray,
             returned: bool = False):
     if weights is None:
         avg = mean(a, axis)
+        if not returned:
+            return avg
         weights_sum = BlockArray.from_scalar(a.size / avg.size, a.system)
-    else:
-        if a.shape != weights.shape:
-            raise NotImplementedError("'average' currently does not support broadcasting;"
-                                      "dimensions of 'a' and 'weights' must match.")
-        weights_sum = sum(weights, axis=axis)
-        if not all(weights_sum):
-            raise ZeroDivisionError("Weights along one or more axes sum to zero.")
-        avg = divide(sum(multiply(a, weights), axis=axis), weights_sum)
-
-    if returned:
-        if avg.shape != weights_sum.shape:
-            weights_sum = weights_sum.broadcast_to(avg.shape)
         return avg, weights_sum
-    return avg
+
+    if a.shape != weights.shape:
+        raise NotImplementedError("'average' currently does not support broadcasting;"
+                                  "dimensions of 'a' and 'weights' must match.")
+    weights_sum = sum(weights, axis=axis)
+    if not all(weights_sum):
+        raise ZeroDivisionError("Weights along one or more axes sum to zero.")
+    avg = divide(sum(multiply(a, weights), axis=axis), weights_sum)
+
+    if not returned:
+        return avg
+    if avg.shape != weights_sum.shape:
+        weights_sum = weights_sum.broadcast_to(avg.shape)
+    return avg, weights_sum
 
 
 ############################################
