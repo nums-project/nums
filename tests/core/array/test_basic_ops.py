@@ -72,6 +72,12 @@ def test_bool_reduction(app_inst):
     assert result_sum == np_sum
 
 
+def test_trans(app_inst):
+    np_x = np.arange(40).reshape(10, 4)
+    ba_x = app_inst.array(np_x, block_shape=(5, 2))
+    assert np.array_equal(ba_x.T.get(), np_x.T)
+
+
 if __name__ == "__main__":
     # pylint: disable=import-error
     from tests import conftest
