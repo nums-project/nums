@@ -419,6 +419,50 @@ class BlockArray(BlockArrayBase):
         if not isinstance(other, BlockArray):
             raise ValueError("Cannot automatically construct BlockArray for tensor operations.")
 
+        # Error checking before everything gets passed into BlockArray operations. Modified from the original NumPy
+        # tensordot method for error checking:
+        # https://github.com/numpy/numpy/blob/v1.20.0/numpy/core/numeric.py#L949-L1139
+        try:
+            iter(axes)
+        except Exception:
+            axes_a = list(range(-axes, 0))
+            axes_b = list(range(0, axes))
+        else:
+            axes_a, axes_b = axes
+        try:
+            na = len(axes_a)
+            axes_a = list(axes_a)
+        except TypeError:
+            axes_a = [axes_a]
+            na = 1
+        try:
+            nb = len(axes_b)
+            axes_b = list(axes_b)
+        except TypeError:
+            axes_b = [axes_b]
+            nb = 1
+
+        as_ = self.shape
+        nda = self.ndim
+        bs = other.shape
+        ndb = other.ndim
+        equal = True
+        if na != nb:
+            equal = False
+
+        else:
+            for k in range(na):
+                if as_[axes_a[k]] != bs[axes_b[k]]:
+                    equal = False
+                    break
+                if axes_a[k] < 0:
+                    axes_a[k] += nda
+                if axes_b[k] < 0:
+                    axes_b[k] += ndb
+
+        if not equal:
+            raise ValueError("shape-mismatch for sum")
+
         def basic_vector(ba: BlockArray, axis):
             if len(ba.shape) == 0:
                 return False

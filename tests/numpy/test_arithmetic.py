@@ -144,9 +144,49 @@ def test_inner_outer(nps_app_inst):
     assert np.allclose(np.inner(A, B), nps.inner(nps_A, nps_B).get())
     assert np.allclose(np.outer(A, B), nps.outer(nps_A, nps_B).get())
 
+def test_broadcast(nps_app_inst):
+    import numpy as np
 
-# TODO(hme): Add broadcast tests.
+    from nums import numpy as nps
 
+    import pytest
+
+    def check_matrix_broadcast_mismatch_simple(_np_a, _np_b):
+        _ops = ['add', 'subtract']
+
+        for _op in _ops:
+            ns_op = nps.__getattribute__(_op)
+            np_op = np.__getattribute__(_op)
+            _ns_a = nps.array(_np_a)
+            _ns_b = nps.array(_np_b)
+
+            with pytest.raises(ValueError):
+                np_op(_np_a, _np_b)
+            with pytest.raises(ValueError):
+                # TODO(bcp): Add synchronous broadcast checks for simple operands.
+                res = ns_op(_ns_a, _ns_b)
+                res.touch()
+
+    def check_matrix_broadcast_mismatch_tensor(_np_a, _np_b, axes):
+        _ns_a = nps.array(_np_a)
+        _ns_b = nps.array(_np_b)
+
+        with pytest.raises(ValueError):
+            np.tensordot(_np_a, _np_b, axes=axes)
+        with pytest.raises(ValueError):
+            nps.tensordot(_ns_a, _ns_b, axes=axes)
+
+    np_A = np.random.randn(2, 4)
+    np_B = np.random.randn(2, 2)
+    check_matrix_broadcast_mismatch_simple(np_A, np_B)
+
+    np_A = np.random.randn(2, 1)
+    np_B = np.random.randn(2, 1)
+    check_matrix_broadcast_mismatch_tensor(np_A, np_B, 1)
+
+    np_A = np.random.randn(2, 2)
+    np_B = np.random.randn(2, 1)
+    check_matrix_broadcast_mismatch_tensor(np_A, np_B, 2)
 
 if __name__ == "__main__":
     from nums.core import application_manager
