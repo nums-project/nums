@@ -715,6 +715,10 @@ class ArrayApplication(object):
         if not (kwargs is None or len(kwargs) == 0):
             raise NotImplementedError("'kwargs' is not yet supported.")
 
+        if not array_utils.broadcastable(arr_1.shape, arr_2.shape,
+                                         arr_1.block_shape, arr_2.block_shape):
+            raise ValueError("operands cannot be broadcasted.")
+
         try:
             ufunc = np.__getattribute__(op_name)
             if (op_name.endswith("max") or op_name == "maximum"

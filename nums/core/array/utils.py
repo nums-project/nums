@@ -118,6 +118,27 @@ def can_broadcast_shapes(a_shape, b_shape):
         return False
 
 
+def broadcastable(a_shape, b_shape, a_block_shape, b_block_shape):
+    if a_shape == b_shape:
+        return a_block_shape == b_block_shape
+
+    result_shape = broadcast_shape(a_shape, b_shape)
+    if result_shape is None:
+        return False
+    if len(a_shape) == len(b_shape):
+        return a_block_shape == b_block_shape
+
+    min_bs, max_bs = sorted([a_block_shape, b_block_shape], key=len)
+    for i in range(-1, -len(max_bs) - 1):
+        if -len(min_bs) - 1 < i:
+            if a_block_shape[i] != b_block_shape[i]:
+                return False
+        else:
+            if max_bs[i] != 1:
+                return False
+    return True
+
+
 def broadcast_shape_to(from_shape, to_shape):
     # Enforce broadcasting rules from an
     # array of references to 0 with shape from_shape.
