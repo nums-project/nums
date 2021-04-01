@@ -146,10 +146,9 @@ def test_inner_outer(nps_app_inst):
 
 def test_broadcast(nps_app_inst):
     import numpy as np
-
     from nums import numpy as nps
-
     import pytest
+    assert nps_app_inst is not None
 
     def check_matrix_broadcast_mismatch_simple(_np_a, _np_b):
         _ops = ['add', 'subtract']
