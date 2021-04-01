@@ -419,7 +419,7 @@ class BlockArray(BlockArrayBase):
         if not isinstance(other, BlockArray):
             raise ValueError("Cannot automatically construct BlockArray for tensor operations.")
 
-        # Error checking before everything gets passed into BlockArray operations. Modified from the 
+        # Error checking before everything gets passed into BlockArray operations. Modified from the
         # original NumPy tensordot method for error checking:
         # https://github.com/numpy/numpy/blob/v1.20.0/numpy/core/numeric.py#L949-L1139
         try:
