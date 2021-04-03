@@ -150,7 +150,7 @@ class BlockCyclicScheduler(TaskScheduler):
         super(BlockCyclicScheduler, self).__init__(compute_module, use_head)
         self.verbose = verbose
         self.cluster_shape: Tuple = cluster_shape
-        self.cluster_grid: np.ndarray = np.empty(shape=self.cluster_shape, dtype=np.object)
+        self.cluster_grid: np.ndarray = np.empty(shape=self.cluster_shape, dtype=object)
 
     def init(self):
         super().init()
