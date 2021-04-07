@@ -229,6 +229,17 @@ def diag(v: BlockArray, k=0) -> BlockArray:
     return app.diag(v)
 
 
+def atleast_1d(*arys):
+    return _instance().atleast_1d(*arys)
+
+
+def atleast_2d(*arys):
+    return _instance().atleast_2d(*arys)
+
+
+def atleast_3d(*arys):
+    return _instance().atleast_3d(*arys)
+
 ############################################
 # Manipulation Ops
 ############################################
@@ -318,6 +329,9 @@ def expand_dims(a: BlockArray, axis):
 def squeeze(a: BlockArray, axis=None):
     assert axis is None, "axis not supported."
     return a.squeeze()
+
+def swapaxes(a: BlockArray, axis1: int, axis2: int):
+    return a.swapaxes(axis1, axis2)
 
 
 def transpose(a: BlockArray, axes=None):
@@ -432,6 +446,7 @@ def any(a: BlockArray, axis=None, out=None, keepdims=False):
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().reduce("any", a, axis=axis, keepdims=keepdims)
 
+
 ############################################
 # NaN Ops
 ############################################
@@ -460,6 +475,17 @@ def nanmean(a: BlockArray, axis=None, dtype=None, out=None, keepdims=False):
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().nanmean(a, axis=axis, dtype=dtype, keepdims=keepdims)
 
+
+def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+    if out is not None:
+        raise NotImplementedError("'out' is currently not supported.")
+    return _instance().nanvar(a, axis=axis, dtype=dtype, ddof=ddof, keepdims=keepdims)
+
+
+def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+    if out is not None:
+        raise NotImplementedError("'out' is currently not supported.")
+    return _instance().nanstd(a, axis=axis, dtype=dtype, ddof=ddof, keepdims=keepdims)
 
 ############################################
 # Utility Ops

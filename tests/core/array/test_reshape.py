@@ -108,9 +108,9 @@ def test_reshape_blocks_only(app_inst):
     shape, block_shape = (3, 5, 10), (3, 2, 5)
     arr = app_inst.random_state(1337).random(shape, block_shape)
     arr_np = arr.get()
-    assert np.allclose(arr_np, arr.reshape(shape=shape, block_shape=(2, 2, 5)).get())
-    assert np.allclose(arr_np, arr.reshape(shape=shape, block_shape=(2, 3, 5)).get())
-    assert np.allclose(arr_np, arr.reshape(shape=shape, block_shape=(2, 3, 7)).get())
+    assert np.allclose(arr_np, arr.reshape(shape, block_shape=(2, 2, 5)).get())
+    assert np.allclose(arr_np, arr.reshape(shape, block_shape=(2, 3, 5)).get())
+    assert np.allclose(arr_np, arr.reshape(shape, block_shape=(2, 3, 7)).get())
 
 
 if __name__ == "__main__":

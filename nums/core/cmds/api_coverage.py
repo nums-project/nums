@@ -148,8 +148,8 @@ def api_coverage(print_missing, count_fallback):
         # Rest
         'angle', 'append', 'apply_along_axis', 'apply_over_axes',
         'argpartition', 'argsort', 'argwhere', 'around',
-        'array_split', 'asarray', 'asarray_chkfinite', 'asscalar', 'atleast_1d',
-        'atleast_2d', 'atleast_3d', 'average',
+        'array_split', 'asarray', 'asarray_chkfinite', 'asscalar',
+        'average',
         'bartlett', 'bincount', 'blackman',
         'choose', 'clip', 'column_stack', 'common_type', 'compress', 'convolve', 'corrcoef',
         'correlate', 'count_nonzero', 'cov', 'cross', 'cumprod', 'cumproduct', 'cumsum',
@@ -170,7 +170,6 @@ def api_coverage(print_missing, count_fallback):
         'median', 'meshgrid', 'min_scalar_type', 'mintypecode', 'mirr', 'modf', 'moveaxis', 'msort',
         'nan_to_num', 'nanargmax', 'nanargmin', 'nancumprod', 'nancumsum',
         'nanmedian', 'nanpercentile', 'nanprod', 'nanquantile',
-        'nanstd', 'nanvar',
         'nonzero', 'nper', 'npv',
         'obj2sctype',
         'packbits', 'pad', 'partition', 'percentile', 'piecewise', 'place',

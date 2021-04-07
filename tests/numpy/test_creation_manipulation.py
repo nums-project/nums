@@ -126,34 +126,60 @@ def test_func_space(nps_app_inst):
     np_arr = np.logspace(12.3, 45.6, 23)
     assert np.allclose(ba.get(), np_arr)
 
-
-def test_expand_squeeze(nps_app_inst):
+def test_shape(nps_app_inst):
     from nums import numpy as nps
+    from nums.core import application_manager
 
     assert nps_app_inst is not None
 
+    shape = (10, 20, 30, 40)
+    block_shape = (10, 10, 10, 10)
+    ns_ins = application_manager.instance()
+
     def check_expand_and_squeeze(_np_a, axes):
-        _name = 'matmul'
         np_expand_dims = np.__getattribute__('expand_dims')
         ns_expand_dims = nps.__getattribute__('expand_dims')
         np_squeeze = np.__getattribute__('squeeze')
         ns_squeeze = nps.__getattribute__('squeeze')
+
         _ns_a = nps.array(_np_a)
+        _ns_ins_a = ns_ins.array(_np_a, block_shape=block_shape)
+
         _np_result = np_expand_dims(_np_a, axes)
         _ns_result = ns_expand_dims(_ns_a, axes)
+        _ns_ins_result = ns_expand_dims(_ns_ins_a, axes)
         assert np.allclose(_np_result, _ns_result.get())
+        assert np.allclose(_np_result, _ns_ins_result.get())
         check_dim(_np_result, _ns_result)
+        check_dim(_np_result, _ns_ins_result)
+
         _np_result = np_squeeze(_np_a)
         _ns_result = ns_squeeze(_ns_a)
+        _ns_ins_result = ns_squeeze(_ns_ins_a)
         assert np.allclose(_np_result, _ns_result.get())
+        assert np.allclose(_np_result, _ns_ins_result.get())
         check_dim(_np_result, _ns_result)
+        check_dim(_np_result, _ns_ins_result)
 
     def check_dim(_np_a, _ns_a):
         np_ndim = np.__getattribute__('ndim')
-        ns_ndim = nps.__getattribute__('ndim')
-        assert np_ndim(_np_a) == ns_ndim(_ns_a)
+        assert np_ndim(_np_a) == np_ndim(_ns_a)
 
-    np_A = np.ones((10, 20, 30, 40))
+    def check_swapaxes(_np_a, axis1, axis2):
+        ns_ins = application_manager.instance()
+        np_swapaxes = np.__getattribute__('swapaxes')
+        ns_swapaxes = nps.__getattribute__('swapaxes')
+
+        _ns_a = nps.array(_np_a)
+        _ns_ins_a = ns_ins.array(_np_a, block_shape=block_shape)
+
+        _np_result = np_swapaxes(_np_a, axis1, axis2)
+        _ns_result = ns_swapaxes(_ns_a, axis1, axis2)
+        _ns_ins_result = ns_swapaxes(_ns_ins_a, axis1, axis2)
+        assert np.allclose(_np_result, _ns_result.get())
+        assert np.allclose(_np_result, _ns_ins_result.get())
+
+    np_A = np.ones(shape)
     check_expand_and_squeeze(np_A, axes=0)
     check_expand_and_squeeze(np_A, axes=2)
     check_expand_and_squeeze(np_A, axes=4)
@@ -162,6 +188,9 @@ def test_expand_squeeze(nps_app_inst):
     check_expand_and_squeeze(np_A, axes=(0, 5, 6))
     check_expand_and_squeeze(np_A, axes=(2, 3, 5, 6, 7))
 
+    for a1 in range(4):
+        for a2 in range(4):
+            check_swapaxes(np_A, axis1=a1, axis2=a2)
 
 if __name__ == "__main__":
     from nums.core import application_manager
@@ -173,3 +202,4 @@ if __name__ == "__main__":
     test_concatenate(nps_app_inst)
     test_split(nps_app_inst)
     test_func_space(nps_app_inst)
+    test_shape(nps_app_inst)

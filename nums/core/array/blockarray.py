@@ -125,12 +125,17 @@ class BlockArray(BlockArrayBase):
         self.system.get(oids)
         return self
 
-    def reshape(self, shape=None, **kwargs):
+    def reshape(self, *shape, **kwargs):
         block_shape = kwargs.get("block_shape", None)
         if array_utils.is_int(shape):
             shape = (shape,)
-        elif shape is None:
+        elif len(shape) == 0:
             shape = self.shape
+        elif isinstance(shape[0], (tuple, list)):
+            assert len(shape) == 1
+            shape = shape[0]
+        else:
+            assert all(np.issubdtype(type(n), int) for n in shape)
         shape = Reshape.compute_shape(self.shape, shape)
         if block_shape is None:
             if shape == self.shape:
@@ -178,6 +183,27 @@ class BlockArray(BlockArrayBase):
             new_shape.append(s)
             new_block_shape.append(b)
         return self.reshape(new_shape, block_shape=new_block_shape)
+
+    def swapaxes(self, axis1, axis2):
+        meta_swap = self.grid.to_meta()
+        shape = list(meta_swap["shape"])
+        block_shape = list(meta_swap["block_shape"])
+        dim = len(shape)
+        if axis1 >= dim or axis2 >= dim:
+            raise ValueError("axis is larger than the array dimension")
+        shape[axis1], shape[axis2] = shape[axis2], shape[axis1]
+        block_shape[axis1], block_shape[axis2] = block_shape[axis2], block_shape[axis1]
+        meta_swap["shape"] = tuple(shape)
+        meta_swap["block_shape"] = tuple(block_shape)
+        grid_swap = ArrayGrid.from_meta(meta_swap)
+        rarr_src = np.ndarray(self.blocks.shape, dtype='O')
+
+        for grid_entry in self.grid.get_entry_iterator():
+            rarr_src[grid_entry] = self.blocks[grid_entry].swapaxes(axis1, axis2)
+        rarr_src = rarr_src.swapaxes(axis1, axis2)
+
+        rarr_swap = BlockArray(grid_swap, self.system, rarr_src)
+        return rarr_swap
 
     def __getattr__(self, item):
         if item == "__array_priority__" or item == "__array_struct__":
