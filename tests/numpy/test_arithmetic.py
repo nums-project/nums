@@ -123,14 +123,14 @@ def test_matmul_tensor(nps_app_inst):
 
     assert nps_app_inst is not None
 
-    # TODO(bcp): Replace with matmul tests for rank > 2 once implemented.
-    def check_matmul_tensor(_ns_a, _ns_b):
+    # TODO (bcp): Replace with matmul tests for rank > 2 once implemented.
+    def test_matmul_tensor_error(_ns_a, _ns_b):
         with pytest.raises(NotImplementedError):
             nps.matmul(_ns_a, _ns_b)
 
     ns_a = nps.array([[[0, 1], [2, 3]], [[4, 5], [6, 7]]])
     ns_b = nps.array([[[7, 6], [5, 4]], [[3, 2], [1, 0]]])
-    check_matmul_tensor(ns_a, ns_b)
+    test_matmul_tensor_error(ns_a, ns_b)
 
 
 def test_inner_outer(nps_app_inst):
@@ -150,7 +150,7 @@ def test_broadcast(nps_app_inst):
     import pytest
     assert nps_app_inst is not None
 
-    def check_matrix_broadcast_mismatch_simple(_np_a, _np_b):
+    def check_broadcast_mismatch_simple(_np_a, _np_b):
         _ops = ['add', 'subtract']
 
         for _op in _ops:
@@ -162,11 +162,11 @@ def test_broadcast(nps_app_inst):
             with pytest.raises(ValueError):
                 np_op(_np_a, _np_b)
             with pytest.raises(ValueError):
-                # TODO(bcp): Add synchronous broadcast checks for simple operands.
+                # TODO (bcp): Add synchronous broadcast checks for simple operands.
                 res = ns_op(_ns_a, _ns_b)
                 res.touch()
 
-    def check_matrix_broadcast_mismatch_tensor(_np_a, _np_b, axes):
+    def check_broadcast_mismatch_tensor(_np_a, _np_b, axes):
         _ns_a = nps.array(_np_a)
         _ns_b = nps.array(_np_b)
 
@@ -177,15 +177,24 @@ def test_broadcast(nps_app_inst):
 
     np_A = np.random.randn(2, 4)
     np_B = np.random.randn(2, 2)
-    check_matrix_broadcast_mismatch_simple(np_A, np_B)
+    check_broadcast_mismatch_simple(np_A, np_B)
 
     np_A = np.random.randn(2, 1)
     np_B = np.random.randn(2, 1)
-    check_matrix_broadcast_mismatch_tensor(np_A, np_B, 1)
+    check_broadcast_mismatch_tensor(np_A, np_B, 1)
 
     np_A = np.random.randn(2, 2)
     np_B = np.random.randn(2, 1)
-    check_matrix_broadcast_mismatch_tensor(np_A, np_B, 2)
+    check_broadcast_mismatch_tensor(np_A, np_B, 2)
+
+    np_A = np.random.randn(2, 2, 3)
+    np_B = np.random.randn(2, 2, 2)
+    check_broadcast_mismatch_tensor(np_A, np_B, 3)
+
+    np_A = np.random.randn(2, 2, 3)
+    np_B = np.random.randn(2, 2, 2)
+    check_broadcast_mismatch_tensor(np_A, np_B, 2)
+
 
 if __name__ == "__main__":
     from nums.core import application_manager
