@@ -445,7 +445,9 @@ class BlockArray(BlockArrayBase):
         if not isinstance(other, BlockArray):
             raise ValueError("Cannot automatically construct BlockArray for tensor operations.")
 
-        assert isinstance(axes, int)
+        if not isinstance(axes, int):
+            raise TypeError(f"'{type(axes).__name__}' object cannot be interpreted as an integer")
+
         array_utils.np_tensordot_param_test(self.shape, self.ndim, other.shape, other.ndim, axes)
 
         def basic_vector(ba: BlockArray, axis):

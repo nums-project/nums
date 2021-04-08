@@ -115,7 +115,7 @@ def test_matmul_tensordot(nps_app_inst):
     check_matmul_op(np_A, np_B)
 
 
-def test_matmul_tensor(nps_app_inst):
+def test_matmul_tensor_error(nps_app_inst):
 
     from nums import numpy as nps
 
@@ -124,13 +124,13 @@ def test_matmul_tensor(nps_app_inst):
     assert nps_app_inst is not None
 
     # TODO (bcp): Replace with matmul tests for rank > 2 once implemented.
-    def test_matmul_tensor_error(_ns_a, _ns_b):
+    def check_matmul_tensor_error(_ns_a, _ns_b):
         with pytest.raises(NotImplementedError):
             nps.matmul(_ns_a, _ns_b)
 
     ns_a = nps.array([[[0, 1], [2, 3]], [[4, 5], [6, 7]]])
     ns_b = nps.array([[[7, 6], [5, 4]], [[3, 2], [1, 0]]])
-    test_matmul_tensor_error(ns_a, ns_b)
+    check_matmul_tensor_error(ns_a, ns_b)
 
 
 def test_inner_outer(nps_app_inst):
@@ -144,13 +144,14 @@ def test_inner_outer(nps_app_inst):
     assert np.allclose(np.inner(A, B), nps.inner(nps_A, nps_B).get())
     assert np.allclose(np.outer(A, B), nps.outer(nps_A, nps_B).get())
 
-def test_broadcast(nps_app_inst):
+
+def test_broadcast_error(nps_app_inst):
     import numpy as np
     from nums import numpy as nps
     import pytest
     assert nps_app_inst is not None
 
-    def check_broadcast_mismatch_simple(_np_a, _np_b):
+    def check_broadcast_mismatch_simple_error(_np_a, _np_b):
         _ops = ['add', 'subtract']
 
         for _op in _ops:
@@ -166,7 +167,7 @@ def test_broadcast(nps_app_inst):
                 res = ns_op(_ns_a, _ns_b)
                 res.touch()
 
-    def check_broadcast_mismatch_tensor(_np_a, _np_b, axes):
+    def check_broadcast_mismatch_tensor_error(_np_a, _np_b, axes):
         _ns_a = nps.array(_np_a)
         _ns_b = nps.array(_np_b)
 
@@ -175,25 +176,38 @@ def test_broadcast(nps_app_inst):
         with pytest.raises(ValueError):
             nps.tensordot(_ns_a, _ns_b, axes=axes)
 
+    def check_axes_type_tensor_error(_np_a, _np_b, axes):
+        _ns_a = nps.array(_np_a)
+        _ns_b = nps.array(_np_b)
+
+        with pytest.raises(TypeError):
+            np.tensordot(_np_a, _np_b, axes=axes)
+        with pytest.raises(TypeError):
+            nps.tensordot(_ns_a, _ns_b, axes=axes)
+
     np_A = np.random.randn(2, 4)
     np_B = np.random.randn(2, 2)
-    check_broadcast_mismatch_simple(np_A, np_B)
+    check_broadcast_mismatch_simple_error(np_A, np_B)
 
     np_A = np.random.randn(2, 1)
     np_B = np.random.randn(2, 1)
-    check_broadcast_mismatch_tensor(np_A, np_B, 1)
+    check_broadcast_mismatch_tensor_error(np_A, np_B, 1)
 
     np_A = np.random.randn(2, 2)
     np_B = np.random.randn(2, 1)
-    check_broadcast_mismatch_tensor(np_A, np_B, 2)
+    check_broadcast_mismatch_tensor_error(np_A, np_B, 2)
 
     np_A = np.random.randn(2, 2, 3)
     np_B = np.random.randn(2, 2, 2)
-    check_broadcast_mismatch_tensor(np_A, np_B, 3)
+    check_broadcast_mismatch_tensor_error(np_A, np_B, 3)
 
     np_A = np.random.randn(2, 2, 3)
     np_B = np.random.randn(2, 2, 2)
-    check_broadcast_mismatch_tensor(np_A, np_B, 2)
+    check_broadcast_mismatch_tensor_error(np_A, np_B, 2)
+
+    np_A = np.random.randn(2, 2)
+    np_B = np.random.randn(2, 2)
+    check_axes_type_tensor_error(np_A, np_B, 2.1)
 
 
 if __name__ == "__main__":
