@@ -147,6 +147,27 @@ def test_inner_outer(nps_app_inst):
 
 # TODO(hme): Add broadcast tests.
 
+def test_broadcast_block_shape_error(nps_app_inst):
+    from nums import numpy as nps
+    import pytest
+    assert nps_app_inst is not None
+
+    def check_broadcast_block_shape_mismatch_simple_error(_ns_a, _ns_b):
+        _ops = ['add', 'subtract', 'divide', 'bitwise_and']
+
+        for _op in _ops:
+            ns_op = nps.__getattribute__(_op)
+
+            _ns_a = _ns_a.reshape(block_shape=(10, 10))
+            _ns_b = _ns_b.reshape(block_shape=(2, 2))
+
+            with pytest.raises(ValueError):
+                ns_op(_ns_a, _ns_b)
+
+    nps_A = nps.random.randn(20, 20)
+    nps_B = nps.random.randn(20, 20)
+    check_broadcast_block_shape_mismatch_simple_error(nps_A, nps_B)
+
 
 if __name__ == "__main__":
     from nums.core import application_manager
