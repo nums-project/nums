@@ -89,7 +89,7 @@ def test_trace(nps_app_inst):
     # Test that trace doesn't work with 1-dimensional vectors
     with pytest.raises(ValueError):
         nps.trace(a)
-        
+
     # Create Diagonal Matrices
     a_diag = nps.diag(a) # Nums Version
     a_diag_np = np.diag(a.get()) # Numpy version
@@ -113,7 +113,7 @@ def test_trace(nps_app_inst):
     mat: BlockArray = nps.zeros((2, 3, 2))
     with pytest.raises(ValueError):
         nps.trace(mat)
-    
+
     # Test that trace doesn't work for non-zero offset
     mat:  BlockArray = nps.array([1.0, 2.0, 3.0, 4.0])
     mat_diag = nps.diag(mat)
@@ -223,3 +223,4 @@ if __name__ == "__main__":
     test_concatenate(nps_app_inst)
     test_split(nps_app_inst)
     test_func_space(nps_app_inst)
+    test_trace(nps_app_inst)

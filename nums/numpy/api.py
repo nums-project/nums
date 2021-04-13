@@ -228,6 +228,7 @@ def diag(v: BlockArray, k=0) -> BlockArray:
         raise NotImplementedError("Only k==0 is currently supported.")
     return app.diag(v)
 
+
 def trace(a: BlockArray, offset=0, axis1=0, axis2=1, dtype=None, out=None):
     if offset != 0:
         raise NotImplementedError("Only offset == 0 is currently supported")
@@ -238,7 +239,7 @@ def trace(a: BlockArray, offset=0, axis1=0, axis2=1, dtype=None, out=None):
     if len(a.shape) != 2:
         raise ValueError("Trace only supports 2-dimensional matrix")
     return sum(diag(a, offset), dtype=dtype, out=out)
-    
+
 
 def atleast_1d(*arys):
     return _instance().atleast_1d(*arys)
