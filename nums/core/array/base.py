@@ -83,6 +83,31 @@ class Block(object):
         blockT.oid = self.oid
         return blockT
 
+
+    def swapaxes(self, axis1, axis2):
+        block = self.copy()
+        grid_entry = list(block.grid_entry)
+        grid_shape = list(block.grid_shape)
+        shape = list(block.shape)
+        rect = block.rect
+
+        grid_entry[axis1], grid_entry[axis2] = grid_entry[axis2], grid_entry[axis1]
+        grid_shape[axis1], grid_shape[axis2] = grid_shape[axis2], grid_shape[axis1]
+        shape[axis1], shape[axis2] = shape[axis2], shape[axis1]
+        rect[axis1], rect[axis2] = rect[axis2], rect[axis1]
+
+        block.grid_entry = tuple(grid_entry)
+        block.grid_shape = tuple(grid_shape)
+        block.shape = tuple(shape)
+        block.rect = rect
+
+        block.oid = self._system.swapaxes(block.oid, axis1, axis2,
+                                         syskwargs={
+                                             "grid_entry": block.grid_entry,
+                                             "grid_shape": block.grid_shape
+                                         })
+        return block
+
     def ufunc(self, op_name, options=None):
         return self.uop_map(op_name, options=options)
 
@@ -371,18 +396,21 @@ class BlockArrayBase(object):
     def __repr__(self):
         return "BlockArray(" + str(self.blocks) + ")"
 
-    def get(self):
-        result = np.zeros(shape=self.grid.shape, dtype=self.grid.dtype)
-        block_shape = np.array(self.grid.block_shape, dtype=np.int)
-        blocks = self.system.get([self.blocks[grid_entry].oid
-                                  for grid_entry in self.grid.get_entry_iterator()])
+    def get(self) -> np.ndarray:
+        result: np.ndarray = np.zeros(shape=self.grid.shape, dtype=self.grid.dtype)
+        block_shape: np.ndarray = np.array(self.grid.block_shape, dtype=np.int)
+        arrays: list = self.system.get([self.blocks[grid_entry].oid
+                                        for grid_entry in self.grid.get_entry_iterator()])
         for block_index, grid_entry in enumerate(self.grid.get_entry_iterator()):
             start = block_shape * grid_entry
             entry_shape = np.array(self.grid.get_block_shape(grid_entry), dtype=np.int)
             end = start + entry_shape
             slices = tuple(map(lambda item: slice(*item), zip(*(start, end))))
-            block = self.blocks[grid_entry]
-            result[slices] = blocks[block_index].reshape(block.shape)
+            block: Block = self.blocks[grid_entry]
+            arr: np.ndarray = arrays[block_index]
+            if block.transposed:
+                arr = arr.T
+            result[slices] = arr.reshape(block.shape)
         return result
 
     def broadcast_to(self, shape):
