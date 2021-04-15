@@ -461,7 +461,7 @@ def average(a: BlockArray,
         return avg, weights_sum
 
     if a.shape != weights.shape:
-        raise NotImplementedError("'average' currently does not support broadcasting;"
+        raise NotImplementedError("1D weights broadcasting is currently not supported; "
                                   "dimensions of 'a' and 'weights' must match.")
     weights_sum = sum(weights, axis=axis)
     if not all(weights_sum):

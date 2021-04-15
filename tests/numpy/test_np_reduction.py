@@ -120,7 +120,7 @@ def test_average(nps_app_inst):
                     [-2, -3, -4, -5],
                     [-2, -3, -4, -5]]]),
     ]
-    ba_shapes = [(1, 1, 1), (1, 2, 3), (2, 4, 3), (2, 4, 4)]
+    ba_shapes = [(1, 1, 1), (1, 2, 2), (2, 1, 4), (2, 4, 2), (2, 4, 4)]
     for ba, ba_wt in zip(bas, ba_wts):
         for ba_shape in ba_shapes:
             ba = ba.reshape(block_shape=ba_shape)
