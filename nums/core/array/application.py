@@ -106,7 +106,7 @@ class ArrayApplication(object):
                     cluster_shape.append(1)
             cluster_shape = tuple(cluster_shape)
 
-        shape_np = np.array(shape, dtype=np.int)
+        shape_np = np.array(shape, dtype=int)
         # Softmax on cluster shape gives strong preference to larger dimensions.
         cluster_weights = np.exp(np.array(cluster_shape)) / np.sum(np.exp(cluster_shape))
         shape_fracs = np.array(shape) / np.sum(shape)
@@ -122,7 +122,7 @@ class ArrayApplication(object):
         # Put remainder on largest axis.
         remaining = np.sum(grid_shape_frac - grid_shape)
         grid_shape[np.argmax(shape)] += remaining
-        grid_shape = np.ceil(grid_shape).astype(np.int)
+        grid_shape = np.ceil(grid_shape).astype(int)
 
         # We use ceiling of floating block shape
         # so that resulting grid shape is <= to what we compute above.
@@ -133,6 +133,7 @@ class ArrayApplication(object):
         # Simple way to ensure shape compatibility for basic linear algebra operations.
         block_shape = self.compute_block_shape(shape, dtype)
         final_block_shape = []
+
         for axis in range(len(shape)):
             shape_dim = shape[axis]
             block_shape_dim = block_shape[axis]
@@ -261,7 +262,7 @@ class ArrayApplication(object):
                                                       })
         return rarr
 
-    def read_csv(self, filename, dtype=np.float, delimiter=',', has_header=False, num_workers=None):
+    def read_csv(self, filename, dtype=float, delimiter=',', has_header=False, num_workers=None):
         if num_workers is None:
             num_workers = self.num_cores_total()
         arrays: list = self._filesystem.read_csv(filename, dtype, delimiter, has_header,
@@ -443,14 +444,17 @@ class ArrayApplication(object):
             raise ValueError("X must have 1 or 2 axes.")
         return rarr
 
-    def arange(self, shape, block_shape, step=1, dtype=np.int64) -> BlockArray:
+    def arange(self, start_in, shape, block_shape, step=1, dtype=None) -> BlockArray:
         assert step == 1
+        if dtype is None:
+            dtype = np.__getattribute__(str(np.result_type(start_in, shape[0] + start_in)))
+
         # Generate ranges per block.
         grid = ArrayGrid(shape, block_shape, dtype.__name__)
         rarr = BlockArray(grid, self.system)
         for _, grid_entry in enumerate(grid.get_entry_iterator()):
             syskwargs = {"grid_entry": grid_entry, "grid_shape": grid.grid_shape}
-            start = block_shape[0] * grid_entry[0]
+            start = start_in + block_shape[0] * grid_entry[0]
             entry_shape = grid.get_block_shape(grid_entry)
             stop = start + entry_shape[0]
             rarr.blocks[grid_entry].oid = self.system.arange(start,
@@ -464,9 +468,11 @@ class ArrayApplication(object):
         assert axis == 0
         assert endpoint is True
         assert retstep is False
+
         step_size = (stop - start) / (shape[0] - 1)
-        result = self.arange(shape, block_shape)
+        result = self.arange(0, shape, block_shape)
         result = start + result * step_size
+
         if dtype is not None and dtype != result.dtype:
             result = result.astype(dtype)
         return result
