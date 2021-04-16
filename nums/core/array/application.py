@@ -717,7 +717,7 @@ class ArrayApplication(object):
 
         if not array_utils.broadcastable(arr_1.shape, arr_2.shape,
                                          arr_1.block_shape, arr_2.block_shape):
-            raise ValueError("operands cannot be broadcasted.")
+            raise ValueError("Operands cannot be broadcasted.")
 
         try:
             ufunc = np.__getattribute__(op_name)
