@@ -207,6 +207,19 @@ def test_properties(nps_app_inst):
     assert A_copy is not A
 
 
+def test_arange(nps_app_inst):
+    import nums.numpy as nps
+    assert nps_app_inst is not None
+
+    start_indices = [3.1, 3, 3.1]
+    stop_indices = [5.1, 5.1, 5]
+
+    for start, stop in zip(start_indices, stop_indices):
+        a = nps.arange(start, stop).get()
+        b = np.arange(start, stop)
+        assert np.allclose(a, b)
+
+
 if __name__ == "__main__":
     from nums.core import application_manager
     from nums.core import settings
@@ -219,3 +232,4 @@ if __name__ == "__main__":
     # test_all_alltrue_any(nps_app_inst)
     # test_array_eq(nps_app_inst)
     test_properties(nps_app_inst)
+    test_arange(nps_app_inst)

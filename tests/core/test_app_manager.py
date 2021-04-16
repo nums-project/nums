@@ -28,7 +28,7 @@ def test_app_manager():
             settings.compute_name = compute_name
             settings.system_name = system_name
             app: ArrayApplication = application_manager.instance()
-            assert np.allclose(np.arange(10), app.arange(shape=(10,), block_shape=(10,)).get())
+            assert np.allclose(np.arange(10), app.arange(0, shape=(10,), block_shape=(10,)).get())
             application_manager.destroy()
             assert not application_manager.is_initialized()
             time.sleep(1)
