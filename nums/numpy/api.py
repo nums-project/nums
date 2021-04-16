@@ -16,7 +16,7 @@
 
 import warnings
 
-from typing import Union
+from typing import List, Optional, Union
 
 import numpy as np
 import scipy.stats
@@ -450,9 +450,12 @@ def any(a: BlockArray, axis=None, out=None, keepdims=False):
 
 
 def average(a: BlockArray,
-            axis: Union[None, int] = None,
-            weights: Union[None, BlockArray] = None,
+            axis: Union[None, int, List[int]] = None,
+            weights: Optional[BlockArray] = None,
             returned: bool = False):
+    if axis and not isinstance(axis, int):
+        raise NotImplementedError("Only single 'axis' is currently supported.")
+
     if weights is None:
         avg = mean(a, axis)
         if not returned:
