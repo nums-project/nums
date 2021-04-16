@@ -152,22 +152,31 @@ def test_broadcast_block_shape_error(nps_app_inst):
     import pytest
     assert nps_app_inst is not None
 
-    def check_broadcast_block_shape_mismatch_simple_error(_ns_a, _ns_b):
-        _ops = ['add', 'subtract', 'divide', 'bitwise_and']
+    _ops = ['add', 'subtract', 'divide', 'bitwise_and']
 
+    def check_broadcast_block_shape_mismatch_simple_error(_ns_a, _ns_b, _a_blockshape=None, _b_blockshape=None):
         for _op in _ops:
             ns_op = nps.__getattribute__(_op)
 
-            _ns_a = _ns_a.reshape(block_shape=(10, 10))
-            _ns_b = _ns_b.reshape(block_shape=(2, 2))
+            if _a_blockshape:
+                _ns_a = _ns_a.reshape(block_shape=_a_blockshape)
+            if _b_blockshape:
+                _ns_b = _ns_b.reshape(block_shape=_b_blockshape)
 
             with pytest.raises(ValueError):
                 ns_op(_ns_a, _ns_b)
 
     nps_A = nps.random.randn(20, 20)
     nps_B = nps.random.randn(20, 20)
-    check_broadcast_block_shape_mismatch_simple_error(nps_A, nps_B)
+    check_broadcast_block_shape_mismatch_simple_error(nps_A, nps_B, _a_blockshape=(10, 10), _b_blockshape=(2, 2))
 
+    nps_A = nps.random.randn(20, 20)
+    nps_B = nps.random.randn(20)
+    check_broadcast_block_shape_mismatch_simple_error(nps_A, nps_B, _a_blockshape=(10, 10))
+
+    nps_A = nps.random.randn(20, 20, 20)
+    nps_B = nps.random.randn(20, 20, 20)
+    check_broadcast_block_shape_mismatch_simple_error(nps_A, nps_B, _a_blockshape=(10, 10, 10), _b_blockshape=(2, 2, 2))
 
 if __name__ == "__main__":
     from nums.core import application_manager
