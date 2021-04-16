@@ -46,9 +46,9 @@ class BlockArray(BlockArrayBase):
     @classmethod
     def from_scalar(cls, val, system):
         if isinstance(val, int):
-            dtype = np.int
+            dtype = int
         elif isinstance(val, float):
-            dtype = np.float
+            dtype = float
         else:
             assert isinstance(val, (np.int32, np.int64, np.float32, np.float64))
             dtype = None
@@ -661,7 +661,7 @@ class BlockArray(BlockArrayBase):
             "Currently supports comparison with scalars only."
         shape = array_utils.broadcast(self.shape, other.shape).shape
         block_shape = array_utils.broadcast_block_shape(self.shape, other.shape, self.block_shape)
-        dtype = np.bool.__name__
+        dtype = bool.__name__
         grid = ArrayGrid(shape, block_shape, dtype)
         result = BlockArray(grid, self.system)
         for grid_entry in result.grid.get_entry_iterator():
