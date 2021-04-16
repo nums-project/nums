@@ -425,8 +425,8 @@ class ArrayApplication(object):
                                                                         grid_meta,
                                                                         syskwargs=syskwargs)
         elif len(X.shape) == 2:
-            assert X.shape[0] == X.shape[1], "X must be a square matrix"
-            assert X.block_shape[0] == X.block_shape[1]
+            assert X.shape[0] == X.shape[1], "X must be a square matrix."
+            assert X.block_shape[0] == X.block_shape[1], "Block must be a square matrix."
             shape = X.shape[0],
             block_shape = X.block_shape[0],
             grid = ArrayGrid(shape, block_shape, X.dtype.__name__)

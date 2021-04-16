@@ -127,6 +127,7 @@ def test_trace(nps_app_inst):
     mat_diag_np_trace = np.trace(mat_diag_np, dtype=int)
 
     assert np.allclose(mat_diag_trace, mat_diag_np_trace)
+    assert mat_diag_trace.dtype == int
 
 
 def test_arange(nps_app_inst):
