@@ -86,10 +86,6 @@ def test_trace(nps_app_inst):
 
     a: BlockArray = nps.array([1.0, 2.0, 3.0, 4.0])
 
-    # Test trace error for 1-dimensional arrrays.
-    with pytest.raises(ValueError):
-        nps.trace(a)
-
     # Construct diagonal matrix with nums and numpy.
     a_diag = nps.diag(a)
     a_diag_np = np.diag(a.get())
