@@ -259,13 +259,11 @@ def diag(v: BlockArray, k=0) -> BlockArray:
 
 def trace(a: BlockArray, offset=0, axis1=0, axis2=1, dtype=None, out=None):
     if offset != 0:
-        raise NotImplementedError("Only offset == 0 is currently supported")
+        raise NotImplementedError("offset != 0 is currently not supported.")
     if out is not None:
-        raise NotImplementedError("out is currently not supported for concatenate.")
+        raise NotImplementedError("out is currently not supported.")
     if axis1 != 0 or axis2 != 1:
-        raise NotImplementedError("Only axis1 = 0 and axis2 = 1 supported.")
-    if len(a.shape) != 2:
-        raise ValueError("Trace only supports 2-dimensional matrix")
+        raise NotImplementedError(" axis1 != 0 or axis2 != 1 is currently not supported.")
     return sum(diag(a, offset), dtype=dtype, out=out)
 
 
