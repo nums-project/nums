@@ -154,7 +154,8 @@ def test_broadcast_block_shape_error(nps_app_inst):
 
     _ops = ['add', 'subtract', 'divide', 'bitwise_and']
 
-    def check_broadcast_block_shape_mismatch_simple_error(_ns_a, _ns_b, _a_blockshape=None, _b_blockshape=None):
+    def check_broadcast_block_shape_mismatch_simple_error(_ns_a, _ns_b,
+                                                          _a_blockshape=None, _b_blockshape=None):
         for _op in _ops:
             ns_op = nps.__getattribute__(_op)
 
@@ -168,7 +169,8 @@ def test_broadcast_block_shape_error(nps_app_inst):
 
     nps_A = nps.random.randn(20, 20)
     nps_B = nps.random.randn(20, 20)
-    check_broadcast_block_shape_mismatch_simple_error(nps_A, nps_B, _a_blockshape=(10, 10), _b_blockshape=(2, 2))
+    check_broadcast_block_shape_mismatch_simple_error(nps_A, nps_B,
+                                                      _a_blockshape=(10, 10), _b_blockshape=(2, 2))
 
     nps_A = nps.random.randn(20, 20)
     nps_B = nps.random.randn(20)
@@ -176,7 +178,10 @@ def test_broadcast_block_shape_error(nps_app_inst):
 
     nps_A = nps.random.randn(20, 20, 20)
     nps_B = nps.random.randn(20, 20, 20)
-    check_broadcast_block_shape_mismatch_simple_error(nps_A, nps_B, _a_blockshape=(10, 10, 10), _b_blockshape=(2, 2, 2))
+    check_broadcast_block_shape_mismatch_simple_error(nps_A, nps_B,
+                                                      _a_blockshape=(10, 10, 10),
+                                                      _b_blockshape=(2, 2, 2))
+
 
 if __name__ == "__main__":
     from nums.core import application_manager
