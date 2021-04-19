@@ -17,7 +17,7 @@
 import argparse
 
 from nums.core.systems import utils as systems_utils
-
+from nums.core import settings
 
 # pylint: disable = import-outside-toplevel
 
@@ -49,7 +49,7 @@ def module_coverage(module_name, print_missing, count_fallback,
     print("-"*75)
 
     for name, func in systems_utils.get_module_functions(nums_module).items():
-        if name in ("_not_implemented", "_instance"):
+        if name in ("_not_implemented", "_instance", "_default_to_numpy"):
             continue
         if getattr(numpy_module, name, None) is None:
             raise Exception("Implemented method that does not exist! %s" % name)
@@ -141,57 +141,10 @@ def api_coverage(print_missing, count_fallback):
         'savetxt', 'shares_memory'
     }
 
-    # Fallback on NumPy for these operations.
-    # This is achieved by converting the block array to a single block, performing the operation,
-    # and converting back to the original block shape.
-    fallback = {
-        # Rest
-        'angle', 'append', 'apply_along_axis', 'apply_over_axes',
-        'argpartition', 'argsort', 'argwhere', 'around',
-        'array_split', 'asarray', 'asarray_chkfinite', 'asscalar',
-        'average',
-        'bartlett', 'bincount', 'blackman',
-        'choose', 'clip', 'column_stack', 'common_type', 'compress', 'convolve', 'corrcoef',
-        'correlate', 'count_nonzero', 'cov', 'cross', 'cumprod', 'cumproduct', 'cumsum',
-        'delete', 'diag_indices', 'diag_indices_from', 'diagflat', 'diagonal', 'diff', 'digitize',
-        'divmod', 'dot', 'dsplit', 'dstack',
-        'ediff1d', 'einsum', 'einsum_path', 'extract',
-        'fill_diagonal', 'fix', 'flatnonzero', 'flip', 'fliplr', 'flipud', 'frexp', 'frombuffer',
-        'fromfile', 'fromfunction', 'fromiter', 'frompyfunc', 'full',
-        'full_like', 'fv',
-        'geomspace', 'gradient',
-        'hamming', 'hanning',
-        'histogram', 'histogram2d', 'histogram_bin_edges', 'histogramdd', 'hsplit', 'hstack', 'i0',
-        'imag', 'in1d', 'indices', 'insert', 'interp', 'intersect1d', 'ipmt',
-        'irr', 'isclose', 'iscomplex', 'iscomplexobj', 'isin',
-        'isneginf', 'isposinf', 'isreal', 'isrealobj', 'isscalar',
-        'ix_', 'kaiser', 'kron', 'lexsort',
-        'maximum_sctype',
-        'median', 'meshgrid', 'min_scalar_type', 'mintypecode', 'mirr', 'modf', 'moveaxis', 'msort',
-        'nan_to_num', 'nanargmax', 'nanargmin', 'nancumprod', 'nancumsum',
-        'nanmedian', 'nanpercentile', 'nanprod', 'nanquantile',
-        'nonzero', 'nper', 'npv',
-        'obj2sctype',
-        'packbits', 'pad', 'partition', 'percentile', 'piecewise', 'place',
-        'pmt', 'poly', 'polyadd', 'polyder', 'polydiv', 'polyfit', 'polyint', 'polymul', 'polysub',
-        'polyval', 'ppmt', 'prod', 'product', 'promote_types', 'ptp', 'put',
-        'put_along_axis', 'putmask', 'pv',
-        'quantile', 'rate', 'ravel', 'ravel_multi_index', 'real',
-        'real_if_close', 'repeat', 'require', 'resize',
-        'result_type', 'roll', 'rollaxis', 'roots', 'rot90', 'round', 'round_', 'row_stack',
-        'sctype2char', 'searchsorted',
-        'select', 'setdiff1d', 'setxor1d',
-        'sinc', 'sometrue', 'sort', 'sort_complex',
-        'stack', 'swapaxes', 'take', 'take_along_axis', 'tile', 'trace',
-        'trapz', 'tri', 'tril', 'tril_indices', 'tril_indices_from', 'trim_zeros', 'triu',
-        'triu_indices', 'triu_indices_from', 'union1d', 'unique', 'unpackbits',
-        'unravel_index', 'unwrap', 'vander', 'vdot', 'vsplit', 'vstack', 'who'
-    }
-
     import numpy as numpy_module
     import nums.numpy.api as nums_module
     module_coverage("api", print_missing, count_fallback,
-                    numpy_module, nums_module, ignore=ignore, fallback=fallback)
+                    numpy_module, nums_module, ignore=ignore, fallback=settings.fallback)
 
 
 def main():
