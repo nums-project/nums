@@ -606,31 +606,31 @@ class BlockArray(BlockArrayBase):
 
     def __add__(self, other):
         other = self.check_or_convert_other(other)
-        return BlockArray.from_blocks(self.blocks + other.blocks,
+        return self.from_blocks(self.blocks + other.blocks,
                                       result_shape=None,
                                       system=self.system)
 
     def __sub__(self, other):
         other = self.check_or_convert_other(other)
-        return BlockArray.from_blocks(self.blocks - other.blocks,
+        return self.from_blocks(self.blocks - other.blocks,
                                       result_shape=None,
                                       system=self.system)
 
     def __mul__(self, other):
         other = self.check_or_convert_other(other)
-        return BlockArray.from_blocks(self.blocks * other.blocks,
+        return self.from_blocks(self.blocks * other.blocks,
                                       result_shape=None,
                                       system=self.system)
 
     def __truediv__(self, other):
         other = self.check_or_convert_other(other)
-        return BlockArray.from_blocks(self.blocks / other.blocks,
+        return self.from_blocks(self.blocks / other.blocks,
                                       result_shape=None,
                                       system=self.system)
 
     def __pow__(self, other):
         other = self.check_or_convert_other(other)
-        return BlockArray.from_blocks(self.blocks ** other.blocks,
+        return self.from_blocks(self.blocks ** other.blocks,
                                       result_shape=None,
                                       system=self.system)
 

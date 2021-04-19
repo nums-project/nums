@@ -137,3 +137,6 @@ condaforge
 
 # Emacs
 .dir-locals.el
+
+# VSCode
+.vscode
