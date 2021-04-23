@@ -18,7 +18,6 @@ import itertools
 
 import numpy as np
 
-from nums.core import settings
 from nums.core.storage.storage import ArrayGrid
 from nums.core.array import utils as array_utils
 from nums.core.array.base import BlockArrayBase, Block
@@ -368,6 +367,40 @@ class BlockArray(BlockArrayBase):
             result.blocks[grid_entry] = self.blocks[grid_entry].ufunc(op_name)
         return result
 
+    def _tree_reduce(self, op_name, blocks_or_oids, result_grid_entry, result_grid_shape):
+        """
+        Basic tree reduce imp.
+        Schedules op on same node as left operand.
+        :param op_name: The reduction op.
+        :param blocks_or_oids: A list of type Block or a list of tuples.
+                               Tuples must be of the form
+                               (oid, grid_entry, grid_shape, transposed)
+        :param result_grid_entry: The grid entry of the result block. This will be used
+                                  to compute the final reduction step.
+        :param result_grid_shape: The grid entry of the result block. This will be used
+                                  to compute the final reduction step.
+        :return: The oid of the result.
+        """
+        oid_list = blocks_or_oids
+        if isinstance(blocks_or_oids[0], Block):
+            oid_list = [(b.oid, b.grid_entry, b.grid_shape, b.transposed) for b in blocks_or_oids]
+        if len(oid_list) == 1:
+            return oid_list[0][0]
+        q = oid_list
+        while len(q) > 1:
+            a_oid, a_ge, a_gs, a_T = q.pop(0)
+            b_oid, _, _, b_T = q.pop(0)
+            ge, gs = (result_grid_entry, result_grid_shape) if len(q) == 0 else (a_ge, a_gs)
+            c_oid = self.system.bop_reduce(op_name, a_oid, b_oid, a_T, b_T, syskwargs={
+                "grid_entry": ge,
+                "grid_shape": gs,
+            })
+            q.append((c_oid, ge, gs, False))
+        r_oid, r_ge, r_gs, _ = q.pop(0)
+        assert r_ge == result_grid_entry
+        assert r_gs == result_grid_shape
+        return r_oid
+
     def reduce_axis(self, op_name, axis, keepdims=False):
         if not (axis is None or isinstance(axis, (int, np.int32, np.int64))):
             raise NotImplementedError("Only integer axis is currently supported.")
@@ -395,43 +428,34 @@ class BlockArray(BlockArrayBase):
                                 dtype=result_dtype.__name__)
         result = BlockArray(result_grid, self.system)
 
-        if op_name in settings.np_bop_reduction_set:
-            if axis is None:
-                reduced_block: Block = None
-                for grid_entry in self.grid.get_entry_iterator():
-                    if reduced_block is None:
-                        reduced_block = result_blocks[grid_entry]
-                        continue
-                    next_block = result_blocks[grid_entry]
-                    reduced_block = reduced_block.bop_reduce(op_name, other=next_block)
-                if result.shape == ():
-                    result.blocks[()] = reduced_block
-                else:
-                    result.blocks[:] = reduced_block
-
-            else:
-                for result_grid_entry in result_grid.get_entry_iterator():
-                    reduced_block: Block = None
-                    for sum_dim in range(self.grid.grid_shape[axis]):
-                        grid_entry = list(result_grid_entry)
-                        if keepdims:
-                            grid_entry[axis] = sum_dim
-                        else:
-                            grid_entry = grid_entry[:axis] + [sum_dim] + grid_entry[axis:]
-                        grid_entry = tuple(grid_entry)
-                        next_block: Block = result_blocks[grid_entry]
-                        if reduced_block is None:
-                            reduced_block = next_block
-                        else:
-                            reduced_block = reduced_block.bop_reduce(op_name, other=next_block)
-
-                    result.blocks[result_grid_entry] = reduced_block
-        else:
-            op_func = np.__getattribute__(op_name)
+        if axis is None:
+            blocks_to_reduce = []
+            for grid_entry in self.grid.get_entry_iterator():
+                blocks_to_reduce.append(result_blocks[grid_entry])
             if result.shape == ():
-                result.blocks[()] = op_func(result_blocks, axis=axis, keepdims=keepdims)
+                result_block: Block = result.blocks[()]
             else:
-                result.blocks = op_func(result_blocks, axis=axis, keepdims=keepdims)
+                result_block: Block = result.blocks[:].item()
+            result_block.oid = self._tree_reduce(op_name,
+                                                 blocks_to_reduce,
+                                                 result_block.grid_entry,
+                                                 result_block.grid_shape)
+        else:
+            for result_grid_entry in result_grid.get_entry_iterator():
+                blocks_to_reduce = []
+                for sum_dim in range(self.grid.grid_shape[axis]):
+                    grid_entry = list(result_grid_entry)
+                    if keepdims:
+                        grid_entry[axis] = sum_dim
+                    else:
+                        grid_entry = grid_entry[:axis] + [sum_dim] + grid_entry[axis:]
+                    grid_entry = tuple(grid_entry)
+                    blocks_to_reduce.append(result_blocks[grid_entry])
+                result_block: Block = result.blocks[result_grid_entry]
+                result_block.oid = self._tree_reduce(op_name,
+                                                     blocks_to_reduce,
+                                                     result_block.grid_entry,
+                                                     result_block.grid_shape)
         return result
 
     def __matmul__(self, other):
@@ -485,16 +509,16 @@ class BlockArray(BlockArrayBase):
         for i in this_dims:
             for j in other_dims:
                 grid_entry = tuple(i + j)
-                result_block = None
+                result_block: Block = result.blocks[grid_entry]
+                sum_blocks = []
                 for k in sum_dims:
                     self_block: Block = self.blocks[tuple(i + k)]
                     other_block: Block = other.blocks[tuple(k + j)]
                     dotted_block = self_block.tensordot(other_block, axes=axes)
-                    if result_block is None:
-                        result_block = dotted_block
-                    else:
-                        result_block += dotted_block
-                result.blocks[grid_entry] = result_block
+                    sum_blocks.append(dotted_block)
+                result_block.oid = self._tree_reduce("sum", sum_blocks,
+                                                     result_block.grid_entry,
+                                                     result_block.grid_shape)
         return result
 
     def _vecdot(self, other):
@@ -536,8 +560,6 @@ class BlockArray(BlockArrayBase):
             dot_oid = self.system.bop("tensordot",
                                       a1=self_block.oid,
                                       a2=other_block.oid,
-                                      a1_shape=self_block.shape,
-                                      a2_shape=other_block.shape,
                                       a1_T=self_block.transposed,
                                       a2_T=other_block.transposed,
                                       axes=1,
@@ -545,13 +567,11 @@ class BlockArray(BlockArrayBase):
                                           "grid_entry": sch_grid_entry,
                                           "grid_shape": sch_grid_shape
                                       })
-            oids.append(dot_oid)
+            oids.append((dot_oid, sch_grid_entry, sch_grid_shape, False))
         result_grid_entry = tuple(0 for _ in range(len(result.grid.grid_shape)))
-        result_oid = self.system.sum_reduce(*oids,
-                                            syskwargs={
-                                                "grid_entry": result_grid_entry,
-                                                "grid_shape": result.grid.grid_shape
-                                            })
+        result_oid = self._tree_reduce("sum", oids,
+                                       result_grid_entry,
+                                       result.grid.grid_shape)
         result.blocks[result_grid_entry].oid = result_oid
         return result
 
@@ -586,8 +606,6 @@ class BlockArray(BlockArrayBase):
                 dot_oid = self.system.bop("tensordot",
                                           a1=self_block.oid,
                                           a2=other_block.oid,
-                                          a1_shape=self_block.shape,
-                                          a2_shape=other_block.shape,
                                           a1_T=self_block.transposed,
                                           a2_T=other_block.transposed,
                                           axes=1,
@@ -595,12 +613,10 @@ class BlockArray(BlockArrayBase):
                                               "grid_entry": sch_grid_entry,
                                               "grid_shape": sch_grid_shape
                                           })
-                row.append(dot_oid)
-            result_oid = self.system.sum_reduce(*row,
-                                                syskwargs={
-                                                    "grid_entry": result_grid_entry,
-                                                    "grid_shape": result.grid.grid_shape
-                                                })
+                row.append((dot_oid, sch_grid_entry, sch_grid_shape, False))
+            result_oid = self._tree_reduce("sum", row,
+                                           result_grid_entry,
+                                           result.grid.grid_shape)
             result.blocks[result_grid_entry].oid = result_oid
         return result
 
