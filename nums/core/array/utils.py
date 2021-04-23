@@ -21,9 +21,9 @@ import numpy as np
 import scipy.special
 
 from nums.core.settings import np_ufunc_map
+from nums.core.array.errors import AxisError
 
-
-# pylint: disable = no-member
+# pylint: disable = no-member, trailing-whitespace
 
 
 def get_uop_output_type(op_name, dtype):
@@ -261,3 +261,50 @@ def translate_index_list(from_index_list, from_shape, to_shape):
         addr = idx2addr(src_index, from_shape)
         to_index_list.append(addr2idx(addr, to_shape))
     return to_index_list
+
+
+# NumPy's internal axis-checking logic
+# https://www.kite.com/python/docs/numpy.core.multiarray.normalize_axis_index
+def normalize_axis_index(axis, ndim):
+    """
+    Parameters
+    ----------
+    axis : int
+        The un-normalized index of the axis. Can be negative
+    ndim : int
+        The number of dimensions of the array that `axis` should be normalized
+        against
+    
+    Returns
+    -------
+    normalized_axis : int
+        The normalized axis index, such that `0 <= normalized_axis < ndim`
+    
+    Raises
+    ------
+    AxisError
+        If the axis index is invalid, when `-ndim <= axis < ndim` is false.
+    
+    Examples
+    --------
+    >>> normalize_axis_index(0, ndim=3)
+    0
+    >>> normalize_axis_index(1, ndim=3)
+    1
+    >>> normalize_axis_index(-1, ndim=3)
+    2
+    
+    >>> normalize_axis_index(3, ndim=3)
+    Traceback (most recent call last):
+    ...
+    AxisError: axis 3 is out of bounds for array of dimension 3
+    >>> normalize_axis_index(-4, ndim=3, msg_prefix='axes_arg')
+    Traceback (most recent call last):
+    ...
+    AxisError: axes_arg: axis -4 is out of bounds for array of dimension 3
+    """
+
+    if -ndim > axis >= ndim:
+        raise AxisError("axis {} is out of bounds for array of dimension {}".format(axis, ndim))
+
+    return axis % ndim

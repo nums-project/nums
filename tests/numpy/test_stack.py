@@ -91,6 +91,69 @@ def test_atleast_3d(nps_app_inst):
 
     try_multiple_nd(np.atleast_3d, nps.atleast_3d)
 
+
+def test_hstack(nps_app_inst):
+    import nums.numpy as nps
+    assert nps_app_inst is not None
+
+    a1 = nps.array((1, 2, 3))
+    a2 = np.array((1, 2, 3))
+    b = np.array((2, 3, 4))
+    assert np.allclose(nps.hstack((a1, b)).get(), np.hstack((a2, b)))
+    a = np.array([[1], [2], [3]])
+    b = np.array([[2], [3], [4]])
+    assert np.allclose(nps.hstack((a, b)).get(), np.hstack((a, b)))
+
+
+def test_vstack(nps_app_inst):
+    import nums.numpy as nps
+    assert nps_app_inst is not None
+
+    a1 = nps.array([1, 2, 3])
+    a2 = np.array([1, 2, 3])
+    b = np.array([2, 3, 4])
+    assert np.allclose(nps.vstack((a1, b)).get(), np.vstack((a2, b)))
+    a = np.array([[1], [2], [3]])
+    b = np.array([[2], [3], [4]])
+    assert np.allclose(nps.vstack((a, b)).get(), np.vstack((a, b)))
+
+
+def test_dstack(nps_app_inst):
+    import nums.numpy as nps
+    assert nps_app_inst is not None
+
+    a1 = nps.array((1, 2, 3))
+    a2 = np.array((1, 2, 3))
+    b = np.array((2, 3, 4))
+    assert np.allclose(nps.dstack((a1, b)).get(), np.dstack((a2, b)))
+    a = np.array([[1], [2], [3]])
+    b = np.array([[2], [3], [4]])
+    assert np.allclose(nps.dstack((a, b)).get(), np.dstack((a, b)))
+
+
+def test_row_stack(nps_app_inst):
+    import nums.numpy as nps
+    assert nps_app_inst is not None
+
+    a1 = nps.array([1, 2, 3])
+    a2 = np.array([1, 2, 3])
+    b = np.array([2, 3, 4])
+    assert np.allclose(nps.row_stack((a1, b)).get(), np.row_stack((a2, b)))
+    a = np.array([[1], [2], [3]])
+    b = np.array([[2], [3], [4]])
+    assert np.allclose(nps.row_stack((a, b)).get(), np.row_stack((a, b)))
+
+
+def test_column_stack(nps_app_inst):
+    import nums.numpy as nps
+    assert nps_app_inst is not None
+
+    a1 = nps.array((1, 2, 3))
+    a2 = np.array((1, 2, 3))
+    b = np.array((2, 3, 4))
+    assert np.allclose(nps.column_stack((a1, b)).get(), np.column_stack((a2, b)))
+
+
 if __name__ == "__main__":
     # pylint: disable=import-error
     from nums.core import application_manager
@@ -101,3 +164,8 @@ if __name__ == "__main__":
     test_atleast_1d(nps_app_inst)
     test_atleast_2d(nps_app_inst)
     test_atleast_3d(nps_app_inst)
+    test_hstack(nps_app_inst)
+    test_vstack(nps_app_inst)
+    test_dstack(nps_app_inst)
+    test_row_stack(nps_app_inst)
+    test_column_stack(nps_app_inst)
