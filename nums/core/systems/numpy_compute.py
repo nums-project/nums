@@ -209,9 +209,6 @@ class ComputeCls(ComputeImp):
         dtype = getattr(np, dtype_str)
         return arr.astype(dtype)
 
-    def sum_reduce(self, *arrs):
-        return np.add.reduce(arrs)
-
     def transpose(self, arr):
         return arr.T
 
@@ -223,15 +220,11 @@ class ComputeCls(ComputeImp):
             arr = arr.T
         return np.split(arr, indices_or_sections, axis)
 
-    def bop(self, op, a1, a2, a1_shape, a2_shape, a1_T, a2_T, axes):
+    def bop(self, op, a1, a2, a1_T, a2_T, axes):
         if a1_T:
             a1 = a1.T
         if a2_T:
             a2 = a2.T
-        if a1.shape != a1_shape:
-            a1 = a1.reshape(a1_shape)
-        if a2.shape != a2_shape:
-            a2 = a2.reshape(a2_shape)
 
         if op == "tensordot":
             return np.tensordot(a1, a2, axes=axes)
