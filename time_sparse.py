@@ -12,39 +12,55 @@ from nums.core.application_manager import destroy
 from nums.core.array.sparseblockarray import SparseBlockArray
 from nums.core.array.blockarray import BlockArray
 
+from nums.core.storage.storage import ArrayGrid
+
 import argparse
 
 import ray
 import nums.numpy as nps
 import nums
 from nums.core import settings
+from scipy import sparse
+
+def random_sparse_block(shape, density):
+    m, n = shape
+    return sparse.random(m, n, density)
+
+def sample(shape, dtype, block_shape, system):
+    dtype_str = str(dtype)
+    grid = ArrayGrid(shape, block_shape, 'float64')
+    rarr = SparseBlockArray(grid, system)
+    grid_entry_iterator = grid.get_entry_iterator()
+    for grid_entry in grid_entry_iterator:
+        grid_slice = grid.get_slice(grid_entry)
+        
+        fst = grid_slice[0]
+        snd = grid_slice[1]
+        
+        block = sp.sparse.random(fst.stop - fst.start, snd.stop - snd.start, 0.25)
+
+        rarr.blocks[grid_entry].oid = system.put(block)
+        rarr.blocks[grid_entry].dtype = getattr(np, 'float64')
+
+    return rarr 
 
 
-def random_sparse(sparsity):
 
-    w = h = 400
+    if dtype is None:
+        dtype = np.float64
+    assert isinstance(dtype, type)
 
-    sparsity = int(w * h / 3)
-
-    arr = np.zeros((w, h))
-    ind = random.sample(range(w * h), sparsity)
-    ind = [(i % w, i // w) for i in ind]
-
-    for i in ind:
-        arr[i] = np.random.randint(0, 100)
-
-    dtype = np.__getattribute__(str(arr.dtype))
-    shape = arr.shape
+    dtype = np.float64
     app = _instance()
     block_shape = app.compute_block_shape(shape, dtype)
 
-    x1 = SparseBlockArray.from_np(
-        arr,
-        block_shape=block_shape,
-        copy=False,
-        system=app.system
-    )
-
+    grid = ArrayGrid(shape, block_shape, dtype=dtype.__name__)
+    ba = BlockArray(grid, app.system)
+    for grid_entry in ba.grid.get_entry_iterator():
+        block = ba.blocks[grid_entry]
+        block.oid = app.system.put(random_sparse_block(shape, 0.25))
+        
+    return ba
 
 def main(address, work_dir, use_head, cluster_shape):
     settings.use_head = use_head
@@ -52,52 +68,16 @@ def main(address, work_dir, use_head, cluster_shape):
     print("use_head", use_head)
     print("cluster_shape", cluster_shape)
     print("connecting to head node", address, flush=True)
-    ray.init(**{
-        "address": address
-    })
+    # ray.init(**{
+    #     "address": address
+    # })
+    ray.init()
 
     print("running nums operation")
         
-    w = h = 400
-
-    sparsity = int(w * h / 3)
-
-    arr = np.zeros((w, h))
-    ind = random.sample(range(w * h), sparsity)
-    ind = [(i % w, i // w) for i in ind]
-
-    for i in ind:
-        arr[i] = np.random.randint(0, 100)
-
-    dtype = np.__getattribute__(str(arr.dtype))
-    shape = arr.shape
-    app = _instance()
-    block_shape = app.compute_block_shape(shape, dtype)
-
-    x1 = SparseBlockArray.from_np(
-        arr,
-        block_shape=block_shape,
-        copy=False,
-        system=app.system
-    )
-
-    x2 = SparseBlockArray.from_np(
-        arr,
-        block_shape=block_shape,
-        copy=False,
-        system=app.system
-    )
-
-    # size = 10**2
-    # # Memory used is 8 * (10**4)**2
-    # # So this will be 800MB object.
-    # x1 = nps.random.randn(size, size)
-    # x2 = nps.random.randn(size, size)
-
     start = time.time()
     
-    result = x1 @ x2
-    print(result.touch())
+    print(x1.touch())
     
     end = time.time()
 
@@ -105,13 +85,26 @@ def main(address, work_dir, use_head, cluster_shape):
 
 
 if __name__ == "__main__":
+
+    shape = (4, 4)
+    dtype = np.float64
+    app = _instance()
+    block_shape = app.compute_block_shape(shape, dtype)
+
+    x1 = sample(shape, dtype, block_shape, app.system)
+    x2 = sample(shape, dtype, block_shape, app.system)
+
+    print(x1.get())
+
+    r = x1 @ x2
+    
+    print(r.get())
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--address', default="")
     parser.add_argument('--work-dir', default="/global/homes/m/matiashe/nums/test_ray")
     parser.add_argument('--use-head', action="store_true", help="")
     parser.add_argument('--cluster-shape', default="1,1")
-
-    print("Starting", flush=True)
 
     args = parser.parse_args()
     kwargs = vars(args)
