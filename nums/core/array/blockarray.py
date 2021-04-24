@@ -515,14 +515,25 @@ class BlockArray(BlockArrayBase):
             for j in other_dims:
                 grid_entry = tuple(i + j)
                 result_block: Block = result.blocks[grid_entry]
-                sum_blocks = []
+                sum_oids = []
                 for k in sum_dims:
                     self_block: Block = self.blocks[tuple(i + k)]
                     other_block: Block = other.blocks[tuple(k + j)]
-                    # TODO: Fix scheduling of op.
-                    dotted_block = self_block.tensordot(other_block, axes=axes)
-                    sum_blocks.append(dotted_block)
-                result_block.oid = self._tree_reduce("sum", sum_blocks,
+                    dotted_oid = self._system.bop("tensordot",
+                                                  self_block.oid,
+                                                  other_block.oid,
+                                                  self_block.transposed,
+                                                  other_block.transposed,
+                                                  axes=axes,
+                                                  syskwargs={
+                                                      "grid_entry": self_block.grid_entry,
+                                                      "grid_shape": self_block.grid_shape
+                                                  })
+                    sum_oids.append((dotted_oid,
+                                     self_block.grid_entry,
+                                     self_block.grid_shape,
+                                     False))
+                result_block.oid = self._tree_reduce("sum", sum_oids,
                                                      result_block.grid_entry,
                                                      result_block.grid_shape)
         return result
