@@ -404,11 +404,19 @@ class BlockArray(BlockArrayBase):
     def reduce_axis(self, op_name, axis, keepdims=False):
         if not (axis is None or isinstance(axis, (int, np.int32, np.int64))):
             raise NotImplementedError("Only integer axis is currently supported.")
-        result_blocks = np.empty_like(self.blocks, dtype=Block)
+        block_reduced_oids = np.empty_like(self.blocks, dtype=tuple)
         for grid_entry in self.grid.get_entry_iterator():
-            result_blocks[grid_entry] = self.blocks[grid_entry].reduce_axis(op_name,
-                                                                            axis,
-                                                                            keepdims=keepdims)
+            block = self.blocks[grid_entry]
+            block_oid = self.system.reduce_axis(op_name=op_name,
+                                                arr=block.oid,
+                                                axis=axis,
+                                                keepdims=keepdims,
+                                                transposed=block.transposed,
+                                                syskwargs={
+                                                    "grid_entry": block.grid_entry,
+                                                    "grid_shape": block.grid_shape
+                                                })
+            block_reduced_oids[grid_entry] = (block_oid, block.grid_entry, block.grid_shape, False)
         result_shape = []
         result_block_shape = []
         for curr_axis in range(len(self.shape)):
@@ -429,20 +437,17 @@ class BlockArray(BlockArrayBase):
         result = BlockArray(result_grid, self.system)
 
         if axis is None:
-            blocks_to_reduce = []
-            for grid_entry in self.grid.get_entry_iterator():
-                blocks_to_reduce.append(result_blocks[grid_entry])
             if result.shape == ():
                 result_block: Block = result.blocks[()]
             else:
                 result_block: Block = result.blocks[:].item()
             result_block.oid = self._tree_reduce(op_name,
-                                                 blocks_to_reduce,
+                                                 block_reduced_oids.flatten().tolist(),
                                                  result_block.grid_entry,
                                                  result_block.grid_shape)
         else:
             for result_grid_entry in result_grid.get_entry_iterator():
-                blocks_to_reduce = []
+                block_reduced_oids_axis = []
                 for sum_dim in range(self.grid.grid_shape[axis]):
                     grid_entry = list(result_grid_entry)
                     if keepdims:
@@ -450,10 +455,10 @@ class BlockArray(BlockArrayBase):
                     else:
                         grid_entry = grid_entry[:axis] + [sum_dim] + grid_entry[axis:]
                     grid_entry = tuple(grid_entry)
-                    blocks_to_reduce.append(result_blocks[grid_entry])
+                    block_reduced_oids_axis.append(block_reduced_oids[grid_entry])
                 result_block: Block = result.blocks[result_grid_entry]
                 result_block.oid = self._tree_reduce(op_name,
-                                                     blocks_to_reduce,
+                                                     block_reduced_oids_axis,
                                                      result_block.grid_entry,
                                                      result_block.grid_shape)
         return result
@@ -514,6 +519,7 @@ class BlockArray(BlockArrayBase):
                 for k in sum_dims:
                     self_block: Block = self.blocks[tuple(i + k)]
                     other_block: Block = other.blocks[tuple(k + j)]
+                    # TODO: Fix scheduling of op.
                     dotted_block = self_block.tensordot(other_block, axes=axes)
                     sum_blocks.append(dotted_block)
                 result_block.oid = self._tree_reduce("sum", sum_blocks,
@@ -741,6 +747,13 @@ class BlockArray(BlockArrayBase):
         for grid_entry in result.grid.get_entry_iterator():
             result.blocks[grid_entry] = self.blocks[grid_entry].astype(dtype)
         return result
+
+    def flattened_oids(self):
+        oids = []
+        for grid_entry in self.grid.get_entry_iterator():
+            oid = self.blocks[grid_entry].oid
+            oids.append(oid)
+        return oids
 
 
 class Reshape(object):
