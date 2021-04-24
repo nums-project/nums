@@ -519,16 +519,16 @@ class BlockArray(BlockArrayBase):
                 for k in sum_dims:
                     self_block: Block = self.blocks[tuple(i + k)]
                     other_block: Block = other.blocks[tuple(k + j)]
-                    dotted_oid = self._system.bop("tensordot",
-                                                  self_block.oid,
-                                                  other_block.oid,
-                                                  self_block.transposed,
-                                                  other_block.transposed,
-                                                  axes=axes,
-                                                  syskwargs={
-                                                      "grid_entry": self_block.grid_entry,
-                                                      "grid_shape": self_block.grid_shape
-                                                  })
+                    dotted_oid = self.system.bop("tensordot",
+                                                 self_block.oid,
+                                                 other_block.oid,
+                                                 self_block.transposed,
+                                                 other_block.transposed,
+                                                 axes=axes,
+                                                 syskwargs={
+                                                     "grid_entry": self_block.grid_entry,
+                                                     "grid_shape": self_block.grid_shape
+                                                 })
                     sum_oids.append((dotted_oid,
                                      self_block.grid_entry,
                                      self_block.grid_shape,
