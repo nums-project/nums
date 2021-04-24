@@ -470,32 +470,6 @@ class BlockArray(BlockArrayBase):
         else:
             return self.tensordot(other, 1)
 
-    def tensordot(self, other, axes=2):
-        if not isinstance(other, BlockArray):
-            raise ValueError("Cannot automatically construct BlockArray for tensor operations.")
-
-        # Even with _compute_tensordot_grid_args,
-        # retaining the below is beneficial.
-
-        def basic_vector(ba: BlockArray, axis):
-            if len(ba.shape) == 0:
-                return False
-            if len(ba.shape) == 1:
-                return True
-            size = ba.shape[axis]
-            rest = list(ba.shape[:axis]) + list(ba.shape[axis + 1:])
-            return np.sum(rest) == len(rest) <= 1 < size
-
-        other = self.check_or_convert_other(other)
-        if basic_vector(self, len(self.shape) - 1) and basic_vector(other, 0):
-            return self._vecdot(other)
-        elif len(self.shape) == 2 and (len(other.shape) == 1
-                                       or (len(other.shape) == 2 and other.shape[1] == 1)):
-            # Optimized matrix vector multiply.
-            return self._matvec(other)
-        else:
-            return self._tensordot(other, axes)
-
     def _compute_tensordot_syskwargs(self, self_block: Block, other_block: Block):
         # Schedule on larger block.
         if np.prod(self_block.shape) >= np.prod(other_block.shape):
@@ -509,7 +483,9 @@ class BlockArray(BlockArrayBase):
             else:
                 return other_block.grid_entry, other_block.grid_shape
 
-    def _tensordot(self, other, axes):
+    def tensordot(self, other, axes=2):
+        other = self.check_or_convert_other(other)
+
         this_axes = self.grid.grid_shape[:-axes]
         this_sum_axes = self.grid.grid_shape[-axes:]
         other_axes = other.grid.grid_shape[axes:]
