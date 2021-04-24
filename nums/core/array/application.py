@@ -14,7 +14,7 @@
 # limitations under the License.
 
 
-from typing import List
+from typing import List, Union
 
 import numpy as np
 
@@ -23,7 +23,7 @@ from nums.core.array import utils as array_utils
 from nums.core.storage.storage import ArrayGrid, StoredArray, StoredArrayS3
 # TODO(hme): Remove dependence on specific system and scheduler implementations.
 from nums.core.systems.systems import System, RaySystem, SerialSystem
-from nums.core.systems.schedulers import BlockCyclicScheduler
+from nums.core.systems.schedulers import BlockCyclicScheduler, TaskScheduler
 from nums.core.systems import utils as systems_utils
 from nums.core.systems.filesystem import FileSystem
 from nums.core.array.random import NumsRandomState
@@ -49,8 +49,15 @@ class ArrayApplication(object):
     def num_cores_total(self):
         if isinstance(self.system, RaySystem):
             system: RaySystem = self.system
-            nodes = system.nodes()
-            num_cores = sum(map(lambda n: n["Resources"]["CPU"], nodes))
+            if isinstance(system.scheduler, BlockCyclicScheduler):
+                scheduler: BlockCyclicScheduler = system.scheduler
+                nodes = scheduler.cluster_grid.flatten().tolist()
+                num_cores = sum(map(lambda n: n["Resources"]["CPU"], nodes))
+            else:
+                assert isinstance(system.scheduler, TaskScheduler)
+                scheduler: TaskScheduler = system.scheduler
+                nodes = scheduler.available_nodes
+                num_cores = sum(map(lambda n: n["Resources"]["CPU"], nodes))
         else:
             assert isinstance(self.system, SerialSystem)
             num_cores = systems_utils.get_num_cores()
@@ -58,7 +65,7 @@ class ArrayApplication(object):
 
     def compute_block_shape(self,
                             shape: tuple,
-                            dtype: np.dtype,
+                            dtype: Union[type, np.dtype],
                             cluster_shape=None,
                             num_cores=None):
         # TODO (hme): Add support for downstream optimizer to decide block shape.
