@@ -23,6 +23,7 @@ from typing import Tuple, List, Any, Iterator
 import numpy as np
 import boto3
 
+from nums.core.array import utils as array_utils
 from nums.core.storage.utils import Batch
 
 
@@ -84,6 +85,23 @@ class ArrayGrid(object):
         for slice_tuple in slice_tuples:
             block_shape.append(slice_tuple[1] - slice_tuple[0])
         return tuple(block_shape)
+
+    def nbytes(self):
+        if array_utils.is_float(self.dtype, type_test=True):
+            dtype = np.finfo(self.dtype).dtype
+        elif array_utils.is_int(self.dtype, type_test=True) \
+                or array_utils.is_uint(self.dtype, type_test=True):
+            dtype = np.iinfo(self.dtype).dtype
+        elif array_utils.is_complex(self.dtype, type_test=True):
+            dtype = np.dtype(self.dtype)
+        elif self.dtype in (bool, np.bool_):
+            dtype = np.dtype(np.bool_)
+        else:
+            raise ValueError("dtype %s not supported" % str(self.dtype))
+
+        dtype_nbytes = dtype.alignment
+        nbytes = np.product(self.shape) * dtype_nbytes
+        return nbytes
 
 
 class StoredArray(object):
