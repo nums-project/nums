@@ -948,7 +948,12 @@ class ArrayApplication(object):
                        block_shape=(block_shape[0], shape[1]),
                        dtype=X.dtype)
         for i, grid_entry in enumerate(Q.grid.get_entry_iterator()):
+            Q_dims, R_dims = QR_dims[i]
+            Q1_block_shape = Q_dims
+            Q2_block_shape = R_dims
             Q.blocks[grid_entry].oid = self.system.bop("tensordot", Q_oids[i], Q2_oids[i],
+                                                       a1_shape=Q1_block_shape,
+                                                       a2_shape=Q2_block_shape,
                                                        a1_T=False, a2_T=False, axes=1,
                                                        syskwargs={"grid_entry": grid_entry,
                                                                   "grid_shape": Q.grid.grid_shape})

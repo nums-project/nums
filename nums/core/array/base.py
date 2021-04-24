@@ -44,8 +44,6 @@ class Block(object):
             global block_id_counter
             block_id_counter += 1
             self.id = block_id_counter
-        # Set if options are used to compute this block.
-        self.options = None
 
     def __repr__(self):
         return "Block(" + str(self.oid) + ")"
@@ -129,7 +127,6 @@ class Block(object):
                                                  "grid_shape": block.grid_shape
                                              })
         else:
-            block.options = options
             block.oid = self._system.call_with_options("map_uop",
                                                        [op_name, self.oid,
                                                         args,
@@ -272,6 +269,8 @@ class Block(object):
             block.oid = self._system.bop(op,
                                          self.oid,
                                          other.oid,
+                                         self.shape,
+                                         other.shape,
                                          self.transposed,
                                          other.transposed,
                                          axes=args.get("axes"),
@@ -280,12 +279,13 @@ class Block(object):
                                              "grid_shape": block.grid_shape
                                          })
         else:
-            block.options = options
             block.oid = self._system.call_with_options("bop",
                                                        [
                                                            op,
                                                            self.oid,
                                                            other.oid,
+                                                           self.shape,
+                                                           other.shape,
                                                            self.transposed,
                                                            other.transposed
                                                        ], {
