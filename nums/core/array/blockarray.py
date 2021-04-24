@@ -474,6 +474,9 @@ class BlockArray(BlockArrayBase):
         if not isinstance(other, BlockArray):
             raise ValueError("Cannot automatically construct BlockArray for tensor operations.")
 
+        # Even with _compute_tensordot_grid_args,
+        # retaining the below is beneficial.
+
         def basic_vector(ba: BlockArray, axis):
             if len(ba.shape) == 0:
                 return False
@@ -492,6 +495,18 @@ class BlockArray(BlockArrayBase):
             return self._matvec(other)
         else:
             return self._tensordot(other, axes)
+
+    def _compute_tensordot_grid_args(self, self_block: Block, other_block: Block):
+        if np.prod(self_block.shape) < np.prod(other_block.shape):
+            if self_block.transposed:
+                return tuple(reversed(self_block.grid_entry)), self_block.grid_shape
+            else:
+                return self_block.grid_entry, self_block.grid_shape
+        else:
+            if other_block.transposed:
+                return tuple(reversed(other_block.grid_entry)), other_block.grid_shape
+            else:
+                return other_block.grid_entry, other_block.grid_shape
 
     def _tensordot(self, other, axes):
         this_axes = self.grid.grid_shape[:-axes]
@@ -519,6 +534,7 @@ class BlockArray(BlockArrayBase):
                 for k in sum_dims:
                     self_block: Block = self.blocks[tuple(i + k)]
                     other_block: Block = other.blocks[tuple(k + j)]
+                    dot_grid_args = self._compute_tensordot_grid_args(self_block, other_block)
                     dotted_oid = self.system.bop("tensordot",
                                                  self_block.oid,
                                                  other_block.oid,
@@ -526,12 +542,12 @@ class BlockArray(BlockArrayBase):
                                                  other_block.transposed,
                                                  axes=axes,
                                                  syskwargs={
-                                                     "grid_entry": self_block.grid_entry,
-                                                     "grid_shape": self_block.grid_shape
+                                                     "grid_entry": dot_grid_args[0],
+                                                     "grid_shape": dot_grid_args[1]
                                                  })
                     sum_oids.append((dotted_oid,
-                                     self_block.grid_entry,
-                                     self_block.grid_shape,
+                                     dot_grid_args[0],
+                                     dot_grid_args[1],
                                      False))
                 result_block.oid = self._tree_reduce("sum", sum_oids,
                                                      result_block.grid_entry,
