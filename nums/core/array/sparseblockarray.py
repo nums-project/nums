@@ -68,7 +68,6 @@ class SparseBlockArray(BlockArray):
         raise NotImplementedError
 
     def __matmul__(self, other):
-        other = self.check_or_convert_other(other)
         return self.from_blocks(
             self.blocks * other.blocks,
             result_shape=None,

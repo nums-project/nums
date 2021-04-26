@@ -23,6 +23,7 @@ def execute():
 
     print("--- %s seconds ---" % (stop - start))
 
+
 def main(address, use_head, cluster_shape):
     settings.use_head = use_head
     settings.cluster_shape = tuple(map(lambda x: int(x), cluster_shape.split(",")))
@@ -33,14 +34,12 @@ def main(address, use_head, cluster_shape):
         "address": address
     })
 
-    print("running nums operation")
+    print("Starting benchmark")
     execute()
-
-
+    print("Completed benchmark")
 
 
 if __name__ == "__main__":
-    execute()
     parser = argparse.ArgumentParser()
     parser.add_argument('--address', default="")
     parser.add_argument('--use-head', action="store_true", help="")

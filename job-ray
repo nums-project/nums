@@ -47,4 +47,4 @@ done
 
 
 export MKL_NUM_THREADS=1
-python -u ./time_sparse.py --address $ip_head --cluster-shape 1,1
+python -u ./sparse.py --address $ip_head --cluster-shape 1,1 --size 100

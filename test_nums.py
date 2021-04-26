@@ -8,7 +8,7 @@ from nums.core import settings
 
 def main(address, work_dir, use_head, cluster_shape):
     settings.use_head = use_head
-    settings.cluster_shape = tuple(map(lambda x: int(x), cluster_shape.split))
+    settings.cluster_shape = tuple(map(lambda x: int(x), cluster_shape.split(",")))
     print("use_head", use_head)
     print("cluster_shape", cluster_shape)
     print("connecting to head node", address)
@@ -25,14 +25,14 @@ def main(address, work_dir, use_head, cluster_shape):
     result = x1 @ x2
     print(result.touch())
     print("writing result")
-    write_result = nums.write(work_dir + "/result", result)
-    write_result.get()
+    # write_result = nums.write(work_dir + "/result", result)
+    # write_result.get()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--address', default="")
-    parser.add_argument('--work-dir', default="/global/homes/m/matiashe/nums/test_ray")
+    parser.add_argument('--work-dir', default="/global/homes/e/elibol/dev/test_ray")
     parser.add_argument('--use-head', action="store_true", help="")
     parser.add_argument('--cluster-shape', default="1,1")
     args = parser.parse_args()
