@@ -56,7 +56,7 @@ class ArrayGrid(object):
         return {
             "shape": self.shape,
             "block_shape": self.block_shape,
-            "dtype": self.dtype.__name__
+            "dtype": self.dtype.__name__,
         }
 
     def copy(self):
@@ -89,8 +89,9 @@ class ArrayGrid(object):
     def nbytes(self):
         if array_utils.is_float(self.dtype, type_test=True):
             dtype = np.finfo(self.dtype).dtype
-        elif array_utils.is_int(self.dtype, type_test=True) \
-                or array_utils.is_uint(self.dtype, type_test=True):
+        elif array_utils.is_int(self.dtype, type_test=True) or array_utils.is_uint(
+            self.dtype, type_test=True
+        ):
             dtype = np.iinfo(self.dtype).dtype
         elif array_utils.is_complex(self.dtype, type_test=True):
             dtype = np.dtype(self.dtype)
@@ -165,9 +166,8 @@ class StoredArray(object):
 
 
 class StoredArrayS3(StoredArray):
-
     def __init__(self, filename: str, grid: ArrayGrid = None):
-        self.client = boto3.client('s3')
+        self.client = boto3.client("s3")
         super(StoredArrayS3, self).__init__(filename, grid)
         if self.filename[0] == "/":
             raise Exception("Leading / in s3 filename: %s" % filename)
@@ -178,52 +178,47 @@ class StoredArrayS3(StoredArray):
     def put(self, grid_entry: Tuple, block: np.ndarray) -> Any:
         block_bytes = block.tobytes()
         response = self.client.put_object(
-            Bucket=self.container_name,
-            Key=self.get_key(grid_entry),
-            Body=block_bytes,
+            Bucket=self.container_name, Key=self.get_key(grid_entry), Body=block_bytes,
         )
         return response
 
     def get(self, grid_entry: Tuple) -> np.ndarray:
         try:
             response = self.client.get_object(
-                Bucket=self.container_name,
-                Key=self.get_key(grid_entry),
+                Bucket=self.container_name, Key=self.get_key(grid_entry),
             )
         except Exception as e:
-            logging.getLogger().error("[Error] StoredArrayS3: Failed to get %s %s",
-                                      self.container_name,
-                                      self.get_key(grid_entry))
+            logging.getLogger().error(
+                "[Error] StoredArrayS3: Failed to get %s %s",
+                self.container_name,
+                self.get_key(grid_entry),
+            )
             raise e
-        block_bytes = response['Body'].read()
+        block_bytes = response["Body"].read()
         dtype = self.grid.dtype
         shape = self.grid.get_block_shape(grid_entry)
         try:
             block = np.frombuffer(block_bytes, dtype=dtype).reshape(shape)
         except Exception as e:
-            logging.getLogger().error("[Error] StoredArrayS3: Failed to read from buffer %s %s",
-                                      self.container_name,
-                                      self.get_key(grid_entry))
+            logging.getLogger().error(
+                "[Error] StoredArrayS3: Failed to read from buffer %s %s",
+                self.container_name,
+                self.get_key(grid_entry),
+            )
             raise e
         return block
 
     def delete(self, grid_entry: Tuple) -> Any:
         objects = [{"Key": self.get_key(grid_entry)}]
         response = self.client.delete_objects(
-            Bucket=self.container_name,
-            Delete={
-                'Objects': objects,
-            },
+            Bucket=self.container_name, Delete={"Objects": objects,},
         )
         return response
 
     def delete_grid(self) -> Any:
         objects = [{"Key": self.get_meta_key()}]
         response = self.client.delete_objects(
-            Bucket=self.container_name,
-            Delete={
-                'Objects': objects,
-            },
+            Bucket=self.container_name, Delete={"Objects": objects,},
         )
         return response
 
@@ -231,17 +226,16 @@ class StoredArrayS3(StoredArray):
         self.grid = array_grid
         body = pickle.dumps(self.grid.to_meta())
         response = self.client.put_object(
-            Bucket=self.container_name,
-            Key=self.get_meta_key(),
-            Body=body,
+            Bucket=self.container_name, Key=self.get_meta_key(), Body=body,
         )
         return response
 
     def get_grid(self) -> ArrayGrid:
         try:
-            response = self.client.get_object(Bucket=self.container_name,
-                                              Key=self.get_meta_key())
-            meta_dict = pickle.loads(response['Body'].read())
+            response = self.client.get_object(
+                Bucket=self.container_name, Key=self.get_meta_key()
+            )
+            meta_dict = pickle.loads(response["Body"].read())
             return ArrayGrid.from_meta(meta_dict)
         except Exception as _:
             return None
@@ -252,19 +246,17 @@ class StoredArrayS3(StoredArray):
         for grid_entry in grid_entry_iterator:
             objects.append({"Key": self.get_key(grid_entry)})
         response = self.client.delete_objects(
-            Bucket=self.container_name,
-            Delete={
-                'Objects': objects,
-            },
+            Bucket=self.container_name, Delete={"Objects": objects,},
         )
         return response
 
 
 class BimodalGaussian(object):
-
     @classmethod
     def get_dataset(cls, n, d, p=0.9, seed=1, dtype=np.float64, theta=None):
-        return cls(10, 2, 30, 4, dim=d, seed=seed, dtype=dtype).sample(n, p=p, theta=theta)
+        return cls(10, 2, 30, 4, dim=d, seed=seed, dtype=dtype).sample(
+            n, p=p, theta=theta
+        )
 
     def __init__(self, mu1, sigma1, mu2, sigma2, dim=2, seed=1337, dtype=np.float64):
         self.dtype = dtype

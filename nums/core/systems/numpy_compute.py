@@ -265,7 +265,7 @@ class ComputeCls(ComputeImp):
 
     def svd(self, arr):
         u, sigma, vT = np.linalg.svd(arr)
-        u = u[:sigma.shape[0]]
+        u = u[: sigma.shape[0]]
         return u, sigma, vT
 
     def inv(self, arr):
@@ -289,7 +289,9 @@ class ComputeCls(ComputeImp):
     def logical_and(self, *bool_list):
         return np.all(bool_list)
 
-    def arg_op(self, op_name, arr, block_slice, other_argoptima=None, other_optima=None):
+    def arg_op(
+        self, op_name, arr, block_slice, other_argoptima=None, other_optima=None
+    ):
         if op_name == "argmin":
             arr_argmin = np.argmin(arr)
             arr_min = arr[arr_argmin]
