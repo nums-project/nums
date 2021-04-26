@@ -470,6 +470,19 @@ class BlockArray(BlockArrayBase):
         else:
             return self.tensordot(other, 1)
 
+    def _compute_tensordot_syskwargs(self, self_block: Block, other_block: Block):
+        # Schedule on larger block.
+        if np.prod(self_block.shape) >= np.prod(other_block.shape):
+            if self_block.transposed:
+                return tuple(reversed(self_block.grid_entry)), self_block.grid_shape
+            else:
+                return self_block.grid_entry, self_block.grid_shape
+        else:
+            if other_block.transposed:
+                return tuple(reversed(other_block.grid_entry)), other_block.grid_shape
+            else:
+                return other_block.grid_entry, other_block.grid_shape
+
     def tensordot(self, other, axes=2):
         if not isinstance(other, BlockArray):
             raise ValueError("Cannot automatically construct BlockArray for tensor operations.")
@@ -485,29 +498,6 @@ class BlockArray(BlockArrayBase):
                                                other.shape, other.ndim, axes):
             raise ValueError("shape-mismatch for sum")
 
-        def basic_vector(ba: BlockArray, axis):
-            if len(ba.shape) == 0:
-                return False
-            if len(ba.shape) == 1:
-                return True
-            size = ba.shape[axis]
-            rest = list(ba.shape[:axis]) + list(ba.shape[axis + 1:])
-            return np.sum(rest) == len(rest) <= 1 < size
-
-    def _compute_tensordot_syskwargs(self, self_block: Block, other_block: Block):
-        # Schedule on larger block.
-        if np.prod(self_block.shape) >= np.prod(other_block.shape):
-            if self_block.transposed:
-                return tuple(reversed(self_block.grid_entry)), self_block.grid_shape
-            else:
-                return self_block.grid_entry, self_block.grid_shape
-        else:
-            if other_block.transposed:
-                return tuple(reversed(other_block.grid_entry)), other_block.grid_shape
-            else:
-                return other_block.grid_entry, other_block.grid_shape
-
-    def tensordot(self, other, axes=2):
         other = self.check_or_convert_other(other)
 
         this_axes = self.grid.grid_shape[:-axes]
