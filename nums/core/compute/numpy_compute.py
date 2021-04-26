@@ -15,14 +15,15 @@
 
 
 import random
+
 import numpy as np
-from numpy.random import PCG64
-from numpy.random import Generator
 import scipy.linalg
 import scipy.special
+from numpy.random import Generator
+from numpy.random import PCG64
 
-from nums.core.storage.storage import ArrayGrid
-from nums.core.systems.interfaces import ComputeImp, RNGInterface
+from nums.core.compute.compute_interface import ComputeImp, RNGInterface
+from nums.core.grid.grid import ArrayGrid
 from nums.core.settings import np_ufunc_map
 
 

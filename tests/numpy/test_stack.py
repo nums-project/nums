@@ -14,7 +14,9 @@
 # limitations under the License.
 
 import itertools
+
 import numpy as np
+
 
 # pylint: disable=import-outside-toplevel
 

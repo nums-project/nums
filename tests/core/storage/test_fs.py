@@ -20,9 +20,9 @@ import time
 import numpy as np
 import pytest
 
+from nums.core import settings
 from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray
-from nums.core import settings
 
 
 def test_loadtxt(app_inst: ArrayApplication):
@@ -119,10 +119,10 @@ def test_higgs(app_inst: ArrayApplication):
 
 if __name__ == "__main__":
     # pylint: disable=import-error
-    from tests import conftest
+    import conftest
 
-    app_inst = conftest.get_app("ray-cyclic")
+    app_inst = conftest.get_app("serial")
     # test_loadtxt(app_inst)
-    # test_rwd(app_inst)
-    test_read_csv(app_inst)
+    test_rwd(app_inst)
+    # test_read_csv(app_inst)
     # test_higgs(app_inst)

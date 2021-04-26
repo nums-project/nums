@@ -20,8 +20,8 @@ import numpy as np
 import scipy.linalg
 from scipy.linalg import lapack
 
-from nums.core.storage.storage import BimodalGaussian
 from nums.core.array.application import ArrayApplication
+from nums.core.storage.storage import BimodalGaussian
 
 
 # pylint: disable=protected-access

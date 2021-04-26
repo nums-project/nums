@@ -1,8 +1,7 @@
-import subprocess
-import os
 import getpass
+import os
 import shutil
-
+import subprocess
 
 __version__ = None
 

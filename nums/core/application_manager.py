@@ -17,13 +17,16 @@
 import logging
 import sys
 
-from nums.core import settings
-from nums.core.systems.filesystem import FileSystem
-from nums.core.systems import numpy_compute
-from nums.core.systems.systems import System, SerialSystem, RaySystem
-from nums.core.systems.schedulers import RayScheduler, TaskScheduler, BlockCyclicScheduler
-from nums.core.array.application import ArrayApplication
+import numpy as np
 
+from nums.core import settings
+from nums.core.array.application import ArrayApplication
+from nums.core.compute import numpy_compute
+from nums.core.compute.compute_manager import ComputeManager
+from nums.core.grid.grid import NoDeviceGrid, CyclicDeviceGrid
+from nums.core.systems.filesystem import FileSystem
+from nums.core.systems.system_interface import SystemInterface
+from nums.core.systems.systems import SerialSystem, RaySystem
 
 # pylint: disable=global-statement
 
@@ -51,30 +54,33 @@ def create():
     if _instance is not None:
         raise Exception("create() called more than once.")
 
+    # Initialize compute interface and system.
     system_name = settings.system_name
+    if system_name == "serial":
+        system: SystemInterface = SerialSystem()
+    elif system_name == "ray":
+        use_head = settings.use_head
+        num_nodes = int(np.product(settings.cluster_shape))
+        system: SystemInterface = RaySystem(use_head=use_head,
+                                            num_nodes=num_nodes)
+    else:
+        raise Exception()
+    system.init()
 
     compute_module = {
         "numpy": numpy_compute
     }[settings.compute_name]
 
-    if system_name == "serial":
-        system: System = SerialSystem(compute_module=compute_module)
-    elif system_name == "ray-task":
-        scheduler: RayScheduler = TaskScheduler(compute_module=compute_module,
-                                                use_head=settings.use_head)
-        system: System = RaySystem(compute_module=compute_module,
-                                   scheduler=scheduler)
-    elif system_name == "ray-cyclic":
-        cluster_shape = settings.cluster_shape
-        scheduler: RayScheduler = BlockCyclicScheduler(compute_module=compute_module,
-                                                       cluster_shape=cluster_shape,
-                                                       use_head=settings.use_head)
-        system: System = RaySystem(compute_module=compute_module,
-                                   scheduler=scheduler)
+    if settings.device_grid_name == "none":
+        device_grid = NoDeviceGrid(settings.cluster_shape, "cpu", system.devices())
+    elif settings.device_grid_name == "cyclic":
+        device_grid = CyclicDeviceGrid(settings.cluster_shape, "cpu", system.devices())
     else:
         raise Exception()
-    system.init()
-    return ArrayApplication(system=system, filesystem=FileSystem(system))
+
+    cm = ComputeManager.create(system, compute_module, device_grid)
+    fs = FileSystem(cm)
+    return ArrayApplication(cm, fs)
 
 
 def destroy():
@@ -82,7 +88,7 @@ def destroy():
     if _instance is None:
         return
     # This will shutdown ray if ray was started by NumS.
-    _instance.system.shutdown()
+    ComputeManager.destroy()
     del _instance
     _instance = None
 

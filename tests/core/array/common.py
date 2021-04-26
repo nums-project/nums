@@ -16,11 +16,12 @@
 
 import numpy as np
 
-from nums.core.systems import numpy_compute
-from nums.core.systems.systems import System, RaySystem
-from nums.core.systems.filesystem import FileSystem
-from nums.core.systems.schedulers import RayScheduler, BlockCyclicScheduler
 from nums.core.array.application import ArrayApplication, BlockArray
+from nums.core.compute import numpy_compute
+from nums.core.compute.compute_manager import ComputeManager
+from nums.core.grid.grid import DeviceGrid, CyclicDeviceGrid
+from nums.core.systems.filesystem import FileSystem
+from nums.core.systems.systems import SystemInterface, RaySystem
 
 
 def check_block_integrity(arr: BlockArray):
@@ -30,25 +31,20 @@ def check_block_integrity(arr: BlockArray):
         assert arr.blocks[grid_entry].shape == arr.grid.get_block_shape(grid_entry)
 
 
-class MockMultiNodeScheduler(BlockCyclicScheduler):
+class MockMultiNodeDeviceGrid(CyclicDeviceGrid):
     # pylint: disable=abstract-method, bad-super-call
 
-    def init(self):
-        # Intentionally calling init of grandparent class.
-        super(BlockCyclicScheduler, self).init()
-        # Replicate available nodes to satisfy cluster requirements.
-        assert len(self.available_nodes) == 1
-
-        self.available_nodes = self.available_nodes * np.prod(self.cluster_shape)
-        for i, cluster_entry in enumerate(self.get_cluster_entry_iterator()):
-            self.cluster_grid[cluster_entry] = self.available_nodes[i]
+    def __init__(self, grid_shape, device_type, device_ids):
+        # Replicate available devices to satisfy cluster requirements.
+        assert len(device_ids) == 1
+        mock_device_ids = device_ids * np.prod(self.grid_shape)
+        super(CyclicDeviceGrid, self).__init__(grid_shape, device_type, mock_device_ids)
 
 
 def mock_cluster(cluster_shape):
-    scheduler: RayScheduler = MockMultiNodeScheduler(compute_module=numpy_compute,
-                                                     cluster_shape=cluster_shape,
-                                                     use_head=True)
-    system: System = RaySystem(compute_module=numpy_compute,
-                               scheduler=scheduler)
+    system: SystemInterface = RaySystem(use_head=True)
     system.init()
-    return ArrayApplication(system=system, filesystem=FileSystem(system))
+    device_grid: DeviceGrid = MockMultiNodeDeviceGrid(cluster_shape, "cpu", system.devices())
+    cm = ComputeManager.create(system, numpy_compute, device_grid)
+    fs = FileSystem(cm)
+    return ArrayApplication(cm, fs)

@@ -16,33 +16,16 @@
 import pytest
 import ray
 
-from nums.core.systems import numpy_compute
-from nums.core.systems.systems import System, SerialSystem, RaySystem
+from nums.core.array.application import ArrayApplication
+from nums.core.compute import numpy_compute
+from nums.core.compute.compute_manager import ComputeManager
+from nums.core.grid.grid import DeviceGrid, CyclicDeviceGrid, NoDeviceGrid
 from nums.core.systems import utils as systems_utils
 from nums.core.systems.filesystem import FileSystem
-from nums.core.systems.schedulers import RayScheduler, TaskScheduler, BlockCyclicScheduler
-from nums.core.array.application import ArrayApplication
+from nums.core.systems.systems import SystemInterface, SerialSystem, RaySystem
 
 
-@pytest.fixture(scope="module", params=["serial"])
-def serial_app_inst(request):
-    # pylint: disable=protected-access
-    app_inst = get_app(request.param)
-    yield app_inst
-    app_inst.system.shutdown()
-    ray.shutdown()
-
-
-@pytest.fixture(scope="module", params=["serial", "ray-task", "ray-cyclic"])
-def app_inst(request):
-    # pylint: disable=protected-access
-    app_inst = get_app(request.param)
-    yield app_inst
-    app_inst.system.shutdown()
-    ray.shutdown()
-
-
-@pytest.fixture(scope="module", params=["serial", "ray-cyclic"])
+@pytest.fixture(scope="module", params=["serial", "ray"])
 def nps_app_inst(request):
     # This triggers initialization; it's not to be mixed with the app_inst fixture.
     # Observed (core dumped) after updating this fixture to run functions with "serial" backend.
@@ -51,30 +34,59 @@ def nps_app_inst(request):
     # pylint: disable = import-outside-toplevel
     from nums.core import settings
     from nums.core import application_manager
+    import nums.numpy as nps
     settings.system_name = request.param
+    # Need to reset numpy random state.
+    # It's the only stateful numpy API object.
+    nps.random.reset()
     yield application_manager.instance()
     application_manager.destroy()
 
 
+@pytest.fixture(scope="module", params=["serial", "ray"])
+def app_inst(request):
+    # pylint: disable=protected-access
+    app_inst = get_app(request.param)
+    yield app_inst
+    app_inst.cm.destroy()
+    ray.shutdown()
+
+
+@pytest.fixture(scope="module", params=["serial"])
+def app_inst_s3(request):
+    # pylint: disable=protected-access
+    app_inst = get_app(request.param)
+    yield app_inst
+    app_inst.cm.destroy()
+    ray.shutdown()
+
+
+@pytest.fixture(scope="module", params=["serial", "ray", "ray-none"])
+def app_inst_all(request):
+    # pylint: disable=protected-access
+    app_inst = get_app(request.param)
+    yield app_inst
+    app_inst.cm.destroy()
+    ray.shutdown()
+
+
 def get_app(mode):
     if mode == "serial":
-        system: System = SerialSystem(compute_module=numpy_compute)
+        system: SystemInterface = SerialSystem()
     elif mode.startswith("ray"):
+        assert not ray.is_initialized()
         ray.init(num_cpus=systems_utils.get_num_cores())
-        if mode == "ray-task":
-            scheduler: RayScheduler = TaskScheduler(compute_module=numpy_compute,
-                                                    use_head=True)
-        elif mode == "ray-cyclic":
-            cluster_shape = (1, 1)
-            scheduler: RayScheduler = BlockCyclicScheduler(compute_module=numpy_compute,
-                                                           cluster_shape=cluster_shape,
-                                                           use_head=True,
-                                                           verbose=True)
-        else:
-            raise Exception()
-        system: System = RaySystem(compute_module=numpy_compute,
-                                   scheduler=scheduler)
+        system: SystemInterface = RaySystem(use_head=True)
     else:
         raise Exception()
     system.init()
-    return ArrayApplication(system=system, filesystem=FileSystem(system))
+
+    cluster_shape = (1, 1)
+    if mode == "ray-none":
+        device_grid: DeviceGrid = NoDeviceGrid(cluster_shape, "cpu", system.devices())
+    else:
+        device_grid: DeviceGrid = CyclicDeviceGrid(cluster_shape, "cpu", system.devices())
+
+    cm = ComputeManager.create(system, numpy_compute, device_grid)
+    fs = FileSystem(cm)
+    return ArrayApplication(cm, fs)

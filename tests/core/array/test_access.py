@@ -16,9 +16,9 @@
 
 import itertools
 
-import tqdm
 import numpy as np
 import pytest
+import tqdm
 
 from nums.core.array.application import ArrayApplication
 
