@@ -23,6 +23,7 @@ from nums.core.array.blockarray import BlockArray, Block
 from nums.core.array.random import NumsRandomState
 from nums.core.compute.compute_manager import ComputeManager
 from nums.core.grid.grid import ArrayGrid
+from nums.core.grid.grid import DeviceID
 from nums.core.storage.storage import StoredArray, StoredArrayS3
 from nums.core.systems.filesystem import FileSystem
 
@@ -75,12 +76,13 @@ class ArrayApplication(object):
         grid = ArrayGrid.from_meta(grid_meta)
         ba: BlockArray = BlockArray(grid, self.cm)
         for grid_entry in addresses:
-            node_address = addresses[grid_entry]
-            options = {"resources": {node_address: 1.0 / 10 ** 4}}
+            device_id: DeviceID = DeviceID.from_str(addresses[grid_entry])
             ba.blocks[grid_entry].oid = self._fs.read_block_fs(filename,
                                                                grid_entry,
                                                                grid_meta,
-                                                               options=options)
+                                                               syskwargs={
+                                                                   "device_id": device_id
+                                                               })
         return ba
 
     def delete_fs(self, filename: str):
@@ -93,12 +95,13 @@ class ArrayApplication(object):
                                 dtype=dict.__name__)
         rarr = BlockArray(result_grid, self.cm)
         for grid_entry in addresses:
-            node_address = addresses[grid_entry]
-            options = {"resources": {node_address: 1.0 / 10 ** 4}}
+            device_id: DeviceID = DeviceID.from_str(addresses[grid_entry])
             rarr.blocks[grid_entry].oid = self._fs.delete_block_fs(filename,
                                                                    grid_entry,
                                                                    grid_meta,
-                                                                   options=options)
+                                                                   syskwargs={
+                                                                       "device_id": device_id
+                                                                   })
         self._fs.delete_meta_fs(filename)
         return rarr
 

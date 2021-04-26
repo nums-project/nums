@@ -15,7 +15,9 @@
 
 
 from types import FunctionType
-from typing import Any, Union, List
+from typing import Any, Union, List, Dict
+
+from nums.core.grid.grid import DeviceID
 
 
 class SystemInterface(object):
@@ -38,31 +40,21 @@ class SystemInterface(object):
         """
         raise NotImplementedError()
 
-    def remote(self, function: FunctionType, remote_params: dict):
+    def remote(self, function: FunctionType, remote_params: Dict):
         """
         Return a callable remote function with remote_params.
         """
         raise NotImplementedError()
 
-    def nodes(self):
+    def devices(self):
         raise NotImplementedError()
 
-    def get_block_addresses(self, grid):
-        """
-        Maps each grid entry in a grid array to a node address.
-        """
-        raise NotImplementedError()
-
-    def register(self, name: str, func: callable, remote_params: dict = None):
+    def register(self, name: str, func: callable, remote_params: Dict = None):
         raise NotImplementedError("Implements a way to register new remote functions.")
 
-    def call(self, name: str, *args, **kwargs):
+    def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
         raise NotImplementedError("Implement RPC as e.g. "
                                   "self.remote_functions[name](*args, **new_kwargs)")
 
-    def call_with_options(self, name: str, args, kwargs, options):
-        raise NotImplementedError("Implement RPC with options support.")
-
-    def get_options(self, cluster_entry, cluster_shape):
-        # TODO (hme): API needs improvements in this area.
+    def num_cores_total(self):
         raise NotImplementedError()

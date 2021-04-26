@@ -14,16 +14,27 @@
 # limitations under the License.
 
 
-import numpy as np
-
-from nums.core.systems import utils as systems_utils
-from nums.core.storage.storage import BimodalGaussian
-from nums.core.grid.grid import ArrayGrid
-from nums.core.array.application import ArrayApplication
-from nums.core.array.blockarray import BlockArray
-
 # pylint: disable=wrong-import-order
 import common
+import numpy as np
+
+from nums.core.array.application import ArrayApplication
+from nums.core.array.blockarray import BlockArray
+from nums.core.grid.grid import ArrayGrid
+from nums.core.grid.grid import DeviceID
+from nums.core.storage.storage import BimodalGaussian
+from nums.core.systems import utils as systems_utils
+
+
+def test_device_id_hashing(app_inst: ArrayApplication):
+    assert app_inst is not None
+    d1 = DeviceID(0, "node:localhost1", "cpu", 0)
+    d2 = DeviceID(1, "node:localhost2", "cpu", 0)
+    x = {}
+    x[d1] = "one"
+    x[d2] = "two"
+    assert x[d1] == "one"
+    assert x[d2] == "two"
 
 
 def test_array_integrity(app_inst: ArrayApplication):
@@ -69,8 +80,11 @@ def test_concatenate(app_inst: ArrayApplication):
 def test_split(app_inst: ArrayApplication):
     # TODO (hme): Implement a split leveraging block_shape param in reshape op.
     x = app_inst.array(np.array([1.0, 2.0, 3.0, 4.0]), block_shape=(4,))
-    syskwargs = x.blocks[0].syskwargs()
-    syskwargs["options"] = {"num_returns": 2}
+    syskwargs = {
+        "grid_entry": x.blocks[0].grid_entry,
+        "grid_shape": x.blocks[0].grid_shape,
+        "options": {"num_returns": 2}
+    }
     res1, res2 = x.cm.split(x.blocks[0].oid,
                             2,
                             axis=0,

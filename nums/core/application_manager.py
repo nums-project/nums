@@ -17,12 +17,14 @@
 import logging
 import sys
 
+import numpy as np
+
 from nums.core import settings
 from nums.core.array.application import ArrayApplication
 from nums.core.compute import numpy_compute
 from nums.core.compute.compute_manager import ComputeManager
+from nums.core.grid.grid import NoDeviceGrid, CyclicDeviceGrid
 from nums.core.systems.filesystem import FileSystem
-from nums.core.systems.schedulers import RayScheduler, TaskScheduler, BlockCyclicScheduler
 from nums.core.systems.system_interface import SystemInterface
 from nums.core.systems.systems import SerialSystem, RaySystem
 
@@ -56,14 +58,11 @@ def create():
     system_name = settings.system_name
     if system_name == "serial":
         system: SystemInterface = SerialSystem()
-    elif system_name == "ray-task":
-        scheduler: RayScheduler = TaskScheduler(use_head=settings.use_head)
-        system: SystemInterface = RaySystem(scheduler=scheduler)
-    elif system_name == "ray-cyclic":
-        cluster_shape = settings.cluster_shape
-        scheduler: RayScheduler = BlockCyclicScheduler(cluster_shape=cluster_shape,
-                                                       use_head=settings.use_head)
-        system: SystemInterface = RaySystem(scheduler=scheduler)
+    elif system_name == "ray":
+        use_head = settings.use_head
+        num_nodes = int(np.product(settings.cluster_shape))
+        system: SystemInterface = RaySystem(use_head=use_head,
+                                            num_nodes=num_nodes)
     else:
         raise Exception()
     system.init()
@@ -71,7 +70,15 @@ def create():
     compute_module = {
         "numpy": numpy_compute
     }[settings.compute_name]
-    cm = ComputeManager.create(system, compute_module)
+
+    if settings.device_grid_name == "none":
+        device_grid = NoDeviceGrid(settings.cluster_shape, "cpu", system.devices())
+    elif settings.device_grid_name == "cyclic":
+        device_grid = CyclicDeviceGrid(settings.cluster_shape, "cpu", system.devices())
+    else:
+        raise Exception()
+
+    cm = ComputeManager.create(system, compute_module, device_grid)
     fs = FileSystem(cm)
     return ArrayApplication(cm, fs)
 

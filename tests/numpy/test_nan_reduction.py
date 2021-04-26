@@ -16,6 +16,7 @@
 
 import itertools
 import warnings
+
 import numpy as np
 
 warnings.filterwarnings("ignore", "All-NaN (slice|axis) encountered")

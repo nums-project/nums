@@ -16,15 +16,14 @@
 
 import itertools
 
-import tqdm
-import numpy as np
-import pytest
-
-from nums.core.storage.storage import BimodalGaussian
-from nums.core.array.application import ArrayApplication
-
 # pylint: disable=wrong-import-order
 import common
+import numpy as np
+import pytest
+import tqdm
+
+from nums.core.array.application import ArrayApplication
+from nums.core.storage.storage import BimodalGaussian
 
 
 def test_matmul(app_inst: ArrayApplication):

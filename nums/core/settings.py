@@ -27,13 +27,12 @@ Path(data_dir).mkdir(parents=True, exist_ok=True)
 
 
 # System settings.
-system_name = os.environ.get("NUMS_SYSTEM", "ray-cyclic")
+system_name = os.environ.get("NUMS_SYSTEM", "ray")
 # TODO (hme):
 #  - Make cluster shape an environment variable. Default depends on available resources.
 #  - use_head => use_driver, and should be an environment variable.
 #  - Remove ray_init_default -- this should be handled in RaySystem.
 use_head = True
-cluster_shape = (1, 1)
 ray_init_default = {
     "num_cpus": multiprocessing.cpu_count()
 }
@@ -41,6 +40,11 @@ ray_init_default = {
 
 # Compute settings.
 compute_name = os.environ.get("NUMS_COMPUTE", "numpy")
+
+
+# Device grid settings.
+cluster_shape = (1, 1)
+device_grid_name = os.environ.get("DEVICE_GRID", "cyclic")
 
 
 # NumPy operator map.

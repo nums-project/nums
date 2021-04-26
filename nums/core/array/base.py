@@ -43,8 +43,8 @@ class Block(object):
         if self.id is None:
             Block.block_id_counter += 1
             self.id = Block.block_id_counter
-        # Set if options are used to compute this block.
-        self.options = None
+        # Set if a device id was used to compute this block.
+        self.device_id = None
 
     def __repr__(self):
         return "Block(" + str(self.oid) + ")"
@@ -108,32 +108,28 @@ class Block(object):
                                       })
         return block
 
-    def ufunc(self, op_name, options=None):
-        return self.uop_map(op_name, options=options)
+    def ufunc(self, op_name, device_id=None):
+        return self.uop_map(op_name, device_id=device_id)
 
-    def uop_map(self, op_name, args=None, kwargs=None, options=None):
+    def uop_map(self, op_name, args=None, kwargs=None, device_id=None):
         # This retains transpose.
         block = self.copy()
         block.dtype = array_utils.get_uop_output_type(op_name, self.dtype)
         args = () if args is None else args
         kwargs = {} if kwargs is None else kwargs
-        if options is None:
-            block.oid = self._cm.map_uop(op_name,
-                                         self.oid,
-                                         args,
-                                         kwargs,
-                                         syskwargs={
-                                             "grid_entry": block.grid_entry,
-                                             "grid_shape": block.grid_shape
-                                         })
+        if device_id is None:
+            syskwargs = {
+                "grid_entry": block.grid_entry,
+                "grid_shape": block.grid_shape
+            }
         else:
-            block.options = options
-            block.oid = self._cm.call_with_options("map_uop",
-                                                   [op_name, self.oid,
-                                                    args,
-                                                    kwargs],
-                                                   {},
-                                                   options)
+            syskwargs = {"device_id": device_id}
+        block.device_id = device_id
+        block.oid = self._cm.map_uop(op_name,
+                                     self.oid,
+                                     args,
+                                     kwargs,
+                                     syskwargs=syskwargs)
         return block
 
     def _block_from_other(self, other):
@@ -146,7 +142,7 @@ class Block(object):
         block.oid = self._cm.put(np.array(other, dtype=self.dtype))
         return block
 
-    def bop(self, op, other, args: dict, options=None):
+    def bop(self, op, other, args: dict, device_id=None):
         if not isinstance(other, Block):
             other = self._block_from_other(other)
         if op == "tensordot":
@@ -197,30 +193,21 @@ class Block(object):
                       transposed=False,
                       cm=self._cm)
 
-        if options is None:
-            block.oid = self._cm.bop(op,
-                                     self.oid,
-                                     other.oid,
-                                     self.transposed,
-                                     other.transposed,
-                                     axes=args.get("axes"),
-                                     syskwargs={
-                                         "grid_entry": block.grid_entry,
-                                         "grid_shape": block.grid_shape
-                                     })
+        if device_id is None:
+            syskwargs = {
+                "grid_entry": block.grid_entry,
+                "grid_shape": block.grid_shape
+            }
         else:
-            block.options = options
-            block.oid = self._cm.call_with_options("bop",
-                                                   [
-                                                       op,
-                                                       self.oid,
-                                                       other.oid,
-                                                       self.transposed,
-                                                       other.transposed
-                                                   ], {
-                                                       "axes": args.get("axes")
-                                                   },
-                                                   options)
+            syskwargs = {"device_id": device_id}
+        block.device_id = device_id
+        block.oid = self._cm.bop(op,
+                                 self.oid,
+                                 other.oid,
+                                 self.transposed,
+                                 other.transposed,
+                                 axes=args.get("axes"),
+                                 syskwargs=syskwargs)
         return block
 
     def tensordot(self, other, axes):
@@ -285,14 +272,6 @@ class Block(object):
 
     def sqrt(self):
         return self.ufunc("sqrt")
-
-    def syskwargs(self):
-        # TODO (hme): This has a lot of potential scheduling bugs:
-        #  What if this block is transposed?
-        return {
-            "grid_entry": self.grid_entry,
-            "grid_shape": self.grid_shape
-        }
 
     def get(self):
         return self._cm.get(self.oid)

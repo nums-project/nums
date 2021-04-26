@@ -25,6 +25,7 @@ from nums.core import settings
 from nums.core.array.blockarray import BlockArray
 from nums.core.compute.compute_manager import ComputeManager
 from nums.core.grid.grid import ArrayGrid
+from nums.core.grid.grid import DeviceID
 from nums.core.storage import utils as storage_utils
 from nums.core.storage.storage import StoredArrayS3
 
@@ -280,54 +281,45 @@ class FileSystem(object):
 
     def write_block_fs(self, block: Any, filename: AnyStr, grid_entry: Tuple, grid_meta: Dict,
                        syskwargs: Dict):
-        return self.cm.call("write_block_fs",
-                            block,
-                            filename,
-                            grid_entry,
+        return self.cm.call("write_block_fs", block, filename, grid_entry,
                             syskwargs=syskwargs)
 
     def read_block_fs(self, filename: AnyStr, grid_entry: Tuple, grid_meta: Dict,
-                      options: Dict):
-        return self.cm.call_with_options("read_block_fs",
-                                         args=[filename, grid_entry],
-                                         kwargs={},
-                                         options=options)
+                      syskwargs: Dict):
+        return self.cm.call("read_block_fs", filename, grid_entry,
+                            syskwargs=syskwargs)
 
     def delete_block_fs(self, filename: AnyStr, grid_entry: Tuple, grid_meta: Dict,
-                        options: Dict):
-        return self.cm.call_with_options("delete_block_fs",
-                                         args=[filename, grid_entry],
-                                         kwargs={},
-                                         options=options)
+                        syskwargs: Dict):
+        return self.cm.call("delete_block_fs", filename, grid_entry,
+                            syskwargs=syskwargs)
 
     ##################################################
     # Array-level operations
     ##################################################
 
     def write_meta_fs(self, ba: BlockArray, filename: str):
-        addresses: dict = self.cm.get_block_addresses(ba.grid)
+        addresses: dict = {}
+        for grid_entry in ba.grid.get_entry_iterator():
+            device_id: DeviceID = self.cm.device_grid.get_device_id(grid_entry, ba.grid.grid_shape)
+            addresses[grid_entry] = str(device_id)
         meta = {"filename": filename,
                 "grid_meta": ba.grid.to_meta(),
                 "addresses": addresses}
         oids = []
         for grid_entry in ba.grid.get_entry_iterator():
-            node_name = addresses[grid_entry]
-            oid = self.cm.call_with_options("write_meta_fs",
-                                            args=[meta, filename],
-                                            kwargs={},
-                                            options={"resources": {node_name: 1.0 / 10 ** 4}})
+            device_id: DeviceID = self.cm.device_grid.get_device_id(grid_entry,
+                                                                    ba.grid.grid_shape)
+            oid = self.cm.call("write_meta_fs",
+                               meta,
+                               filename,
+                               syskwargs={"device_id": device_id})
             oids.append(oid)
         return oids
 
     def read_meta_fs(self, filename: str):
-        for node in self.cm.nodes():
-            node_key = list(filter(lambda key: "node" in key, node["Resources"].keys()))
-            assert len(node_key) == 1
-            node_name = node_key[0]
-            oid = self.cm.call_with_options("read_meta_fs",
-                                            args=[filename],
-                                            kwargs={},
-                                            options={"resources": {node_name: 1.0 / 10 ** 4}})
+        for device_id in self.cm.devices():
+            oid = self.cm.call("read_meta_fs", filename, syskwargs={"device_id": device_id})
             result = self.cm.get(oid)
             if result is not None:
                 return result
@@ -335,14 +327,8 @@ class FileSystem(object):
 
     def delete_meta_fs(self, filename: str):
         oids = []
-        for node in self.cm.nodes():
-            node_key = list(filter(lambda key: "node" in key, node["Resources"].keys()))
-            assert len(node_key) == 1
-            node_name = node_key[0]
-            oid = self.cm.call_with_options("delete_meta_fs",
-                                            args=[filename],
-                                            kwargs={},
-                                            options={"resources": {node_name: 1.0 / 10 ** 4}})
+        for device_id in self.cm.devices():
+            oid = self.cm.call("delete_meta_fs", filename, syskwargs={"device_id": device_id})
             oids.append(oid)
         return oids
 

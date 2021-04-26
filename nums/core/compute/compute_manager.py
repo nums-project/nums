@@ -22,10 +22,9 @@ import numpy as np
 
 from nums.core.array import utils as array_utils
 from nums.core.compute.compute_interface import ComputeInterface, RNGInterface
+from nums.core.grid.grid import DeviceGrid, DeviceID
 from nums.core.systems import utils as systems_utils
-from nums.core.systems.schedulers import TaskScheduler, BlockCyclicScheduler
 from nums.core.systems.system_interface import SystemInterface
-from nums.core.systems.systems import SerialSystem, RaySystem
 
 
 class ComputeManager(ComputeInterface):
@@ -39,18 +38,19 @@ class ComputeManager(ComputeInterface):
     instance = None
 
     @classmethod
-    def create(cls, system: SystemInterface, compute_module):
+    def create(cls, system: SystemInterface, compute_module, device_grid: DeviceGrid):
         if cls.instance is not None:
             raise Exception()
-        cls.instance: ComputeManager = ComputeManager(system, compute_module)
+        cls.instance: ComputeManager = ComputeManager(system, compute_module, device_grid)
         return cls.instance
 
     @classmethod
     def destroy(cls):
         cls.instance = None
 
-    def __init__(self, system: SystemInterface, compute_module):
+    def __init__(self, system: SystemInterface, compute_module, device_grid: DeviceGrid):
         self.system: SystemInterface = system
+        self.device_grid: DeviceGrid = device_grid
         self.rng_cls = None
         self.methods: dict = {}
         self._block_shape_map = {}
@@ -99,22 +99,57 @@ class ComputeManager(ComputeInterface):
             return methods[name]
         return object.__getattribute__(self, name)
 
-    def num_cores_total(self):
-        if isinstance(self.system, RaySystem):
-            system: RaySystem = self.system
-            if isinstance(system.scheduler, BlockCyclicScheduler):
-                scheduler: BlockCyclicScheduler = system.scheduler
-                nodes = scheduler.cluster_grid.flatten().tolist()
-                num_cores = sum(map(lambda n: n["Resources"]["CPU"], nodes))
-            else:
-                assert isinstance(system.scheduler, TaskScheduler)
-                scheduler: TaskScheduler = system.scheduler
-                nodes = scheduler.available_nodes
-                num_cores = sum(map(lambda n: n["Resources"]["CPU"], nodes))
+    ####################
+    # System Interface
+    ####################
+
+    def put(self, value: Any):
+        return self.system.put(value)
+
+    def get(self, object_ids: Union[Any, List]):
+        return self.system.get(object_ids)
+
+    def remote(self, function: FunctionType, remote_params: dict):
+        return self.system.remote(function, remote_params)
+
+    def devices(self):
+        return self.system.devices()
+
+    def register(self, name: str, func: callable, remote_params: dict = None):
+        self.system.register(name, func, remote_params)
+
+    def _process_syskwargs(self, syskwargs):
+        if "grid_entry" in syskwargs:
+            assert "grid_shape" in syskwargs
+            assert "device_id" not in syskwargs
+            grid_entry = syskwargs["grid_entry"]
+            grid_shape = syskwargs["grid_shape"]
+            device_id: DeviceID = self.device_grid.get_device_id(grid_entry, grid_shape)
+        elif "device_id" in syskwargs:
+            assert "grid_entry" not in syskwargs and "grid_sape" not in syskwargs
+            device_id: DeviceID = syskwargs['device_id']
         else:
-            assert isinstance(self.system, SerialSystem)
-            num_cores = systems_utils.get_num_cores()
-        return int(num_cores)
+            raise Exception("All calls require device_id or grid_entry and grid_shape.")
+        if "options" in syskwargs:
+            options = syskwargs["options"]
+        else:
+            options = {}
+        return device_id, options
+
+    def call(self, name: str, *args, **kwargs):
+        assert "syskwargs" in kwargs
+        kwargs = kwargs.copy()
+        syskwargs = kwargs["syskwargs"]
+        del kwargs["syskwargs"]
+        device_id, options = self._process_syskwargs(syskwargs)
+        return self.system.call(name, args, kwargs, device_id, options)
+
+    def num_cores_total(self):
+        return self.system.num_cores_total()
+
+    #########################
+    # Block Shape Management
+    #########################
 
     def compute_block_shape(self,
                             shape: tuple,
@@ -142,20 +177,11 @@ class ComputeManager(ComputeInterface):
             block_shape = shape
             return block_shape
 
-        if num_cores is not None:
-            pass
-        else:
+        if num_cores is None:
             num_cores = self.num_cores_total()
 
-        if cluster_shape is not None:
-            pass
-        elif isinstance(self.system, RaySystem) \
-                and isinstance(self.system.scheduler, BlockCyclicScheduler):
-            # This configuration is the default.
-            cluster_shape = self.system.scheduler.cluster_shape
-        else:
-            assert isinstance(self.system, SerialSystem)
-            cluster_shape = (1, 1)
+        if cluster_shape is None:
+            cluster_shape = self.device_grid.grid_shape
 
         if len(shape) < len(cluster_shape):
             cluster_shape = cluster_shape[:len(shape)]
@@ -201,37 +227,6 @@ class ComputeManager(ComputeInterface):
                 self._block_shape_map[shape_dim] = block_shape_dim
             final_block_shape.append(self._block_shape_map[shape_dim])
         return tuple(final_block_shape)
-
-    ####################
-    # System Interface
-    ####################
-
-    def put(self, value: Any):
-        return self.system.put(value)
-
-    def get(self, object_ids: Union[Any, List]):
-        return self.system.get(object_ids)
-
-    def remote(self, function: FunctionType, remote_params: dict):
-        return self.system.remote(function, remote_params)
-
-    def nodes(self):
-        return self.system.nodes()
-
-    def register(self, name: str, func: callable, remote_params: dict = None):
-        self.system.register(name, func, remote_params)
-
-    def call(self, name: str, *args, **kwargs):
-        return self.system.call(name, *args, **kwargs)
-
-    def call_with_options(self, name: str, args, kwargs, options):
-        return self.system.call_with_options(name, args, kwargs, options)
-
-    def get_options(self, cluster_entry, cluster_shape):
-        return self.system.get_options(cluster_entry, cluster_shape)
-
-    def get_block_addresses(self, grid):
-        return self.system.get_block_addresses(grid)
 
 
 def instance() -> ComputeManager:

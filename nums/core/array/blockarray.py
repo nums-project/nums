@@ -120,7 +120,10 @@ class BlockArray(BlockArrayBase):
         oids = []
         for grid_entry in self.grid.get_entry_iterator():
             block: Block = self.blocks[grid_entry]
-            oids.append(self.cm.touch(block.oid, syskwargs=block.syskwargs()))
+            oids.append(self.cm.touch(block.oid, syskwargs={
+                "grid_entry": block.grid_entry,
+                "grid_shape": block.grid_shape
+            }))
         self.cm.get(oids)
         return self
 
@@ -817,9 +820,9 @@ class Reshape(object):
         # This is the worst-case scenario.
         # Generate index mappings per block, and group source indices to minimize
         # RPCs and generation of new objects.
-        system = arr.cm
+        cm = arr.cm
         dst_arr = BlockArray.empty(shape=shape, block_shape=block_shape,
-                                   dtype=arr.dtype, cm=system)
+                                   dtype=arr.dtype, cm=cm)
         for dst_grid_entry in dst_arr.grid.get_entry_iterator():
             dst_block: Block = dst_arr.blocks[dst_grid_entry]
             dst_slice_selection = dst_arr.grid.get_slice(dst_grid_entry)
@@ -835,7 +838,7 @@ class Reshape(object):
                 src_block: Block = arr.blocks[src_grid_entry]
                 index_pairs = src_blocks[src_grid_entry]
                 syskwargs = {"grid_entry": dst_grid_entry, "grid_shape": dst_arr.grid.grid_shape}
-                dst_block.oid = system.update_block_by_index(dst_block.oid,
+                dst_block.oid = cm.update_block_by_index(dst_block.oid,
                                                              src_block.oid,
                                                              index_pairs,
                                                              syskwargs=syskwargs)

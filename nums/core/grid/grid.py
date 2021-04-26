@@ -15,6 +15,7 @@
 
 
 import itertools
+import logging
 from typing import Tuple, Iterator, List
 
 import numpy as np
@@ -101,21 +102,48 @@ class ArrayGrid(object):
 
 class DeviceID(object):
 
-    def __init__(self, node_id, device_type, device_id):
+    @classmethod
+    def from_str(cls, s: str):
+        a, b = s.split("/")
+        node_id, node_addr = a.split("=")
+        device_type, device_id = b.split(":")
+        return DeviceID(int(node_id), node_addr, device_type, int(device_id))
+
+    def __init__(self, node_id, node_addr, device_type, device_id):
         self.node_id = node_id
+        self.node_addr = node_addr
         self.device_type = device_type
         self.device_id = device_id
 
     def __str__(self):
-        return "node:%s/%s:%s" % (self.node_id, self.device_type, self.device_id)
+        return self.__repr__()
+
+    def __hash__(self):
+        return hash(self.__repr__())
+
+    def __repr__(self):
+        return "%s=%s/%s:%s" % (self.node_id, self.node_addr,
+                                self.device_type, self.device_id)
+
+    def __eq__(self, other):
+        return str(self) == str(other)
 
 
 class DeviceGrid(object):
 
-    def __init__(self, grid_shape, device_type):
+    def __init__(self, grid_shape, device_type, device_ids):
         # TODO (hme): Work out what this becomes in the multi-node multi-device setting.
         self.grid_shape = grid_shape
         self.device_type = device_type
+        self.device_ids: List[DeviceID] = device_ids
+        self.device_grid: np.ndarray = np.empty(shape=self.grid_shape, dtype=object)
+
+        for i, cluster_entry in enumerate(self.get_cluster_entry_iterator()):
+            self.device_grid[cluster_entry] = self.device_ids[i]
+            logging.getLogger().info("device_grid %s %s", cluster_entry, str(self.device_ids))
+
+    def get_cluster_entry_iterator(self):
+        return itertools.product(*map(range, self.grid_shape))
 
     def get_device_id(self, agrid_entry, agrid_shape):
         raise NotImplementedError()
@@ -124,8 +152,37 @@ class DeviceGrid(object):
         return itertools.product(*map(range, self.grid_shape))
 
 
+class NoDeviceGrid(DeviceGrid):
+
+    def get_device_id(self, agrid_entry, agrid_shape):
+        return None
+
+
 class CyclicDeviceGrid(DeviceGrid):
 
     def get_device_id(self, agrid_entry, agrid_shape):
-        dgrid_entry = tuple(np.array(agrid_entry) % np.array(self.grid_shape))
-        return dgrid_entry
+        cluster_entry = self.get_cluster_entry(agrid_entry)
+        return self.device_grid[cluster_entry]
+
+    def get_cluster_entry(self, agrid_entry):
+        cluster_entry = []
+        num_grid_entry_axes = len(agrid_entry)
+        num_cluster_axes = len(self.grid_shape)
+        if num_grid_entry_axes <= num_cluster_axes:
+            # When array has fewer or equal # of axes than cluster.
+            for cluster_axis in range(num_cluster_axes):
+                if cluster_axis < num_grid_entry_axes:
+                    cluster_dim = self.grid_shape[cluster_axis]
+                    grid_entry_dim = agrid_entry[cluster_axis]
+                    cluster_entry.append(grid_entry_dim % cluster_dim)
+                else:
+                    cluster_entry.append(0)
+        elif num_grid_entry_axes > num_cluster_axes:
+            # When array has more axes then cluster.
+            for cluster_axis in range(num_cluster_axes):
+                cluster_dim = self.grid_shape[cluster_axis]
+                grid_entry_dim = agrid_entry[cluster_axis]
+                cluster_entry.append(grid_entry_dim % cluster_dim)
+            # Ignore trailing axes, as these are "cycled" to 0 by assuming
+            # the dimension of those cluster axes is 1.
+        return tuple(cluster_entry)

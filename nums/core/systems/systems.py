@@ -14,21 +14,21 @@
 # limitations under the License.
 
 
+import logging
 from types import FunctionType
 from typing import Any, Union, List, Dict
 
-import numpy as np
 import ray
 
-from nums.core.grid.grid import ArrayGrid
-from nums.core.systems.schedulers import RayScheduler, TaskScheduler, BlockCyclicScheduler
+from nums.core.grid.grid import DeviceID
 from nums.core.systems.system_interface import SystemInterface
+from nums.core.systems.utils import get_private_ip, get_num_cores
 
 
 class SerialSystem(SystemInterface):
 
     def __init__(self):
-        self.remote_functions: dict = {}
+        self._remote_functions: dict = {}
 
     def init(self):
         pass
@@ -45,67 +45,93 @@ class SerialSystem(SystemInterface):
     def remote(self, function: FunctionType, remote_params: dict):
         return function
 
-    def nodes(self):
-        return [{"Resources": {"node:0": 1.0}}]
+    def devices(self):
+        return [DeviceID(0, "localhost", "cpu", 0)]
 
     def register(self, name: str, func: callable, remote_params: dict = None):
-        if name in self.remote_functions:
+        if name in self._remote_functions:
             return
         if remote_params is None:
             remote_params = {}
-        self.remote_functions[name] = self.remote(func, remote_params)
+        self._remote_functions[name] = self.remote(func, remote_params)
 
-    def call(self, name: str, *args, **kwargs):
-        kwargs = kwargs.copy()
-        if "syskwargs" in kwargs:
-            del kwargs["syskwargs"]
-        return self.remote_functions[name](*args, **kwargs)
+    def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
+        return self._remote_functions[name](*args, **kwargs)
 
-    def call_with_options(self, name, args, kwargs, options):
-        return self.call(name, *args, **kwargs)
-
-    def get_options(self, cluster_entry, cluster_shape):
-        node = self.nodes()[0]
-        node_key = list(filter(lambda key: "node" in key, node["Resources"].keys()))
-        assert len(node_key) == 1
-        node_key = node_key[0]
-        return {
-            "resources": {node_key: 1.0/10**4}
-        }
-
-    def get_block_addresses(self, grid: ArrayGrid):
-        addresses: dict = {}
-        nodes = self.nodes()
-        index = 0
-        for grid_entry in grid.get_entry_iterator():
-            node = nodes[index]
-            node_key = list(filter(lambda key: "node" in key, node["Resources"].keys()))
-            assert len(node_key) == 1
-            node_key = node_key[0]
-            addresses[grid_entry] = node_key
-            index = (index + 1) % len(nodes)
-        return addresses
+    def num_cores_total(self):
+        return int(get_num_cores())
 
 
 class RaySystem(SystemInterface):
     # pylint: disable=abstract-method
     """
-    Implements SystemInterface and ComputeInterface to support static typing.
+    Implements SystemInterface for Ray.
     """
 
-    def __init__(self, scheduler: RayScheduler):
-        self.scheduler: RayScheduler = scheduler
-        self.manage_ray = True
+    def __init__(self, use_head=False, num_nodes=None):
+        self.use_head = use_head
+        self.num_nodes = num_nodes
+        self._manage_ray = True
+        self._remote_functions = {}
+        self._available_nodes = []
+        self._head_node = None
+        self._worker_nodes = []
+        self._devices: List[DeviceID] = []
+        self._device_to_node: Dict[DeviceID, Dict] = {}
 
     def init(self):
         if ray.is_initialized():
-            self.manage_ray = False
-        if self.manage_ray:
+            self._manage_ray = False
+        if self._manage_ray:
             ray.init()
-        self.scheduler.init()
+        # Compute available nodes, based on CPU resource.
+        local_ip = get_private_ip()
+        total_cpus = 0
+        nodes = ray.nodes()
+        for node in nodes:
+            node_ip = self._node_ip(node)
+            if local_ip == node_ip:
+                # TODO (hme): The driver node is not necessarily the head node.
+                logging.getLogger().info("head node %s", node_ip)
+                self._head_node = node
+            elif self._has_cpu_resources(node):
+                logging.getLogger().info("worker node %s", node_ip)
+                total_cpus += node["Resources"]["CPU"]
+                self._worker_nodes.append(node)
+                self._available_nodes.append(node)
+        if self.use_head and self._has_cpu_resources(self._head_node):
+            total_cpus += self._head_node["Resources"]["CPU"]
+            self._available_nodes.append(self._head_node)
+        logging.getLogger().info("total cpus %s", total_cpus)
+        self.init_devices()
+
+    def init_devices(self):
+        self._devices = []
+        if self.num_nodes is None:
+            self.num_nodes = len(self._available_nodes)
+        assert self.num_nodes <= len(self._available_nodes)
+        for node_id in range(self.num_nodes):
+            node = self._available_nodes[node_id]
+            did = DeviceID(node_id, self._node_key(node), "cpu", 1)
+            self._devices.append(did)
+            self._device_to_node[did] = node
+
+    def _has_cpu_resources(self, node):
+        return self._node_cpu_resources(node) > 0.0
+
+    def _node_cpu_resources(self, node):
+        return node["Resources"]["CPU"] if "CPU" in node["Resources"] else 0.0
+
+    def _node_key(self, node):
+        node_key = list(filter(lambda key: "node" in key, node["Resources"].keys()))
+        assert len(node_key) == 1
+        return node_key[0]
+
+    def _node_ip(self, node):
+        return self._node_key(node).split(":")[1]
 
     def shutdown(self):
-        if self.manage_ray:
+        if self._manage_ray:
             ray.shutdown()
 
     def warmup(self, n: int):
@@ -124,69 +150,34 @@ class RaySystem(SystemInterface):
 
             warmup_func(n)
 
-    def put(self, value: Any):
-        return self.scheduler.put(value)
+    def put(self, value):
+        return ray.put(value)
 
-    def get(self, object_ids: Union[Any, List]):
-        return self.scheduler.get(object_ids)
+    def get(self, object_ids):
+        return ray.get(object_ids)
 
     def remote(self, function: FunctionType, remote_params: dict):
-        return self.scheduler.remote(function, remote_params)
-
-    def nodes(self):
-        return self.scheduler.nodes()
+        r = ray.remote(num_cpus=1, **remote_params)
+        return r(function)
 
     def register(self, name: str, func: callable, remote_params: dict = None):
-        self.scheduler.register(name, func, remote_params)
+        if name in self._remote_functions:
+            return
+        self._remote_functions[name] = self.remote(func, remote_params)
 
-    def call(self, name: str, *args, **kwargs):
-        return self.scheduler.call(name, *args, **kwargs)
+    def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
+        if device_id is not None:
+            # May be None if NoDeviceGrid is used.
+            node = self._device_to_node[device_id]
+            node_key = self._node_key(node)
+            if "resources" in options:
+                assert node_key not in options
+            options["resources"] = {node_key: 1.0/10**4}
+        return self._remote_functions[name].options(**options).remote(*args, **kwargs)
 
-    def call_with_options(self, name: str, args, kwargs, options):
-        return self.scheduler.call_with_options(name, args, kwargs, options)
+    def devices(self):
+        return self._devices
 
-    def get_options(self, cluster_entry, cluster_shape):
-        if isinstance(self.scheduler, BlockCyclicScheduler):
-            scheduler: BlockCyclicScheduler = self.scheduler
-            node: Dict = scheduler.cluster_grid[scheduler.get_cluster_entry(cluster_entry)]
-            node_key = list(filter(lambda key: "node" in key, node["Resources"].keys()))
-            assert len(node_key) == 1
-            node_key = node_key[0]
-        elif isinstance(self.scheduler, TaskScheduler):
-            # Just do round-robin over nodes.
-            nodes = self.nodes()
-            # Compute a flattened index from the cluster entry.
-            strides = [np.product(cluster_shape[i:]) for i in range(1, len(cluster_shape))] + [1]
-            index = sum(np.array(cluster_entry) * strides)
-            node = nodes[index]
-            node_key = list(filter(lambda key: "node" in key, node["Resources"].keys()))
-            assert len(node_key) == 1
-            node_key = node_key[0]
-        else:
-            raise Exception()
-        return {
-            "resources": {node_key: 1.0/10**4}
-        }
-
-    def get_block_addresses(self, grid: ArrayGrid):
-        addresses: dict = {}
-        if isinstance(self.scheduler, BlockCyclicScheduler):
-            scheduler: BlockCyclicScheduler = self.scheduler
-            for grid_entry in grid.get_entry_iterator():
-                node: Dict = scheduler.cluster_grid[scheduler.get_cluster_entry(grid_entry)]
-                node_key = list(filter(lambda key: "node" in key, node["Resources"].keys()))
-                assert len(node_key) == 1
-                node_key = node_key[0]
-                addresses[grid_entry] = node_key
-        elif isinstance(self.scheduler, TaskScheduler):
-            # Just do round-robin over nodes.
-            nodes = self.nodes()
-            index = 0
-            for grid_entry in grid.get_entry_iterator():
-                node = nodes[index]
-                node_key = list(filter(lambda key: "node" in key, node["Resources"].keys()))
-                assert len(node_key) == 1
-                node_key = node_key[0]
-                addresses[grid_entry] = node_key
-                index = (index + 1) % len(nodes)
-        return addresses
+    def num_cores_total(self):
+        num_cores = sum(map(lambda n: n["Resources"]["CPU"], self._device_to_node.values()))
+        return int(num_cores)
