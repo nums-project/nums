@@ -24,13 +24,13 @@ from nums.core.array.blockarray import BlockArray, Block
 # pylint: disable=protected-access
 
 
-def test_options(app_inst):
-    result = app_inst.system.get_options(cluster_entry=(0, 0), cluster_shape=(1, 1))
+def test_options(app_inst: ArrayApplication):
+    result = app_inst.cm.get_options(cluster_entry=(0, 0), cluster_shape=(1, 1))
     assert len(result) > 0
 
 
-def test_warmup(app_inst):
-    sys = app_inst.system
+def test_warmup(app_inst: ArrayApplication):
+    sys = app_inst.cm.system
     if isinstance(sys, RaySystem):
         sys.warmup(10)
     assert True

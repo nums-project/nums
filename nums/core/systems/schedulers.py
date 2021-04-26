@@ -18,16 +18,14 @@ import itertools
 import logging
 from types import FunctionType
 from typing import Tuple
-import inspect
 
-import ray
 import numpy as np
+import ray
 
-from nums.core.systems.interfaces import ComputeInterface, ComputeImp
-from nums.core.systems.utils import check_implementation, extract_functions, get_private_ip
+from nums.core.systems.utils import get_private_ip
 
 
-class RayScheduler(ComputeInterface):
+class RayScheduler(object):
     # pylint: disable=abstract-method
     def init(self):
         raise NotImplementedError()
@@ -61,11 +59,7 @@ class TaskScheduler(RayScheduler):
     system's scheduler in distributed memory configurations.
     Simply takes as input a compute module and StoreConfiguration.
     """
-    def __init__(self,
-                 compute_module,
-                 use_head=False):
-        self.compute_imp: ComputeImp = compute_module.ComputeCls
-        check_implementation(ComputeInterface, self.compute_imp)
+    def __init__(self, use_head=False):
         self.remote_functions = {}
         self.available_nodes = []
         self.use_head = use_head
@@ -96,19 +90,6 @@ class TaskScheduler(RayScheduler):
             total_cpus += self.head_node["Resources"]["CPU"]
             self.available_nodes.append(self.head_node)
         logging.getLogger().info("total cpus %s", total_cpus)
-        # Collect compute functions.
-        module_functions = extract_functions(self.compute_imp)
-        function_signatures: dict = {}
-        required_methods = inspect.getmembers(ComputeInterface(), predicate=inspect.ismethod)
-        for name, func in required_methods:
-            function_signatures[name] = func
-        for name, func in module_functions.items():
-            func_sig = function_signatures[name]
-            try:
-                remote_params = func_sig.remote_params
-            except Exception as _:
-                remote_params = {}
-            self.remote_functions[name] = self.remote(func, remote_params)
 
     def put(self, value):
         return ray.put(value)
@@ -151,8 +132,8 @@ class BlockCyclicScheduler(TaskScheduler):
     Operations with 1 dim along any axis are replicated for each dimension along that axis.
     """
 
-    def __init__(self, compute_module, cluster_shape: Tuple, use_head=False, verbose=False):
-        super(BlockCyclicScheduler, self).__init__(compute_module, use_head)
+    def __init__(self, cluster_shape: Tuple, use_head=False, verbose=False):
+        super(BlockCyclicScheduler, self).__init__(use_head)
         self.verbose = verbose
         self.cluster_shape: Tuple = cluster_shape
         self.cluster_grid: np.ndarray = np.empty(shape=self.cluster_shape, dtype=object)

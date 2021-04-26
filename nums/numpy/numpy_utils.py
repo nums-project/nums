@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import re
+
 import numpy as np
 
 from nums.core.array.application import ArrayApplication
@@ -64,13 +65,13 @@ def ufunc_op_signatures():
 
 
 def get_num_cores(app: ArrayApplication):
-    if isinstance(app.system, RaySystem):
-        system: RaySystem = app.system
+    if isinstance(app.cm.system, RaySystem):
+        system: RaySystem = app.cm.system
         nodes = system.nodes()
-        return sum(map(lambda n: n["Resources"]["CPU"], nodes))
+        return int(sum(map(lambda n: n["Resources"]["CPU"], nodes)))
     else:
-        assert isinstance(app.system, SerialSystem)
-        return systems_utils.get_num_cores()
+        assert isinstance(app.cm.system, SerialSystem)
+        return int(systems_utils.get_num_cores())
 
 
 def update_doc_string(doc_string):

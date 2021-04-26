@@ -16,8 +16,9 @@
 
 import numpy as np
 
-from nums.core.systems import numpy_compute
-from nums.core.systems.systems import System, RaySystem
+from nums.core.compute import numpy_compute
+from nums.core.compute.compute_manager import ComputeManager
+from nums.core.systems.systems import SystemInterface, RaySystem
 from nums.core.systems.filesystem import FileSystem
 from nums.core.systems.schedulers import RayScheduler, BlockCyclicScheduler
 from nums.core.array.application import ArrayApplication, BlockArray
@@ -45,10 +46,11 @@ class MockMultiNodeScheduler(BlockCyclicScheduler):
 
 
 def mock_cluster(cluster_shape):
-    scheduler: RayScheduler = MockMultiNodeScheduler(compute_module=numpy_compute,
-                                                     cluster_shape=cluster_shape,
+    scheduler: RayScheduler = MockMultiNodeScheduler(cluster_shape=cluster_shape,
                                                      use_head=True)
-    system: System = RaySystem(compute_module=numpy_compute,
-                               scheduler=scheduler)
+    system: SystemInterface = RaySystem(scheduler=scheduler)
     system.init()
-    return ArrayApplication(system=system, filesystem=FileSystem(system))
+
+    cm = ComputeManager.create(system, numpy_compute)
+    fs = FileSystem(cm)
+    return ArrayApplication(cm, fs)

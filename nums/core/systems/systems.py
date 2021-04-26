@@ -14,78 +14,24 @@
 # limitations under the License.
 
 
-import inspect
-from types import ModuleType, FunctionType
+from types import FunctionType
 from typing import Any, Union, List, Dict
 
-import ray
 import numpy as np
+import ray
 
-from nums.core.storage.storage import ArrayGrid
+from nums.core.grid.grid import ArrayGrid
 from nums.core.systems.schedulers import RayScheduler, TaskScheduler, BlockCyclicScheduler
-from nums.core.systems.interfaces import SystemInterface, ComputeInterface, RNGInterface
-from nums.core.systems.utils import check_implementation, extract_functions
+from nums.core.systems.system_interface import SystemInterface
 
 
-class System(SystemInterface, ComputeInterface):
-    # pylint: disable=abstract-method
+class SerialSystem(SystemInterface):
 
-    def __init__(self, compute_module):
-        self.compute_module: ModuleType = compute_module
-        self.compute_imp = compute_module.ComputeCls
-        self.methods: dict = {}
-        # Check that all of kernel interface is implemented.
-        check_implementation(ComputeInterface, self.compute_imp)
-        # Collect implemented module functions.
-        self.module_functions = extract_functions(self.compute_imp)
-        if getattr(compute_module, "RNG", None) is None:
-            raise Exception("No random number generator implemented "
-                            "for compute module %s" % str(compute_module))
-        self.rng_cls = compute_module.RNG
-
-    def init(self):
-        for name, _ in self.module_functions.items():
-            self.methods[name] = self.get_callable(name)
-
-    def shutdown(self):
-        raise NotImplementedError()
-
-    def get_rng(self, seed) -> RNGInterface:
-        return self.rng_cls(seed)
-
-    def get_callable(self, name: str):
-        def new_func(*args, **kwargs):
-            return self.call(name, *args, **kwargs)
-        return new_func
-
-    def __getattribute__(self, name: str):
-        methods = object.__getattribute__(self, "methods")
-        if name in methods:
-            return methods[name]
-        return object.__getattribute__(self, name)
-
-
-class SerialSystem(System):
-    # pylint: disable=abstract-method,useless-super-delegation
-
-    def __init__(self, compute_module):
-        super(SerialSystem, self).__init__(compute_module)
+    def __init__(self):
         self.remote_functions: dict = {}
 
     def init(self):
-        # Collect function signatures.
-        function_signatures: dict = {}
-        required_methods = inspect.getmembers(ComputeInterface(), predicate=inspect.ismethod)
-        for name, func in required_methods:
-            function_signatures[name] = func
-        for name, func in self.module_functions.items():
-            func_sig = function_signatures[name]
-            try:
-                remote_params = func_sig.remote_params
-            except Exception as _:
-                remote_params = {}
-            self.remote_functions[name] = self.remote(func, remote_params)
-        super(SerialSystem, self).init()
+        pass
 
     def shutdown(self):
         pass
@@ -141,14 +87,13 @@ class SerialSystem(System):
         return addresses
 
 
-class RaySystem(System):
+class RaySystem(SystemInterface):
     # pylint: disable=abstract-method
     """
     Implements SystemInterface and ComputeInterface to support static typing.
     """
 
-    def __init__(self, compute_module, scheduler: RayScheduler):
-        super(RaySystem, self).__init__(compute_module)
+    def __init__(self, scheduler: RayScheduler):
         self.scheduler: RayScheduler = scheduler
         self.manage_ray = True
 
@@ -158,7 +103,6 @@ class RaySystem(System):
         if self.manage_ray:
             ray.init()
         self.scheduler.init()
-        super(RaySystem, self).init()
 
     def shutdown(self):
         if self.manage_ray:

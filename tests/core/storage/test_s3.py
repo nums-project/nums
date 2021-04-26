@@ -20,7 +20,8 @@ import numpy as np
 
 from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray
-from nums.core.storage.storage import StoredArrayS3, ArrayGrid
+from nums.core.storage.storage import StoredArrayS3
+from nums.core.grid.grid import ArrayGrid
 
 
 # pylint: disable = import-outside-toplevel, import-error

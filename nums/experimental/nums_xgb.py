@@ -1,19 +1,19 @@
-import uuid
-import time
 import logging
+import time
+import uuid
 from threading import Thread
 from typing import Dict
 
 import numpy as np
 import xgboost as xgb
 
-from nums.core.systems import utils as systems_utils
-from nums.core.array.blockarray import BlockArray, Block
+import nums.numpy as nps
 from nums.core.application_manager import instance as _instance
 from nums.core.array.application import ArrayApplication
-from nums.core.systems.systems import System
-from nums.core.storage.storage import ArrayGrid
-import nums.numpy as nps
+from nums.core.array.blockarray import BlockArray, Block
+from nums.core.compute.compute_manager import ComputeManager
+from nums.core.grid.grid import ArrayGrid
+from nums.core.systems import utils as systems_utils
 
 
 def _start_rabit_tracker(num_workers: int):
@@ -104,8 +104,8 @@ def train(params: Dict,
     assert len(y.shape) == 1 or (len(y.shape) == 2 and y.shape[1] == 1)
 
     app: ArrayApplication = _instance()
-    sys: System = app.system
-    sys.register("xgb_train", xgb_train_remote, {})
+    cm: ComputeManager = app.cm
+    cm.register("xgb_train", xgb_train_remote, {})
 
     # Start tracker
     num_workers = X.grid.grid_shape[0]
@@ -125,7 +125,7 @@ def train(params: Dict,
     X: BlockArray = X.reshape(block_shape=(X.block_shape[0], X.shape[1]))
     result: BlockArray = BlockArray(ArrayGrid(shape=(X.grid.grid_shape[0],),
                                               block_shape=(1,),
-                                              dtype="dict"), sys)
+                                              dtype="dict"), cm)
     for grid_entry in X.grid.get_entry_iterator():
         X_block: Block = X.blocks[grid_entry]
         i = grid_entry[0]
@@ -134,15 +134,15 @@ def train(params: Dict,
         else:
             y_block: Block = y.blocks[i, 0]
         syskwargs = {"grid_entry": grid_entry, "grid_shape": X.grid.grid_shape}
-        result.blocks[i].oid = sys.call("xgb_train",
-                                        X_block.oid,
-                                        y_block.oid,
-                                        rabit_args,
-                                        params,
-                                        args,
-                                        kwargs,
-                                        *evals_flat,
-                                        syskwargs=syskwargs)
+        result.blocks[i].oid = cm.call("xgb_train",
+                                       X_block.oid,
+                                       y_block.oid,
+                                       rabit_args,
+                                       params,
+                                       args,
+                                       kwargs,
+                                       *evals_flat,
+                                       syskwargs=syskwargs)
     return result
 
 
@@ -174,22 +174,22 @@ class XGBClassifier(object):
 
     def predict(self, X: BlockArray):
         app: ArrayApplication = _instance()
-        sys: System = app.system
-        sys.register("xgb_predict", xgb_predict_remote, {})
+        cm: ComputeManager = app.cm
+        cm.register("xgb_predict", xgb_predict_remote, {})
         model_block: Block = self.model.blocks[0]
         result: BlockArray = BlockArray(ArrayGrid(shape=(X.shape[0],),
                                                   block_shape=(X.block_shape[0],),
                                                   dtype=nps.int.__name__),
-                                        sys)
+                                        cm)
         for grid_entry in X.grid.get_entry_iterator():
             i = grid_entry[0]
             X_block: Block = X.blocks[grid_entry]
             r_block: Block = result.blocks[i]
             syskwargs = {"grid_entry": grid_entry, "grid_shape": X.grid.grid_shape}
-            r_block.oid = sys.call("xgb_predict",
-                                   model_block.oid,
-                                   X_block.oid,
-                                   syskwargs=syskwargs)
+            r_block.oid = cm.call("xgb_predict",
+                                  model_block.oid,
+                                  X_block.oid,
+                                  syskwargs=syskwargs)
         return result
 
 

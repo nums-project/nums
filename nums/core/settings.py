@@ -14,10 +14,9 @@
 # limitations under the License.
 
 
+import multiprocessing
 import os
 from pathlib import Path
-import multiprocessing
-
 
 pj = lambda *paths: os.path.abspath(os.path.expanduser(os.path.join(*paths)))
 core_root = os.path.abspath(os.path.dirname(__file__))

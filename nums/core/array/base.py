@@ -16,11 +16,9 @@
 
 import numpy as np
 
-from nums.core.storage.storage import ArrayGrid
-from nums.core.systems.systems import System
 from nums.core.array import utils as array_utils
-
-block_id_counter = -1
+from nums.core.compute.compute_manager import ComputeManager
+from nums.core.grid.grid import ArrayGrid
 
 
 class Block(object):
@@ -28,9 +26,11 @@ class Block(object):
     # TODO(hme): Create a base class, and move this concrete class into blockarray.py.
     #  Do this when we implement a SparseBlock object.
 
-    def __init__(self, grid_entry, grid_shape, rect, shape, dtype, transposed, system: System,
+    block_id_counter = -1
+
+    def __init__(self, grid_entry, grid_shape, rect, shape, dtype, transposed, cm: ComputeManager,
                  id=None):
-        self._system = system
+        self._cm = cm
         self.grid_entry: tuple = grid_entry
         self.grid_shape: tuple = grid_shape
         self.rect: list = rect
@@ -41,9 +41,8 @@ class Block(object):
         self.transposed = transposed
         self.id = id
         if self.id is None:
-            global block_id_counter
-            block_id_counter += 1
-            self.id = block_id_counter
+            Block.block_id_counter += 1
+            self.id = Block.block_id_counter
         # Set if options are used to compute this block.
         self.options = None
 
@@ -56,7 +55,7 @@ class Block(object):
     def copy(self, shallow=True):
         assert shallow, "Only shallow copies are currently supported."
         block = Block(self.grid_entry, self.grid_shape, self.rect, self.shape,
-                      self.dtype, self.transposed, self._system)
+                      self.dtype, self.transposed, self._cm)
         block.oid = self.oid
         return block
 
@@ -81,7 +80,7 @@ class Block(object):
                        shape=tuple(reversed(self.shape)),
                        dtype=self.dtype,
                        transposed=not self.transposed,
-                       system=self._system)
+                       cm=self._cm)
         blockT.oid = self.oid
         return blockT
 
@@ -102,11 +101,11 @@ class Block(object):
         block.shape = tuple(shape)
         block.rect = rect
 
-        block.oid = self._system.swapaxes(block.oid, axis1, axis2,
-                                         syskwargs={
-                                             "grid_entry": block.grid_entry,
-                                             "grid_shape": block.grid_shape
-                                         })
+        block.oid = self._cm.swapaxes(block.oid, axis1, axis2,
+                                      syskwargs={
+                                          "grid_entry": block.grid_entry,
+                                          "grid_shape": block.grid_shape
+                                      })
         return block
 
     def ufunc(self, op_name, options=None):
@@ -119,22 +118,22 @@ class Block(object):
         args = () if args is None else args
         kwargs = {} if kwargs is None else kwargs
         if options is None:
-            block.oid = self._system.map_uop(op_name,
-                                             self.oid,
-                                             args,
-                                             kwargs,
-                                             syskwargs={
-                                                 "grid_entry": block.grid_entry,
-                                                 "grid_shape": block.grid_shape
-                                             })
+            block.oid = self._cm.map_uop(op_name,
+                                         self.oid,
+                                         args,
+                                         kwargs,
+                                         syskwargs={
+                                             "grid_entry": block.grid_entry,
+                                             "grid_shape": block.grid_shape
+                                         })
         else:
             block.options = options
-            block.oid = self._system.call_with_options("map_uop",
-                                                       [op_name, self.oid,
-                                                        args,
-                                                        kwargs],
-                                                       {},
-                                                       options)
+            block.oid = self._cm.call_with_options("map_uop",
+                                                   [op_name, self.oid,
+                                                    args,
+                                                    kwargs],
+                                                   {},
+                                                   options)
         return block
 
     def _block_from_other(self, other):
@@ -143,8 +142,8 @@ class Block(object):
         # where a literal is used in the operation.
         assert isinstance(other, (int, float, np.int, np.float))
         block = Block(self.grid_entry, self.grid_shape, [(0, 1)], (1,),
-                      self.dtype, False, self._system)
-        block.oid = self._system.put(np.array(other, dtype=self.dtype))
+                      self.dtype, False, self._cm)
+        block.oid = self._cm.put(np.array(other, dtype=self.dtype))
         return block
 
     def bop(self, op, other, args: dict, options=None):
@@ -196,33 +195,32 @@ class Block(object):
                       shape=result_shape,
                       dtype=dtype,
                       transposed=False,
-                      system=self._system)
+                      cm=self._cm)
 
-        # TODO (hme): Get rid of requiring shape as param.
         if options is None:
-            block.oid = self._system.bop(op,
-                                         self.oid,
-                                         other.oid,
-                                         self.transposed,
-                                         other.transposed,
-                                         axes=args.get("axes"),
-                                         syskwargs={
-                                             "grid_entry": block.grid_entry,
-                                             "grid_shape": block.grid_shape
-                                         })
+            block.oid = self._cm.bop(op,
+                                     self.oid,
+                                     other.oid,
+                                     self.transposed,
+                                     other.transposed,
+                                     axes=args.get("axes"),
+                                     syskwargs={
+                                         "grid_entry": block.grid_entry,
+                                         "grid_shape": block.grid_shape
+                                     })
         else:
             block.options = options
-            block.oid = self._system.call_with_options("bop",
-                                                       [
-                                                           op,
-                                                           self.oid,
-                                                           other.oid,
-                                                           self.transposed,
-                                                           other.transposed
-                                                       ], {
-                                                           "axes": args.get("axes")
-                                                       },
-                                                       options)
+            block.oid = self._cm.call_with_options("bop",
+                                                   [
+                                                       op,
+                                                       self.oid,
+                                                       other.oid,
+                                                       self.transposed,
+                                                       other.transposed
+                                                   ], {
+                                                       "axes": args.get("axes")
+                                                   },
+                                                   options)
         return block
 
     def tensordot(self, other, axes):
@@ -274,12 +272,12 @@ class Block(object):
     def astype(self, dtype):
         block = self.copy()
         block.dtype = dtype
-        block.oid = self._system.astype(self.oid,
-                                        dtype.__name__,
-                                        syskwargs={
-                                            "grid_entry": block.grid_entry,
-                                            "grid_shape": block.grid_shape
-                                        })
+        block.oid = self._cm.astype(self.oid,
+                                    dtype.__name__,
+                                    syskwargs={
+                                        "grid_entry": block.grid_entry,
+                                        "grid_shape": block.grid_shape
+                                    })
         return block
 
     def conjugate(self):
@@ -297,14 +295,14 @@ class Block(object):
         }
 
     def get(self):
-        return self._system.get(self.oid)
+        return self._cm.get(self.oid)
 
 
 class BlockArrayBase(object):
 
-    def __init__(self, grid: ArrayGrid, system: System, blocks: np.ndarray = None):
+    def __init__(self, grid: ArrayGrid, cm: ComputeManager = None, blocks: np.ndarray = None):
         self.grid = grid
-        self.system = system
+        self.cm = cm
         self.shape = self.grid.shape
         self.block_shape = self.grid.block_shape
         self.size = np.product(self.shape)
@@ -322,7 +320,7 @@ class BlockArrayBase(object):
                                                 shape=self.grid.get_block_shape(grid_entry),
                                                 dtype=self.dtype,
                                                 transposed=False,
-                                                system=self.system)
+                                                cm=self.cm)
 
     def __repr__(self):
         return "BlockArray(" + str(self.blocks) + ")"
@@ -330,8 +328,8 @@ class BlockArrayBase(object):
     def get(self) -> np.ndarray:
         result: np.ndarray = np.zeros(shape=self.grid.shape, dtype=self.grid.dtype)
         block_shape: np.ndarray = np.array(self.grid.block_shape, dtype=np.int)
-        arrays: list = self.system.get([self.blocks[grid_entry].oid
-                                        for grid_entry in self.grid.get_entry_iterator()])
+        arrays: list = self.cm.get([self.blocks[grid_entry].oid
+                                    for grid_entry in self.grid.get_entry_iterator()])
         for block_index, grid_entry in enumerate(self.grid.get_entry_iterator()):
             start = block_shape * grid_entry
             entry_shape = np.array(self.grid.get_block_shape(grid_entry), dtype=np.int)
@@ -349,7 +347,7 @@ class BlockArrayBase(object):
         result_block_shape = array_utils.broadcast_block_shape(self.shape, shape, self.block_shape)
         result: BlockArrayBase = BlockArrayBase(ArrayGrid(b.shape,
                                                           result_block_shape,
-                                                          self.grid.dtype.__name__), self.system)
+                                                          self.grid.dtype.__name__), self.cm)
         extras = []
         # Below taken directly from _broadcast_to in numpy's stride_tricks.py.
         it = np.nditer(

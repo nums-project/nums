@@ -16,8 +16,9 @@
 import pytest
 import ray
 
-from nums.core.systems import numpy_compute
-from nums.core.systems.systems import System, SerialSystem, RaySystem
+from nums.core.compute import numpy_compute
+from nums.core.compute.compute_manager import ComputeManager
+from nums.core.systems.systems import SystemInterface, SerialSystem, RaySystem
 from nums.core.systems import utils as systems_utils
 from nums.core.systems.filesystem import FileSystem
 from nums.core.systems.schedulers import RayScheduler, TaskScheduler, BlockCyclicScheduler
@@ -29,7 +30,7 @@ def serial_app_inst(request):
     # pylint: disable=protected-access
     app_inst = get_app(request.param)
     yield app_inst
-    app_inst.system.shutdown()
+    app_inst.cm.destroy()
     ray.shutdown()
 
 
@@ -38,7 +39,7 @@ def app_inst(request):
     # pylint: disable=protected-access
     app_inst = get_app(request.param)
     yield app_inst
-    app_inst.system.shutdown()
+    app_inst.cm.destroy()
     ray.shutdown()
 
 
@@ -51,30 +52,34 @@ def nps_app_inst(request):
     # pylint: disable = import-outside-toplevel
     from nums.core import settings
     from nums.core import application_manager
+    import nums.numpy as nps
     settings.system_name = request.param
+    # Need to reset numpy random state.
+    # It's the only stateful numpy API object.
+    nps.random.reset()
     yield application_manager.instance()
     application_manager.destroy()
 
 
 def get_app(mode):
+    print(ray.is_initialized())
     if mode == "serial":
-        system: System = SerialSystem(compute_module=numpy_compute)
+        system: SystemInterface = SerialSystem()
     elif mode.startswith("ray"):
         ray.init(num_cpus=systems_utils.get_num_cores())
         if mode == "ray-task":
-            scheduler: RayScheduler = TaskScheduler(compute_module=numpy_compute,
-                                                    use_head=True)
+            scheduler: RayScheduler = TaskScheduler(use_head=True)
         elif mode == "ray-cyclic":
             cluster_shape = (1, 1)
-            scheduler: RayScheduler = BlockCyclicScheduler(compute_module=numpy_compute,
-                                                           cluster_shape=cluster_shape,
+            scheduler: RayScheduler = BlockCyclicScheduler(cluster_shape=cluster_shape,
                                                            use_head=True,
                                                            verbose=True)
         else:
             raise Exception()
-        system: System = RaySystem(compute_module=numpy_compute,
-                                   scheduler=scheduler)
+        system: SystemInterface = RaySystem(scheduler=scheduler)
     else:
         raise Exception()
     system.init()
-    return ArrayApplication(system=system, filesystem=FileSystem(system))
+    cm = ComputeManager.create(system, numpy_compute)
+    fs = FileSystem(cm)
+    return ArrayApplication(cm, fs)
