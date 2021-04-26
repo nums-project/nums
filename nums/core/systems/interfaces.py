@@ -97,9 +97,6 @@ class ComputeInterface(object):
     def arange(self, start, stop, step, dtype, syskwargs: Dict):
         raise NotImplementedError()
 
-    def sum_reduce(self, *arrs, syskwargs: Dict):
-        raise NotImplementedError()
-
     def transpose(self, arr, syskwargs: Dict):
         raise NotImplementedError()
 
@@ -119,7 +116,7 @@ class ComputeInterface(object):
     def update_block_along_axis(self, dst_arr, src_arr, index_pairs, axis, syskwargs: Dict):
         raise NotImplementedError()
 
-    def bop(self, op, a1, a2, a1_shape, a2_shape, a1_T, a2_T, axes, syskwargs: Dict):
+    def bop(self, op, a1, a2, a1_T, a2_T, axes, syskwargs: Dict):
         raise NotImplementedError()
 
     def bop_reduce(self, op, a1, a2, a1_T, a2_T, syskwargs: Dict):

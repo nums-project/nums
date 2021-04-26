@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import re
 import numpy as np
 
 from nums.core.array.application import ArrayApplication
@@ -71,3 +71,25 @@ def get_num_cores(app: ArrayApplication):
     else:
         assert isinstance(app.system, SerialSystem)
         return systems_utils.get_num_cores()
+
+
+def update_doc_string(doc_string):
+    # TODO(mwe): Continue to improve regex edge cases
+    # np -> nps
+    doc_string = re.sub('np(?![a-zA-Z_])', 'nps', str(doc_string))
+    # Remove comments
+    doc_string = re.sub('#.*', '', doc_string)
+    # Round all numbers
+    nums_funcs = list(set(re.findall(r">>>\s[\.a-zA-Z0-9, ()].*\n(?!\s*>)", doc_string)))
+    for nums_func in nums_funcs:
+        doc_string = doc_string.replace(nums_func,
+                                        ">>> eval(\"np.around(" + nums_func[4:].rstrip()
+                                        + ".get(), 5)\")\n")
+    numbers = list(set(re.findall(r"-?[0-9]\d{0,9}\.\d+", doc_string)))
+    for num in numbers:
+        doc_string = doc_string.replace(num, str(np.round(float(num), 5)))
+    # Convert array(<num>) to num: e.g. array(11) -> 11
+    ret_nums = list(set(re.findall(r"(?<=\n\s)*array\(-?[0-9]\d{0,9}\.\d+\)", doc_string)))
+    for ret_num in ret_nums:
+        doc_string = doc_string.replace(ret_num, ret_num[6:-1])
+    return doc_string

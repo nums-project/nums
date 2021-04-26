@@ -58,21 +58,21 @@ def test_ufunc(nps_app_inst):
             np_b = np.array([True, True, False, False], dtype=np.bool_)
             check_bop(name, np_a, np_b)
         elif name in ("gcd", "lcm"):
-            np_a = np.array([8, 3, 7], dtype=np.int)
-            np_b = np.array([4, 12, 13], dtype=np.int)
+            np_a = np.array([8, 3, 7], dtype=int)
+            np_b = np.array([4, 12, 13], dtype=int)
             check_bop(name, np_a, np_b)
         elif name.endswith("shift"):
-            np_a = np.array([7*10**3, 8*10**3, 9*10**3], dtype=np.int)
-            np_b = np.array([1, 2, 3], dtype=np.int)
+            np_a = np.array([7*10**3, 8*10**3, 9*10**3], dtype=int)
+            np_b = np.array([1, 2, 3], dtype=int)
             check_bop(name, np_a, np_b)
         else:
             pairs = [
                 (np.array([.1, 5.0, .3]),
                  np.array([.2, 6.0, .3])),
                 (np.array([.1, 5.0, .3]),
-                 np.array([4, 2, 6], dtype=np.int)),
-                (np.array([3, 7, 3], dtype=np.int),
-                 np.array([4, 2, 6], dtype=np.int)),
+                 np.array([4, 2, 6], dtype=int)),
+                (np.array([3, 7, 3], dtype=int),
+                 np.array([4, 2, 6], dtype=int)),
             ]
             for np_a, np_b in pairs:
                 check_bop(name, np_a, np_b)

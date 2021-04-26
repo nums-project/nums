@@ -399,7 +399,7 @@ class FileSystem(object):
             )
         return result
 
-    def read_csv(self, filename, dtype=np.float, delimiter=',', has_header=False, num_workers=4):
+    def read_csv(self, filename, dtype=float, delimiter=',', has_header=False, num_workers=4):
         file_size = storage_utils.get_file_size(filename)
         file_batches: storage_utils.Batch = storage_utils.Batch.from_num_batches(file_size,
                                                                                  num_workers)

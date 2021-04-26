@@ -70,6 +70,10 @@ class TaskScheduler(RayScheduler):
         self.available_nodes = []
         self.use_head = use_head
         self.head_node = None
+        self.worker_nodes = []
+
+    def _has_cpu_resources(self, node):
+        return "CPU" in node["Resources"] and node["Resources"]["CPU"] >= 1.0
 
     def init(self):
         # Compute available nodes, based on CPU resource.
@@ -79,17 +83,18 @@ class TaskScheduler(RayScheduler):
             node_key = list(filter(lambda key: "node" in key, node["Resources"].keys()))
             assert len(node_key) == 1
             node_ip = node_key[0].split(":")[1]
-            has_cpu_resources = "CPU" in node["Resources"] and node["Resources"]["CPU"] >= 1.0
             if local_ip == node_ip:
+                # TODO (hme): The driver node is not necessarily the head node.
                 logging.getLogger().info("head node %s", node_ip)
                 self.head_node = node
-                if self.use_head and has_cpu_resources:
-                    total_cpus += node["Resources"]["CPU"]
-                    self.available_nodes.append(node)
-            elif has_cpu_resources:
+            elif self._has_cpu_resources(node):
                 logging.getLogger().info("worker node %s", node_ip)
                 total_cpus += node["Resources"]["CPU"]
                 self.available_nodes.append(node)
+                self.worker_nodes.append(node)
+        if self.use_head and self._has_cpu_resources(self.head_node):
+            total_cpus += self.head_node["Resources"]["CPU"]
+            self.available_nodes.append(self.head_node)
         logging.getLogger().info("total cpus %s", total_cpus)
         # Collect compute functions.
         module_functions = extract_functions(self.compute_imp)
@@ -150,7 +155,7 @@ class BlockCyclicScheduler(TaskScheduler):
         super(BlockCyclicScheduler, self).__init__(compute_module, use_head)
         self.verbose = verbose
         self.cluster_shape: Tuple = cluster_shape
-        self.cluster_grid: np.ndarray = np.empty(shape=self.cluster_shape, dtype=np.object)
+        self.cluster_grid: np.ndarray = np.empty(shape=self.cluster_shape, dtype=object)
 
     def init(self):
         super().init()
@@ -158,7 +163,10 @@ class BlockCyclicScheduler(TaskScheduler):
                                                                  str(self.cluster_shape))
         assert len(self.available_nodes) >= np.prod(self.cluster_shape), err_str
         for i, cluster_entry in enumerate(self.get_cluster_entry_iterator()):
-            self.cluster_grid[cluster_entry] = self.available_nodes[i]
+            # We append the head node to the end of available nodes.
+            # If the cluster shape requires the head node, it will be picked up.
+            node = self.available_nodes[i]
+            self.cluster_grid[cluster_entry] = node
             logging.getLogger().info("cluster_grid %s %s",
                                      cluster_entry,
                                      self.get_node_key(cluster_entry))

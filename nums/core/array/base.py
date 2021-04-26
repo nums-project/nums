@@ -44,6 +44,8 @@ class Block(object):
             global block_id_counter
             block_id_counter += 1
             self.id = block_id_counter
+        # Set if options are used to compute this block.
+        self.options = None
 
     def __repr__(self):
         return "Block(" + str(self.oid) + ")"
@@ -82,7 +84,6 @@ class Block(object):
                        system=self._system)
         blockT.oid = self.oid
         return blockT
-
 
     def swapaxes(self, axis1, axis2):
         block = self.copy()
@@ -127,80 +128,13 @@ class Block(object):
                                                  "grid_shape": block.grid_shape
                                              })
         else:
+            block.options = options
             block.oid = self._system.call_with_options("map_uop",
                                                        [op_name, self.oid,
                                                         args,
                                                         kwargs],
                                                        {},
                                                        options)
-        return block
-
-    def reduce_axis(self, op_name, axis, keepdims):
-        # TODO (hme): Add options version of this too, but need to fix block imps
-        #  so we're not branching between options / no options calls in every method.
-        # We lose an axis, so make sure to account for dropped axis in result.
-        result_grid_entry = []
-        result_grid_shape = []
-        result_rect = []
-        result_shape = []
-        for curr_axis in range(len(self.shape)):
-            if curr_axis == axis or axis is None:
-                if keepdims:
-                    result_grid_entry.append(0)
-                    result_grid_shape.append(1)
-                    result_rect.append((0, 1))
-                    result_shape.append(1)
-                continue
-            result_grid_entry.append(self.grid_entry[curr_axis])
-            result_grid_shape.append(self.grid_shape[curr_axis])
-            result_rect.append(self.rect[curr_axis])
-            result_shape.append(self.shape[curr_axis])
-
-        dtype = array_utils.get_reduce_output_type(op_name, self.dtype)
-        block = Block(grid_entry=tuple(result_grid_entry),
-                      grid_shape=tuple(result_grid_shape),
-                      rect=result_rect,
-                      shape=tuple(result_shape),
-                      dtype=dtype,
-                      # This is false because we invoke the transpose before
-                      # applying the reduction operation, so the resulting
-                      # remote object will be transposed.
-                      transposed=False,
-                      system=self._system)
-        block.oid = self._system.reduce_axis(op_name=op_name,
-                                             arr=self.oid,
-                                             axis=axis,
-                                             keepdims=keepdims,
-                                             transposed=self.transposed,
-                                             syskwargs={
-                                                 "grid_entry": block.grid_entry,
-                                                 "grid_shape": block.grid_shape
-                                             })
-        return block
-
-    def bop_reduce(self, op_name, other):
-        other: Block = other
-
-        dtype = array_utils.get_reduce_output_type(op_name, self.dtype)
-        block = Block(grid_entry=self.grid_entry,
-                      grid_shape=self.grid_shape,
-                      rect=list(self.rect),
-                      shape=self.shape,
-                      dtype=dtype,
-                      # This is false because we invoke the transpose before
-                      # applying the reduction operation, so the resulting
-                      # remote object will be transposed.
-                      transposed=False,
-                      system=self._system)
-        block.oid = self._system.bop_reduce(op=op_name,
-                                            a1=self.oid,
-                                            a2=other.oid,
-                                            a1_T=self.transposed,
-                                            a2_T=other.transposed,
-                                            syskwargs={
-                                                "grid_entry": block.grid_entry,
-                                                "grid_shape": block.grid_shape
-                                            })
         return block
 
     def _block_from_other(self, other):
@@ -269,8 +203,6 @@ class Block(object):
             block.oid = self._system.bop(op,
                                          self.oid,
                                          other.oid,
-                                         self.shape,
-                                         other.shape,
                                          self.transposed,
                                          other.transposed,
                                          axes=args.get("axes"),
@@ -279,13 +211,12 @@ class Block(object):
                                              "grid_shape": block.grid_shape
                                          })
         else:
+            block.options = options
             block.oid = self._system.call_with_options("bop",
                                                        [
                                                            op,
                                                            self.oid,
                                                            other.oid,
-                                                           self.shape,
-                                                           other.shape,
                                                            self.transposed,
                                                            other.transposed
                                                        ], {

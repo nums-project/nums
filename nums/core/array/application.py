@@ -14,7 +14,7 @@
 # limitations under the License.
 
 
-from typing import List
+from typing import List, Union
 
 import numpy as np
 
@@ -23,7 +23,7 @@ from nums.core.array import utils as array_utils
 from nums.core.storage.storage import ArrayGrid, StoredArray, StoredArrayS3
 # TODO(hme): Remove dependence on specific system and scheduler implementations.
 from nums.core.systems.systems import System, RaySystem, SerialSystem
-from nums.core.systems.schedulers import BlockCyclicScheduler
+from nums.core.systems.schedulers import BlockCyclicScheduler, TaskScheduler
 from nums.core.systems import utils as systems_utils
 from nums.core.systems.filesystem import FileSystem
 from nums.core.array.random import NumsRandomState
@@ -49,8 +49,15 @@ class ArrayApplication(object):
     def num_cores_total(self):
         if isinstance(self.system, RaySystem):
             system: RaySystem = self.system
-            nodes = system.nodes()
-            num_cores = sum(map(lambda n: n["Resources"]["CPU"], nodes))
+            if isinstance(system.scheduler, BlockCyclicScheduler):
+                scheduler: BlockCyclicScheduler = system.scheduler
+                nodes = scheduler.cluster_grid.flatten().tolist()
+                num_cores = sum(map(lambda n: n["Resources"]["CPU"], nodes))
+            else:
+                assert isinstance(system.scheduler, TaskScheduler)
+                scheduler: TaskScheduler = system.scheduler
+                nodes = scheduler.available_nodes
+                num_cores = sum(map(lambda n: n["Resources"]["CPU"], nodes))
         else:
             assert isinstance(self.system, SerialSystem)
             num_cores = systems_utils.get_num_cores()
@@ -58,7 +65,7 @@ class ArrayApplication(object):
 
     def compute_block_shape(self,
                             shape: tuple,
-                            dtype: np.dtype,
+                            dtype: Union[type, np.dtype],
                             cluster_shape=None,
                             num_cores=None):
         # TODO (hme): Add support for downstream optimizer to decide block shape.
@@ -106,7 +113,7 @@ class ArrayApplication(object):
                     cluster_shape.append(1)
             cluster_shape = tuple(cluster_shape)
 
-        shape_np = np.array(shape, dtype=np.int)
+        shape_np = np.array(shape, dtype=int)
         # Softmax on cluster shape gives strong preference to larger dimensions.
         cluster_weights = np.exp(np.array(cluster_shape)) / np.sum(np.exp(cluster_shape))
         shape_fracs = np.array(shape) / np.sum(shape)
@@ -122,7 +129,7 @@ class ArrayApplication(object):
         # Put remainder on largest axis.
         remaining = np.sum(grid_shape_frac - grid_shape)
         grid_shape[np.argmax(shape)] += remaining
-        grid_shape = np.ceil(grid_shape).astype(np.int)
+        grid_shape = np.ceil(grid_shape).astype(int)
 
         # We use ceiling of floating block shape
         # so that resulting grid shape is <= to what we compute above.
@@ -133,6 +140,7 @@ class ArrayApplication(object):
         # Simple way to ensure shape compatibility for basic linear algebra operations.
         block_shape = self.compute_block_shape(shape, dtype)
         final_block_shape = []
+
         for axis in range(len(shape)):
             shape_dim = shape[axis]
             block_shape_dim = block_shape[axis]
@@ -261,7 +269,7 @@ class ArrayApplication(object):
                                                       })
         return rarr
 
-    def read_csv(self, filename, dtype=np.float, delimiter=',', has_header=False, num_workers=None):
+    def read_csv(self, filename, dtype=float, delimiter=',', has_header=False, num_workers=None):
         if num_workers is None:
             num_workers = self.num_cores_total()
         arrays: list = self._filesystem.read_csv(filename, dtype, delimiter, has_header,
@@ -425,8 +433,8 @@ class ArrayApplication(object):
                                                                         grid_meta,
                                                                         syskwargs=syskwargs)
         elif len(X.shape) == 2:
-            assert X.shape[0] == X.shape[1]
-            assert X.block_shape[0] == X.block_shape[1]
+            assert X.shape[0] == X.shape[1], "X must be a square array."
+            assert X.block_shape[0] == X.block_shape[1], "block_shape must be square."
             shape = X.shape[0],
             block_shape = X.block_shape[0],
             grid = ArrayGrid(shape, block_shape, X.dtype.__name__)
@@ -443,14 +451,17 @@ class ArrayApplication(object):
             raise ValueError("X must have 1 or 2 axes.")
         return rarr
 
-    def arange(self, shape, block_shape, step=1, dtype=np.int64) -> BlockArray:
+    def arange(self, start_in, shape, block_shape, step=1, dtype=None) -> BlockArray:
         assert step == 1
+        if dtype is None:
+            dtype = np.__getattribute__(str(np.result_type(start_in, shape[0] + start_in)))
+
         # Generate ranges per block.
         grid = ArrayGrid(shape, block_shape, dtype.__name__)
         rarr = BlockArray(grid, self.system)
         for _, grid_entry in enumerate(grid.get_entry_iterator()):
             syskwargs = {"grid_entry": grid_entry, "grid_shape": grid.grid_shape}
-            start = block_shape[0] * grid_entry[0]
+            start = start_in + block_shape[0] * grid_entry[0]
             entry_shape = grid.get_block_shape(grid_entry)
             stop = start + entry_shape[0]
             rarr.blocks[grid_entry].oid = self.system.arange(start,
@@ -464,9 +475,11 @@ class ArrayApplication(object):
         assert axis == 0
         assert endpoint is True
         assert retstep is False
+
         step_size = (stop - start) / (shape[0] - 1)
-        result = self.arange(shape, block_shape)
+        result = self.arange(0, shape, block_shape)
         result = start + result * step_size
+
         if dtype is not None and dtype != result.dtype:
             result = result.astype(dtype)
         return result
@@ -942,12 +955,7 @@ class ArrayApplication(object):
                        block_shape=(block_shape[0], shape[1]),
                        dtype=X.dtype)
         for i, grid_entry in enumerate(Q.grid.get_entry_iterator()):
-            Q_dims, R_dims = QR_dims[i]
-            Q1_block_shape = Q_dims
-            Q2_block_shape = R_dims
             Q.blocks[grid_entry].oid = self.system.bop("tensordot", Q_oids[i], Q2_oids[i],
-                                                       a1_shape=Q1_block_shape,
-                                                       a2_shape=Q2_block_shape,
                                                        a1_T=False, a2_T=False, axes=1,
                                                        syskwargs={"grid_entry": grid_entry,
                                                                   "grid_shape": Q.grid.grid_shape})

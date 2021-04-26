@@ -227,7 +227,7 @@ class AxisArray(AxisSelection):
             # Must infer type.
             is_bool = True
             for entry in array_like:
-                if not isinstance(entry, (np.intp, np.bool, int, bool)):
+                if not isinstance(entry, (np.intp, int, bool)):
                     raise Exception("Only integer or boolean arrays are valid indices.")
                 if isinstance(entry, (int, np.intp)):
                     is_bool = False

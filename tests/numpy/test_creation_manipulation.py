@@ -15,6 +15,7 @@
 
 
 import numpy as np
+import pytest
 
 from nums.numpy import BlockArray
 
@@ -77,6 +78,51 @@ def test_diag(nps_app_inst):
     ba = nps.diag(ba)
     np_arr = np.diag(np_arr)
     assert np.allclose(ba.get(), np_arr)
+
+def test_trace(nps_app_inst):
+    import nums.numpy as nps
+
+    assert nps_app_inst is not None
+
+    a: BlockArray = nps.array([1.0, 2.0, 3.0, 4.0])
+
+    # Construct diagonal matrix with nums and numpy.
+    a_diag = nps.diag(a)
+    a_diag_np = np.diag(a.get())
+
+    # Apply trace to diagonal matrices.
+    a_diag_trace = nps.trace(a_diag).get()
+    a_diag_np_trace = np.trace(a_diag_np)
+
+    assert np.allclose(a_diag_trace, a_diag_np_trace)
+
+    # Test pre-defined diagonal matrices.
+    b: BlockArray = nps.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
+
+    b_diag_trace = nps.trace(b).get()
+    b_diag_np_trace = np.trace(b.get())
+
+    assert np.allclose(b_diag_trace, b_diag_np_trace)
+
+    # Test that trace raises on arrays with 3+ axes.
+    mat: BlockArray = nps.zeros((2, 3, 2))
+    with pytest.raises(ValueError):
+        nps.trace(mat)
+
+    # Test that trace raises when called with non-zero offset.
+    mat:  BlockArray = nps.array([1.0, 2.0, 3.0, 4.0])
+    mat_diag = nps.diag(mat)
+    with pytest.raises(NotImplementedError):
+        nps.trace(mat_diag, offset=2)
+
+    # Test data type of trace.
+    mat_diag = nps.diag(nps.array([1.01, 2.02, 3.03, 4.04]))
+    mat_diag_np = np.diag(np.array([1.01, 2.02, 3.03, 4.04]))
+    mat_diag_trace = nps.trace(mat_diag, dtype=int).get()
+    mat_diag_np_trace = np.trace(mat_diag_np, dtype=int)
+
+    assert np.allclose(mat_diag_trace, mat_diag_np_trace)
+    assert mat_diag_trace.dtype == int
 
 
 def test_arange(nps_app_inst):
@@ -202,4 +248,5 @@ if __name__ == "__main__":
     test_concatenate(nps_app_inst)
     test_split(nps_app_inst)
     test_func_space(nps_app_inst)
+    test_trace(nps_app_inst)
     test_shape(nps_app_inst)

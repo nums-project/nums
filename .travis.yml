@@ -5,7 +5,7 @@ python:
 install:
   - pip install .[testing]
 script:
-  - coverage run -m pytest --pylint
+  - coverage run -m pytest
   - coverage report
   - coverage xml
 after_success:
