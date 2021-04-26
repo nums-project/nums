@@ -432,7 +432,10 @@ class BlockArray(BlockArrayBase):
                 b_oid,
                 a_T,
                 b_T,
-                syskwargs={"grid_entry": ge, "grid_shape": gs,},
+                syskwargs={
+                    "grid_entry": ge,
+                    "grid_shape": gs,
+                },
             )
             q.append((c_oid, ge, gs, False))
         r_oid, r_ge, r_gs, _ = q.pop(0)

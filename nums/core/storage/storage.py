@@ -178,14 +178,17 @@ class StoredArrayS3(StoredArray):
     def put(self, grid_entry: Tuple, block: np.ndarray) -> Any:
         block_bytes = block.tobytes()
         response = self.client.put_object(
-            Bucket=self.container_name, Key=self.get_key(grid_entry), Body=block_bytes,
+            Bucket=self.container_name,
+            Key=self.get_key(grid_entry),
+            Body=block_bytes,
         )
         return response
 
     def get(self, grid_entry: Tuple) -> np.ndarray:
         try:
             response = self.client.get_object(
-                Bucket=self.container_name, Key=self.get_key(grid_entry),
+                Bucket=self.container_name,
+                Key=self.get_key(grid_entry),
             )
         except Exception as e:
             logging.getLogger().error(
@@ -211,14 +214,20 @@ class StoredArrayS3(StoredArray):
     def delete(self, grid_entry: Tuple) -> Any:
         objects = [{"Key": self.get_key(grid_entry)}]
         response = self.client.delete_objects(
-            Bucket=self.container_name, Delete={"Objects": objects,},
+            Bucket=self.container_name,
+            Delete={
+                "Objects": objects,
+            },
         )
         return response
 
     def delete_grid(self) -> Any:
         objects = [{"Key": self.get_meta_key()}]
         response = self.client.delete_objects(
-            Bucket=self.container_name, Delete={"Objects": objects,},
+            Bucket=self.container_name,
+            Delete={
+                "Objects": objects,
+            },
         )
         return response
 
@@ -226,7 +235,9 @@ class StoredArrayS3(StoredArray):
         self.grid = array_grid
         body = pickle.dumps(self.grid.to_meta())
         response = self.client.put_object(
-            Bucket=self.container_name, Key=self.get_meta_key(), Body=body,
+            Bucket=self.container_name,
+            Key=self.get_meta_key(),
+            Body=body,
         )
         return response
 
@@ -246,7 +257,10 @@ class StoredArrayS3(StoredArray):
         for grid_entry in grid_entry_iterator:
             objects.append({"Key": self.get_key(grid_entry)})
         response = self.client.delete_objects(
-            Bucket=self.container_name, Delete={"Objects": objects,},
+            Bucket=self.container_name,
+            Delete={
+                "Objects": objects,
+            },
         )
         return response
 

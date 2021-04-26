@@ -178,7 +178,7 @@ def loadtxt_block(
 ##############
 def read_csv_block(filename, file_start, file_end, dtype, delimiter, has_header):
     def _getconv(_dtype):
-        """ Adapted from numpy/lib/npyio.py """
+        """Adapted from numpy/lib/npyio.py"""
 
         def floatconv(x):
             x.lower()
