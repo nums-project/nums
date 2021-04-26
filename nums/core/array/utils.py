@@ -302,4 +302,6 @@ def np_tensordot_param_test(as_, nda, bs, ndb, axes):
                 axes_b[k] += ndb
 
     if not equal:
-        raise ValueError("shape-mismatch for sum")
+        return True
+
+    return False

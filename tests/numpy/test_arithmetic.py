@@ -144,14 +144,16 @@ def test_inner_outer(nps_app_inst):
     assert np.allclose(np.inner(A, B), nps.inner(nps_A, nps_B).get())
     assert np.allclose(np.outer(A, B), nps.outer(nps_A, nps_B).get())
 
+# TODO (hme): Add broadcast tests.
 
-def test_broadcast_error(nps_app_inst):
+def test_tensordot_shape_error(nps_app_inst):
     import numpy as np
+    from nums.core.array.utils import is_array_like
     from nums import numpy as nps
     import pytest
     assert nps_app_inst is not None
 
-    def check_broadcast_mismatch_simple_error(_np_a, _np_b):
+    def check_simple_shape_mismatch_error(_np_a, _np_b):
         _ops = ['add', 'subtract']
 
         for _op in _ops:
@@ -167,7 +169,7 @@ def test_broadcast_error(nps_app_inst):
                 res = ns_op(_ns_a, _ns_b)
                 res.touch()
 
-    def check_broadcast_mismatch_tensor_error(_np_a, _np_b, axes):
+    def check_tensordot_mismatch_simple_error(_np_a, _np_b, axes):
         _ns_a = nps.array(_np_a)
         _ns_b = nps.array(_np_b)
 
@@ -176,39 +178,44 @@ def test_broadcast_error(nps_app_inst):
         with pytest.raises(ValueError):
             nps.tensordot(_ns_a, _ns_b, axes=axes)
 
-    def check_axes_type_tensor_error(_np_a, _np_b, axes):
+    def check_tensordot_axes_type_error(_np_a, _np_b, axes):
         _ns_a = nps.array(_np_a)
         _ns_b = nps.array(_np_b)
 
-        with pytest.raises(TypeError):
-            np.tensordot(_np_a, _np_b, axes=axes)
-        with pytest.raises(TypeError):
-            nps.tensordot(_ns_a, _ns_b, axes=axes)
+        # TODO (bcp): Remove test once tensordot over multiple axes is implemented.
+        if is_array_like(axes):
+            with pytest.raises(NotImplementedError):
+                nps.tensordot(_ns_a, _ns_b, axes=axes)
+        else:
+            with pytest.raises(TypeError):
+                np.tensordot(_np_a, _np_b, axes=axes)
+            with pytest.raises(TypeError):
+                nps.tensordot(_ns_a, _ns_b, axes=axes)
 
     np_A = np.random.randn(2, 4)
     np_B = np.random.randn(2, 2)
-    check_broadcast_mismatch_simple_error(np_A, np_B)
+    check_simple_shape_mismatch_error(np_A, np_B)
 
     np_A = np.random.randn(2, 1)
     np_B = np.random.randn(2, 1)
-    check_broadcast_mismatch_tensor_error(np_A, np_B, 1)
+    check_tensordot_mismatch_simple_error(np_A, np_B, 1)
 
     np_A = np.random.randn(2, 2)
     np_B = np.random.randn(2, 1)
-    check_broadcast_mismatch_tensor_error(np_A, np_B, 2)
+    check_tensordot_mismatch_simple_error(np_A, np_B, 2)
 
     np_A = np.random.randn(2, 2, 3)
     np_B = np.random.randn(2, 2, 2)
-    check_broadcast_mismatch_tensor_error(np_A, np_B, 3)
+    check_tensordot_mismatch_simple_error(np_A, np_B, 3)
 
     np_A = np.random.randn(2, 2, 3)
     np_B = np.random.randn(2, 2, 2)
-    check_broadcast_mismatch_tensor_error(np_A, np_B, 2)
+    check_tensordot_mismatch_simple_error(np_A, np_B, 2)
 
-    np_A = np.random.randn(2, 2)
-    np_B = np.random.randn(2, 2)
-    check_axes_type_tensor_error(np_A, np_B, 2.1)
-
+    np_A = np.random.randn(2, 2, 2)
+    np_B = np.random.randn(2, 2, 2)
+    check_tensordot_axes_type_error(np_A, np_B, 2.1)
+    check_tensordot_axes_type_error(np_A, np_B, [0, 1])
 
 if __name__ == "__main__":
     from nums.core import application_manager

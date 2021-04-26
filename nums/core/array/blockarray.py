@@ -445,10 +445,16 @@ class BlockArray(BlockArrayBase):
         if not isinstance(other, BlockArray):
             raise ValueError("Cannot automatically construct BlockArray for tensor operations.")
 
-        if not isinstance(axes, int):
+        if isinstance(axes, int):
+            pass
+        elif array_utils.is_array_like(axes):
+            raise NotImplementedError("Tensordot across multiple axes not supported yet.")
+        else:
             raise TypeError(f"'{type(axes).__name__}' object cannot be interpreted as an integer")
 
-        array_utils.np_tensordot_param_test(self.shape, self.ndim, other.shape, other.ndim, axes)
+        if array_utils.np_tensordot_param_test(self.shape, self.ndim,
+                                               other.shape, other.ndim, axes):
+            raise ValueError("shape-mismatch for sum")
 
         def basic_vector(ba: BlockArray, axis):
             if len(ba.shape) == 0:
