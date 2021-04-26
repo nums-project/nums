@@ -31,7 +31,8 @@ test_requirements = [
     'moto==1.3.16',
     'coverage==5.3',
     'codecov==2.1.9',
-    'tqdm'
+    'tqdm',
+    'black'
 ]
 
 
