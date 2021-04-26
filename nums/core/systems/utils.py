@@ -30,20 +30,19 @@ def get_num_cores():
 
 def method_meta(num_returns=1):
     def inner(func):
-        func.remote_params = {
-            "num_returns": num_returns
-        }
+        func.remote_params = {"num_returns": num_returns}
         return func
+
     return inner
 
 
 def extract_functions(imp_cls, remove_self=True):
-
     def wrap_func(func):
         # This works for Ray, because ray.remote extracts signatures by following wrapped functions.
         @wraps(func)
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
+
         return wrapper
 
     imp_functions = {}
@@ -83,7 +82,7 @@ def get_module_functions(module):
     for key in dir(module):
         # Omitting module level __getattr__, __dir__ which was added in Python 3.7
         # https://www.python.org/dev/peps/pep-0562/
-        if key in ('__getattr__', '__dir__'):
+        if key in ("__getattr__", "__dir__"):
             continue
         attr = getattr(module, key)
         if isinstance(attr, (types.BuiltinFunctionType, types.FunctionType, np.ufunc)):

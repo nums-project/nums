@@ -61,12 +61,29 @@ def {op_name}(x1: BlockArray, x2: BlockArray,
                 # We don't support subok.
                 args = args.split("subok")[0].strip()[:-1]
             args = list(map(lambda x: x.strip(), args.split(",")))
-            if args == ['x', '/', 'out=None', '*', 'where=True',
-                        "casting='same_kind'", "order='K'", 'dtype=None']:
+            if args == [
+                "x",
+                "/",
+                "out=None",
+                "*",
+                "where=True",
+                "casting='same_kind'",
+                "order='K'",
+                "dtype=None",
+            ]:
                 # This is a uop.
                 uops.append(_uop_template(name))
-            elif args == ['x1', "x2", '/', 'out=None', '*', 'where=True',
-                          "casting='same_kind'", "order='K'", 'dtype=None']:
+            elif args == [
+                "x1",
+                "x2",
+                "/",
+                "out=None",
+                "*",
+                "where=True",
+                "casting='same_kind'",
+                "order='K'",
+                "dtype=None",
+            ]:
                 # This is a bop.
                 bops.append(_bop_template(name))
             else:
@@ -83,6 +100,7 @@ def random_stub():
     import numpy.random as numpy_module
     from nums.core.array.random import NumsRandomState
     from nums.core.application_manager import instance
+
     app = instance()
     sys = app.system
     rs_inst = NumsRandomState(system=sys, seed=1337)

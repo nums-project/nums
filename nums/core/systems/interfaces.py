@@ -21,7 +21,6 @@ from nums.core.systems.utils import method_meta
 
 
 class SystemInterface(object):
-
     def init(self):
         raise NotImplementedError()
 
@@ -59,8 +58,9 @@ class SystemInterface(object):
         raise NotImplementedError("Implements a way to register new remote functions.")
 
     def call(self, name: str, *args, **kwargs):
-        raise NotImplementedError("Implement RPC as e.g. "
-                                  "self.remote_functions[name](*args, **new_kwargs)")
+        raise NotImplementedError(
+            "Implement RPC as e.g. " "self.remote_functions[name](*args, **new_kwargs)"
+        )
 
     def call_with_options(self, name: str, args, kwargs, options):
         raise NotImplementedError("Implement RPC with options support.")
@@ -71,7 +71,6 @@ class SystemInterface(object):
 
 
 class ComputeInterface(object):
-
     def touch(self, arr, syskwargs: Dict):
         """
         "Touch" the given array. This returns nothing and can be used to wait for
@@ -82,10 +81,14 @@ class ComputeInterface(object):
     def empty(self, grid_entry: Tuple, grid_meta: Dict, syskwargs: Dict):
         raise NotImplementedError()
 
-    def new_block(self, op_name: str, grid_entry: Tuple, grid_meta: Dict, syskwargs: Dict):
+    def new_block(
+        self, op_name: str, grid_entry: Tuple, grid_meta: Dict, syskwargs: Dict
+    ):
         raise NotImplementedError()
 
-    def random_block(self, rng_params, rfunc_name, rfunc_args, shape, dtype, syskwargs: Dict):
+    def random_block(
+        self, rng_params, rfunc_name, rfunc_args, shape, dtype, syskwargs: Dict
+    ):
         raise NotImplementedError()
 
     def permutation(self, rng_params, size, syskwargs: Dict):
@@ -103,8 +106,15 @@ class ComputeInterface(object):
     def swapaxes(self, arr, axis1, axis2, syskwargs: Dict):
         raise NotImplementedError()
 
-    def create_block(self, *src_arrs, src_params, dst_params, dst_shape, dst_shape_bc,
-                     syskwargs: Dict):
+    def create_block(
+        self,
+        *src_arrs,
+        src_params,
+        dst_params,
+        dst_shape,
+        dst_shape_bc,
+        syskwargs: Dict
+    ):
         raise NotImplementedError()
 
     def update_block(self, dst_arr, *src_arrs, src_params, dst_params, syskwargs: Dict):
@@ -113,7 +123,9 @@ class ComputeInterface(object):
     def update_block_by_index(self, dst_arr, src_arr, index_pairs, syskwargs: Dict):
         raise NotImplementedError()
 
-    def update_block_along_axis(self, dst_arr, src_arr, index_pairs, axis, syskwargs: Dict):
+    def update_block_along_axis(
+        self, dst_arr, src_arr, index_pairs, axis, syskwargs: Dict
+    ):
         raise NotImplementedError()
 
     def bop(self, op, a1, a2, a1_T, a2_T, axes, syskwargs: Dict):
@@ -162,8 +174,9 @@ class ComputeInterface(object):
     def astype(self, arr, dtype_str, syskwargs: Dict):
         raise NotImplementedError()
 
-    def arg_op(self, op_name, arr, block_slice, other_argoptima, other_optima,
-               syskwargs: Dict):
+    def arg_op(
+        self, op_name, arr, block_slice, other_argoptima, other_optima, syskwargs: Dict
+    ):
         raise NotImplementedError()
 
     def reshape(self, arr, shape, syskwargs: Dict):
@@ -175,6 +188,5 @@ class ComputeImp(object):
 
 
 class RNGInterface(object):
-
     def new_block_rng_params(self):
         raise NotImplementedError()

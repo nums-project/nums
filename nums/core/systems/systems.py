@@ -22,7 +22,11 @@ import ray
 import numpy as np
 
 from nums.core.storage.storage import ArrayGrid
-from nums.core.systems.schedulers import RayScheduler, TaskScheduler, BlockCyclicScheduler
+from nums.core.systems.schedulers import (
+    RayScheduler,
+    TaskScheduler,
+    BlockCyclicScheduler,
+)
 from nums.core.systems.interfaces import SystemInterface, ComputeInterface, RNGInterface
 from nums.core.systems.utils import check_implementation, extract_functions
 
@@ -39,8 +43,10 @@ class System(SystemInterface, ComputeInterface):
         # Collect implemented module functions.
         self.module_functions = extract_functions(self.compute_imp)
         if getattr(compute_module, "RNG", None) is None:
-            raise Exception("No random number generator implemented "
-                            "for compute module %s" % str(compute_module))
+            raise Exception(
+                "No random number generator implemented "
+                "for compute module %s" % str(compute_module)
+            )
         self.rng_cls = compute_module.RNG
 
     def init(self):
@@ -56,6 +62,7 @@ class System(SystemInterface, ComputeInterface):
     def get_callable(self, name: str):
         def new_func(*args, **kwargs):
             return self.call(name, *args, **kwargs)
+
         return new_func
 
     def __getattribute__(self, name: str):
@@ -75,7 +82,9 @@ class SerialSystem(System):
     def init(self):
         # Collect function signatures.
         function_signatures: dict = {}
-        required_methods = inspect.getmembers(ComputeInterface(), predicate=inspect.ismethod)
+        required_methods = inspect.getmembers(
+            ComputeInterface(), predicate=inspect.ismethod
+        )
         for name, func in required_methods:
             function_signatures[name] = func
         for name, func in self.module_functions.items():
@@ -123,9 +132,7 @@ class SerialSystem(System):
         node_key = list(filter(lambda key: "node" in key, node["Resources"].keys()))
         assert len(node_key) == 1
         node_key = node_key[0]
-        return {
-            "resources": {node_key: 1.0/10**4}
-        }
+        return {"resources": {node_key: 1.0 / 10 ** 4}}
 
     def get_block_addresses(self, grid: ArrayGrid):
         addresses: dict = {}
@@ -172,6 +179,7 @@ class RaySystem(System):
             def warmup_func(n):
                 # pylint: disable=import-outside-toplevel
                 import random
+
                 r = ray.remote(num_cpus=1)(lambda x, y: x + y).remote
                 for _ in range(n):
                     _a = random.randint(0, 1000)
@@ -204,7 +212,9 @@ class RaySystem(System):
     def get_options(self, cluster_entry, cluster_shape):
         if isinstance(self.scheduler, BlockCyclicScheduler):
             scheduler: BlockCyclicScheduler = self.scheduler
-            node: Dict = scheduler.cluster_grid[scheduler.get_cluster_entry(cluster_entry)]
+            node: Dict = scheduler.cluster_grid[
+                scheduler.get_cluster_entry(cluster_entry)
+            ]
             node_key = list(filter(lambda key: "node" in key, node["Resources"].keys()))
             assert len(node_key) == 1
             node_key = node_key[0]
@@ -212,7 +222,9 @@ class RaySystem(System):
             # Just do round-robin over nodes.
             nodes = self.nodes()
             # Compute a flattened index from the cluster entry.
-            strides = [np.product(cluster_shape[i:]) for i in range(1, len(cluster_shape))] + [1]
+            strides = [
+                np.product(cluster_shape[i:]) for i in range(1, len(cluster_shape))
+            ] + [1]
             index = sum(np.array(cluster_entry) * strides)
             node = nodes[index]
             node_key = list(filter(lambda key: "node" in key, node["Resources"].keys()))
@@ -220,17 +232,19 @@ class RaySystem(System):
             node_key = node_key[0]
         else:
             raise Exception()
-        return {
-            "resources": {node_key: 1.0/10**4}
-        }
+        return {"resources": {node_key: 1.0 / 10 ** 4}}
 
     def get_block_addresses(self, grid: ArrayGrid):
         addresses: dict = {}
         if isinstance(self.scheduler, BlockCyclicScheduler):
             scheduler: BlockCyclicScheduler = self.scheduler
             for grid_entry in grid.get_entry_iterator():
-                node: Dict = scheduler.cluster_grid[scheduler.get_cluster_entry(grid_entry)]
-                node_key = list(filter(lambda key: "node" in key, node["Resources"].keys()))
+                node: Dict = scheduler.cluster_grid[
+                    scheduler.get_cluster_entry(grid_entry)
+                ]
+                node_key = list(
+                    filter(lambda key: "node" in key, node["Resources"].keys())
+                )
                 assert len(node_key) == 1
                 node_key = node_key[0]
                 addresses[grid_entry] = node_key
@@ -240,7 +254,9 @@ class RaySystem(System):
             index = 0
             for grid_entry in grid.get_entry_iterator():
                 node = nodes[index]
-                node_key = list(filter(lambda key: "node" in key, node["Resources"].keys()))
+                node_key = list(
+                    filter(lambda key: "node" in key, node["Resources"].keys())
+                )
                 assert len(node_key) == 1
                 node_key = node_key[0]
                 addresses[grid_entry] = node_key

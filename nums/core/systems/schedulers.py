@@ -24,7 +24,11 @@ import ray
 import numpy as np
 
 from nums.core.systems.interfaces import ComputeInterface, ComputeImp
-from nums.core.systems.utils import check_implementation, extract_functions, get_private_ip
+from nums.core.systems.utils import (
+    check_implementation,
+    extract_functions,
+    get_private_ip,
+)
 
 
 class RayScheduler(ComputeInterface):
@@ -61,9 +65,8 @@ class TaskScheduler(RayScheduler):
     system's scheduler in distributed memory configurations.
     Simply takes as input a compute module and StoreConfiguration.
     """
-    def __init__(self,
-                 compute_module,
-                 use_head=False):
+
+    def __init__(self, compute_module, use_head=False):
         self.compute_imp: ComputeImp = compute_module.ComputeCls
         check_implementation(ComputeInterface, self.compute_imp)
         self.remote_functions = {}
@@ -99,7 +102,9 @@ class TaskScheduler(RayScheduler):
         # Collect compute functions.
         module_functions = extract_functions(self.compute_imp)
         function_signatures: dict = {}
-        required_methods = inspect.getmembers(ComputeInterface(), predicate=inspect.ismethod)
+        required_methods = inspect.getmembers(
+            ComputeInterface(), predicate=inspect.ismethod
+        )
         for name, func in required_methods:
             function_signatures[name] = func
         for name, func in module_functions.items():
@@ -151,7 +156,9 @@ class BlockCyclicScheduler(TaskScheduler):
     Operations with 1 dim along any axis are replicated for each dimension along that axis.
     """
 
-    def __init__(self, compute_module, cluster_shape: Tuple, use_head=False, verbose=False):
+    def __init__(
+        self, compute_module, cluster_shape: Tuple, use_head=False, verbose=False
+    ):
         super(BlockCyclicScheduler, self).__init__(compute_module, use_head)
         self.verbose = verbose
         self.cluster_shape: Tuple = cluster_shape
@@ -159,17 +166,19 @@ class BlockCyclicScheduler(TaskScheduler):
 
     def init(self):
         super().init()
-        err_str = "Not enough nodes %d for cluster shape %s." % (len(self.available_nodes),
-                                                                 str(self.cluster_shape))
+        err_str = "Not enough nodes %d for cluster shape %s." % (
+            len(self.available_nodes),
+            str(self.cluster_shape),
+        )
         assert len(self.available_nodes) >= np.prod(self.cluster_shape), err_str
         for i, cluster_entry in enumerate(self.get_cluster_entry_iterator()):
             # We append the head node to the end of available nodes.
             # If the cluster shape requires the head node, it will be picked up.
             node = self.available_nodes[i]
             self.cluster_grid[cluster_entry] = node
-            logging.getLogger().info("cluster_grid %s %s",
-                                     cluster_entry,
-                                     self.get_node_key(cluster_entry))
+            logging.getLogger().info(
+                "cluster_grid %s %s", cluster_entry, self.get_node_key(cluster_entry)
+            )
         logging.getLogger().info("cluster_shape %s", str(self.cluster_shape))
 
     def get_cluster_entry_iterator(self):
@@ -228,7 +237,7 @@ class BlockCyclicScheduler(TaskScheduler):
         cluster_entry: tuple = self.get_cluster_entry(grid_entry)
         node_key = self.get_node_key(cluster_entry)
         # TODO (hme): This will be problematic. Only able to assign 10k tasks-per-node.
-        resources[node_key] = 1.0/10**4
+        resources[node_key] = 1.0 / 10 ** 4
         options["resources"] = resources
 
         kwargs = kwargs.copy()
@@ -237,18 +246,32 @@ class BlockCyclicScheduler(TaskScheduler):
         if self.verbose:
             if name == "bop":
                 fname = args[0]
-                log_str = "BCS: bop_name=%s, " \
-                          "grid_entry=%s, grid_shape=%s " \
-                          "on cluster_grid[%s] == %s"
-                logging.getLogger().info(log_str, fname, str(grid_entry),
-                                         str(grid_shape), str(cluster_entry),
-                                         node_key)
+                log_str = (
+                    "BCS: bop_name=%s, "
+                    "grid_entry=%s, grid_shape=%s "
+                    "on cluster_grid[%s] == %s"
+                )
+                logging.getLogger().info(
+                    log_str,
+                    fname,
+                    str(grid_entry),
+                    str(grid_shape),
+                    str(cluster_entry),
+                    node_key,
+                )
             else:
-                log_str = "BCS: remote_name=%s, " \
-                          "grid_entry=%s, grid_shape=%s " \
-                          "on cluster_grid[%s] == %s"
-                logging.getLogger().info(log_str, name, str(grid_entry),
-                                         str(grid_shape), str(cluster_entry),
-                                         node_key)
+                log_str = (
+                    "BCS: remote_name=%s, "
+                    "grid_entry=%s, grid_shape=%s "
+                    "on cluster_grid[%s] == %s"
+                )
+                logging.getLogger().info(
+                    log_str,
+                    name,
+                    str(grid_entry),
+                    str(grid_shape),
+                    str(cluster_entry),
+                    node_key,
+                )
 
         return self.call_with_options(name, args, kwargs, options)
