@@ -25,8 +25,8 @@ from nums.core.array.application import ArrayApplication
 def test_app_manager():
     settings.use_head = True
     for compute_name in ["numpy"]:
-        for system_name in ["serial", "ray", "ray"]:
-            for device_grid_name in ["none", "cyclic"]:
+        for system_name in ["serial", "ray"]:
+            for device_grid_name in ["cyclic", "packed"]:
                 settings.compute_name = compute_name
                 settings.system_name = system_name
                 settings.device_grid_name = device_grid_name
@@ -36,6 +36,10 @@ def test_app_manager():
                 application_manager.destroy()
                 assert not application_manager.is_initialized()
                 time.sleep(1)
+    # Revert for other tests.
+    settings.compute_name = "numpy"
+    settings.system_name = "ray"
+    settings.device_grid_name = "cyclic"
 
 
 if __name__ == "__main__":

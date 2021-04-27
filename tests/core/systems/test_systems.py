@@ -18,20 +18,11 @@ import numpy as np
 
 from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray, Block
-from nums.core.grid.grid import NoDeviceGrid, CyclicDeviceGrid
+from nums.core.grid.grid import CyclicDeviceGrid
 from nums.core.systems.systems import RaySystem
 
 
 # pylint: disable=protected-access
-
-
-def test_options(app_inst_all: ArrayApplication):
-    device_id = app_inst_all.cm.device_grid.get_device_id(agrid_entry=(0, 0),
-                                                          agrid_shape=(1, 1))
-    if isinstance(app_inst_all.cm.device_grid, NoDeviceGrid):
-        assert device_id is None
-    if isinstance(app_inst_all.cm.device_grid, CyclicDeviceGrid):
-        assert device_id is not None
 
 
 def test_warmup(app_inst_all: ArrayApplication):

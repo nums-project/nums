@@ -30,21 +30,3 @@ def check_block_integrity(arr: BlockArray):
         assert arr.blocks[grid_entry].rect == arr.grid.get_slice_tuples(grid_entry)
         assert arr.blocks[grid_entry].shape == arr.grid.get_block_shape(grid_entry)
 
-
-class MockMultiNodeDeviceGrid(CyclicDeviceGrid):
-    # pylint: disable=abstract-method, bad-super-call
-
-    def __init__(self, grid_shape, device_type, device_ids):
-        # Replicate available devices to satisfy cluster requirements.
-        assert len(device_ids) == 1
-        mock_device_ids = device_ids * np.prod(self.grid_shape)
-        super(CyclicDeviceGrid, self).__init__(grid_shape, device_type, mock_device_ids)
-
-
-def mock_cluster(cluster_shape):
-    system: SystemInterface = RaySystem(use_head=True)
-    system.init()
-    device_grid: DeviceGrid = MockMultiNodeDeviceGrid(cluster_shape, "cpu", system.devices())
-    cm = ComputeManager.create(system, numpy_compute, device_grid)
-    fs = FileSystem(cm)
-    return ArrayApplication(cm, fs)

@@ -23,7 +23,7 @@ from nums.core import settings
 from nums.core.array.application import ArrayApplication
 from nums.core.compute import numpy_compute
 from nums.core.compute.compute_manager import ComputeManager
-from nums.core.grid.grid import NoDeviceGrid, CyclicDeviceGrid
+from nums.core.grid.grid import DeviceGrid, CyclicDeviceGrid, PackedDeviceGrid
 from nums.core.systems.filesystem import FileSystem
 from nums.core.systems.system_interface import SystemInterface
 from nums.core.systems.systems import SerialSystem, RaySystem
@@ -64,19 +64,19 @@ def create():
         system: SystemInterface = RaySystem(use_head=use_head,
                                             num_nodes=num_nodes)
     else:
-        raise Exception()
+        raise Exception("Unexpected system name %s" % settings.system_name)
     system.init()
 
     compute_module = {
         "numpy": numpy_compute
     }[settings.compute_name]
 
-    if settings.device_grid_name == "none":
-        device_grid = NoDeviceGrid(settings.cluster_shape, "cpu", system.devices())
-    elif settings.device_grid_name == "cyclic":
-        device_grid = CyclicDeviceGrid(settings.cluster_shape, "cpu", system.devices())
+    if settings.device_grid_name == "cyclic":
+        device_grid: DeviceGrid = CyclicDeviceGrid(settings.cluster_shape, "cpu", system.devices())
+    elif settings.device_grid_name == "packed":
+        device_grid: DeviceGrid = PackedDeviceGrid(settings.cluster_shape, "cpu", system.devices())
     else:
-        raise Exception()
+        raise Exception("Unexpected device grid name %s" % settings.device_grid_name)
 
     cm = ComputeManager.create(system, compute_module, device_grid)
     fs = FileSystem(cm)
@@ -88,6 +88,7 @@ def destroy():
     if _instance is None:
         return
     # This will shutdown ray if ray was started by NumS.
+    _instance.cm.system.shutdown()
     ComputeManager.destroy()
     del _instance
     _instance = None

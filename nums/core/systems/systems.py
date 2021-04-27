@@ -69,8 +69,8 @@ class RaySystem(SystemInterface):
     """
 
     def __init__(self, use_head=False, num_nodes=None):
-        self.use_head = use_head
-        self.num_nodes = num_nodes
+        self._use_head = use_head
+        self._num_nodes = num_nodes
         self._manage_ray = True
         self._remote_functions = {}
         self._available_nodes = []
@@ -99,18 +99,20 @@ class RaySystem(SystemInterface):
                 total_cpus += node["Resources"]["CPU"]
                 self._worker_nodes.append(node)
                 self._available_nodes.append(node)
-        if self.use_head and self._has_cpu_resources(self._head_node):
+        if self._use_head and self._has_cpu_resources(self._head_node):
             total_cpus += self._head_node["Resources"]["CPU"]
             self._available_nodes.append(self._head_node)
         logging.getLogger().info("total cpus %s", total_cpus)
+
+        if self._num_nodes is None:
+            self._num_nodes = len(self._available_nodes)
+        assert self._num_nodes <= len(self._available_nodes)
+
         self.init_devices()
 
     def init_devices(self):
         self._devices = []
-        if self.num_nodes is None:
-            self.num_nodes = len(self._available_nodes)
-        assert self.num_nodes <= len(self._available_nodes)
-        for node_id in range(self.num_nodes):
+        for node_id in range(self._num_nodes):
             node = self._available_nodes[node_id]
             did = DeviceID(node_id, self._node_key(node), "cpu", 1)
             self._devices.append(did)
@@ -167,7 +169,6 @@ class RaySystem(SystemInterface):
 
     def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
         if device_id is not None:
-            # May be None if NoDeviceGrid is used.
             node = self._device_to_node[device_id]
             node_key = self._node_key(node)
             if "resources" in options:
@@ -181,3 +182,17 @@ class RaySystem(SystemInterface):
     def num_cores_total(self):
         num_cores = sum(map(lambda n: n["Resources"]["CPU"], self._device_to_node.values()))
         return int(num_cores)
+
+
+class RaySystemStockScheduler(RaySystem):
+    """
+    An implementation of the Ray system which ignores scheduling commands given
+    by the caller. For testing only.
+    """
+    def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
+        if device_id is not None:
+            node = self._device_to_node[device_id]
+            node_key = self._node_key(node)
+            if "resources" in options:
+                assert node_key not in options
+        return self._remote_functions[name].options(**options).remote(*args, **kwargs)
