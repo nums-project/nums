@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import logging
 import sys
 
@@ -29,7 +28,6 @@ from nums.core.systems.system_interface import SystemInterface
 from nums.core.systems.systems import SerialSystem, RaySystem
 
 # pylint: disable=global-statement
-
 
 _instance: ArrayApplication = None
 
@@ -67,14 +65,14 @@ def create():
         raise Exception()
     system.init()
 
-    compute_module = {
-        "numpy": numpy_compute
-    }[settings.compute_name]
+    compute_module = {"numpy": numpy_compute}[settings.compute_name]
 
     if settings.device_grid_name == "none":
-        device_grid = NoDeviceGrid(settings.cluster_shape, "cpu", system.devices())
+        device_grid = NoDeviceGrid(settings.cluster_shape, "cpu",
+                                   system.devices())
     elif settings.device_grid_name == "cyclic":
-        device_grid = CyclicDeviceGrid(settings.cluster_shape, "cpu", system.devices())
+        device_grid = CyclicDeviceGrid(settings.cluster_shape, "cpu",
+                                       system.devices())
     else:
         raise Exception()
 

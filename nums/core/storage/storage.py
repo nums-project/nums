@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import itertools
 import logging
 import os
@@ -79,7 +78,8 @@ class StoredArray(object):
         block_shape = np.array(self.grid.block_shape, dtype=np.int)
         for grid_entry in iterator:
             start = block_shape * grid_entry
-            entry_shape = np.array(self.grid.get_block_shape(grid_entry), dtype=np.int)
+            entry_shape = np.array(self.grid.get_block_shape(grid_entry),
+                                   dtype=np.int)
             end = start + entry_shape
             slices = tuple(map(lambda item: slice(*item), zip(*(start, end))))
             result[slices] = self.get(grid_entry)
@@ -113,9 +113,9 @@ class StoredArrayS3(StoredArray):
                 Key=self.get_key(grid_entry),
             )
         except Exception as e:
-            logging.getLogger().error("[Error] StoredArrayS3: Failed to get %s %s",
-                                      self.container_name,
-                                      self.get_key(grid_entry))
+            logging.getLogger().error(
+                "[Error] StoredArrayS3: Failed to get %s %s",
+                self.container_name, self.get_key(grid_entry))
             raise e
         block_bytes = response['Body'].read()
         dtype = self.grid.dtype
@@ -123,9 +123,9 @@ class StoredArrayS3(StoredArray):
         try:
             block = np.frombuffer(block_bytes, dtype=dtype).reshape(shape)
         except Exception as e:
-            logging.getLogger().error("[Error] StoredArrayS3: Failed to read from buffer %s %s",
-                                      self.container_name,
-                                      self.get_key(grid_entry))
+            logging.getLogger().error(
+                "[Error] StoredArrayS3: Failed to read from buffer %s %s",
+                self.container_name, self.get_key(grid_entry))
             raise e
         return block
 
@@ -186,9 +186,17 @@ class BimodalGaussian(object):
 
     @classmethod
     def get_dataset(cls, n, d, p=0.9, seed=1, dtype=np.float64, theta=None):
-        return cls(10, 2, 30, 4, dim=d, seed=seed, dtype=dtype).sample(n, p=p, theta=theta)
+        return cls(10, 2, 30, 4, dim=d, seed=seed,
+                   dtype=dtype).sample(n, p=p, theta=theta)
 
-    def __init__(self, mu1, sigma1, mu2, sigma2, dim=2, seed=1337, dtype=np.float64):
+    def __init__(self,
+                 mu1,
+                 sigma1,
+                 mu2,
+                 sigma2,
+                 dim=2,
+                 seed=1337,
+                 dtype=np.float64):
         self.dtype = dtype
         self.seed = seed
         self.rs = np.random.RandomState(self.seed)
@@ -219,8 +227,10 @@ class BimodalGaussian(object):
         # Pass theta to sample for regression.
         n1 = int(n * p)
         n2 = n - n1
-        X1 = self.rs.randn(n1, self.dim).astype(self.dtype) * self.sigma1.T + self.mu1.T
-        X2 = self.rs.randn(n2, self.dim).astype(self.dtype) * self.sigma2.T + self.mu2.T
+        X1 = self.rs.randn(n1, self.dim).astype(
+            self.dtype) * self.sigma1.T + self.mu1.T
+        X2 = self.rs.randn(n2, self.dim).astype(
+            self.dtype) * self.sigma2.T + self.mu2.T
         if theta is None:
             y1 = np.ones(n1, dtype=self.dtype)
             y2 = np.zeros(n2, dtype=self.dtype)

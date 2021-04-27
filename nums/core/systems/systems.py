@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import logging
 from types import FunctionType
 from typing import Any, Union, List, Dict
@@ -123,7 +122,8 @@ class RaySystem(SystemInterface):
         return node["Resources"]["CPU"] if "CPU" in node["Resources"] else 0.0
 
     def _node_key(self, node):
-        node_key = list(filter(lambda key: "node" in key, node["Resources"].keys()))
+        node_key = list(
+            filter(lambda key: "node" in key, node["Resources"].keys()))
         assert len(node_key) == 1
         return node_key[0]
 
@@ -137,7 +137,7 @@ class RaySystem(SystemInterface):
     def warmup(self, n: int):
         # Quick warm-up. Useful for quick and more accurate testing.
         if n > 0:
-            assert n < 10 ** 6
+            assert n < 10**6
 
             def warmup_func(n):
                 # pylint: disable=import-outside-toplevel
@@ -172,12 +172,14 @@ class RaySystem(SystemInterface):
             node_key = self._node_key(node)
             if "resources" in options:
                 assert node_key not in options
-            options["resources"] = {node_key: 1.0/10**4}
-        return self._remote_functions[name].options(**options).remote(*args, **kwargs)
+            options["resources"] = {node_key: 1.0 / 10**4}
+        return self._remote_functions[name].options(**options).remote(
+            *args, **kwargs)
 
     def devices(self):
         return self._devices
 
     def num_cores_total(self):
-        num_cores = sum(map(lambda n: n["Resources"]["CPU"], self._device_to_node.values()))
+        num_cores = sum(
+            map(lambda n: n["Resources"]["CPU"], self._device_to_node.values()))
         return int(num_cores)

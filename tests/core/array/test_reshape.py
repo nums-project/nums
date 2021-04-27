@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import time
 
 import numpy as np
@@ -24,12 +23,18 @@ from nums.core.array.blockarray import BlockArray, Block
 
 
 def test_reshape_basic(app_inst):
-    def _reshape_by_entry(app_inst, arr: BlockArray, shape, block_shape) -> BlockArray:
-        dst_arr = app_inst.empty(shape=shape, block_shape=block_shape, dtype=arr.dtype)
+
+    def _reshape_by_entry(app_inst, arr: BlockArray, shape,
+                          block_shape) -> BlockArray:
+        dst_arr = app_inst.empty(shape=shape,
+                                 block_shape=block_shape,
+                                 dtype=arr.dtype)
         for dst_grid_entry in dst_arr.grid.get_entry_iterator():
             dst_slice_selection = dst_arr.grid.get_slice(dst_grid_entry)
-            dst_index_list = array_utils.slice_sel_to_index_list(dst_slice_selection)
-            src_index_list = array_utils.translate_index_list(dst_index_list, shape, arr.shape)
+            dst_index_list = array_utils.slice_sel_to_index_list(
+                dst_slice_selection)
+            src_index_list = array_utils.translate_index_list(
+                dst_index_list, shape, arr.shape)
             for i in range(len(dst_index_list)):
                 dst_index = dst_index_list[i]
                 src_index = src_index_list[i]
@@ -42,7 +47,8 @@ def test_reshape_basic(app_inst):
     true_arr = np_arr.reshape(dst_shape)
     src_arr: BlockArray = app_inst.array(np_arr, block_shape=(1, 10, 3))
     t = time.time()
-    dst_arr_blockwise: BlockArray = src_arr.reshape(dst_shape, block_shape=dst_block_shape)
+    dst_arr_blockwise: BlockArray = src_arr.reshape(dst_shape,
+                                                    block_shape=dst_block_shape)
     dst_arr_blockwise.touch()
     print("blockwise time", time.time() - t)
     assert np.allclose(dst_arr_blockwise.get(), true_arr)
@@ -59,7 +65,8 @@ def test_reshape_ones(app_inst: ArrayApplication):
 
     def _strip_ones(shape, block_shape):
         indexes = np.where(np.array(shape) != 1)
-        return tuple(np.array(shape)[indexes]), tuple(np.array(block_shape)[indexes])
+        return tuple(np.array(shape)[indexes]), tuple(
+            np.array(block_shape)[indexes])
 
     # inject many different variants of ones, and ensure the block shapes match at every level.
     shapes = [
@@ -90,12 +97,13 @@ def test_reshape_ones(app_inst: ArrayApplication):
 
         # Try adding ones.
         for nones in num_ones:
-            for pos in range(len(shape)+1):
-                ones = [1]*nones
+            for pos in range(len(shape) + 1):
+                ones = [1] * nones
                 new_shape = list(shape)
                 new_shape = new_shape[:pos] + ones + new_shape[pos:]
                 new_block_shape = list(block_shape)
-                new_block_shape = new_block_shape[:pos] + ones + new_block_shape[pos:]
+                new_block_shape = new_block_shape[:pos] + ones + new_block_shape[
+                    pos:]
                 new_arr = arr.reshape(new_shape, block_shape=new_block_shape)
                 for grid_entry in new_arr.grid.get_entry_iterator():
                     new_block: Block = new_arr.blocks[grid_entry]

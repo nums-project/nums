@@ -13,11 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import numpy as np
 
 from nums.numpy import BlockArray
-
 
 # pylint: disable=import-outside-toplevel, protected-access
 
@@ -27,19 +25,26 @@ def test_basic(nps_app_inst):
     app = nps_app_inst
 
     x_api = nps.random.RandomState(1337).random_sample((500, 1))
-    x_app = app.random_state(1337).random(shape=x_api.shape, block_shape=x_api.block_shape)
+    x_app = app.random_state(1337).random(shape=x_api.shape,
+                                          block_shape=x_api.block_shape)
     assert nps.allclose(x_api, x_app)
 
     x_api = nps.random.RandomState(1337).rand(500, 1)
-    x_app = app.random_state(1337).random(shape=x_api.shape, block_shape=x_api.block_shape)
+    x_app = app.random_state(1337).random(shape=x_api.shape,
+                                          block_shape=x_api.block_shape)
     assert nps.allclose(x_api, x_app)
 
     x_api = nps.random.RandomState(1337).randn(500, 1) + 5.0
-    x_app = app.random_state(1337).normal(loc=5.0, shape=x_api.shape, block_shape=x_api.block_shape)
+    x_app = app.random_state(1337).normal(loc=5.0,
+                                          shape=x_api.shape,
+                                          block_shape=x_api.block_shape)
     assert nps.allclose(x_api, x_app)
 
     x_api = nps.random.RandomState(1337).randint(0, 10, size=(100, 1))
-    x_app = app.random_state(1337).integers(0, 10, shape=x_api.shape, block_shape=x_api.block_shape)
+    x_app = app.random_state(1337).integers(0,
+                                            10,
+                                            shape=x_api.shape,
+                                            block_shape=x_api.block_shape)
     assert nps.allclose(x_api, x_app)
 
 
@@ -50,19 +55,21 @@ def test_shuffle(nps_app_inst):
 
     shape = (12, 34, 56)
     block_shape = (2, 5, 7)
-    arr: BlockArray = nps.arange(np.product(shape)).reshape(shape, block_shape=block_shape)
+    arr: BlockArray = nps.arange(np.product(shape)).reshape(
+        shape, block_shape=block_shape)
     np_arr = arr.get()
 
     for axis in range(3):
         for axis_frac in (1.0, 0.5):
             rs = nps.random.RandomState(1337)
-            idx: BlockArray = rs.permutation(int(shape[axis]*axis_frac))
+            idx: BlockArray = rs.permutation(int(shape[axis] * axis_frac))
             np_idx = idx.get()
             if axis == 0:
                 arr_shuffle = arr[idx]
                 np_arr_shuffle = np_arr[np_idx]
             else:
-                arr_shuffle = arr._advanced_single_array_subscript((np_idx,), axis=axis)
+                arr_shuffle = arr._advanced_single_array_subscript((np_idx,),
+                                                                   axis=axis)
                 np_ss = [slice(None, None) for _ in range(3)]
                 np_ss[axis] = np_idx
                 np_ss = tuple(np_ss)
@@ -77,7 +84,8 @@ def test_shuffle_subscript_ops(nps_app_inst):
 
     shape = (123, 45)
     block_shape = (10, 20)
-    arr: BlockArray = nps.arange(np.product(shape)).reshape(shape, block_shape=block_shape)
+    arr: BlockArray = nps.arange(np.product(shape)).reshape(
+        shape, block_shape=block_shape)
     np_arr = arr.get()
     rs = nps.random.RandomState(1337)
     idx: BlockArray = rs.permutation(shape[1])
@@ -94,7 +102,8 @@ def test_blockarray_perm(nps_app_inst):
 
     shape = (12, 34)
     block_shape = (5, 10)
-    arr: BlockArray = nps.arange(np.product(shape)).reshape(shape, block_shape=block_shape)
+    arr: BlockArray = nps.arange(np.product(shape)).reshape(
+        shape, block_shape=block_shape)
     np_arr = arr.get()
     rs = nps.random.RandomState(1337)
     np_arr_shuffle: BlockArray = rs.permutation(arr).get()

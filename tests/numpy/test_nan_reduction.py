@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import itertools
 import warnings
 
@@ -24,7 +23,6 @@ warnings.filterwarnings("ignore", "Mean of empty slice")
 warnings.filterwarnings("ignore", "invalid value encountered in true_divide")
 warnings.filterwarnings("ignore", "Degrees of freedom <= 0 for slice.")
 
-
 # pylint: disable=import-outside-toplevel, no-member
 
 
@@ -34,21 +32,19 @@ def test_nan_reductions(nps_app_inst):
 
     assert nps_app_inst is not None
 
-    ba: BlockArray = nps.array([[-1, 4, np.nan, 5],
-                                [3, 2, nps.nan, 6]])
-    block_shapes = [(1, 1),
-                    (1, 2),
-                    (1, 4),
-                    (2, 1),
-                    (2, 4)]
+    ba: BlockArray = nps.array([[-1, 4, np.nan, 5], [3, 2, nps.nan, 6]])
+    block_shapes = [(1, 1), (1, 2), (1, 4), (2, 1), (2, 4)]
     for block_shape in block_shapes:
         ba = ba.reshape(block_shape=block_shape)
         np_arr = ba.get()
-        op_params = ["nanmax", "nanmin", "nansum", "nanmean", "nanvar", "nanstd"]
+        op_params = [
+            "nanmax", "nanmin", "nansum", "nanmean", "nanvar", "nanstd"
+        ]
         axis_params = [None, 0, 1]
         keepdims_params = [True, False]
 
-        for op, axis, keepdims in itertools.product(op_params, axis_params, keepdims_params):
+        for op, axis, keepdims in itertools.product(op_params, axis_params,
+                                                    keepdims_params):
             ns_op = nps.__getattribute__(op)
             np_op = np.__getattribute__(op)
             np_result = np_op(np_arr, axis=axis, keepdims=keepdims)

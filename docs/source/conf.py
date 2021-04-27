@@ -12,15 +12,14 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../..'))
 
+sys.path.insert(0, os.path.abspath('../..'))
 
 # -- Project information -----------------------------------------------------
 
 project = 'NumS'
-copyright = '2021, The NumS Team' # pylint: disable=redefined-builtin
+copyright = '2021, The NumS Team'  # pylint: disable=redefined-builtin
 author = 'The NumS Team'
-
 
 # -- General configuration ---------------------------------------------------
 
@@ -28,14 +27,9 @@ author = 'The NumS Team'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.coverage',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.mathjax',
-    'sphinx.ext.viewcode',
-    'sphinx_autodoc_typehints',
-    'sphinx_rtd_theme',
-    'm2r2'
+    'sphinx.ext.autodoc', 'sphinx.ext.coverage', 'sphinx.ext.napoleon',
+    'sphinx.ext.mathjax', 'sphinx.ext.viewcode', 'sphinx_autodoc_typehints',
+    'sphinx_rtd_theme', 'm2r2'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -45,7 +39,6 @@ templates_path = ['_templates']
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
-
 
 # -- Options for HTML output -------------------------------------------------
 

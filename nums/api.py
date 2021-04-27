@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from nums.core.application_manager import instance as _instance
 from nums.core.array.blockarray import BlockArray
 
@@ -66,7 +65,10 @@ def delete(filename: str) -> BlockArray:
         return _instance().delete_fs(filename)
 
 
-def read_csv(filename, dtype=float, delimiter=',', has_header=False) -> BlockArray:
+def read_csv(filename,
+             dtype=float,
+             delimiter=',',
+             has_header=False) -> BlockArray:
     """Read a csv text file.
 
     Args:

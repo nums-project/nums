@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import itertools
 
 # pylint: disable=wrong-import-order
@@ -48,21 +47,31 @@ def test_matvec(app_inst: ArrayApplication):
 def test_vecdot(app_inst: ArrayApplication):
     size = 9
     block_size = 3
-    y1 = app_inst.array(np.arange(size).reshape(size, 1), block_shape=(block_size, 1))
-    y2 = app_inst.array(np.arange(size).reshape(size, 1), block_shape=(block_size, 1))
+    y1 = app_inst.array(np.arange(size).reshape(size, 1),
+                        block_shape=(block_size, 1))
+    y2 = app_inst.array(np.arange(size).reshape(size, 1),
+                        block_shape=(block_size, 1))
     assert np.allclose((y1.T @ y2).get(), y1.T.get() @ y2.get())
-    y1 = app_inst.array(np.arange(size).reshape(size), block_shape=(block_size,))
-    y2 = app_inst.array(np.arange(size).reshape(size), block_shape=(block_size,))
+    y1 = app_inst.array(np.arange(size).reshape(size),
+                        block_shape=(block_size,))
+    y2 = app_inst.array(np.arange(size).reshape(size),
+                        block_shape=(block_size,))
     assert np.allclose((y1.T @ y2).get(), y1.T.get() @ y2.get())
-    y1 = app_inst.array(np.arange(size).reshape(size), block_shape=(block_size,))
-    y2 = app_inst.array(np.arange(size).reshape(size, 1), block_shape=(block_size, 1))
+    y1 = app_inst.array(np.arange(size).reshape(size),
+                        block_shape=(block_size,))
+    y2 = app_inst.array(np.arange(size).reshape(size, 1),
+                        block_shape=(block_size, 1))
     assert np.allclose((y1.T @ y2).get(), y1.T.get() @ y2.get())
     assert np.allclose((y2.T @ y1).get(), y2.T.get() @ y1.get())
-    y1 = app_inst.array(np.arange(size).reshape(1, size), block_shape=(1, block_size))
-    y2 = app_inst.array(np.arange(size).reshape(size, 1), block_shape=(block_size, 1))
+    y1 = app_inst.array(np.arange(size).reshape(1, size),
+                        block_shape=(1, block_size))
+    y2 = app_inst.array(np.arange(size).reshape(size, 1),
+                        block_shape=(block_size, 1))
     assert np.allclose((y1 @ y2).get(), y1.get() @ y2.get())
-    y1 = app_inst.array(np.arange(size).reshape(1, size), block_shape=(1, block_size))
-    y2 = app_inst.array(np.arange(size).reshape(1, size), block_shape=(1, block_size))
+    y1 = app_inst.array(np.arange(size).reshape(1, size),
+                        block_shape=(1, block_size))
+    y2 = app_inst.array(np.arange(size).reshape(1, size),
+                        block_shape=(1, block_size))
     assert np.allclose((y1 @ y2.T).get(), y1.get() @ y2.T.get())
 
 
@@ -72,10 +81,7 @@ def test_tensordot_basic(app_inst: ArrayApplication):
     rX = app_inst.array(npX, block_shape=(1, 2, 10, 3))
 
     rResult = rX.T.tensordot(rX, axes=1)
-    assert np.allclose(
-        rResult.get(),
-        (np.tensordot(npX.T, npX, axes=1))
-    )
+    assert np.allclose(rResult.get(), (np.tensordot(npX.T, npX, axes=1)))
     common.check_block_integrity(rResult)
 
 
@@ -104,19 +110,22 @@ def test_tensordot_all_shapes(app_inst: ArrayApplication):
             c = np.tensordot(a, b, axes=axes)
         else:
             raise Exception()
-        a_block_shapes = list(itertools.product(*list(map(lambda x: list(range(1, x + 1)),
-                                                          a.shape))))
-        b_block_shapes = list(itertools.product(*list(map(lambda x: list(range(1, x + 1)),
-                                                          b.shape))))
-        pbar = tqdm.tqdm(total=np.product([len(a_block_shapes), len(b_block_shapes)]))
+        a_block_shapes = list(
+            itertools.product(
+                *list(map(lambda x: list(range(1, x + 1)), a.shape))))
+        b_block_shapes = list(
+            itertools.product(
+                *list(map(lambda x: list(range(1, x + 1)), b.shape))))
+        pbar = tqdm.tqdm(total=np.product(
+            [len(a_block_shapes), len(b_block_shapes)]))
         for a_block_shape in a_block_shapes:
             for b_block_shape in b_block_shapes:
                 pbar.update(1)
                 if a_block_shape[-axes:] != b_block_shape[:axes]:
                     continue
-                pbar.set_description("axes=%s %s @ %s" % (str(axes),
-                                                          str(a_block_shape),
-                                                          str(b_block_shape)))
+                pbar.set_description(
+                    "axes=%s %s @ %s" %
+                    (str(axes), str(a_block_shape), str(b_block_shape)))
                 block_a = app_inst.array(a, block_shape=a_block_shape)
                 block_b = app_inst.array(b, block_shape=b_block_shape)
                 block_c = block_a.tensordot(block_b, axes=axes)
@@ -188,8 +197,8 @@ def test_bops(bop_data: tuple):
     common.check_block_integrity(Z)
 
     # Power
-    Z = X ** Y
-    npZ = npX ** npY
+    Z = X**Y
+    npZ = npX**npY
     assert np.allclose(Z.get(), npZ)
     common.check_block_integrity(Z)
 
@@ -272,16 +281,16 @@ def test_conversions(conversions_data: tuple):
         common.check_block_integrity(Z)
 
     # Power
-    Z = X ** Y
-    npZ = npX ** Y
+    Z = X**Y
+    npZ = npX**Y
     assert np.allclose(Z.get(), npZ)
     common.check_block_integrity(Z)
     if isinstance(Y, np.ndarray):
         with pytest.raises(ValueError):
-            Z = Y ** X
+            Z = Y**X
     else:
-        Z = Y ** X
-        npZ = Y ** npX
+        Z = Y**X
+        npZ = Y**npX
         assert np.allclose(Z.get(), npZ)
         common.check_block_integrity(Z)
 

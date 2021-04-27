@@ -25,8 +25,8 @@ from nums.numpy.numpy_utils import update_doc_string
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-
 # pylint: disable=import-outside-toplevel, possibly-unused-variable, eval-used, reimported
+
 
 def test_doctest_fallback(nps_app_inst):
     import nums.numpy as nps
@@ -37,7 +37,10 @@ def test_doctest_fallback(nps_app_inst):
     failed = []
     excepted = []
 
-    plot_funcs = {"kaiser", "bartlett", "hanning", "blackman", "histogram2d", "interp", "sinc"}
+    plot_funcs = {
+        "kaiser", "bartlett", "hanning", "blackman", "histogram2d", "interp",
+        "sinc"
+    }
 
     for func in settings.doctest_fallback:
         nps_func = nps.__getattribute__(func)
@@ -52,7 +55,9 @@ def test_doctest_fallback(nps_app_inst):
                 print("Failure")
             else:
                 optionflags = doctest.NORMALIZE_WHITESPACE | doctest.FAIL_FAST
-                doctest.run_docstring_examples(nps_func, locals(), optionflags=optionflags)
+                doctest.run_docstring_examples(nps_func,
+                                               locals(),
+                                               optionflags=optionflags)
 
         if f.getvalue() == "":
             passed.append(func)
@@ -76,8 +81,10 @@ def test_manual_cov(nps_app_inst):
     x = [-2.1, -1, 4.3]
     y = [3, 1.1, 0.12]
     X = np.stack((x, y), axis=0)
-    assert np.allclose(np.cov(X), np.array([[11.71, -4.286], [-4.286, 2.144133]]))
-    assert np.allclose(np.cov(x, y), np.array([[11.71, -4.286], [-4.286, 2.144133]]))
+    assert np.allclose(np.cov(X), np.array([[11.71, -4.286], [-4.286,
+                                                              2.144133]]))
+    assert np.allclose(np.cov(x, y),
+                       np.array([[11.71, -4.286], [-4.286, 2.144133]]))
     assert np.allclose(np.cov(x), np.array(11.71))
 
 

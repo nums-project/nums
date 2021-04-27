@@ -15,10 +15,12 @@ class ComputeInterface(object):
     def empty(self, grid_entry: Tuple, grid_meta: Dict, syskwargs: Dict):
         raise NotImplementedError()
 
-    def new_block(self, op_name: str, grid_entry: Tuple, grid_meta: Dict, syskwargs: Dict):
+    def new_block(self, op_name: str, grid_entry: Tuple, grid_meta: Dict,
+                  syskwargs: Dict):
         raise NotImplementedError()
 
-    def random_block(self, rng_params, rfunc_name, rfunc_args, shape, dtype, syskwargs: Dict):
+    def random_block(self, rng_params, rfunc_name, rfunc_args, shape, dtype,
+                     syskwargs: Dict):
         raise NotImplementedError()
 
     def permutation(self, rng_params, size, syskwargs: Dict):
@@ -36,17 +38,20 @@ class ComputeInterface(object):
     def swapaxes(self, arr, axis1, axis2, syskwargs: Dict):
         raise NotImplementedError()
 
-    def create_block(self, *src_arrs, src_params, dst_params, dst_shape, dst_shape_bc,
+    def create_block(self, *src_arrs, src_params, dst_params, dst_shape,
+                     dst_shape_bc, syskwargs: Dict):
+        raise NotImplementedError()
+
+    def update_block(self, dst_arr, *src_arrs, src_params, dst_params,
                      syskwargs: Dict):
         raise NotImplementedError()
 
-    def update_block(self, dst_arr, *src_arrs, src_params, dst_params, syskwargs: Dict):
+    def update_block_by_index(self, dst_arr, src_arr, index_pairs,
+                              syskwargs: Dict):
         raise NotImplementedError()
 
-    def update_block_by_index(self, dst_arr, src_arr, index_pairs, syskwargs: Dict):
-        raise NotImplementedError()
-
-    def update_block_along_axis(self, dst_arr, src_arr, index_pairs, axis, syskwargs: Dict):
+    def update_block_along_axis(self, dst_arr, src_arr, index_pairs, axis,
+                                syskwargs: Dict):
         raise NotImplementedError()
 
     def bop(self, op, a1, a2, a1_T, a2_T, axes, syskwargs: Dict):
@@ -55,7 +60,8 @@ class ComputeInterface(object):
     def bop_reduce(self, op, a1, a2, a1_T, a2_T, syskwargs: Dict):
         raise NotImplementedError()
 
-    def split(self, arr, indices_or_sections, axis, transposed, syskwargs: Dict):
+    def split(self, arr, indices_or_sections, axis, transposed,
+              syskwargs: Dict):
         raise NotImplementedError()
 
     @method_meta(num_returns=2)
@@ -81,7 +87,8 @@ class ComputeInterface(object):
     def where(self, arr, x, y, block_slice_tuples, syskwargs: Dict):
         raise NotImplementedError()
 
-    def reduce_axis(self, op_name, arr, axis, keepdims, transposed, syskwargs: Dict):
+    def reduce_axis(self, op_name, arr, axis, keepdims, transposed,
+                    syskwargs: Dict):
         raise NotImplementedError()
 
     # Scipy

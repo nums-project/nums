@@ -13,14 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import itertools
 
 import numpy as np
 
 from nums.core.grid.grid import ArrayGrid
 from nums.core.systems import utils as systems_utils
-
 
 # pylint: disable=import-outside-toplevel
 
@@ -41,12 +39,11 @@ def _inspect_block_shape(nps_app_inst):
         grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype.__name__)
         print()
         print("dtype=%s" % dtype.__name__,
-              "cluster_shape=%s" % str(cluster_shape),
-              "shape=%s" % str(shape))
-        print("grid_shape", grid.grid_shape,
-              "block_shape", block_shape)
-        print("array size (GB)", np.product(shape)*dtype().nbytes / 10**9,
-              "block size (GB)", np.product(block_shape)*dtype().nbytes / 10**9)
+              "cluster_shape=%s" % str(cluster_shape), "shape=%s" % str(shape))
+        print("grid_shape", grid.grid_shape, "block_shape", block_shape)
+        print("array size (GB)",
+              np.product(shape) * dtype().nbytes / 10**9, "block size (GB)",
+              np.product(block_shape) * dtype().nbytes / 10**9)
 
 
 def test_block_shape(nps_app_inst):
@@ -90,7 +87,7 @@ def test_block_shape(nps_app_inst):
     grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype.__name__)
     assert grid.grid_shape == (int(num_cores**.5), int(num_cores**.5))
 
-    shape = (10**4, 10**4//dtype(0).nbytes)
+    shape = (10**4, 10**4 // dtype(0).nbytes)
     block_shape = app.compute_block_shape(shape=shape,
                                           dtype=dtype,
                                           cluster_shape=cluster_shape,
@@ -98,7 +95,7 @@ def test_block_shape(nps_app_inst):
     grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype.__name__)
     assert grid.grid_shape != (1, 1)
 
-    shape = (10**4, 10**4//dtype(0).nbytes-1)
+    shape = (10**4, 10**4 // dtype(0).nbytes - 1)
     block_shape = app.compute_block_shape(shape=shape,
                                           dtype=dtype,
                                           cluster_shape=cluster_shape,

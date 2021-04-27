@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import numpy as np
 
 from nums.core.array import utils as array_utils
@@ -28,7 +27,14 @@ class Block(object):
 
     block_id_counter = -1
 
-    def __init__(self, grid_entry, grid_shape, rect, shape, dtype, transposed, cm: ComputeManager,
+    def __init__(self,
+                 grid_entry,
+                 grid_shape,
+                 rect,
+                 shape,
+                 dtype,
+                 transposed,
+                 cm: ComputeManager,
                  id=None):
         self._cm = cm
         self.grid_entry: tuple = grid_entry
@@ -91,8 +97,10 @@ class Block(object):
         shape = list(block.shape)
         rect = block.rect
 
-        grid_entry[axis1], grid_entry[axis2] = grid_entry[axis2], grid_entry[axis1]
-        grid_shape[axis1], grid_shape[axis2] = grid_shape[axis2], grid_shape[axis1]
+        grid_entry[axis1], grid_entry[axis2] = grid_entry[axis2], grid_entry[
+            axis1]
+        grid_shape[axis1], grid_shape[axis2] = grid_shape[axis2], grid_shape[
+            axis1]
         shape[axis1], shape[axis2] = shape[axis2], shape[axis1]
         rect[axis1], rect[axis2] = rect[axis2], rect[axis1]
 
@@ -101,7 +109,9 @@ class Block(object):
         block.shape = tuple(shape)
         block.rect = rect
 
-        block.oid = self._cm.swapaxes(block.oid, axis1, axis2,
+        block.oid = self._cm.swapaxes(block.oid,
+                                      axis1,
+                                      axis2,
                                       syskwargs={
                                           "grid_entry": block.grid_entry,
                                           "grid_shape": block.grid_shape
@@ -147,10 +157,13 @@ class Block(object):
             other = self._block_from_other(other)
         if op == "tensordot":
             axes = args["axes"]
-            result_grid_entry = tuple(list(self.grid_entry[:-axes]) + list(other.grid_entry[axes:]))
-            result_grid_shape = tuple(list(self.grid_shape[:-axes]) + list(other.grid_shape[axes:]))
+            result_grid_entry = tuple(
+                list(self.grid_entry[:-axes]) + list(other.grid_entry[axes:]))
+            result_grid_shape = tuple(
+                list(self.grid_shape[:-axes]) + list(other.grid_shape[axes:]))
             result_rect = list(self.rect[:-axes] + other.rect[axes:])
-            result_shape = tuple(list(self.shape[:-axes]) + list(other.shape[axes:]))
+            result_shape = tuple(
+                list(self.shape[:-axes]) + list(other.shape[axes:]))
         else:
             # Broadcasting starts from trailing dimensions.
             # Resulting shape is max of trailing shapes
@@ -182,9 +195,7 @@ class Block(object):
             result_rect = list(reversed(result_rect))
             result_shape = tuple(reversed(result_shape))
 
-        dtype = array_utils.get_bop_output_type(op,
-                                                self.dtype,
-                                                other.dtype)
+        dtype = array_utils.get_bop_output_type(op, self.dtype, other.dtype)
         block = Block(grid_entry=result_grid_entry,
                       grid_shape=result_grid_shape,
                       rect=result_rect,
@@ -279,7 +290,10 @@ class Block(object):
 
 class BlockArrayBase(object):
 
-    def __init__(self, grid: ArrayGrid, cm: ComputeManager = None, blocks: np.ndarray = None):
+    def __init__(self,
+                 grid: ArrayGrid,
+                 cm: ComputeManager = None,
+                 blocks: np.ndarray = None):
         self.grid = grid
         self.cm = cm
         self.shape = self.grid.shape
@@ -293,25 +307,31 @@ class BlockArrayBase(object):
             #  and override key methods to better integrate with NumPy's ufuncs.
             self.blocks = np.empty(shape=self.grid.grid_shape, dtype=Block)
             for grid_entry in self.grid.get_entry_iterator():
-                self.blocks[grid_entry] = Block(grid_entry=grid_entry,
-                                                grid_shape=self.grid.grid_shape,
-                                                rect=self.grid.get_slice_tuples(grid_entry),
-                                                shape=self.grid.get_block_shape(grid_entry),
-                                                dtype=self.dtype,
-                                                transposed=False,
-                                                cm=self.cm)
+                self.blocks[grid_entry] = Block(
+                    grid_entry=grid_entry,
+                    grid_shape=self.grid.grid_shape,
+                    rect=self.grid.get_slice_tuples(grid_entry),
+                    shape=self.grid.get_block_shape(grid_entry),
+                    dtype=self.dtype,
+                    transposed=False,
+                    cm=self.cm)
 
     def __repr__(self):
         return "BlockArray(" + str(self.blocks) + ")"
 
     def get(self) -> np.ndarray:
-        result: np.ndarray = np.zeros(shape=self.grid.shape, dtype=self.grid.dtype)
+        result: np.ndarray = np.zeros(shape=self.grid.shape,
+                                      dtype=self.grid.dtype)
         block_shape: np.ndarray = np.array(self.grid.block_shape, dtype=np.int)
-        arrays: list = self.cm.get([self.blocks[grid_entry].oid
-                                    for grid_entry in self.grid.get_entry_iterator()])
-        for block_index, grid_entry in enumerate(self.grid.get_entry_iterator()):
+        arrays: list = self.cm.get([
+            self.blocks[grid_entry].oid
+            for grid_entry in self.grid.get_entry_iterator()
+        ])
+        for block_index, grid_entry in enumerate(
+                self.grid.get_entry_iterator()):
             start = block_shape * grid_entry
-            entry_shape = np.array(self.grid.get_block_shape(grid_entry), dtype=np.int)
+            entry_shape = np.array(self.grid.get_block_shape(grid_entry),
+                                   dtype=np.int)
             end = start + entry_shape
             slices = tuple(map(lambda item: slice(*item), zip(*(start, end))))
             block: Block = self.blocks[grid_entry]
@@ -323,15 +343,18 @@ class BlockArrayBase(object):
 
     def broadcast_to(self, shape):
         b = array_utils.broadcast(self.shape, shape)
-        result_block_shape = array_utils.broadcast_block_shape(self.shape, shape, self.block_shape)
-        result: BlockArrayBase = BlockArrayBase(ArrayGrid(b.shape,
-                                                          result_block_shape,
-                                                          self.grid.dtype.__name__), self.cm)
+        result_block_shape = array_utils.broadcast_block_shape(
+            self.shape, shape, self.block_shape)
+        result: BlockArrayBase = BlockArrayBase(
+            ArrayGrid(b.shape, result_block_shape, self.grid.dtype.__name__),
+            self.cm)
         extras = []
         # Below taken directly from _broadcast_to in numpy's stride_tricks.py.
-        it = np.nditer(
-            (self.blocks,), flags=['multi_index', 'refs_ok', 'zerosize_ok'] + extras,
-            op_flags=['readonly'], itershape=result.grid.grid_shape, order='C')
+        it = np.nditer((self.blocks,),
+                       flags=['multi_index', 'refs_ok', 'zerosize_ok'] + extras,
+                       op_flags=['readonly'],
+                       itershape=result.grid.grid_shape,
+                       order='C')
         with it:
             # never really has writebackifcopy semantics
             broadcast = it.itviews[0]

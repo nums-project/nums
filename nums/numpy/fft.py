@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 # pylint: disable = unused-import
-
 
 from nums.core.application_manager import instance as _instance

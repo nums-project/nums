@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import errno
 import inspect
 import multiprocessing
@@ -29,11 +28,11 @@ def get_num_cores():
 
 
 def method_meta(num_returns=1):
+
     def inner(func):
-        func.remote_params = {
-            "num_returns": num_returns
-        }
+        func.remote_params = {"num_returns": num_returns}
         return func
+
     return inner
 
 
@@ -44,6 +43,7 @@ def extract_functions(imp_cls, remove_self=True):
         @wraps(func)
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
+
         return wrapper
 
     imp_functions = {}
@@ -58,7 +58,8 @@ def extract_functions(imp_cls, remove_self=True):
 
 def check_implementation(interface_cls, imp):
     imp_functions = extract_functions(imp, remove_self=False)
-    required_methods = inspect.getmembers(interface_cls(), predicate=inspect.ismethod)
+    required_methods = inspect.getmembers(interface_cls(),
+                                          predicate=inspect.ismethod)
     for name, func in required_methods:
         # Make sure the function exists.
         assert name in imp_functions, "%s not implemented." % name
@@ -86,7 +87,9 @@ def get_module_functions(module):
         if key in ('__getattr__', '__dir__'):
             continue
         attr = getattr(module, key)
-        if isinstance(attr, (types.BuiltinFunctionType, types.FunctionType, np.ufunc)):
+        if isinstance(
+                attr,
+            (types.BuiltinFunctionType, types.FunctionType, np.ufunc)):
             module_fns[key] = attr
     return module_fns
 

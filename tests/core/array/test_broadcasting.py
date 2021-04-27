@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import itertools
 
 import numpy as np
@@ -59,8 +58,9 @@ def test_assign_broadcasting():
             else:
                 A[:] = B[:]
             # This should execute without error.
-            assert np.broadcast_to(B, A.shape).shape == array_utils.broadcast_shape_to_alt(B.shape,
-                                                                                           A.shape)
+            assert np.broadcast_to(
+                B, A.shape).shape == array_utils.broadcast_shape_to_alt(
+                    B.shape, A.shape)
             assert array_utils.can_broadcast_shape_to(B.shape, A.shape), \
                 "%s can be broadcast to %s" % (B.shape, A.shape)
         except ValueError as _:
@@ -74,6 +74,7 @@ def test_assign_broadcasting():
 
 
 def test_bop_broadcasting():
+
     def get_array(shape):
         shape = tuple(filter(lambda x: x > 0, shape))
         if len(shape) == 0:
@@ -87,7 +88,8 @@ def test_bop_broadcasting():
         A: np.ndarray = get_array(shapes[:5])
         B: np.ndarray = get_array(shapes[5:])
         try:
-            assert (A * B).shape == array_utils.broadcast_shape(A.shape, B.shape)
+            assert (A * B).shape == array_utils.broadcast_shape(
+                A.shape, B.shape)
         except ValueError as _:
             assert not array_utils.can_broadcast_shapes(B.shape, A.shape)
             assert not array_utils.can_broadcast_shapes(A.shape, B.shape)

@@ -19,7 +19,6 @@ import numpy as np
 
 from nums.numpy import BlockArray
 
-
 # pylint: disable=import-outside-toplevel
 
 
@@ -66,12 +65,7 @@ def test_where(nps_app_inst):
 
     assert nps_app_inst is not None
 
-    shapes = [
-        (),
-        (10 ** 6,),
-        (10 ** 6, 1),
-        (10 ** 5, 10)
-    ]
+    shapes = [(), (10**6,), (10**6, 1), (10**5, 10)]
     for shape in shapes:
         arr: BlockArray = nps.random.rand(*shape)
         x: BlockArray = nps.random.rand(*shape)
@@ -124,7 +118,9 @@ def test_all_alltrue_any(nps_app_inst):
     true_float = np.array([[1.0, 2.0, 3.0], [1.0, 2.0, 3.0]])
     false_float = np.array([[1.0, 2.0, 0.0], [1.0, 2.0, 3.0]])
 
-    checks = [true_int, false_int, true_bool, false_bool, true_float, false_float]
+    checks = [
+        true_int, false_int, true_bool, false_bool, true_float, false_float
+    ]
 
     for array in checks:
         nps_array = nps.array(array).reshape(block_shape=(2, 2))
@@ -138,7 +134,9 @@ def test_all_alltrue_any(nps_app_inst):
     false_bool = np.array([[False, False, False], [False, False, False]])
     false_float = np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]])
 
-    checks = [true_int, false_int, true_bool, false_bool, true_float, false_float]
+    checks = [
+        true_int, false_int, true_bool, false_bool, true_float, false_float
+    ]
 
     for array in checks:
         nps_array = nps.array(array).reshape(block_shape=(2, 2))
@@ -156,33 +154,53 @@ def test_array_eq(nps_app_inst):
     bool_array_1 = np.array([[True, False, True], [True, False, True]])
     bool_array_2 = np.array([[False, False, True], [False, False, True]])
     float_array_1 = np.array([[1e10, 1e-8, 1e-8], [1e10, 1e-8, 1e-8]])
-    float_array_2 = np.array([[1.00001e10, 1e-9, 1e-9], [1.00001e10, 1e-9, 1e-9]])
+    float_array_2 = np.array([[1.00001e10, 1e-9, 1e-9],
+                              [1.00001e10, 1e-9, 1e-9]])
 
-    checks = [(int_array_1, int_array_2),
-              (bool_array_1, bool_array_2),
+    checks = [(int_array_1, int_array_2), (bool_array_1, bool_array_2),
               (float_array_1, float_array_2)]
 
     for check in checks:
         nps_array_1 = nps.array(check[0]).reshape(block_shape=(2, 2))
         nps_array_2 = nps.array(check[1]).reshape(block_shape=(2, 2))
-        assert nps.array_equal(nps_array_1, nps_array_1).get() == np.array_equal(check[0], check[0])
-        assert nps.array_equal(nps_array_1, nps_array_2).get() == np.array_equal(check[0], check[1])
-        assert nps.array_equiv(nps_array_1, nps_array_1).get() == np.array_equiv(check[0], check[0])
-        assert nps.array_equiv(nps_array_1, nps_array_2).get() == np.array_equiv(check[0], check[1])
-        assert nps.allclose(nps_array_1, nps_array_1).get() == np.allclose(check[0], check[0])
-        assert nps.allclose(nps_array_1, nps_array_2).get() == np.allclose(check[0], check[1])
+        assert nps.array_equal(nps_array_1,
+                               nps_array_1).get() == np.array_equal(
+                                   check[0], check[0])
+        assert nps.array_equal(nps_array_1,
+                               nps_array_2).get() == np.array_equal(
+                                   check[0], check[1])
+        assert nps.array_equiv(nps_array_1,
+                               nps_array_1).get() == np.array_equiv(
+                                   check[0], check[0])
+        assert nps.array_equiv(nps_array_1,
+                               nps_array_2).get() == np.array_equiv(
+                                   check[0], check[1])
+        assert nps.allclose(nps_array_1, nps_array_1).get() == np.allclose(
+            check[0], check[0])
+        assert nps.allclose(nps_array_1, nps_array_2).get() == np.allclose(
+            check[0], check[1])
 
         assert nps.array_equal(nps_array_1, nps_array_2).dtype is bool
         assert nps.array_equiv(nps_array_1, nps_array_2).dtype is bool
         assert nps.allclose(nps_array_1, nps_array_2).dtype is bool
 
     # False interaction test
-    checks_1 = [np.array([False]), np.array([False]),
-                np.array([0]), np.array([0]),
-                np.array([0.0]), np.array([0.0])]
-    checks_2 = [np.array([0]), np.array([0.0]),
-                np.array([False]), np.array([0.0]),
-                np.array([False]), np.array([0])]
+    checks_1 = [
+        np.array([False]),
+        np.array([False]),
+        np.array([0]),
+        np.array([0]),
+        np.array([0.0]),
+        np.array([0.0])
+    ]
+    checks_2 = [
+        np.array([0]),
+        np.array([0.0]),
+        np.array([False]),
+        np.array([0.0]),
+        np.array([False]),
+        np.array([0])
+    ]
     for check_1, check_2 in zip(checks_1, checks_2):
         nps_check_1 = nps.array(check_1)
         nps_check_2 = nps.array(check_2)

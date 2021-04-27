@@ -17,18 +17,13 @@ import itertools
 
 import numpy as np
 
-
 # pylint: disable=import-outside-toplevel
+
 
 def try_multiple_nd(np_atleast_nd, nps_atleast_nd):
     import nums.numpy as nps
 
-    python_types = [
-        1,
-        [1, 2],
-        [[1, 2]],
-        [[[1, 2]]]
-    ]
+    python_types = [1, [1, 2], [[1, 2]], [[[1, 2]]]]
     all_types = python_types + list(map(np.array, python_types))
     test_cases = list(itertools.product(all_types, repeat=3))
     nps_types = list(map(nps.array, python_types))
@@ -90,6 +85,7 @@ def test_atleast_3d(nps_app_inst):
     assert np.allclose(nps.atleast_1d(x).get(), np.atleast_1d(x))
 
     try_multiple_nd(np.atleast_3d, nps.atleast_3d)
+
 
 if __name__ == "__main__":
     # pylint: disable=import-error

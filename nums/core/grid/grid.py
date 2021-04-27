@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import itertools
 import logging
 from typing import Tuple, Iterator, List
@@ -122,8 +121,8 @@ class DeviceID(object):
         return hash(self.__repr__())
 
     def __repr__(self):
-        return "%s=%s/%s:%s" % (self.node_id, self.node_addr,
-                                self.device_type, self.device_id)
+        return "%s=%s/%s:%s" % (self.node_id, self.node_addr, self.device_type,
+                                self.device_id)
 
     def __eq__(self, other):
         return str(self) == str(other)
@@ -136,11 +135,13 @@ class DeviceGrid(object):
         self.grid_shape = grid_shape
         self.device_type = device_type
         self.device_ids: List[DeviceID] = device_ids
-        self.device_grid: np.ndarray = np.empty(shape=self.grid_shape, dtype=object)
+        self.device_grid: np.ndarray = np.empty(shape=self.grid_shape,
+                                                dtype=object)
 
         for i, cluster_entry in enumerate(self.get_cluster_entry_iterator()):
             self.device_grid[cluster_entry] = self.device_ids[i]
-            logging.getLogger().info("device_grid %s %s", cluster_entry, str(self.device_ids))
+            logging.getLogger().info("device_grid %s %s", cluster_entry,
+                                     str(self.device_ids))
 
     def get_cluster_entry_iterator(self):
         return itertools.product(*map(range, self.grid_shape))

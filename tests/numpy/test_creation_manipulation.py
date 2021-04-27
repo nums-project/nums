@@ -13,12 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import numpy as np
 import pytest
 
 from nums.numpy import BlockArray
-
 
 # pylint: disable = import-outside-toplevel, no-member
 
@@ -79,6 +77,7 @@ def test_diag(nps_app_inst):
     np_arr = np.diag(np_arr)
     assert np.allclose(ba.get(), np_arr)
 
+
 def test_trace(nps_app_inst):
     import nums.numpy as nps
 
@@ -97,7 +96,8 @@ def test_trace(nps_app_inst):
     assert np.allclose(a_diag_trace, a_diag_np_trace)
 
     # Test pre-defined diagonal matrices.
-    b: BlockArray = nps.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
+    b: BlockArray = nps.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0],
+                               [7.0, 8.0, 9.0]])
 
     b_diag_trace = nps.trace(b).get()
     b_diag_np_trace = np.trace(b.get())
@@ -110,7 +110,7 @@ def test_trace(nps_app_inst):
         nps.trace(mat)
 
     # Test that trace raises when called with non-zero offset.
-    mat:  BlockArray = nps.array([1.0, 2.0, 3.0, 4.0])
+    mat: BlockArray = nps.array([1.0, 2.0, 3.0, 4.0])
     mat_diag = nps.diag(mat)
     with pytest.raises(NotImplementedError):
         nps.trace(mat_diag, offset=2)
@@ -171,6 +171,7 @@ def test_func_space(nps_app_inst):
     ba: BlockArray = nps.logspace(12.3, 45.6, 23).reshape(block_shape=(10,))
     np_arr = np.logspace(12.3, 45.6, 23)
     assert np.allclose(ba.get(), np_arr)
+
 
 def test_shape(nps_app_inst):
     from nums import numpy as nps
@@ -237,6 +238,7 @@ def test_shape(nps_app_inst):
     for a1 in range(4):
         for a2 in range(4):
             check_swapaxes(np_A, axis1=a1, axis2=a2)
+
 
 if __name__ == "__main__":
     from nums.core import application_manager

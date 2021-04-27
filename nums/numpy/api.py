@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import warnings
 
 import numpy as np
@@ -22,7 +21,6 @@ import scipy.stats
 from nums.core.application_manager import instance as _instance
 from nums.core.array.blockarray import BlockArray
 from nums.numpy import numpy_utils
-
 
 # pylint: disable = redefined-builtin, too-many-lines
 
@@ -39,13 +37,20 @@ def _not_implemented(func):
 
 # TODO (mwe): Convert this to invoke the NumPy op on a worker instead of the driver.
 def _default_to_numpy(func):
+
     def wrapped(*args, **kwargs):
-        warnings.warn("Operation " + func.__name__ + " not implemented, falling back to NumPy. " +
-                      "If this is too slow or failing, please open an issue on GitHub.",
-                      RuntimeWarning)
-        new_args = [arg.get() if isinstance(arg, BlockArray) else arg for arg in args]
-        new_kwargs = {k: v.get() if isinstance(v, BlockArray) else v
-                      for k, v in zip(kwargs.keys(), kwargs.values())}
+        warnings.warn(
+            "Operation " + func.__name__ +
+            " not implemented, falling back to NumPy. " +
+            "If this is too slow or failing, please open an issue on GitHub.",
+            RuntimeWarning)
+        new_args = [
+            arg.get() if isinstance(arg, BlockArray) else arg for arg in args
+        ]
+        new_kwargs = {
+            k: v.get() if isinstance(v, BlockArray) else v
+            for k, v in zip(kwargs.keys(), kwargs.values())
+        }
         res = np.__getattribute__(func.__name__)(*new_args, **new_kwargs)
         if isinstance(res, tuple):
             nps_res = tuple(array(x) for x in res)
@@ -74,7 +79,6 @@ nan = NAN = NaN = np.nan
 # Data Types
 ############################################
 
-
 bool_ = np.bool_
 
 uint = np.uint
@@ -96,38 +100,65 @@ float128 = np.float128
 complex64 = np.complex64
 complex128 = np.complex128
 
-
 ############################################
 # Creation and I/O Ops
 ############################################
 
 
-def loadtxt(fname, dtype=float, comments='# ', delimiter=' ',
-            converters=None, skiprows=0, usecols=None, unpack=False,
-            ndmin=0, encoding='bytes', max_rows=None) -> BlockArray:
+def loadtxt(fname,
+            dtype=float,
+            comments='# ',
+            delimiter=' ',
+            converters=None,
+            skiprows=0,
+            usecols=None,
+            unpack=False,
+            ndmin=0,
+            encoding='bytes',
+            max_rows=None) -> BlockArray:
     app = _instance()
     num_rows = app.cm.num_cores_total()
     try:
-        ba: BlockArray = app.loadtxt(
-            fname, dtype=dtype, comments=comments, delimiter=delimiter,
-            converters=converters, skiprows=skiprows,
-            usecols=usecols, unpack=unpack, ndmin=ndmin,
-            encoding=encoding, max_rows=max_rows, num_workers=num_rows)
+        ba: BlockArray = app.loadtxt(fname,
+                                     dtype=dtype,
+                                     comments=comments,
+                                     delimiter=delimiter,
+                                     converters=converters,
+                                     skiprows=skiprows,
+                                     usecols=usecols,
+                                     unpack=unpack,
+                                     ndmin=ndmin,
+                                     encoding=encoding,
+                                     max_rows=max_rows,
+                                     num_workers=num_rows)
         shape = ba.shape
         block_shape = app.compute_block_shape(shape, dtype)
         return ba.reshape(block_shape=block_shape)
     except Exception as _:
-        warnings.warn("Failed to load text data in parallel; using np.loadtxt locally.")
-        np_arr = np.loadtxt(fname, dtype=dtype, comments=comments, delimiter=delimiter,
-                            converters=converters, skiprows=skiprows,
-                            usecols=usecols, unpack=unpack, ndmin=ndmin,
-                            encoding=encoding, max_rows=max_rows)
+        warnings.warn(
+            "Failed to load text data in parallel; using np.loadtxt locally.")
+        np_arr = np.loadtxt(fname,
+                            dtype=dtype,
+                            comments=comments,
+                            delimiter=delimiter,
+                            converters=converters,
+                            skiprows=skiprows,
+                            usecols=usecols,
+                            unpack=unpack,
+                            ndmin=ndmin,
+                            encoding=encoding,
+                            max_rows=max_rows)
         shape = np_arr.shape
         block_shape = app.compute_block_shape(shape, dtype)
         return app.array(np_arr, block_shape=block_shape)
 
 
-def array(object, dtype=None, copy=True, order="K", ndmin=0, subok=False) -> BlockArray:
+def array(object,
+          dtype=None,
+          copy=True,
+          order="K",
+          ndmin=0,
+          subok=False) -> BlockArray:
     if order is not None and order != "K":
         raise NotImplementedError("Only order='K' is supported.")
     if ndmin != 0:
@@ -141,8 +172,12 @@ def array(object, dtype=None, copy=True, order="K", ndmin=0, subok=False) -> Blo
             if dtype is not object.dtype:
                 object = object.astype(dtype)
         return object
-    result = np.array(object, dtype=dtype, copy=copy,
-                      order=order, ndmin=ndmin, subok=subok)
+    result = np.array(object,
+                      dtype=dtype,
+                      copy=copy,
+                      order=order,
+                      ndmin=ndmin,
+                      subok=subok)
     dtype = np.__getattribute__(str(result.dtype))
     shape = result.shape
     app = _instance()
@@ -206,12 +241,14 @@ def ones_like(prototype, dtype=None, order='K', shape=None):
 
 def concatenate(arrays, axis=0, out=None):
     if out is not None:
-        raise NotImplementedError("out is currently not supported for concatenate.")
+        raise NotImplementedError(
+            "out is currently not supported for concatenate.")
     # Pick the mode along specified axis.
-    axis_block_size = scipy.stats.mode(list(map(
-        lambda arr: arr.block_shape[axis], arrays
-    ))).mode.item()
-    return _instance().concatenate(arrays, axis=axis, axis_block_size=axis_block_size)
+    axis_block_size = scipy.stats.mode(
+        list(map(lambda arr: arr.block_shape[axis], arrays))).mode.item()
+    return _instance().concatenate(arrays,
+                                   axis=axis,
+                                   axis_block_size=axis_block_size)
 
 
 def split(ary: BlockArray, indices_or_sections, axis=0):
@@ -220,9 +257,8 @@ def split(ary: BlockArray, indices_or_sections, axis=0):
     dim_total = ary.shape[axis]
     # Splits into N equal arrays, and raise if this is not possible.
     if dim_total % indices_or_sections != 0:
-        raise ValueError("ary axis %s cannot be split into %s equal arrays." % (
-            axis,
-            indices_or_sections))
+        raise ValueError("ary axis %s cannot be split into %s equal arrays." %
+                         (axis, indices_or_sections))
     dim_partial = dim_total // indices_or_sections
     results = []
     ss_op = [slice(None, None, 1) for _ in ary.shape]
@@ -263,7 +299,8 @@ def trace(a: BlockArray, offset=0, axis1=0, axis2=1, dtype=None, out=None):
     if out is not None:
         raise NotImplementedError("out is currently not supported.")
     if axis1 != 0 or axis2 != 1:
-        raise NotImplementedError(" axis1 != 0 or axis2 != 1 is currently not supported.")
+        raise NotImplementedError(
+            " axis1 != 0 or axis2 != 1 is currently not supported.")
     return sum(diag(a, offset), dtype=dtype, out=out)
 
 
@@ -300,12 +337,19 @@ def arange(start=None, stop=None, step=1, dtype=None) -> BlockArray:
     return app.arange(start, shape, block_shape, step, dtype)
 
 
-def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None, axis=0):
+def linspace(start,
+             stop,
+             num=50,
+             endpoint=True,
+             retstep=False,
+             dtype=None,
+             axis=0):
     shape = (num,)
     dtype = np.float64 if dtype is None else dtype
     app = _instance()
     block_shape = app.get_block_shape(shape, dtype)
-    return app.linspace(start, stop, shape, block_shape, endpoint, retstep, dtype, axis)
+    return app.linspace(start, stop, shape, block_shape, endpoint, retstep,
+                        dtype, axis)
 
 
 def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None, axis=0):
@@ -323,23 +367,22 @@ def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None, axis=0):
 
 
 def tensordot(x1: BlockArray, x2: BlockArray, axes=2) -> BlockArray:
-    return _instance().tensordot(arr_1=x1,
-                                 arr_2=x2,
-                                 axes=axes)
+    return _instance().tensordot(arr_1=x1, arr_2=x2, axes=axes)
 
 
 def matmul(x1: BlockArray, x2: BlockArray) -> BlockArray:
-    return _instance().matmul(arr_1=x1,
-                              arr_2=x2)
+    return _instance().matmul(arr_1=x1, arr_2=x2)
 
 
 def inner(a: BlockArray, b: BlockArray):
-    assert len(a.shape) == len(b.shape) == 1, "Only single-axis inputs supported."
+    assert len(a.shape) == len(
+        b.shape) == 1, "Only single-axis inputs supported."
     return a.T @ b
 
 
 def outer(a: BlockArray, b: BlockArray):
-    assert len(a.shape) == len(b.shape) == 1, "Only single-axis inputs supported."
+    assert len(a.shape) == len(
+        b.shape) == 1, "Only single-axis inputs supported."
     return a.reshape((a.shape[0], 1)) @ b.reshape((1, b.shape[0]))
 
 
@@ -398,8 +441,12 @@ def copy(a: BlockArray, order='K', subok=False):
 ############################################
 
 
-def min(a: BlockArray, axis=None, out=None,
-        keepdims=False, initial=None, where=None) -> BlockArray:
+def min(a: BlockArray,
+        axis=None,
+        out=None,
+        keepdims=False,
+        initial=None,
+        where=None) -> BlockArray:
     if initial is not None:
         raise NotImplementedError("'initial' is currently not supported.")
     if where is not None:
@@ -412,8 +459,12 @@ def min(a: BlockArray, axis=None, out=None,
 amin = min
 
 
-def max(a: BlockArray, axis=None, out=None,
-        keepdims=False, initial=None, where=None) -> BlockArray:
+def max(a: BlockArray,
+        axis=None,
+        out=None,
+        keepdims=False,
+        initial=None,
+        where=None) -> BlockArray:
     if initial is not None:
         raise NotImplementedError("'initial' is currently not supported.")
     if where is not None:
@@ -434,14 +485,20 @@ def argmin(a: BlockArray, axis=None, out=None):
 
 def argmax(a: BlockArray, axis=None, out=None):
     if len(a.shape) > 1:
-        raise NotImplementedError("argmax currently only supports one-dimensional arrays.")
+        raise NotImplementedError(
+            "argmax currently only supports one-dimensional arrays.")
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().argop("argmax", a, axis=axis)
 
 
-def sum(a: BlockArray, axis=None, dtype=None, out=None,
-        keepdims=False, initial=None, where=None) -> BlockArray:
+def sum(a: BlockArray,
+        axis=None,
+        dtype=None,
+        out=None,
+        keepdims=False,
+        initial=None,
+        where=None) -> BlockArray:
     if initial is not None:
         raise NotImplementedError("'initial' is currently not supported.")
     if where is not None:
@@ -460,13 +517,21 @@ def mean(a: BlockArray, axis=None, dtype=None, out=None, keepdims=False):
 def var(a: BlockArray, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
-    return _instance().var(a, axis=axis, ddof=ddof, keepdims=keepdims, dtype=dtype)
+    return _instance().var(a,
+                           axis=axis,
+                           ddof=ddof,
+                           keepdims=keepdims,
+                           dtype=dtype)
 
 
 def std(a: BlockArray, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
-    return _instance().std(a, axis=axis, ddof=ddof, keepdims=keepdims, dtype=dtype)
+    return _instance().std(a,
+                           axis=axis,
+                           ddof=ddof,
+                           keepdims=keepdims,
+                           dtype=dtype)
 
 
 def where(condition: BlockArray, x: BlockArray = None, y: BlockArray = None):
@@ -482,7 +547,11 @@ def all(a: BlockArray, axis=None, out=None, keepdims=False):
 def alltrue(a: BlockArray, axis=None, out=None, dtype=None, keepdims=False):
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
-    return _instance().reduce("alltrue", a, axis=axis, keepdims=keepdims, dtype=dtype)
+    return _instance().reduce("alltrue",
+                              a,
+                              axis=axis,
+                              keepdims=keepdims,
+                              dtype=dtype)
 
 
 def any(a: BlockArray, axis=None, out=None, keepdims=False):
@@ -511,7 +580,11 @@ def nanmin(a: BlockArray, axis=None, out=None, keepdims=False):
 def nansum(a: BlockArray, axis=None, dtype=None, out=None, keepdims=False):
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
-    return _instance().reduce("nansum", a, axis=axis, dtype=dtype, keepdims=keepdims)
+    return _instance().reduce("nansum",
+                              a,
+                              axis=axis,
+                              dtype=dtype,
+                              keepdims=keepdims)
 
 
 def nanmean(a: BlockArray, axis=None, dtype=None, out=None, keepdims=False):
@@ -523,13 +596,21 @@ def nanmean(a: BlockArray, axis=None, dtype=None, out=None, keepdims=False):
 def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
-    return _instance().nanvar(a, axis=axis, dtype=dtype, ddof=ddof, keepdims=keepdims)
+    return _instance().nanvar(a,
+                              axis=axis,
+                              dtype=dtype,
+                              ddof=ddof,
+                              keepdims=keepdims)
 
 
 def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
-    return _instance().nanstd(a, axis=axis, dtype=dtype, ddof=ddof, keepdims=keepdims)
+    return _instance().nanstd(a,
+                              axis=axis,
+                              dtype=dtype,
+                              ddof=ddof,
+                              keepdims=keepdims)
 
 
 ############################################
@@ -547,7 +628,11 @@ def array_equiv(a: BlockArray, b: BlockArray) -> BlockArray:
     return _instance().array_equiv(a, b)
 
 
-def allclose(a: BlockArray, b: BlockArray, rtol=1.e-5, atol=1.e-8, equal_nan=False) -> BlockArray:
+def allclose(a: BlockArray,
+             b: BlockArray,
+             rtol=1.e-5,
+             atol=1.e-8,
+             equal_nan=False) -> BlockArray:
     if equal_nan is not False:
         raise NotImplementedError("equal_nan=True not supported.")
     return _instance().allclose(a, b, rtol, atol)
@@ -558,7 +643,10 @@ def allclose(a: BlockArray, b: BlockArray, rtol=1.e-5, atol=1.e-8, equal_nan=Fal
 ############################################
 
 
-def abs(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def abs(x: BlockArray,
+        out: BlockArray = None,
+        where=True,
+        **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="abs",
                                arr=x,
                                out=out,
@@ -566,7 +654,10 @@ def abs(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArr
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def absolute(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def absolute(x: BlockArray,
+             out: BlockArray = None,
+             where=True,
+             **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="absolute",
                                arr=x,
                                out=out,
@@ -574,7 +665,10 @@ def absolute(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Blo
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def arccos(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def arccos(x: BlockArray,
+           out: BlockArray = None,
+           where=True,
+           **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="arccos",
                                arr=x,
                                out=out,
@@ -582,7 +676,10 @@ def arccos(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Block
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def arccosh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def arccosh(x: BlockArray,
+            out: BlockArray = None,
+            where=True,
+            **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="arccosh",
                                arr=x,
                                out=out,
@@ -590,7 +687,10 @@ def arccosh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Bloc
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def arcsin(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def arcsin(x: BlockArray,
+           out: BlockArray = None,
+           where=True,
+           **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="arcsin",
                                arr=x,
                                out=out,
@@ -598,7 +698,10 @@ def arcsin(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Block
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def arcsinh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def arcsinh(x: BlockArray,
+            out: BlockArray = None,
+            where=True,
+            **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="arcsinh",
                                arr=x,
                                out=out,
@@ -606,7 +709,10 @@ def arcsinh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Bloc
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def arctan(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def arctan(x: BlockArray,
+           out: BlockArray = None,
+           where=True,
+           **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="arctan",
                                arr=x,
                                out=out,
@@ -614,7 +720,10 @@ def arctan(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Block
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def arctanh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def arctanh(x: BlockArray,
+            out: BlockArray = None,
+            where=True,
+            **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="arctanh",
                                arr=x,
                                out=out,
@@ -622,7 +731,10 @@ def arctanh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Bloc
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def bitwise_not(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def bitwise_not(x: BlockArray,
+                out: BlockArray = None,
+                where=True,
+                **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="bitwise_not",
                                arr=x,
                                out=out,
@@ -630,7 +742,10 @@ def bitwise_not(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> 
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def cbrt(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def cbrt(x: BlockArray,
+         out: BlockArray = None,
+         where=True,
+         **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="cbrt",
                                arr=x,
                                out=out,
@@ -638,7 +753,10 @@ def cbrt(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockAr
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def ceil(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def ceil(x: BlockArray,
+         out: BlockArray = None,
+         where=True,
+         **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="ceil",
                                arr=x,
                                out=out,
@@ -646,7 +764,10 @@ def ceil(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockAr
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def conj(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def conj(x: BlockArray,
+         out: BlockArray = None,
+         where=True,
+         **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="conj",
                                arr=x,
                                out=out,
@@ -654,7 +775,10 @@ def conj(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockAr
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def conjugate(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def conjugate(x: BlockArray,
+              out: BlockArray = None,
+              where=True,
+              **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="conjugate",
                                arr=x,
                                out=out,
@@ -662,7 +786,10 @@ def conjugate(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Bl
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def cos(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def cos(x: BlockArray,
+        out: BlockArray = None,
+        where=True,
+        **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="cos",
                                arr=x,
                                out=out,
@@ -670,7 +797,10 @@ def cos(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArr
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def cosh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def cosh(x: BlockArray,
+         out: BlockArray = None,
+         where=True,
+         **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="cosh",
                                arr=x,
                                out=out,
@@ -678,7 +808,10 @@ def cosh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockAr
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def deg2rad(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def deg2rad(x: BlockArray,
+            out: BlockArray = None,
+            where=True,
+            **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="deg2rad",
                                arr=x,
                                out=out,
@@ -686,7 +819,10 @@ def deg2rad(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Bloc
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def degrees(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def degrees(x: BlockArray,
+            out: BlockArray = None,
+            where=True,
+            **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="degrees",
                                arr=x,
                                out=out,
@@ -694,7 +830,10 @@ def degrees(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Bloc
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def exp(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def exp(x: BlockArray,
+        out: BlockArray = None,
+        where=True,
+        **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="exp",
                                arr=x,
                                out=out,
@@ -702,7 +841,10 @@ def exp(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArr
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def exp2(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def exp2(x: BlockArray,
+         out: BlockArray = None,
+         where=True,
+         **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="exp2",
                                arr=x,
                                out=out,
@@ -710,7 +852,10 @@ def exp2(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockAr
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def expm1(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def expm1(x: BlockArray,
+          out: BlockArray = None,
+          where=True,
+          **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="expm1",
                                arr=x,
                                out=out,
@@ -718,7 +863,10 @@ def expm1(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockA
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def fabs(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def fabs(x: BlockArray,
+         out: BlockArray = None,
+         where=True,
+         **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="fabs",
                                arr=x,
                                out=out,
@@ -726,7 +874,10 @@ def fabs(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockAr
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def floor(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def floor(x: BlockArray,
+          out: BlockArray = None,
+          where=True,
+          **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="floor",
                                arr=x,
                                out=out,
@@ -734,7 +885,10 @@ def floor(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockA
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def invert(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def invert(x: BlockArray,
+           out: BlockArray = None,
+           where=True,
+           **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="invert",
                                arr=x,
                                out=out,
@@ -742,7 +896,10 @@ def invert(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Block
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def isfinite(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def isfinite(x: BlockArray,
+             out: BlockArray = None,
+             where=True,
+             **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="isfinite",
                                arr=x,
                                out=out,
@@ -750,7 +907,10 @@ def isfinite(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Blo
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def isinf(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def isinf(x: BlockArray,
+          out: BlockArray = None,
+          where=True,
+          **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="isinf",
                                arr=x,
                                out=out,
@@ -758,7 +918,10 @@ def isinf(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockA
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def isnan(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def isnan(x: BlockArray,
+          out: BlockArray = None,
+          where=True,
+          **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="isnan",
                                arr=x,
                                out=out,
@@ -766,7 +929,10 @@ def isnan(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockA
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def log(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def log(x: BlockArray,
+        out: BlockArray = None,
+        where=True,
+        **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="log",
                                arr=x,
                                out=out,
@@ -774,7 +940,10 @@ def log(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArr
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def log10(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def log10(x: BlockArray,
+          out: BlockArray = None,
+          where=True,
+          **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="log10",
                                arr=x,
                                out=out,
@@ -782,7 +951,10 @@ def log10(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockA
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def log1p(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def log1p(x: BlockArray,
+          out: BlockArray = None,
+          where=True,
+          **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="log1p",
                                arr=x,
                                out=out,
@@ -790,7 +962,10 @@ def log1p(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockA
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def log2(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def log2(x: BlockArray,
+         out: BlockArray = None,
+         where=True,
+         **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="log2",
                                arr=x,
                                out=out,
@@ -798,7 +973,10 @@ def log2(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockAr
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def logical_not(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def logical_not(x: BlockArray,
+                out: BlockArray = None,
+                where=True,
+                **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="logical_not",
                                arr=x,
                                out=out,
@@ -806,7 +984,10 @@ def logical_not(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> 
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def negative(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def negative(x: BlockArray,
+             out: BlockArray = None,
+             where=True,
+             **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="negative",
                                arr=x,
                                out=out,
@@ -814,7 +995,10 @@ def negative(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Blo
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def positive(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def positive(x: BlockArray,
+             out: BlockArray = None,
+             where=True,
+             **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="positive",
                                arr=x,
                                out=out,
@@ -822,7 +1006,10 @@ def positive(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Blo
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def rad2deg(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def rad2deg(x: BlockArray,
+            out: BlockArray = None,
+            where=True,
+            **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="rad2deg",
                                arr=x,
                                out=out,
@@ -830,7 +1017,10 @@ def rad2deg(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Bloc
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def radians(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def radians(x: BlockArray,
+            out: BlockArray = None,
+            where=True,
+            **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="radians",
                                arr=x,
                                out=out,
@@ -838,7 +1028,10 @@ def radians(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Bloc
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def reciprocal(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def reciprocal(x: BlockArray,
+               out: BlockArray = None,
+               where=True,
+               **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="reciprocal",
                                arr=x,
                                out=out,
@@ -846,7 +1039,10 @@ def reciprocal(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> B
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def rint(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def rint(x: BlockArray,
+         out: BlockArray = None,
+         where=True,
+         **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="rint",
                                arr=x,
                                out=out,
@@ -854,7 +1050,10 @@ def rint(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockAr
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def sign(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def sign(x: BlockArray,
+         out: BlockArray = None,
+         where=True,
+         **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="sign",
                                arr=x,
                                out=out,
@@ -862,7 +1061,10 @@ def sign(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockAr
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def signbit(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def signbit(x: BlockArray,
+            out: BlockArray = None,
+            where=True,
+            **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="signbit",
                                arr=x,
                                out=out,
@@ -870,7 +1072,10 @@ def signbit(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Bloc
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def sin(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def sin(x: BlockArray,
+        out: BlockArray = None,
+        where=True,
+        **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="sin",
                                arr=x,
                                out=out,
@@ -878,7 +1083,10 @@ def sin(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArr
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def sinh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def sinh(x: BlockArray,
+         out: BlockArray = None,
+         where=True,
+         **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="sinh",
                                arr=x,
                                out=out,
@@ -886,7 +1094,10 @@ def sinh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockAr
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def spacing(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def spacing(x: BlockArray,
+            out: BlockArray = None,
+            where=True,
+            **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="spacing",
                                arr=x,
                                out=out,
@@ -894,7 +1105,10 @@ def spacing(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Bloc
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def sqrt(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def sqrt(x: BlockArray,
+         out: BlockArray = None,
+         where=True,
+         **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="sqrt",
                                arr=x,
                                out=out,
@@ -902,7 +1116,10 @@ def sqrt(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockAr
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def square(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def square(x: BlockArray,
+           out: BlockArray = None,
+           where=True,
+           **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="square",
                                arr=x,
                                out=out,
@@ -910,7 +1127,10 @@ def square(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Block
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def tan(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def tan(x: BlockArray,
+        out: BlockArray = None,
+        where=True,
+        **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="tan",
                                arr=x,
                                out=out,
@@ -918,7 +1138,10 @@ def tan(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArr
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def tanh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def tanh(x: BlockArray,
+         out: BlockArray = None,
+         where=True,
+         **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="tanh",
                                arr=x,
                                out=out,
@@ -926,7 +1149,10 @@ def tanh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockAr
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def trunc(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def trunc(x: BlockArray,
+          out: BlockArray = None,
+          where=True,
+          **kwargs) -> BlockArray:
     return _instance().map_uop(op_name="trunc",
                                arr=x,
                                out=out,
@@ -934,8 +1160,11 @@ def trunc(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockA
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def add(x1: BlockArray, x2: BlockArray,
-        out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def add(x1: BlockArray,
+        x2: BlockArray,
+        out: BlockArray = None,
+        where=True,
+        **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="add",
                                arr_1=x1,
                                arr_2=x2,
@@ -944,8 +1173,11 @@ def add(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def arctan2(x1: BlockArray, x2: BlockArray,
-            out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def arctan2(x1: BlockArray,
+            x2: BlockArray,
+            out: BlockArray = None,
+            where=True,
+            **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="arctan2",
                                arr_1=x1,
                                arr_2=x2,
@@ -954,8 +1186,11 @@ def arctan2(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def bitwise_and(x1: BlockArray, x2: BlockArray,
-                out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def bitwise_and(x1: BlockArray,
+                x2: BlockArray,
+                out: BlockArray = None,
+                where=True,
+                **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="bitwise_and",
                                arr_1=x1,
                                arr_2=x2,
@@ -964,8 +1199,11 @@ def bitwise_and(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def bitwise_or(x1: BlockArray, x2: BlockArray,
-               out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def bitwise_or(x1: BlockArray,
+               x2: BlockArray,
+               out: BlockArray = None,
+               where=True,
+               **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="bitwise_or",
                                arr_1=x1,
                                arr_2=x2,
@@ -974,8 +1212,11 @@ def bitwise_or(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def bitwise_xor(x1: BlockArray, x2: BlockArray,
-                out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def bitwise_xor(x1: BlockArray,
+                x2: BlockArray,
+                out: BlockArray = None,
+                where=True,
+                **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="bitwise_xor",
                                arr_1=x1,
                                arr_2=x2,
@@ -984,8 +1225,11 @@ def bitwise_xor(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def copysign(x1: BlockArray, x2: BlockArray,
-             out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def copysign(x1: BlockArray,
+             x2: BlockArray,
+             out: BlockArray = None,
+             where=True,
+             **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="copysign",
                                arr_1=x1,
                                arr_2=x2,
@@ -994,8 +1238,11 @@ def copysign(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def divide(x1: BlockArray, x2: BlockArray,
-           out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def divide(x1: BlockArray,
+           x2: BlockArray,
+           out: BlockArray = None,
+           where=True,
+           **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="divide",
                                arr_1=x1,
                                arr_2=x2,
@@ -1004,8 +1251,11 @@ def divide(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def equal(x1: BlockArray, x2: BlockArray,
-          out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def equal(x1: BlockArray,
+          x2: BlockArray,
+          out: BlockArray = None,
+          where=True,
+          **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="equal",
                                arr_1=x1,
                                arr_2=x2,
@@ -1014,8 +1264,11 @@ def equal(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def float_power(x1: BlockArray, x2: BlockArray,
-                out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def float_power(x1: BlockArray,
+                x2: BlockArray,
+                out: BlockArray = None,
+                where=True,
+                **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="float_power",
                                arr_1=x1,
                                arr_2=x2,
@@ -1024,8 +1277,11 @@ def float_power(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def floor_divide(x1: BlockArray, x2: BlockArray,
-                 out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def floor_divide(x1: BlockArray,
+                 x2: BlockArray,
+                 out: BlockArray = None,
+                 where=True,
+                 **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="floor_divide",
                                arr_1=x1,
                                arr_2=x2,
@@ -1034,8 +1290,11 @@ def floor_divide(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def fmax(x1: BlockArray, x2: BlockArray,
-         out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def fmax(x1: BlockArray,
+         x2: BlockArray,
+         out: BlockArray = None,
+         where=True,
+         **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="fmax",
                                arr_1=x1,
                                arr_2=x2,
@@ -1044,8 +1303,11 @@ def fmax(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def fmin(x1: BlockArray, x2: BlockArray,
-         out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def fmin(x1: BlockArray,
+         x2: BlockArray,
+         out: BlockArray = None,
+         where=True,
+         **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="fmin",
                                arr_1=x1,
                                arr_2=x2,
@@ -1054,8 +1316,11 @@ def fmin(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def fmod(x1: BlockArray, x2: BlockArray,
-         out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def fmod(x1: BlockArray,
+         x2: BlockArray,
+         out: BlockArray = None,
+         where=True,
+         **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="fmod",
                                arr_1=x1,
                                arr_2=x2,
@@ -1064,8 +1329,11 @@ def fmod(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def gcd(x1: BlockArray, x2: BlockArray,
-        out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def gcd(x1: BlockArray,
+        x2: BlockArray,
+        out: BlockArray = None,
+        where=True,
+        **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="gcd",
                                arr_1=x1,
                                arr_2=x2,
@@ -1074,8 +1342,11 @@ def gcd(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def greater(x1: BlockArray, x2: BlockArray,
-            out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def greater(x1: BlockArray,
+            x2: BlockArray,
+            out: BlockArray = None,
+            where=True,
+            **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="greater",
                                arr_1=x1,
                                arr_2=x2,
@@ -1084,8 +1355,11 @@ def greater(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def greater_equal(x1: BlockArray, x2: BlockArray,
-                  out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def greater_equal(x1: BlockArray,
+                  x2: BlockArray,
+                  out: BlockArray = None,
+                  where=True,
+                  **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="greater_equal",
                                arr_1=x1,
                                arr_2=x2,
@@ -1094,8 +1368,11 @@ def greater_equal(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def heaviside(x1: BlockArray, x2: BlockArray,
-              out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def heaviside(x1: BlockArray,
+              x2: BlockArray,
+              out: BlockArray = None,
+              where=True,
+              **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="heaviside",
                                arr_1=x1,
                                arr_2=x2,
@@ -1104,8 +1381,11 @@ def heaviside(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def hypot(x1: BlockArray, x2: BlockArray,
-          out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def hypot(x1: BlockArray,
+          x2: BlockArray,
+          out: BlockArray = None,
+          where=True,
+          **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="hypot",
                                arr_1=x1,
                                arr_2=x2,
@@ -1114,8 +1394,11 @@ def hypot(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def lcm(x1: BlockArray, x2: BlockArray,
-        out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def lcm(x1: BlockArray,
+        x2: BlockArray,
+        out: BlockArray = None,
+        where=True,
+        **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="lcm",
                                arr_1=x1,
                                arr_2=x2,
@@ -1124,8 +1407,11 @@ def lcm(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def ldexp(x1: BlockArray, x2: BlockArray,
-          out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def ldexp(x1: BlockArray,
+          x2: BlockArray,
+          out: BlockArray = None,
+          where=True,
+          **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="ldexp",
                                arr_1=x1,
                                arr_2=x2,
@@ -1134,8 +1420,11 @@ def ldexp(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def left_shift(x1: BlockArray, x2: BlockArray,
-               out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def left_shift(x1: BlockArray,
+               x2: BlockArray,
+               out: BlockArray = None,
+               where=True,
+               **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="left_shift",
                                arr_1=x1,
                                arr_2=x2,
@@ -1144,8 +1433,11 @@ def left_shift(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def less(x1: BlockArray, x2: BlockArray,
-         out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def less(x1: BlockArray,
+         x2: BlockArray,
+         out: BlockArray = None,
+         where=True,
+         **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="less",
                                arr_1=x1,
                                arr_2=x2,
@@ -1154,8 +1446,11 @@ def less(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def less_equal(x1: BlockArray, x2: BlockArray,
-               out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def less_equal(x1: BlockArray,
+               x2: BlockArray,
+               out: BlockArray = None,
+               where=True,
+               **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="less_equal",
                                arr_1=x1,
                                arr_2=x2,
@@ -1164,8 +1459,11 @@ def less_equal(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def logaddexp(x1: BlockArray, x2: BlockArray,
-              out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def logaddexp(x1: BlockArray,
+              x2: BlockArray,
+              out: BlockArray = None,
+              where=True,
+              **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="logaddexp",
                                arr_1=x1,
                                arr_2=x2,
@@ -1174,8 +1472,11 @@ def logaddexp(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def logaddexp2(x1: BlockArray, x2: BlockArray,
-               out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def logaddexp2(x1: BlockArray,
+               x2: BlockArray,
+               out: BlockArray = None,
+               where=True,
+               **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="logaddexp2",
                                arr_1=x1,
                                arr_2=x2,
@@ -1184,8 +1485,11 @@ def logaddexp2(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def logical_and(x1: BlockArray, x2: BlockArray,
-                out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def logical_and(x1: BlockArray,
+                x2: BlockArray,
+                out: BlockArray = None,
+                where=True,
+                **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="logical_and",
                                arr_1=x1,
                                arr_2=x2,
@@ -1194,8 +1498,11 @@ def logical_and(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def logical_or(x1: BlockArray, x2: BlockArray,
-               out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def logical_or(x1: BlockArray,
+               x2: BlockArray,
+               out: BlockArray = None,
+               where=True,
+               **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="logical_or",
                                arr_1=x1,
                                arr_2=x2,
@@ -1204,8 +1511,11 @@ def logical_or(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def logical_xor(x1: BlockArray, x2: BlockArray,
-                out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def logical_xor(x1: BlockArray,
+                x2: BlockArray,
+                out: BlockArray = None,
+                where=True,
+                **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="logical_xor",
                                arr_1=x1,
                                arr_2=x2,
@@ -1214,8 +1524,11 @@ def logical_xor(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def maximum(x1: BlockArray, x2: BlockArray,
-            out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def maximum(x1: BlockArray,
+            x2: BlockArray,
+            out: BlockArray = None,
+            where=True,
+            **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="maximum",
                                arr_1=x1,
                                arr_2=x2,
@@ -1224,8 +1537,11 @@ def maximum(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def minimum(x1: BlockArray, x2: BlockArray,
-            out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def minimum(x1: BlockArray,
+            x2: BlockArray,
+            out: BlockArray = None,
+            where=True,
+            **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="minimum",
                                arr_1=x1,
                                arr_2=x2,
@@ -1234,8 +1550,11 @@ def minimum(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def mod(x1: BlockArray, x2: BlockArray,
-        out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def mod(x1: BlockArray,
+        x2: BlockArray,
+        out: BlockArray = None,
+        where=True,
+        **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="mod",
                                arr_1=x1,
                                arr_2=x2,
@@ -1244,8 +1563,11 @@ def mod(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def multiply(x1: BlockArray, x2: BlockArray,
-             out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def multiply(x1: BlockArray,
+             x2: BlockArray,
+             out: BlockArray = None,
+             where=True,
+             **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="multiply",
                                arr_1=x1,
                                arr_2=x2,
@@ -1254,8 +1576,11 @@ def multiply(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def nextafter(x1: BlockArray, x2: BlockArray,
-              out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def nextafter(x1: BlockArray,
+              x2: BlockArray,
+              out: BlockArray = None,
+              where=True,
+              **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="nextafter",
                                arr_1=x1,
                                arr_2=x2,
@@ -1264,8 +1589,11 @@ def nextafter(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def not_equal(x1: BlockArray, x2: BlockArray,
-              out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def not_equal(x1: BlockArray,
+              x2: BlockArray,
+              out: BlockArray = None,
+              where=True,
+              **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="not_equal",
                                arr_1=x1,
                                arr_2=x2,
@@ -1274,8 +1602,11 @@ def not_equal(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def power(x1: BlockArray, x2: BlockArray,
-          out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def power(x1: BlockArray,
+          x2: BlockArray,
+          out: BlockArray = None,
+          where=True,
+          **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="power",
                                arr_1=x1,
                                arr_2=x2,
@@ -1284,8 +1615,11 @@ def power(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def remainder(x1: BlockArray, x2: BlockArray,
-              out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def remainder(x1: BlockArray,
+              x2: BlockArray,
+              out: BlockArray = None,
+              where=True,
+              **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="remainder",
                                arr_1=x1,
                                arr_2=x2,
@@ -1294,8 +1628,11 @@ def remainder(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def right_shift(x1: BlockArray, x2: BlockArray,
-                out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def right_shift(x1: BlockArray,
+                x2: BlockArray,
+                out: BlockArray = None,
+                where=True,
+                **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="right_shift",
                                arr_1=x1,
                                arr_2=x2,
@@ -1304,8 +1641,11 @@ def right_shift(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def subtract(x1: BlockArray, x2: BlockArray,
-             out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def subtract(x1: BlockArray,
+             x2: BlockArray,
+             out: BlockArray = None,
+             where=True,
+             **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="subtract",
                                arr_1=x1,
                                arr_2=x2,
@@ -1314,8 +1654,11 @@ def subtract(x1: BlockArray, x2: BlockArray,
                                kwargs=numpy_utils.ufunc_kwargs(kwargs))
 
 
-def true_divide(x1: BlockArray, x2: BlockArray,
-                out: BlockArray = None, where=True, **kwargs) -> BlockArray:
+def true_divide(x1: BlockArray,
+                x2: BlockArray,
+                out: BlockArray = None,
+                where=True,
+                **kwargs) -> BlockArray:
     return _instance().map_bop(op_name="true_divide",
                                arr_1=x1,
                                arr_2=x2,
