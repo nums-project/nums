@@ -382,14 +382,14 @@ def test_ref_accessor(app_inst: ArrayApplication):
 
 if __name__ == "__main__":
     # pylint: disable=import-error
-    from tests import conftest
+    import conftest
 
-    app_inst = conftest.get_app("serial")
+    app_inst = conftest.get_app("serial", "packed")
     test_subscript(app_inst)
-    test_assign_basic(app_inst)
-    test_assign_2dim_accesses(app_inst)
-    test_assign_dependencies(app_inst)
+    # test_assign_basic(app_inst)
+    # test_assign_2dim_accesses(app_inst)
+    # test_assign_dependencies(app_inst)
     # test_complete_3dim_slices(app_inst)
     # test_assign_complete_2dim_slices(app_inst)
-    test_basic_assignment_broadcasting(app_inst)
-    test_ref_accessor(app_inst)
+    # test_basic_assignment_broadcasting(app_inst)
+    # test_ref_accessor(app_inst)

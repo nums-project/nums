@@ -152,37 +152,53 @@ class DeviceGrid(object):
         return itertools.product(*map(range, self.grid_shape))
 
 
-class NoDeviceGrid(DeviceGrid):
-
-    def get_device_id(self, agrid_entry, agrid_shape):
-        return None
-
-
 class CyclicDeviceGrid(DeviceGrid):
 
     def get_device_id(self, agrid_entry, agrid_shape):
-        cluster_entry = self.get_cluster_entry(agrid_entry)
+        cluster_entry = self.get_cluster_entry(agrid_entry, agrid_shape)
         return self.device_grid[cluster_entry]
 
-    def get_cluster_entry(self, agrid_entry):
+    def get_cluster_entry(self, agrid_entry, agrid_shape):
+        # pylint: disable = unused-argument
         cluster_entry = []
         num_grid_entry_axes = len(agrid_entry)
         num_cluster_axes = len(self.grid_shape)
-        if num_grid_entry_axes <= num_cluster_axes:
-            # When array has fewer or equal # of axes than cluster.
-            for cluster_axis in range(num_cluster_axes):
-                if cluster_axis < num_grid_entry_axes:
-                    cluster_dim = self.grid_shape[cluster_axis]
-                    grid_entry_dim = agrid_entry[cluster_axis]
-                    cluster_entry.append(grid_entry_dim % cluster_dim)
-                else:
-                    cluster_entry.append(0)
-        elif num_grid_entry_axes > num_cluster_axes:
-            # When array has more axes then cluster.
-            for cluster_axis in range(num_cluster_axes):
+        for cluster_axis in range(num_cluster_axes):
+            if cluster_axis < num_grid_entry_axes:
                 cluster_dim = self.grid_shape[cluster_axis]
                 grid_entry_dim = agrid_entry[cluster_axis]
                 cluster_entry.append(grid_entry_dim % cluster_dim)
-            # Ignore trailing axes, as these are "cycled" to 0 by assuming
+            else:
+                # When array has fewer axes than cluster.
+                cluster_entry.append(0)
+            # Ignore trailing array axes, as these are "cycled" to 0 by assuming
             # the dimension of those cluster axes is 1.
         return tuple(cluster_entry)
+
+
+class PackedDeviceGrid(DeviceGrid):
+
+    def get_device_id(self, agrid_entry, agrid_shape):
+        cluster_entry = self.get_cluster_entry(agrid_entry, agrid_shape)
+        return self.device_grid[cluster_entry]
+
+    def get_cluster_entry(self, agrid_entry, agrid_shape):
+        cluster_entry = []
+        num_grid_entry_axes = len(agrid_entry)
+        num_cluster_axes = len(self.grid_shape)
+        for cluster_axis in range(num_cluster_axes):
+            if cluster_axis < num_grid_entry_axes:
+                cluster_entry.append(self.compute_cluster_entry_axis(
+                    axis=cluster_axis,
+                    ge_axis_val=agrid_entry[cluster_axis],
+                    gs_axis_val=agrid_shape[cluster_axis],
+                    cs_axis_val=self.grid_shape[cluster_axis]
+                ))
+            else:
+                cluster_entry.append(0)
+        return tuple(cluster_entry)
+
+    def compute_cluster_entry_axis(self, axis, ge_axis_val, gs_axis_val, cs_axis_val):
+        if ge_axis_val >= gs_axis_val:
+            raise ValueError("Array grid_entry is not < grid_shape along axis %s." % axis)
+        return int(ge_axis_val / gs_axis_val * cs_axis_val)
