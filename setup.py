@@ -13,36 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from setuptools import setup, find_packages
 
-
-requirements = [
-    'numpy>1.18.0,<=1.20.0',
-    'ray>=1.0.0,<1.1.0',
-    'scipy',
-    'boto3'
-]
-
+requirements = ['numpy>1.18.0,<=1.20.0', 'ray>=1.0.0,<1.1.0', 'scipy', 'boto3']
 
 test_requirements = [
-    'pytest==6.1.1',
-    'pytest-pylint==0.17.0',
-    'moto==1.3.16',
-    'coverage==5.3',
-    'codecov==2.1.9',
-    'yapf==0.31.0',
-    'tqdm'
+    'pytest==6.1.1', 'pytest-pylint==0.17.0', 'moto==1.3.16', 'coverage==5.3',
+    'codecov==2.1.9', 'yapf==0.31.0', 'tqdm'
 ]
 
-
 __version__ = None
-
 
 with open('nums/core/version.py') as f:
     # pylint: disable=exec-used
     exec(f.read(), globals())
-
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -50,30 +34,26 @@ with open("README.md", "r") as fh:
 
 def main():
 
-    setup(
-        name='nums',
-        version=__version__,
-        description="A numerical computing library for Python that scales.",
-        long_description=long_description,
-        long_description_content_type="text/markdown",
-        url="https://github.com/nums-project/nums",
-        packages=find_packages(),
-        classifiers=[
-            "Programming Language :: Python :: 3",
-            "License :: OSI Approved :: MIT License",
-            "Operating System :: Unix",
-        ],
-        python_requires='>=3.6,<3.9',
-        install_requires=requirements,
-        extras_require={
-            'testing': test_requirements
-        },
-        entry_points={
-            'console_scripts': [
-                'nums-coverage=nums.core.cmds.api_coverage:main',
-            ],
-        }
-    )
+    setup(name='nums',
+          version=__version__,
+          description="A numerical computing library for Python that scales.",
+          long_description=long_description,
+          long_description_content_type="text/markdown",
+          url="https://github.com/nums-project/nums",
+          packages=find_packages(),
+          classifiers=[
+              "Programming Language :: Python :: 3",
+              "License :: OSI Approved :: MIT License",
+              "Operating System :: Unix",
+          ],
+          python_requires='>=3.6,<3.9',
+          install_requires=requirements,
+          extras_require={'testing': test_requirements},
+          entry_points={
+              'console_scripts': [
+                  'nums-coverage=nums.core.cmds.api_coverage:main',
+              ],
+          })
 
 
 if __name__ == "__main__":
