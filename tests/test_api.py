@@ -13,13 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import boto3
 import numpy as np
 from moto import mock_s3
 
 from nums.core.array.blockarray import BlockArray
-
 
 # pylint: disable=import-outside-toplevel
 
@@ -43,7 +41,8 @@ def test_rwd():
     delete_result_ba: BlockArray = nums.delete(filename)
     delete_result_np = delete_result_ba.get()
     for grid_entry in delete_result_ba.grid.get_entry_iterator():
-        assert delete_result_ba[grid_entry].get() == delete_result_np[grid_entry]
+        assert delete_result_ba[grid_entry].get(
+        ) == delete_result_np[grid_entry]
 
 
 @mock_s3
@@ -70,7 +69,8 @@ def test_rwd_s3():
     delete_result_ba: BlockArray = nums.delete(filename)
     delete_result_np = delete_result_ba.get()
     for grid_entry in delete_result_ba.grid.get_entry_iterator():
-        assert delete_result_ba[grid_entry].get() == delete_result_np[grid_entry]
+        assert delete_result_ba[grid_entry].get(
+        ) == delete_result_np[grid_entry]
 
 
 def test_read_csv():
@@ -78,7 +78,8 @@ def test_read_csv():
     from nums.core import settings
     settings.system_name = "serial"
 
-    filename = settings.pj(settings.project_root, "tests", "core", "storage", "test.csv")
+    filename = settings.pj(settings.project_root, "tests", "core", "storage",
+                           "test.csv")
     ba = nums.read_csv(filename, has_header=True)
     assert np.allclose(ba[0].get(), [123, 4, 5])
     assert np.allclose(ba[-1].get(), [1.2, 3.4, 5.6])

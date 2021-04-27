@@ -13,12 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import argparse
 
 from nums.core import settings
 from nums.core.systems import utils as systems_utils
-
 
 # pylint: disable = import-outside-toplevel
 
@@ -41,13 +39,18 @@ def execute(module_name, print_missing, count_fallback):
                            numpy_module, nums_module)
 
 
-def module_coverage(module_name, print_missing, count_fallback,
-                    numpy_module, nums_module, ignore=None, fallback=None):
+def module_coverage(module_name,
+                    print_missing,
+                    count_fallback,
+                    numpy_module,
+                    nums_module,
+                    ignore=None,
+                    fallback=None):
 
     print()
-    print("-"*75)
+    print("-" * 75)
     print(module_name)
-    print("-"*75)
+    print("-" * 75)
 
     for name, func in systems_utils.get_module_functions(nums_module).items():
         if name in ("_not_implemented", "_instance", "_default_to_numpy"):
@@ -90,9 +93,9 @@ def module_coverage(module_name, print_missing, count_fallback,
         else:
             coverage += 1.0
 
-    print("-"*75)
+    print("-" * 75)
     print(module_name)
-    print("-"*75)
+    print("-" * 75)
     print("coverage", coverage)
     print("total", total)
     print("percent covered", "%.1f" % (coverage / total * 100))
@@ -105,59 +108,120 @@ def api_coverage(print_missing, count_fallback):
 
     # Functions ignored for various reasons.
     ignore = {
-        '_add_newdoc_ufunc', 'add_docstring', 'add_newdoc', 'add_newdoc_ufunc',
+        '_add_newdoc_ufunc',
+        'add_docstring',
+        'add_newdoc',
+        'add_newdoc_ufunc',
         # Deprecated
         'alen',
         # Order is generally not applicable w/ GPU backend.
-        'asanyarray', 'ascontiguousarray', 'asfarray', 'asfortranarray',
+        'asanyarray',
+        'ascontiguousarray',
+        'asfarray',
+        'asfortranarray',
         # There are no plans to provide a matrix type.
-        'asmatrix', 'array2string',
-        'base_repr', 'binary_repr', 'block', 'bmat', 'broadcast_arrays',
-        'broadcast_to', 'busday_count', 'busday_offset', 'byte_bounds',
+        'asmatrix',
+        'array2string',
+        'base_repr',
+        'binary_repr',
+        'block',
+        'bmat',
+        'broadcast_arrays',
+        'broadcast_to',
+        'busday_count',
+        'busday_offset',
+        'byte_bounds',
         'compare_chararrays',
-        'datetime_as_string', 'datetime_data', 'deprecate', 'deprecate_with_doc', 'disp',
-        'fastCopyAndTranspose', 'format_float_positional', 'format_float_scientific',
-        'get_array_wrap', 'get_include', 'get_printoptions',
-        'getbufsize', 'geterr', 'geterrcall', 'geterrobj',
-        'info', 'is_busday', 'isfortran', 'isnat',
-        'issctype', 'issubclass_', 'issubdtype', 'issubsctype', 'iterable',
+        'datetime_as_string',
+        'datetime_data',
+        'deprecate',
+        'deprecate_with_doc',
+        'disp',
+        'fastCopyAndTranspose',
+        'format_float_positional',
+        'format_float_scientific',
+        'get_array_wrap',
+        'get_include',
+        'get_printoptions',
+        'getbufsize',
+        'geterr',
+        'geterrcall',
+        'geterrobj',
+        'info',
+        'is_busday',
+        'isfortran',
+        'isnat',
+        'issctype',
+        'issubclass_',
+        'issubdtype',
+        'issubsctype',
+        'iterable',
         'lookfor',
-        'mat', 'may_share_memory',
-        'ndfromtxt', 'nested_iters',
-        'printoptions', 'recfromcsv', 'recfromtxt',
-        'safe_eval', 'set_numeric_ops', 'set_printoptions', 'set_string_function', 'setbufsize',
-        'seterr', 'seterrcall', 'seterrobj', 'show_config', 'source', 'typename',
-        'mafromtxt', 'mask_indices',
+        'mat',
+        'may_share_memory',
+        'ndfromtxt',
+        'nested_iters',
+        'printoptions',
+        'recfromcsv',
+        'recfromtxt',
+        'safe_eval',
+        'set_numeric_ops',
+        'set_printoptions',
+        'set_string_function',
+        'setbufsize',
+        'seterr',
+        'seterrcall',
+        'seterrobj',
+        'show_config',
+        'source',
+        'typename',
+        'mafromtxt',
+        'mask_indices',
         # unclear whether we'll ever support these I/O operations.
-        'loads', 'load', 'save',
-        'savez', 'savez_compressed',
-        'genfromtxt', 'fromregex', 'fromstring',
+        'loads',
+        'load',
+        'save',
+        'savez',
+        'savez_compressed',
+        'genfromtxt',
+        'fromregex',
+        'fromstring',
         # Memory ops that can't be supported.
         'copyto',
     }
 
     not_implemented = {
-        'array_repr', 'array_str',
-        'can_cast', 'find_common_type',
-        'savetxt', 'shares_memory'
+        'array_repr', 'array_str', 'can_cast', 'find_common_type', 'savetxt',
+        'shares_memory'
     }
 
     import numpy as numpy_module
     import nums.numpy.api as nums_module
-    module_coverage("api", print_missing, count_fallback,
-                    numpy_module, nums_module, ignore=ignore, fallback=settings.fallback)
+    module_coverage("api",
+                    print_missing,
+                    count_fallback,
+                    numpy_module,
+                    nums_module,
+                    ignore=ignore,
+                    fallback=settings.fallback)
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--module-name', default="api", help='Which module to test.',
+    parser.add_argument('--module-name',
+                        default="api",
+                        help='Which module to test.',
                         choices={"api", "random", "linalg", "fft"})
 
-    parser.add_argument('--count-fallback', action="store_true", help='Include fallback functions '
-                                                                      'in converage.')
+    parser.add_argument('--count-fallback',
+                        action="store_true",
+                        help='Include fallback functions '
+                        'in converage.')
 
-    parser.add_argument('--print-missing', action="store_true", help='Output array of missing '
-                                                                     'values.')
+    parser.add_argument('--print-missing',
+                        action="store_true",
+                        help='Output array of missing '
+                        'values.')
 
     args = parser.parse_args()
     args_dict = dict(vars(args).items())

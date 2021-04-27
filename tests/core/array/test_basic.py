@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 # pylint: disable=wrong-import-order
 import common
 import numpy as np
@@ -66,13 +65,17 @@ def test_concatenate(app_inst: ArrayApplication):
     real_ones = np.ones(shape=(1000, 1))
     X = app_inst.array(real_X, block_shape=(100, 9))
     ones = app_inst.ones((1000, 1), (100, 1), dtype=X.dtype)
-    X_concated = app_inst.concatenate([X, ones], axis=axis, axis_block_size=X.block_shape[axis])
+    X_concated = app_inst.concatenate([X, ones],
+                                      axis=axis,
+                                      axis_block_size=X.block_shape[axis])
     real_X_concated = np.concatenate([real_X, real_ones], axis=axis)
     assert np.allclose(X_concated.get(), real_X_concated)
 
-    real_X2 = np.random.random_sample(1000*17).reshape(1000, 17)
+    real_X2 = np.random.random_sample(1000 * 17).reshape(1000, 17)
     X2 = app_inst.array(real_X2, block_shape=(X.block_shape[0], 3))
-    X_concated = app_inst.concatenate([X, ones, X2], axis=axis, axis_block_size=X.block_shape[axis])
+    X_concated = app_inst.concatenate([X, ones, X2],
+                                      axis=axis,
+                                      axis_block_size=X.block_shape[axis])
     real_X_concated = np.concatenate([real_X, real_ones, real_X2], axis=axis)
     assert np.allclose(X_concated.get(), real_X_concated)
 
@@ -83,7 +86,9 @@ def test_split(app_inst: ArrayApplication):
     syskwargs = {
         "grid_entry": x.blocks[0].grid_entry,
         "grid_shape": x.blocks[0].grid_shape,
-        "options": {"num_returns": 2}
+        "options": {
+            "num_returns": 2
+        }
     }
     res1, res2 = x.cm.split(x.blocks[0].oid,
                             2,
@@ -102,7 +107,8 @@ def test_touch(app_inst: ArrayApplication):
 
 
 def test_num_cores(app_inst: ArrayApplication):
-    assert np.allclose(app_inst.cm.num_cores_total(), systems_utils.get_num_cores())
+    assert np.allclose(app_inst.cm.num_cores_total(),
+                       systems_utils.get_num_cores())
 
 
 def ideal_tall_skinny_shapes(size, dtype):
@@ -111,47 +117,47 @@ def ideal_tall_skinny_shapes(size, dtype):
     num_cols = 2**8
     if size == "1024GB":
         # Approximately 1 TB, 1024 blocks, 1 GB / block.
-        num_rows = 2**30//denom
+        num_rows = 2**30 // denom
         grid_shape = (2**10, 1)
     elif size == "512GB":
         # 512GB, 512 blocks, 1 GB / block.
         # Perfect fit on 8 nodes.
-        num_rows = 2**29//denom
+        num_rows = 2**29 // denom
         grid_shape = (2**9, 1)
     elif size == "256GB":
         # 256GB, 256 blocks, 1 GB / block.
         # Perfect fit on 4 nodes.
-        num_rows = 2**28//denom
+        num_rows = 2**28 // denom
         grid_shape = (2**8, 1)
     elif size == "128GB":
         # 128GB, 128 blocks, 1 GB / block.
         # Perfect fit on 2 nodes.
-        num_rows = 2 ** 27//denom
-        grid_shape = (2 ** 7, 1)
+        num_rows = 2**27 // denom
+        grid_shape = (2**7, 1)
     elif size == "64GB":
         # Approximately 64GB, 64 blocks, 1 GB / block.
         # Perfect fit on 1 nodes.
-        num_rows = 2 ** 26//denom
-        grid_shape = (2 ** 6, 1)
+        num_rows = 2**26 // denom
+        grid_shape = (2**6, 1)
     elif size == "32GB":
-        num_rows = 2 ** 25//denom
-        grid_shape = (2 ** 6, 1)
+        num_rows = 2**25 // denom
+        grid_shape = (2**6, 1)
     elif size == "16GB":
-        num_rows = 2 ** 24//denom
-        grid_shape = (2 ** 6, 1)
+        num_rows = 2**24 // denom
+        grid_shape = (2**6, 1)
     elif size == "8GB":
-        num_rows = 2 ** 23//denom
-        grid_shape = (2 ** 6, 1)
+        num_rows = 2**23 // denom
+        grid_shape = (2**6, 1)
     elif size == "4GB":
-        num_rows = 2 ** 22//denom
-        grid_shape = (2 ** 6, 1)
+        num_rows = 2**22 // denom
+        grid_shape = (2**6, 1)
     elif size == "2GB":
-        num_rows = 2 ** 21//denom
-        grid_shape = (2 ** 6, 1)
+        num_rows = 2**21 // denom
+        grid_shape = (2**6, 1)
     elif size == "1GB":
         # Approximately 1GB, 64 blocks, 16 MB / block.
-        num_rows = 2 ** 20//denom
-        grid_shape = (2 ** 6, 1)
+        num_rows = 2**20 // denom
+        grid_shape = (2**6, 1)
     else:
         raise Exception()
     shape = (num_rows, num_cols)
@@ -163,21 +169,21 @@ def ideal_square_shapes(size, dtype):
     assert dtype in (np.float32, np.float64)
     denom = 2 if dtype is np.float64 else 1
     # Assume 4 bytes, and start with a 1GB square array.
-    shape = np.array([2 ** 14, 2 ** 14], dtype=int)
+    shape = np.array([2**14, 2**14], dtype=int)
     if size == "4GB":
-        shape *= 1//denom
+        shape *= 1 // denom
         grid_shape = (8, 8)
     elif size == "16GB":
-        shape *= 4//denom
+        shape *= 4 // denom
         grid_shape = (8, 8)
     elif size == "64GB":
-        shape *= 8//denom
+        shape *= 8 // denom
         grid_shape = (8, 8)
     elif size == "256GB":
-        shape *= 16//denom
+        shape *= 16 // denom
         grid_shape = (16, 16)
     elif size == "1024GB":
-        shape *= 32//denom
+        shape *= 32 // denom
         grid_shape = (32, 32)
     else:
         raise Exception()
@@ -194,16 +200,13 @@ def test_compute_block_shape(app_inst: ArrayApplication):
         size_str = "%sGB" % size
         num_nodes = size // 64
         cluster_shape = (16, 1)
-        shape, expected_block_shape, expected_grid_shape = ideal_tall_skinny_shapes(size_str, dtype)
-        block_shape = app_inst.cm.compute_block_shape(shape,
-                                                      dtype,
-                                                      cluster_shape,
-                                                      num_nodes*cores_per_node)
+        shape, expected_block_shape, expected_grid_shape = ideal_tall_skinny_shapes(
+            size_str, dtype)
+        block_shape = app_inst.cm.compute_block_shape(
+            shape, dtype, cluster_shape, num_nodes * cores_per_node)
         grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype.__name__)
-        print("tall-skinny",
-              "cluster_shape=%s" % str(cluster_shape),
-              "grid_shape=%s" % str(expected_grid_shape),
-              "size=%s" % size_str,
+        print("tall-skinny", "cluster_shape=%s" % str(cluster_shape),
+              "grid_shape=%s" % str(expected_grid_shape), "size=%s" % size_str,
               "bytes computed=%s" % (grid.nbytes() / 10**9))
         assert expected_grid_shape == grid.grid_shape
         assert expected_block_shape == block_shape
@@ -211,23 +214,20 @@ def test_compute_block_shape(app_inst: ArrayApplication):
     # Square.
     for size in [4, 16, 64, 256, 1024]:
         size_str = "%sGB" % size
-        num_nodes = 1 if size < 64 else size//64
+        num_nodes = 1 if size < 64 else size // 64
         cluster_shape = int(np.sqrt(num_nodes)), int(np.sqrt(num_nodes))
-        shape, expected_block_shape, expected_grid_shape = ideal_square_shapes(size_str, dtype)
-        block_shape = app_inst.cm.compute_block_shape(shape,
-                                                      dtype,
-                                                      cluster_shape,
-                                                      num_nodes*cores_per_node)
+        shape, expected_block_shape, expected_grid_shape = ideal_square_shapes(
+            size_str, dtype)
+        block_shape = app_inst.cm.compute_block_shape(
+            shape, dtype, cluster_shape, num_nodes * cores_per_node)
         grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype.__name__)
-        print("square",
-              "cluster_shape=%s" % str(cluster_shape),
-              "grid_shape=%s" % str(expected_grid_shape),
-              "size=%s" % size_str,
+        print("square", "cluster_shape=%s" % str(cluster_shape),
+              "grid_shape=%s" % str(expected_grid_shape), "size=%s" % size_str,
               "bytes computed=%s" % (grid.nbytes() / 10**9))
-        assert expected_grid_shape == grid.grid_shape, "%s != %s" % (expected_grid_shape,
-                                                                     grid.grid_shape)
-        assert expected_block_shape == block_shape, "%s != %s" % (expected_block_shape,
-                                                                  block_shape)
+        assert expected_grid_shape == grid.grid_shape, "%s != %s" % (
+            expected_grid_shape, grid.grid_shape)
+        assert expected_block_shape == block_shape, "%s != %s" % (
+            expected_block_shape, block_shape)
 
 
 if __name__ == "__main__":

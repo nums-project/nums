@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import itertools
 
 import numpy as np
@@ -28,12 +27,11 @@ def test_subscript(app_inst: ArrayApplication):
     npX = np.arange(np.product(shape)).reshape(*shape)
     X = app_inst.array(npX, block_shape=(6, 7))
     for i in range(12):
-        assert np.allclose((X[:, i].T @ X[:, i]).get(),
-                           npX[:, i].T @ npX[:, i])
+        assert np.allclose((X[:, i].T @ X[:, i]).get(), npX[:, i].T @ npX[:, i])
 
     # Aligned tests.
     for i in range(0, 21, 7):
-        sel = slice(i, i+7)
+        sel = slice(i, i + 7)
         assert np.allclose((X[:, sel].T @ X[:, sel]).get(),
                            npX[:, sel].T @ npX[:, sel])
 
@@ -125,8 +123,8 @@ def test_assign_dependencies(app_inst: ArrayApplication):
     npD = np.random.random_sample(np.product(D_shape)).reshape(*D_shape)
     C = app_inst.array(npC, block_shape=(4, 3))
     D = app_inst.array(npD, block_shape=(4, 3))
-    for i in range(0, C_shape[0]-3, 3):
-        for j in range(0, C_shape[1]-2, 2):
+    for i in range(0, C_shape[0] - 3, 3):
+        for j in range(0, C_shape[1] - 2, 2):
             i1, i2 = i, i + 3
             j1, j2 = j, j + 2
             C[i1, j1:j2] = C[i1, j1:j2] + D[i1, j1:j2]
@@ -152,16 +150,14 @@ def test_complete_3dim_slices(app_inst: ArrayApplication):
     axis_accessors = []
     for i in range(num_axes):
         # TODO (hme): Change to a[0] <= a[1].
-        accessor_pairs = list(filter(lambda a: a[0] < a[1],
-                                     itertools.product(shape_range[i],
-                                                       shape_range[i])))
+        accessor_pairs = list(
+            filter(lambda a: a[0] < a[1],
+                   itertools.product(shape_range[i], shape_range[i])))
         axis_accessors.append(accessor_pairs)
     accessor_iterator = tuple(itertools.product(*axis_accessors))
     access_modes = [
-        lambda a1, a2: a1,
-        lambda a1, a2: slice(None, None),
-        lambda a1, a2: slice(a1, None),
-        lambda a1, a2: slice(None, a1),
+        lambda a1, a2: a1, lambda a1, a2: slice(None, None),
+        lambda a1, a2: slice(a1, None), lambda a1, a2: slice(None, a1),
         lambda a1, a2: slice(a1, a2)
     ]
     mode_iterator = tuple(itertools.product(access_modes, repeat=num_axes))
@@ -202,7 +198,7 @@ def test_assign_complete_2dim_slices(app_inst: ArrayApplication):
         len(B_block_shapes),
         len(A_block_shapes)**2,
         len(B_block_shapes)**2,
-        ]))
+    ]))
     for A_block_shape in A_block_shapes:
         for B_block_shape in B_block_shapes:
             if A_block_shape != B_block_shape:
@@ -221,23 +217,28 @@ def test_assign_complete_2dim_slices(app_inst: ArrayApplication):
                             pbar.update(1)
                             if A_stp[0] <= A_strt[0] or A_stp[1] <= A_strt[1]:
                                 continue
-                            if (A_stp[0] - A_strt[0] != B_stp[0] - B_strt[0]
-                                    or A_stp[1] - A_strt[1] != B_stp[1] - B_strt[1]):
+                            if (A_stp[0] - A_strt[0] != B_stp[0] - B_strt[0] or
+                                    A_stp[1] - A_strt[1] !=
+                                    B_stp[1] - B_strt[1]):
                                 continue
-                            desc_A = "(%d, %d)[%d:%d, %d:%d]" % (A.block_shape[0], A.block_shape[1],
-                                                                 A_strt[0], A_stp[0],
-                                                                 A_strt[1], A_stp[1])
-                            desc_B = "(%d, %d)[%d:%d, %d:%d]" % (B.block_shape[0], B.block_shape[1],
-                                                                 B_strt[0], B_stp[0],
-                                                                 B_strt[1], B_stp[1])
-                            desc = "Testing 2dim slices. %s = %s" % (desc_A, desc_B)
+                            desc_A = "(%d, %d)[%d:%d, %d:%d]" % (
+                                A.block_shape[0], A.block_shape[1], A_strt[0],
+                                A_stp[0], A_strt[1], A_stp[1])
+                            desc_B = "(%d, %d)[%d:%d, %d:%d]" % (
+                                B.block_shape[0], B.block_shape[1], B_strt[0],
+                                B_stp[0], B_strt[1], B_stp[1])
+                            desc = "Testing 2dim slices. %s = %s" % (desc_A,
+                                                                     desc_B)
                             pbar.set_description(desc=desc)
-                            assert np.allclose(B[B_strt[0]:B_stp[0], B_strt[1]:B_stp[1]].get(),
-                                               npB[B_strt[0]:B_stp[0], B_strt[1]:B_stp[1]])
-                            npA[A_strt[0]:A_stp[0], A_strt[1]:A_stp[1]] = npB[B_strt[0]:B_stp[0],
-                                                                              B_strt[1]:B_stp[1]]
-                            A[A_strt[0]:A_stp[0], A_strt[1]:A_stp[1]] = B[B_strt[0]:B_stp[0],
-                                                                          B_strt[1]:B_stp[1]]
+                            assert np.allclose(
+                                B[B_strt[0]:B_stp[0], B_strt[1]:B_stp[1]].get(),
+                                npB[B_strt[0]:B_stp[0], B_strt[1]:B_stp[1]])
+                            npA[A_strt[0]:A_stp[0],
+                                A_strt[1]:A_stp[1]] = npB[B_strt[0]:B_stp[0],
+                                                          B_strt[1]:B_stp[1]]
+                            A[A_strt[0]:A_stp[0],
+                              A_strt[1]:A_stp[1]] = B[B_strt[0]:B_stp[0],
+                                                      B_strt[1]:B_stp[1]]
                             assert np.allclose(A.get(), npA)
                             assert np.allclose(B.get(), npB)
 
@@ -249,7 +250,7 @@ def test_basic_assignment_broadcasting(app_inst: ArrayApplication):
         r = []
         for i in range(num_entries):
             dim = shape[i]
-            start = rs.random_integers(0, dim-1)
+            start = rs.random_integers(0, dim - 1)
             stop = rs.random_integers(start, dim)
             r.append((start, stop))
         return r
@@ -261,27 +262,30 @@ def test_basic_assignment_broadcasting(app_inst: ArrayApplication):
     b_block_shape = (3, 2, 1, 2)
     num_axes = len(a_shape)
     access_modes = [
-        lambda a1, a2: a1,
-        lambda a1, a2: slice(None, None, None),
+        lambda a1, a2: a1, lambda a1, a2: slice(None, None, None),
         lambda a1, a2: slice(a1, None, None),
         lambda a1, a2: slice(None, a1, None),
         lambda a1, a2: slice(a1, a2, None)
     ]
     for a_len in range(num_axes):
         for b_len in range(num_axes):
-            a_mode_iterator = list(itertools.product(access_modes, repeat=a_len))
-            b_mode_iterator = list(itertools.product(access_modes, repeat=b_len))
-            pbar = tqdm.tqdm(total=len(a_mode_iterator)*len(b_mode_iterator),
-                             desc="Testing assignment broadcasting %d/%d" % (a_len*num_axes+b_len,
-                                                                             num_axes**2))
+            a_mode_iterator = list(itertools.product(access_modes,
+                                                     repeat=a_len))
+            b_mode_iterator = list(itertools.product(access_modes,
+                                                     repeat=b_len))
+            pbar = tqdm.tqdm(total=len(a_mode_iterator) * len(b_mode_iterator),
+                             desc="Testing assignment broadcasting %d/%d" %
+                             (a_len * num_axes + b_len, num_axes**2))
             # Create some valid intervals.
             for a_mode in a_mode_iterator:
                 for b_mode in b_mode_iterator:
                     pbar.update(1)
                     a_sel = get_sel(a_len, a_shape)
                     b_sel = get_sel(b_len, b_shape)
-                    a_accessor = tuple(a_mode[i](*a_sel[i]) for i in range(a_len))
-                    b_accessor = tuple(b_mode[i](*b_sel[i]) for i in range(b_len))
+                    a_accessor = tuple(
+                        a_mode[i](*a_sel[i]) for i in range(a_len))
+                    b_accessor = tuple(
+                        b_mode[i](*b_sel[i]) for i in range(b_len))
                     arr_a = np.arange(np.product(a_shape)).reshape(a_shape)
                     arr_b = np.arange(np.product(b_shape)).reshape(b_shape)
                     ba_a = app_inst.array(arr_a, a_block_shape)
@@ -311,8 +315,8 @@ def test_ref_accessor(app_inst: ArrayApplication):
          (slice(3, None), slice(2, None), slice(4, None))),
 
         # Selection shape modulo block is 0
-        ((slice(3, 7), slice(2, 6), slice(0, 4)),
-         (slice(2, 6), slice(0, 4), slice(0, 4))),
+        ((slice(3, 7), slice(2, 6), slice(0, 4)), (slice(2, 6), slice(0, 4),
+                                                   slice(0, 4))),
 
         # Start aligned
         ((slice(0, 1), slice(0, 2), slice(0, 4)), None),
@@ -327,13 +331,12 @@ def test_ref_accessor(app_inst: ArrayApplication):
         ((slice(None, None), slice(None, None), slice(0, 4)), None),
 
         # Broadcast tests.
-        ((2,           slice(4, 6), slice(0, 4)),
-         (slice(3, 4), slice(2, 4), slice(0, 4))),
-        ((6,           slice(6, 8), slice(0, 4)),
-         (slice(2, 3), slice(2, 4), slice(0, 4))),
+        ((2, slice(4, 6), slice(0, 4)), (slice(3, 4), slice(2, 4), slice(0,
+                                                                         4))),
+        ((6, slice(6, 8), slice(0, 4)), (slice(2, 3), slice(2, 4), slice(0,
+                                                                         4))),
         ((slice(None, None), slice(0, 4), slice(None, None)),
          (slice(4, 5), slice(4, 8), slice(None, None))),
-
     ]
     for sel_a, sel_b in sels:
         if sel_b is None:

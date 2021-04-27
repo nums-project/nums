@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import numpy as _np
 
 from nums.core.application_manager import instance as _instance
@@ -66,12 +65,15 @@ class RandomState(object):
             high = low
             low = 0
         shape, block_shape = self._get_shapes(size, dtype)
-        return self.rs().integers(low, high, shape=shape, block_shape=block_shape)
+        return self.rs().integers(low,
+                                  high,
+                                  shape=shape,
+                                  block_shape=block_shape)
 
     def permutation(self, x):
         app = _instance()
         if _array_utils.is_int(x):
-            shape = (x, )
+            shape = (x,)
             block_shape = app.compute_block_shape(shape=shape, dtype=_np.int64)
             return self.rs().permutation(shape[0], block_shape[0])
         else:

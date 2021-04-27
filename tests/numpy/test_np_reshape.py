@@ -13,9 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import numpy as np
-
 
 # pylint: disable=import-outside-toplevel
 
@@ -28,10 +26,12 @@ def test_reshape_int(nps_app_inst):
     arr = nps.arange(np.product(shape))
     np_arr = arr.get()
     assert np.allclose(np_arr.reshape(shape), arr.reshape(shape).get())
-    assert np.allclose(np_arr.reshape(shape).reshape(-1),
-                       arr.reshape(shape).reshape(-1).get())
-    assert np.allclose(np_arr.reshape(shape).reshape(np.product(shape)),
-                       arr.reshape(shape).reshape(np.product(shape)).get())
+    assert np.allclose(
+        np_arr.reshape(shape).reshape(-1),
+        arr.reshape(shape).reshape(-1).get())
+    assert np.allclose(
+        np_arr.reshape(shape).reshape(np.product(shape)),
+        arr.reshape(shape).reshape(np.product(shape)).get())
 
 
 def test_reshape_noops(nps_app_inst):

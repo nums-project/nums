@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import os
 import time
 
@@ -43,17 +42,31 @@ def test_loadtxt(app_inst: ArrayApplication):
                comments='# ',
                encoding=None)
 
-    np_loaded_data = np.loadtxt(
-        fname, dtype=float, comments='# ', delimiter=',',
-        converters=None, skiprows=0, usecols=None, unpack=False,
-        ndmin=0, encoding='bytes', max_rows=None)
+    np_loaded_data = np.loadtxt(fname,
+                                dtype=float,
+                                comments='# ',
+                                delimiter=',',
+                                converters=None,
+                                skiprows=0,
+                                usecols=None,
+                                unpack=False,
+                                ndmin=0,
+                                encoding='bytes',
+                                max_rows=None)
 
     assert np.allclose(data, np_loaded_data)
 
-    nums_array = app_inst.loadtxt(
-        fname, dtype=float, comments='# ', delimiter=',',
-        converters=None, skiprows=0, usecols=None, unpack=False,
-        ndmin=0, encoding='bytes', max_rows=None)
+    nums_array = app_inst.loadtxt(fname,
+                                  dtype=float,
+                                  comments='# ',
+                                  delimiter=',',
+                                  converters=None,
+                                  skiprows=0,
+                                  usecols=None,
+                                  unpack=False,
+                                  ndmin=0,
+                                  encoding='bytes',
+                                  max_rows=None)
 
     np.allclose(data, nums_array.get())
 
@@ -74,7 +87,8 @@ def test_rwd(app_inst: ArrayApplication):
     delete_result_ba: BlockArray = app_inst.delete_fs(filename)
     delete_result_np = delete_result_ba.get()
     for grid_entry in delete_result_ba.grid.get_entry_iterator():
-        assert delete_result_ba[grid_entry].get() == delete_result_np[grid_entry]
+        assert delete_result_ba[grid_entry].get(
+        ) == delete_result_np[grid_entry]
 
 
 def _read_serially(filename, has_header):

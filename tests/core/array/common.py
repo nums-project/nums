@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import numpy as np
 
 from nums.core.array.application import ArrayApplication, BlockArray
@@ -27,8 +26,10 @@ from nums.core.systems.systems import SystemInterface, RaySystem
 def check_block_integrity(arr: BlockArray):
     for grid_entry in arr.grid.get_entry_iterator():
         assert arr.blocks[grid_entry].grid_entry == grid_entry
-        assert arr.blocks[grid_entry].rect == arr.grid.get_slice_tuples(grid_entry)
-        assert arr.blocks[grid_entry].shape == arr.grid.get_block_shape(grid_entry)
+        assert arr.blocks[grid_entry].rect == arr.grid.get_slice_tuples(
+            grid_entry)
+        assert arr.blocks[grid_entry].shape == arr.grid.get_block_shape(
+            grid_entry)
 
 
 class MockMultiNodeDeviceGrid(CyclicDeviceGrid):
@@ -38,13 +39,15 @@ class MockMultiNodeDeviceGrid(CyclicDeviceGrid):
         # Replicate available devices to satisfy cluster requirements.
         assert len(device_ids) == 1
         mock_device_ids = device_ids * np.prod(self.grid_shape)
-        super(CyclicDeviceGrid, self).__init__(grid_shape, device_type, mock_device_ids)
+        super(CyclicDeviceGrid, self).__init__(grid_shape, device_type,
+                                               mock_device_ids)
 
 
 def mock_cluster(cluster_shape):
     system: SystemInterface = RaySystem(use_head=True)
     system.init()
-    device_grid: DeviceGrid = MockMultiNodeDeviceGrid(cluster_shape, "cpu", system.devices())
+    device_grid: DeviceGrid = MockMultiNodeDeviceGrid(cluster_shape, "cpu",
+                                                      system.devices())
     cm = ComputeManager.create(system, numpy_compute, device_grid)
     fs = FileSystem(cm)
     return ArrayApplication(cm, fs)

@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import random
 
 import numpy as np
@@ -117,7 +116,8 @@ class ComputeCls(ComputeImp):
         rng: Generator = block_rng(*rng_params)
         return rng.permutation(size)
 
-    def create_block(self, *src_arrs, src_params, dst_params, dst_shape, dst_shape_bc):
+    def create_block(self, *src_arrs, src_params, dst_params, dst_shape,
+                     dst_shape_bc):
         result = np.empty(shape=dst_shape, dtype=src_arrs[0].dtype)
         assert len(src_params) == len(dst_params)
         for i in range(len(src_params)):
@@ -290,7 +290,12 @@ class ComputeCls(ComputeImp):
     def logical_and(self, *bool_list):
         return np.all(bool_list)
 
-    def arg_op(self, op_name, arr, block_slice, other_argoptima=None, other_optima=None):
+    def arg_op(self,
+               op_name,
+               arr,
+               block_slice,
+               other_argoptima=None,
+               other_optima=None):
         if op_name == "argmin":
             arr_argmin = np.argmin(arr)
             arr_min = arr[arr_argmin]

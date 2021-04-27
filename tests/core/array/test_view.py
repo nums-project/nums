@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import itertools
 
 import numpy as np
@@ -27,7 +26,8 @@ from nums.core.array.view import ArrayView
 
 
 def get_slices(size, index_multiplier=1, limit=None, basic_step=False):
-    index_multiplier = [None] + list(range(-size * index_multiplier, size * index_multiplier + 1))
+    index_multiplier = [None] + list(
+        range(-size * index_multiplier, size * index_multiplier + 1))
     items = list()
     for start, stop, step in itertools.product(index_multiplier, repeat=3):
         if step == 0 or (basic_step and step not in (None, 1)):
@@ -41,7 +41,8 @@ def get_slices(size, index_multiplier=1, limit=None, basic_step=False):
 
 def subsample(items, max_items, seed=1337):
     rs = np.random.RandomState(seed)
-    return np.array(items)[rs.choice(np.arange(len(items), dtype=int), max_items)].tolist()
+    return np.array(items)[rs.choice(np.arange(len(items), dtype=int),
+                                     max_items)].tolist()
 
 
 def is_broadcastable(lshape, laccessor, rshape, raccessor):
@@ -58,7 +59,8 @@ def is_broadcastable(lshape, laccessor, rshape, raccessor):
 def test_basic_select(app_inst: ArrayApplication):
     arr: np.ndarray = np.arange(5)
     block_shape = 3,
-    slice_params = list(get_slices(size=10, index_multiplier=2, basic_step=True))
+    slice_params = list(get_slices(size=10, index_multiplier=2,
+                                   basic_step=True))
     pbar = tqdm.tqdm(total=len(slice_params))
     for slice_sel in slice_params:
         pbar.set_description(str(slice_sel))
@@ -72,7 +74,8 @@ def test_basic_select(app_inst: ArrayApplication):
 def test_basic_assign(app_inst: ArrayApplication):
     from_arr: np.ndarray = np.arange(5)
     block_shape = 3,
-    slice_params = list(get_slices(size=10, index_multiplier=2, basic_step=True))
+    slice_params = list(get_slices(size=10, index_multiplier=2,
+                                   basic_step=True))
     pbar = tqdm.tqdm(total=len(slice_params))
     for slice_sel in slice_params:
         pbar.set_description(str(slice_sel))
@@ -105,10 +108,11 @@ def test_basic_assign_3axis(app_inst: ArrayApplication):
         accessor_step = list(map(lambda x: [1], shape))
         axis_accessors = []
         for i in range(num_axes):
-            accessor_params = list(filter(lambda a: a[0] <= a[1],
-                                          itertools.product(accessor_start[i],
-                                                            accessor_stop[i],
-                                                            accessor_step[i])))
+            accessor_params = list(
+                filter(
+                    lambda a: a[0] <= a[1],
+                    itertools.product(accessor_start[i], accessor_stop[i],
+                                      accessor_step[i])))
             axis_accessors.append(accessor_params)
         accessor_iterator = list(itertools.product(*axis_accessors))
         if limit is not None:
@@ -131,13 +135,11 @@ def test_basic_assign_3axis(app_inst: ArrayApplication):
     num_axes = 3
     limit = 5
 
-    lshape, lblock_shape, left_accessor_iterator = get_access_iterator(shape=(7, 5, 3),
-                                                                       block_shape=(4, 3, 2),
-                                                                       limit=limit)
+    lshape, lblock_shape, left_accessor_iterator = get_access_iterator(
+        shape=(7, 5, 3), block_shape=(4, 3, 2), limit=limit)
 
-    rshape, rblock_shape, right_accessor_iterator = get_access_iterator(shape=(5, 6, 4),
-                                                                        block_shape=(2, 4, 3),
-                                                                        limit=limit)
+    rshape, rblock_shape, right_accessor_iterator = get_access_iterator(
+        shape=(5, 6, 4), block_shape=(2, 4, 3), limit=limit)
 
     mode_iterator = list(itertools.product(access_modes, repeat=num_axes))
     pbar = tqdm.tqdm(total=(len(left_accessor_iterator) *
@@ -172,8 +174,8 @@ def test_basic_assign_3axis(app_inst: ArrayApplication):
             right_item = rshape, rblock_shape, raccessor
             for left_mode in mode_iterator:
                 for right_mode in mode_iterator:
-                    if test_assignment(left_item, left_mode,
-                                       right_item, right_mode):
+                    if test_assignment(left_item, left_mode, right_item,
+                                       right_mode):
                         num_valid += 1
                         pbar.set_description("num_valid=%d" % num_valid)
                     pbar.update(1)

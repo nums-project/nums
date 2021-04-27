@@ -83,9 +83,11 @@ def get_app(mode):
 
     cluster_shape = (1, 1)
     if mode == "ray-none":
-        device_grid: DeviceGrid = NoDeviceGrid(cluster_shape, "cpu", system.devices())
+        device_grid: DeviceGrid = NoDeviceGrid(cluster_shape, "cpu",
+                                               system.devices())
     else:
-        device_grid: DeviceGrid = CyclicDeviceGrid(cluster_shape, "cpu", system.devices())
+        device_grid: DeviceGrid = CyclicDeviceGrid(cluster_shape, "cpu",
+                                                   system.devices())
 
     cm = ComputeManager.create(system, numpy_compute, device_grid)
     fs = FileSystem(cm)

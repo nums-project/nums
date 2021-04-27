@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from types import FunctionType
 from typing import Any, Union, List, Dict
 
@@ -50,11 +49,13 @@ class SystemInterface(object):
         raise NotImplementedError()
 
     def register(self, name: str, func: callable, remote_params: Dict = None):
-        raise NotImplementedError("Implements a way to register new remote functions.")
+        raise NotImplementedError(
+            "Implements a way to register new remote functions.")
 
     def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
-        raise NotImplementedError("Implement RPC as e.g. "
-                                  "self.remote_functions[name](*args, **new_kwargs)")
+        raise NotImplementedError(
+            "Implement RPC as e.g. "
+            "self.remote_functions[name](*args, **new_kwargs)")
 
     def num_cores_total(self):
         raise NotImplementedError()

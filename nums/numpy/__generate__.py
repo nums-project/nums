@@ -13,10 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from nums.core.systems import utils as systems_utils
 from nums.numpy import numpy_utils
-
 
 # pylint: disable = import-outside-toplevel
 
@@ -61,12 +59,16 @@ def {op_name}(x1: BlockArray, x2: BlockArray,
                 # We don't support subok.
                 args = args.split("subok")[0].strip()[:-1]
             args = list(map(lambda x: x.strip(), args.split(",")))
-            if args == ['x', '/', 'out=None', '*', 'where=True',
-                        "casting='same_kind'", "order='K'", 'dtype=None']:
+            if args == [
+                    'x', '/', 'out=None', '*', 'where=True',
+                    "casting='same_kind'", "order='K'", 'dtype=None'
+            ]:
                 # This is a uop.
                 uops.append(_uop_template(name))
-            elif args == ['x1', "x2", '/', 'out=None', '*', 'where=True',
-                          "casting='same_kind'", "order='K'", 'dtype=None']:
+            elif args == [
+                    'x1', "x2", '/', 'out=None', '*', 'where=True',
+                    "casting='same_kind'", "order='K'", 'dtype=None'
+            ]:
                 # This is a bop.
                 bops.append(_bop_template(name))
             else:
@@ -86,7 +88,8 @@ def random_stub():
     app = instance()
     sys = app.cm
     rs_inst = NumsRandomState(cm=sys, seed=1337)
-    numpy_items = sorted(systems_utils.get_module_functions(numpy_module).items())
+    numpy_items = sorted(
+        systems_utils.get_module_functions(numpy_module).items())
     nums_items = sorted(systems_utils.get_instance_functions(rs_inst).items())
     raise NotImplementedError()
 

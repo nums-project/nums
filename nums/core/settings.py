@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import multiprocessing
 import os
 from pathlib import Path
@@ -25,7 +24,6 @@ project_root = pj(package_root, "../")
 data_dir = pj(project_root, "data")
 Path(data_dir).mkdir(parents=True, exist_ok=True)
 
-
 # System settings.
 system_name = os.environ.get("NUMS_SYSTEM", "ray")
 # TODO (hme):
@@ -33,19 +31,14 @@ system_name = os.environ.get("NUMS_SYSTEM", "ray")
 #  - use_head => use_driver, and should be an environment variable.
 #  - Remove ray_init_default -- this should be handled in RaySystem.
 use_head = True
-ray_init_default = {
-    "num_cpus": multiprocessing.cpu_count()
-}
-
+ray_init_default = {"num_cpus": multiprocessing.cpu_count()}
 
 # Compute settings.
 compute_name = os.environ.get("NUMS_COMPUTE", "numpy")
 
-
 # Device grid settings.
 cluster_shape = (1, 1)
 device_grid_name = os.environ.get("DEVICE_GRID", "cyclic")
-
 
 # NumPy operator map.
 np_ufunc_map = {
@@ -64,50 +57,48 @@ np_ufunc_map = {
 }
 
 np_bop_reduction_set = {
-    "min",
-    "amin",
-    "max",
-    "amax",
-    "nanmax",
-    "nanmin",
-    "nansum"
+    "min", "amin", "max", "amax", "nanmax", "nanmin", "nansum"
 }
 
 # Fallback on NumPy for these operations.
 # This is achieved by converting the block array to a single block, performing the operation,
 # and converting back to the original block shape.
 doctest_fallback = {
-    'argwhere', 'asscalar', 'clip', 'compress', 'convolve', 'corrcoef', 'cumprod',
-    'cumproduct', 'cumsum', 'diag_indices_from', 'diagflat', 'fix', 'fromiter', 'full',
-    'msort', 'nancumprod', 'nancumsum', 'nanprod', 'partition', 'polysub', 'product',
-    'ravel_multi_index', 'repeat', 'resize', 'roll', 'roots', 'rot90', 'round',
-    'round_', 'searchsorted', 'setdiff1d', 'setxor1d', 'sometrue', 'sort_complex', 'swapaxes',
-    'tile', 'trapz', 'tri', 'tril', 'tril_indices_from', 'triu', 'triu_indices_from', 'union1d'
+    'argwhere', 'asscalar', 'clip', 'compress', 'convolve', 'corrcoef',
+    'cumprod', 'cumproduct', 'cumsum', 'diag_indices_from', 'diagflat', 'fix',
+    'fromiter', 'full', 'msort', 'nancumprod', 'nancumsum', 'nanprod',
+    'partition', 'polysub', 'product', 'ravel_multi_index', 'repeat', 'resize',
+    'roll', 'roots', 'rot90', 'round', 'round_', 'searchsorted', 'setdiff1d',
+    'setxor1d', 'sometrue', 'sort_complex', 'swapaxes', 'tile', 'trapz', 'tri',
+    'tril', 'tril_indices_from', 'triu', 'triu_indices_from', 'union1d'
 }
 
-manually_tested_fallback = {
-    'cov'
-}
+manually_tested_fallback = {'cov'}
 
 failed_fallback = {
-    'angle', 'append', 'apply_along_axis', 'apply_over_axes', 'argsort', 'around', 'array_split',
-    'argpartition', 'asarray', 'asarray_chkfinite', 'average', 'bartlett', 'bincount', 'blackman',
-    'choose', 'column_stack', 'common_type', 'correlate', 'count_nonzero', 'cov', 'cross', 'delete',
-    'diag_indices', 'diagonal', 'diff', 'digitize', 'divmod', 'dot', 'dsplit', 'dstack', 'ediff1d',
-    'einsum', 'einsum_path', 'extract', 'fill_diagonal', 'flatnonzero', 'flip', 'fliplr', 'flipud',
-    'frexp', 'frombuffer', 'fromfile', 'fromfunction', 'frompyfunc', 'full_like', 'geomspace',
-    'gradient', 'hamming', 'hanning', 'histogram', 'histogram2d', 'histogram_bin_edges',
-    'histogramdd', 'hsplit', 'hstack', 'i0', 'imag', 'in1d', 'indices', 'insert', 'interp',
-    'intersect1d', 'isclose', 'iscomplex', 'iscomplexobj', 'isin', 'isneginf',
-    'isposinf', 'isreal', 'isrealobj', 'isscalar', 'ix_', 'kaiser', 'kron', 'lexsort',
-    'maximum_sctype', 'median', 'meshgrid', 'min_scalar_type', 'mintypecode', 'modf', 'moveaxis',
-    'nan_to_num', 'nanargmax', 'nanargmin', 'nanmedian', 'nanpercentile', 'nanquantile', 'nonzero',
-    'obj2sctype', 'packbits', 'pad', 'percentile', 'piecewise', 'place', 'poly',
-    'polyadd', 'polyder', 'polydiv', 'polyfit', 'polyint', 'polymul', 'polyval', 'prod',
-    'promote_types', 'ptp', 'put', 'put_along_axis', 'putmask', 'quantile', 'ravel', 'real',
-    'real_if_close', 'require', 'result_type', 'rollaxis', 'row_stack', 'sctype2char', 'select',
-    'sinc', 'sort', 'stack', 'take', 'take_along_axis', 'trace', 'tril_indices', 'trim_zeros',
-    'triu_indices', 'unique', 'unpackbits', 'unravel_index', 'unwrap', 'vander', 'vdot', 'vsplit',
+    'angle', 'append', 'apply_along_axis', 'apply_over_axes', 'argsort',
+    'around', 'array_split', 'argpartition', 'asarray', 'asarray_chkfinite',
+    'average', 'bartlett', 'bincount', 'blackman', 'choose', 'column_stack',
+    'common_type', 'correlate', 'count_nonzero', 'cov', 'cross', 'delete',
+    'diag_indices', 'diagonal', 'diff', 'digitize', 'divmod', 'dot', 'dsplit',
+    'dstack', 'ediff1d', 'einsum', 'einsum_path', 'extract', 'fill_diagonal',
+    'flatnonzero', 'flip', 'fliplr', 'flipud', 'frexp', 'frombuffer',
+    'fromfile', 'fromfunction', 'frompyfunc', 'full_like', 'geomspace',
+    'gradient', 'hamming', 'hanning', 'histogram', 'histogram2d',
+    'histogram_bin_edges', 'histogramdd', 'hsplit', 'hstack', 'i0', 'imag',
+    'in1d', 'indices', 'insert', 'interp', 'intersect1d', 'isclose',
+    'iscomplex', 'iscomplexobj', 'isin', 'isneginf', 'isposinf', 'isreal',
+    'isrealobj', 'isscalar', 'ix_', 'kaiser', 'kron', 'lexsort',
+    'maximum_sctype', 'median', 'meshgrid', 'min_scalar_type', 'mintypecode',
+    'modf', 'moveaxis', 'nan_to_num', 'nanargmax', 'nanargmin', 'nanmedian',
+    'nanpercentile', 'nanquantile', 'nonzero', 'obj2sctype', 'packbits', 'pad',
+    'percentile', 'piecewise', 'place', 'poly', 'polyadd', 'polyder', 'polydiv',
+    'polyfit', 'polyint', 'polymul', 'polyval', 'prod', 'promote_types', 'ptp',
+    'put', 'put_along_axis', 'putmask', 'quantile', 'ravel', 'real',
+    'real_if_close', 'require', 'result_type', 'rollaxis', 'row_stack',
+    'sctype2char', 'select', 'sinc', 'sort', 'stack', 'take', 'take_along_axis',
+    'trace', 'tril_indices', 'trim_zeros', 'triu_indices', 'unique',
+    'unpackbits', 'unravel_index', 'unwrap', 'vander', 'vdot', 'vsplit',
     'vstack', 'who'
 }
 

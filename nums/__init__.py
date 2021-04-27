@@ -13,14 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from nums.api import read, write, delete, read_csv
 from nums.core.version import __version__
 
-__all__ = [
-    "numpy",
-    "read", "write", "delete", "read_csv"
-]
+__all__ = ["numpy", "read", "write", "delete", "read_csv"]
 
 
 def init():

@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 # pylint: disable = redefined-builtin
 
 from nums.core import settings
@@ -22,7 +21,6 @@ from nums.numpy import random
 from nums.numpy.api import *
 from nums.numpy.api import _default_to_numpy
 from nums.numpy.api import _not_implemented
-
 
 # TODO(hme): Generate __all__, or control import hints some other way.
 
@@ -41,7 +39,8 @@ def _init():
             else:
                 globals()[name] = _not_implemented(func)
             if hasattr(np, func.__name__):
-                globals()[name].__doc__ = np.__getattribute__(func.__name__).__doc__
+                globals()[name].__doc__ = np.__getattribute__(
+                    func.__name__).__doc__
 
 
 _init()

@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import numpy as np
 
 from nums.core.array.blockarray import BlockArray, Block
@@ -42,18 +41,36 @@ class NumsRandomState(object):
         assert isinstance(dtype, type)
         return self._sample_basic("random", shape, block_shape, dtype, (dtype,))
 
-    def integers(self, low, high=None, shape=None, block_shape=None, dtype=None, endpoint=False):
+    def integers(self,
+                 low,
+                 high=None,
+                 shape=None,
+                 block_shape=None,
+                 dtype=None,
+                 endpoint=False):
         if dtype is None:
             dtype = np.int64
         assert isinstance(dtype, type)
         return self._sample_basic("integers", shape, block_shape, dtype,
                                   (low, high, dtype, endpoint))
 
-    def uniform(self, low=0.0, high=1.0, shape=None, block_shape=None, dtype=None):
-        return self._sample_basic("uniform", shape, block_shape, dtype, (low, high))
+    def uniform(self,
+                low=0.0,
+                high=1.0,
+                shape=None,
+                block_shape=None,
+                dtype=None):
+        return self._sample_basic("uniform", shape, block_shape, dtype,
+                                  (low, high))
 
-    def normal(self, loc=0.0, scale=1.0, shape=None, block_shape=None, dtype=None):
-        return self._sample_basic("normal", shape, block_shape, dtype, (loc, scale))
+    def normal(self,
+               loc=0.0,
+               scale=1.0,
+               shape=None,
+               block_shape=None,
+               dtype=None):
+        return self._sample_basic("normal", shape, block_shape, dtype,
+                                  (loc, scale))
 
     def beta(self, a, b, shape=None, block_shape=None, dtype=None):
         return self._sample_basic("beta", shape, block_shape, dtype, (a, b))
@@ -65,43 +82,89 @@ class NumsRandomState(object):
         return self._sample_basic("chisquare", shape, block_shape, dtype, (df,))
 
     def exponential(self, scale=1.0, shape=None, block_shape=None, dtype=None):
-        return self._sample_basic("exponential", shape, block_shape, dtype, (scale,))
+        return self._sample_basic("exponential", shape, block_shape, dtype,
+                                  (scale,))
 
     def f(self, dfnum, dfden, shape=None, block_shape=None, dtype=None):
-        return self._sample_basic("f", shape, block_shape, dtype, (dfnum, dfden))
+        return self._sample_basic("f", shape, block_shape, dtype,
+                                  (dfnum, dfden))
 
     def gamma(self, k, theta, shape=None, block_shape=None, dtype=None):
-        return self._sample_basic("gamma", shape, block_shape, dtype, (k, theta))
+        return self._sample_basic("gamma", shape, block_shape, dtype,
+                                  (k, theta))
 
     def geometric(self, p, shape=None, block_shape=None, dtype=None):
         return self._sample_basic("geometric", shape, block_shape, dtype, (p,))
 
-    def gumbel(self, loc=0.0, scale=1.0, shape=None, block_shape=None, dtype=None):
-        return self._sample_basic("gumbel", shape, block_shape, dtype, (loc, scale))
+    def gumbel(self,
+               loc=0.0,
+               scale=1.0,
+               shape=None,
+               block_shape=None,
+               dtype=None):
+        return self._sample_basic("gumbel", shape, block_shape, dtype,
+                                  (loc, scale))
 
-    def hypergeometric(self, ngood, nbad, nsample, shape=None, block_shape=None, dtype=None):
+    def hypergeometric(self,
+                       ngood,
+                       nbad,
+                       nsample,
+                       shape=None,
+                       block_shape=None,
+                       dtype=None):
         return self._sample_basic("hypergeometric", shape, block_shape, dtype,
                                   (ngood, nbad, nsample))
 
-    def laplace(self, loc=0.0, scale=1.0, shape=None, block_shape=None, dtype=None):
-        return self._sample_basic("laplace", shape, block_shape, dtype, (loc, scale))
+    def laplace(self,
+                loc=0.0,
+                scale=1.0,
+                shape=None,
+                block_shape=None,
+                dtype=None):
+        return self._sample_basic("laplace", shape, block_shape, dtype,
+                                  (loc, scale))
 
-    def logistic(self, loc=0.0, scale=1.0, shape=None, block_shape=None, dtype=None):
-        return self._sample_basic("logistic", shape, block_shape, dtype, (loc, scale))
+    def logistic(self,
+                 loc=0.0,
+                 scale=1.0,
+                 shape=None,
+                 block_shape=None,
+                 dtype=None):
+        return self._sample_basic("logistic", shape, block_shape, dtype,
+                                  (loc, scale))
 
-    def lognormal(self, mean=0.0, sigma=1.0, shape=None, block_shape=None, dtype=None):
-        return self._sample_basic("lognormal", shape, block_shape, dtype, (mean, sigma))
+    def lognormal(self,
+                  mean=0.0,
+                  sigma=1.0,
+                  shape=None,
+                  block_shape=None,
+                  dtype=None):
+        return self._sample_basic("lognormal", shape, block_shape, dtype,
+                                  (mean, sigma))
 
     def logseries(self, p, shape=None, block_shape=None, dtype=None):
         return self._sample_basic("logseries", shape, block_shape, dtype, (p,))
 
     def negative_binomial(self, n, p, shape=None, block_shape=None, dtype=None):
-        return self._sample_basic("negative_binomial", shape, block_shape, dtype, (n, p))
+        return self._sample_basic("negative_binomial", shape, block_shape,
+                                  dtype, (n, p))
 
-    def noncentral_chisquare(self, df, nonc, shape=None, block_shape=None, dtype=None):
-        return self._sample_basic("noncentral_chisquare", shape, block_shape, dtype, (df, nonc))
+    def noncentral_chisquare(self,
+                             df,
+                             nonc,
+                             shape=None,
+                             block_shape=None,
+                             dtype=None):
+        return self._sample_basic("noncentral_chisquare", shape, block_shape,
+                                  dtype, (df, nonc))
 
-    def noncentral_f(self, dfnum, dfden, nonc, shape=None, block_shape=None, dtype=None):
+    def noncentral_f(self,
+                     dfnum,
+                     dfden,
+                     nonc,
+                     shape=None,
+                     block_shape=None,
+                     dtype=None):
         return self._sample_basic("noncentral_f", shape, block_shape, dtype,
                                   (dfnum, dfden, nonc))
 
@@ -115,23 +178,35 @@ class NumsRandomState(object):
         return self._sample_basic("power", shape, block_shape, dtype, (a,))
 
     def rayleigh(self, scale=1.0, shape=None, block_shape=None, dtype=None):
-        return self._sample_basic("rayleigh", shape, block_shape, dtype, (scale,))
+        return self._sample_basic("rayleigh", shape, block_shape, dtype,
+                                  (scale,))
 
     def standard_cauchy(self, shape=None, block_shape=None, dtype=None):
-        return self._sample_basic("standard_cauchy", shape, block_shape, dtype, ())
+        return self._sample_basic("standard_cauchy", shape, block_shape, dtype,
+                                  ())
 
     def standard_t(self, df, shape=None, block_shape=None, dtype=None):
-        return self._sample_basic("standard_t", shape, block_shape, dtype, (df,))
+        return self._sample_basic("standard_t", shape, block_shape, dtype,
+                                  (df,))
 
     # TODO Restrict params to scalars.
-    def triangular(self, left, mode, right, shape=None, block_shape=None, dtype=None):
-        return self._sample_basic("triangular", shape, block_shape, dtype, (left, mode, right))
+    def triangular(self,
+                   left,
+                   mode,
+                   right,
+                   shape=None,
+                   block_shape=None,
+                   dtype=None):
+        return self._sample_basic("triangular", shape, block_shape, dtype,
+                                  (left, mode, right))
 
     def vonmises(self, mu, kappa, shape=None, block_shape=None, dtype=None):
-        return self._sample_basic("vonmises", shape, block_shape, dtype, (mu, kappa))
+        return self._sample_basic("vonmises", shape, block_shape, dtype,
+                                  (mu, kappa))
 
     def wald(self, mean, scale, shape=None, block_shape=None, dtype=None):
-        return self._sample_basic("wald", shape, block_shape, dtype, (mean, scale))
+        return self._sample_basic("wald", shape, block_shape, dtype,
+                                  (mean, scale))
 
     def weibull(self, a, shape=None, block_shape=None, dtype=None):
         return self._sample_basic("weibull", shape, block_shape, dtype, (a,))
@@ -141,7 +216,8 @@ class NumsRandomState(object):
 
     # TODO (hme): Add multivariate samplers.
 
-    def _sample_basic(self, rfunc_name, shape, block_shape, dtype, rfunc_args) -> BlockArray:
+    def _sample_basic(self, rfunc_name, shape, block_shape, dtype,
+                      rfunc_args) -> BlockArray:
         if shape is None:
             assert block_shape is None
             shape = ()
@@ -163,7 +239,8 @@ class NumsRandomState(object):
                 rfunc_args_final = tuple([size] + list(rfunc_args))
             elif rfunc_name == "integers":
                 # rfunc_args == (low, high, dtype, endpoint)
-                rfunc_args_final = tuple(list(rfunc_args[:2]) + [size] + list(rfunc_args[2:]))
+                rfunc_args_final = tuple(
+                    list(rfunc_args[:2]) + [size] + list(rfunc_args[2:]))
             else:
                 rfunc_args_final = tuple(list(rfunc_args) + [size])
             block: Block = ba.blocks[grid_entry]
@@ -173,15 +250,17 @@ class NumsRandomState(object):
                                               this_block_shape,
                                               dtype,
                                               syskwargs={
-                                                      "grid_entry": grid_entry,
-                                                      "grid_shape": grid.grid_shape
-                                                  })
+                                                  "grid_entry": grid_entry,
+                                                  "grid_shape": grid.grid_shape
+                                              })
         return ba
 
     def permutation(self, size, block_size):
         shape = (size,)
         block_shape = (block_size,)
-        grid: ArrayGrid = ArrayGrid(shape=shape, block_shape=shape, dtype=np.int64.__name__)
+        grid: ArrayGrid = ArrayGrid(shape=shape,
+                                    block_shape=shape,
+                                    dtype=np.int64.__name__)
         ba = BlockArray(grid, self._cm)
         for grid_entry in ba.grid.get_entry_iterator():
             rng_params = list(self._rng.new_block_rng_params())
@@ -189,7 +268,7 @@ class NumsRandomState(object):
             block.oid = self._cm.permutation(rng_params,
                                              size,
                                              syskwargs={
-                                                      "grid_entry": grid_entry,
-                                                      "grid_shape": grid.grid_shape
-                                                  })
+                                                 "grid_entry": grid_entry,
+                                                 "grid_shape": grid.grid_shape
+                                             })
         return ba.reshape(block_shape=block_shape)

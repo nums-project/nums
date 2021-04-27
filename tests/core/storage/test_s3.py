@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import boto3
 import numpy as np
 from moto import mock_s3
@@ -22,7 +21,6 @@ from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray
 from nums.core.grid.grid import ArrayGrid
 from nums.core.storage.storage import StoredArrayS3
-
 
 # pylint: disable = import-outside-toplevel, import-error
 
@@ -47,7 +45,8 @@ def test_rwd(app_inst_s3: ArrayApplication):
     delete_result_arr = app_inst_s3.get(delete_result)
     for grid_entry in delete_result.grid.get_entry_iterator():
         deleted_key = delete_result_arr[grid_entry]["Deleted"][0]["Key"]
-        assert deleted_key == StoredArrayS3(filename, delete_result.grid).get_key(grid_entry)
+        assert deleted_key == StoredArrayS3(
+            filename, delete_result.grid).get_key(grid_entry)
 
 
 @mock_s3
@@ -58,8 +57,9 @@ def test_array_rwd():
 
     X: np.ndarray = np.random.random(3)
     stored_X = StoredArrayS3("darrays/%s_X" % "__test__")
-    stored_X.put_grid(ArrayGrid(shape=X.shape,
-                                block_shape=X.shape, dtype=np.float64.__name__))
+    stored_X.put_grid(
+        ArrayGrid(shape=X.shape, block_shape=X.shape,
+                  dtype=np.float64.__name__))
     stored_X.init_grid()
     stored_X.put_array(X)
     assert np.allclose(X, stored_X.get_array())
@@ -69,7 +69,8 @@ def test_array_rwd():
 
 def test_grid_copy():
     grid = ArrayGrid(shape=(1, 2),
-                     block_shape=(1, 2), dtype=np.float64.__name__)
+                     block_shape=(1, 2),
+                     dtype=np.float64.__name__)
     assert grid.copy() is not grid
 
 

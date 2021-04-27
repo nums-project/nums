@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 # pylint: disable=import-outside-toplevel, no-member
 
 
@@ -30,7 +29,8 @@ def test_ufunc(nps_app_inst):
     for name, _ in sorted(uops):
         if name in ("arccosh", "arcsinh"):
             np_val = np.array([np.e])
-        elif name == "invert" or name.startswith("bitwise") or name.startswith("logical"):
+        elif name == "invert" or name.startswith("bitwise") or name.startswith(
+                "logical"):
             np_val = np.array([True, False], dtype=np.bool_)
         else:
             np_val = np.array([.1, .2, .3])
@@ -44,7 +44,8 @@ def test_ufunc(nps_app_inst):
     def check_bop(_name, _np_a, _np_b):
         np_ufunc = np.__getattribute__(_name)
         ns_ufunc = nps.__getattribute__(_name)
-        if _name in ("ldexp",) and str(_np_b.dtype) not in ("int", "int32", "int64"):
+        if _name in ("ldexp",) and str(
+                _np_b.dtype) not in ("int", "int32", "int64"):
             return
         _ns_a = nps.array(_np_a)
         _ns_b = nps.array(_np_b)
@@ -62,17 +63,15 @@ def test_ufunc(nps_app_inst):
             np_b = np.array([4, 12, 13], dtype=int)
             check_bop(name, np_a, np_b)
         elif name.endswith("shift"):
-            np_a = np.array([7*10**3, 8*10**3, 9*10**3], dtype=int)
+            np_a = np.array([7 * 10**3, 8 * 10**3, 9 * 10**3], dtype=int)
             np_b = np.array([1, 2, 3], dtype=int)
             check_bop(name, np_a, np_b)
         else:
             pairs = [
-                (np.array([.1, 5.0, .3]),
-                 np.array([.2, 6.0, .3])),
-                (np.array([.1, 5.0, .3]),
-                 np.array([4, 2, 6], dtype=int)),
-                (np.array([3, 7, 3], dtype=int),
-                 np.array([4, 2, 6], dtype=int)),
+                (np.array([.1, 5.0, .3]), np.array([.2, 6.0, .3])),
+                (np.array([.1, 5.0, .3]), np.array([4, 2, 6], dtype=int)),
+                (np.array([3, 7, 3], dtype=int), np.array([4, 2, 6],
+                                                          dtype=int)),
             ]
             for np_a, np_b in pairs:
                 check_bop(name, np_a, np_b)
@@ -146,7 +145,6 @@ def test_inner_outer(nps_app_inst):
 
 
 # TODO(hme): Add broadcast tests.
-
 
 if __name__ == "__main__":
     from nums.core import application_manager
