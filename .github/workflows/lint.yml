@@ -20,7 +20,7 @@ jobs:
       - name: Run pylint
         run: |
           pylint nums
-   yapf:
+  yapf:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
