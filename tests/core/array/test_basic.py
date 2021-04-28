@@ -15,7 +15,7 @@
 
 
 # pylint: disable=wrong-import-order
-import common
+import common  # pylint: disable=import-error
 import numpy as np
 
 from nums.core.array.application import ArrayApplication

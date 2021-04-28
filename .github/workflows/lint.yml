@@ -20,3 +20,4 @@ jobs:
       - name: Run pylint
         run: |
           pylint nums
+          pylint tests

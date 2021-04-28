@@ -17,7 +17,7 @@
 import itertools
 
 # pylint: disable=wrong-import-order
-import common
+import common  # pylint: disable=import-error
 import numpy as np
 import pytest
 import tqdm
