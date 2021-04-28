@@ -1,0 +1,16 @@
+IP Head: 10.128.27.101:6379
+Starting HEAD at nid06958
+Starting WORKER 1 at nid06959
+use_head False
+cluster_shape 1,1
+connecting to head node 10.128.27.101:6379
+running nums operation
+worker node 10.128.27.102
+head node 10.128.27.101
+total cpus 68.0
+cluster_grid (0, 0) node:10.128.27.102
+cluster_shape (1, 1)
+Initial size: 10000
+Result shape: (10000, 10000)
+writing result
+Print True:  True
