@@ -1114,3 +1114,31 @@ class ArrayApplication(object):
             return res[0]
         else:
             return res
+
+    def hstack(self, tup):
+        arrs = self.atleast_1d(*tup)
+        if not isinstance(arrs, list):
+            arrs = [arrs]
+        # As a special case, dimension 0 of 1-dimensional arrays is "horizontal"
+        if arrs and arrs[0].ndim == 1:
+            return self.concatenate(arrs, 0)
+        else:
+            return self.concatenate(arrs, 1)
+
+    def vstack(self, tup):
+        arrs = self.atleast_2d(*tup)
+        if not isinstance(arrs, list):
+            arrs = [arrs]
+        return self.concatenate(arrs, 0)
+
+    def dstack(self, tup):
+        arrs = self.atleast_3d(*tup)
+        if not isinstance(arrs, list):
+            arrs = [arrs]
+        return self.concatenate(arrs, 2)
+
+    def row_stack(self, tup):
+        return self.vstack(tup)
+
+    def column_stack(self, tup):
+        return self.vstack(tup).T
