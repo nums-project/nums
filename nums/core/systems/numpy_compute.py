@@ -20,6 +20,7 @@ from numpy.random import PCG64
 from numpy.random import Generator
 import scipy.linalg
 import scipy.special
+import scipy.sparse
 
 from nums.core.storage.storage import ArrayGrid
 from nums.core.systems.interfaces import ComputeImp, RNGInterface
@@ -107,6 +108,14 @@ class ComputeCls(ComputeImp):
         rng: Generator = block_rng(*rng_params)
         op_func = rng.__getattribute__(rfunc_name)
         result = op_func(*rfunc_args).reshape(shape)
+        if rfunc_name not in ("random", "integers"):
+            # Only random and integer supports sampling of a specific type.
+            result = result.astype(dtype)
+        return result
+
+    def random_block_sparse(self, rng_params, rfunc_name, rfunc_args, shape, dtype):
+        m, n = shape
+        result = scipy.sparse.random(m, n, density=0.25)
         if rfunc_name not in ("random", "integers"):
             # Only random and integer supports sampling of a specific type.
             result = result.astype(dtype)
@@ -233,6 +242,8 @@ class ComputeCls(ComputeImp):
         if a2.shape != a2_shape:
             a2 = a2.reshape(a2_shape)
 
+        if isinstance(a1, scipy.sparse.coo.coo_matrix):
+            return a1.multiply(a2)
         if op == "tensordot":
             return np.tensordot(a1, a2, axes=axes)
         op = np_ufunc_map.get(op, op)

@@ -19,7 +19,7 @@ import numpy as np
 from nums.core.storage.storage import ArrayGrid
 from nums.core.systems.systems import System
 from nums.core.array import utils as array_utils
-
+import scipy
 block_id_counter = -1
 
 
@@ -410,7 +410,10 @@ class BlockArrayBase(object):
             arr: np.ndarray = arrays[block_index]
             if block.transposed:
                 arr = arr.T
-            result[slices] = arr.reshape(block.shape)
+            if isinstance(arr, scipy.sparse.coo.coo_matrix) or isinstance(arr, scipy.sparse.csr.csr_matrix):
+                result[slices] = arr.reshape(block.shape).A
+            else:    
+                result[slices] = arr.reshape(block.shape)
         return result
 
     def broadcast_to(self, shape):

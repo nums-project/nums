@@ -88,6 +88,9 @@ class ComputeInterface(object):
     def random_block(self, rng_params, rfunc_name, rfunc_args, shape, dtype, syskwargs: Dict):
         raise NotImplementedError()
 
+    def random_block_sparse(self, rng_params, rfunc_name, rfunc_args, shape, dtype, syskwargs: Dict):
+        raise NotImplementedError()
+
     def permutation(self, rng_params, size, syskwargs: Dict):
         raise NotImplementedError()
 

@@ -61,6 +61,10 @@ class RandomState(object):
         shape, block_shape = self._get_shapes(shape, _np.float64)
         return self.rs().normal(shape=shape, block_shape=block_shape)
 
+    def randn_sparse(self, *shape):
+        shape, block_shape = self._get_shapes(shape, _np.float64)
+        return self.rs().normal_sparse(shape=shape, block_shape=block_shape)
+
     def randint(self, low, high=None, size=None, dtype=None):
         if high is None:
             high = low
@@ -88,5 +92,6 @@ seed = _default_random.seed
 random_sample = _default_random.random_sample
 rand = _default_random.rand
 randn = _default_random.randn
+randn_sparse = _default_random.randn_sparse
 randint = _default_random.randint
 permutation = _default_random.permutation

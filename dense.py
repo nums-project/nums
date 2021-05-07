@@ -6,6 +6,7 @@ import argparse
 import nums.numpy as nps
 from nums.core import settings
 
+
 def execute():
     # Memory used is 8 * (10**4)**2
     # So this will be 800MB object.
