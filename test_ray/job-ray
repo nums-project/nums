@@ -10,7 +10,7 @@
 #SBATCH --tasks-per-node=1
 #SBATCH --cpus-per-task=68
 
-conda activate nums
+source activate nums
 
 # Getting the node names
 nodes=$(scontrol show hostnames "$SLURM_JOB_NODELIST")
@@ -47,4 +47,5 @@ done
 
 
 export MKL_NUM_THREADS=1
-python -u ./sparse.py --address $ip_head --cluster-shape 1,1 --size 100
+python -u ./test_nums.py --address $ip_head --cluster-shape 1,1
+
