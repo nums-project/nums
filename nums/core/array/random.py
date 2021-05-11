@@ -16,6 +16,7 @@
 
 import numpy as np
 
+from nums.core.array.sparseblockarray import SparseBlockArray, SparseBlock
 from nums.core.array.blockarray import BlockArray, Block
 from nums.core.storage.storage import ArrayGrid
 from nums.core.systems.systems import System
@@ -55,8 +56,8 @@ class NumsRandomState(object):
     def normal(self, loc=0.0, scale=1.0, shape=None, block_shape=None, dtype=None):
         return self._sample_basic("normal", shape, block_shape, dtype, (loc, scale))
 
-    def normal_sparse(self, loc=0.0, scale=1.0, shape=None, block_shape=None, dtype=None):
-        return self._sample_basic_sparse("normal", shape, block_shape, dtype, (loc, scale))
+    def normal_sparse(self, density=0.25, shape=None, block_shape=None, dtype=None):
+        return self._sample_basic_sparse(density, shape, block_shape, dtype)
 
     def beta(self, a, b, shape=None, block_shape=None, dtype=None):
         return self._sample_basic("beta", shape, block_shape, dtype, (a, b))
@@ -181,7 +182,7 @@ class NumsRandomState(object):
                                                   })
         return ba
 
-    def _sample_basic_sparse(self, rfunc_name, shape, block_shape, dtype, rfunc_args) -> BlockArray:
+    def _sample_basic_sparse(self, density, shape, block_shape, dtype) -> BlockArray:
         if shape is None:
             assert block_shape is None
             shape = ()
@@ -192,24 +193,12 @@ class NumsRandomState(object):
             dtype = np.float64
         assert isinstance(dtype, type)
         grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype=dtype.__name__)
-        ba: BlockArray = BlockArray(grid, self._system)
+        ba: SparseBlockArray = SparseBlockArray(grid, self._system)
         for grid_entry in ba.grid.get_entry_iterator():
-            rng_params = list(self._rng.new_block_rng_params())
             # Size and dtype to begin with.
             this_block_shape = grid.get_block_shape(grid_entry)
-            size = int(np.product(this_block_shape))
-            # Inconsistent param orderings.
-            if rfunc_name == "random":
-                rfunc_args_final = tuple([size] + list(rfunc_args))
-            elif rfunc_name == "integers":
-                # rfunc_args == (low, high, dtype, endpoint)
-                rfunc_args_final = tuple(list(rfunc_args[:2]) + [size] + list(rfunc_args[2:]))
-            else:
-                rfunc_args_final = tuple(list(rfunc_args) + [size])
-            block: Block = ba.blocks[grid_entry]
-            block.oid = self._system.random_block_sparse(rng_params,
-                                                  rfunc_name,
-                                                  rfunc_args_final,
+            block: SparseBlock = ba.blocks[grid_entry]
+            block.oid = self._system.random_block_sparse(density,
                                                   this_block_shape,
                                                   dtype,
                                                   syskwargs={

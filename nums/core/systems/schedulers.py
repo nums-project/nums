@@ -146,7 +146,7 @@ class BlockCyclicScheduler(TaskScheduler):
     Operations with 1 dim along any axis are replicated for each dimension along that axis.
     """
 
-    def __init__(self, compute_module, cluster_shape: Tuple, use_head=False, verbose=True):
+    def __init__(self, compute_module, cluster_shape: Tuple, use_head=False, verbose=False):
         super(BlockCyclicScheduler, self).__init__(compute_module, use_head)
         self.verbose = verbose
         self.cluster_shape: Tuple = cluster_shape

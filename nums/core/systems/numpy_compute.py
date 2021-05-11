@@ -113,13 +113,9 @@ class ComputeCls(ComputeImp):
             result = result.astype(dtype)
         return result
 
-    def random_block_sparse(self, rng_params, rfunc_name, rfunc_args, shape, dtype):
+    def random_block_sparse(self, density, shape, dtype):
         m, n = shape
-        result = scipy.sparse.random(m, n, density=0.25)
-        if rfunc_name not in ("random", "integers"):
-            # Only random and integer supports sampling of a specific type.
-            result = result.astype(dtype)
-        return result
+        return scipy.sparse.random(m, n, format='csr', density=density, dtype=dtype)
 
     def permutation(self, rng_params, size):
         rng: Generator = block_rng(*rng_params)
@@ -135,7 +131,10 @@ class ComputeCls(ComputeImp):
                 src_arr = src_arr.T
             dst_sel, dstT = dst_params[i]
             if dst_shape_bc is not None:
-                result.reshape(dst_shape_bc)[dst_sel] = src_arr[src_sel]
+                if isinstance(src_arr, (scipy.sparse.csr.csr_matrix)):
+                    result.reshape(dst_shape_bc)[dst_sel] = src_arr.A[src_sel]
+                else:
+                    result.reshape(dst_shape_bc)[dst_sel] = src_arr[src_sel]
             else:
                 result[dst_sel] = src_arr[src_sel]
         return result
@@ -174,7 +173,10 @@ class ComputeCls(ComputeImp):
         for dst_index, src_index in index_pairs:
             dst_sel[axis] = dst_index
             src_sel[axis] = src_index
-            result[tuple(dst_sel)] = src_arr[tuple(src_sel)]
+            if isinstance(src_arr, (scipy.sparse.csr.csr_matrix)):
+                result[tuple(dst_sel)] = src_arr.A[tuple(src_sel)]
+            else:
+                result[tuple(dst_sel)] = src_arr[tuple(src_sel)]
         return result
 
     def diag(self, arr):
@@ -243,7 +245,7 @@ class ComputeCls(ComputeImp):
             a2 = a2.reshape(a2_shape)
 
         if isinstance(a1, scipy.sparse.coo.coo_matrix):
-            return a1.multiply(a2)
+            return a1 * a2
         if op == "tensordot":
             return np.tensordot(a1, a2, axes=axes)
         op = np_ufunc_map.get(op, op)
