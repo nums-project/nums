@@ -29,6 +29,7 @@ def get_uop_output_type(op_name, dtype):
     result_dtype = np.__getattribute__(op_name)(a).dtype
     return np.__getattribute__(str(result_dtype))
 
+from scipy.sparse import coo_matrix
 
 def get_bop_output_type(op_name, dtype_a, dtype_b):
     a = np.array(1, dtype=dtype_a)
@@ -38,6 +39,12 @@ def get_bop_output_type(op_name, dtype_a, dtype_b):
         dtype = np.__getattribute__(op_name)(a, b).dtype
         return np.__getattribute__(str(dtype))
     except Exception as _:
+        if op_name == "sparse_tensordot":
+            a = coo_matrix((1, 1), dtype=dtype_a)
+            b = coo_matrix((1, 1), dtype=dtype_b)
+            dtype = (a * b).dtype
+            return np.__getattribute__(str(dtype))
+
         dtype = scipy.special.__getattribute__(op_name)(a, b).dtype
         return np.__getattribute__(str(dtype))
 

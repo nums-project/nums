@@ -244,7 +244,7 @@ class ComputeCls(ComputeImp):
         if a2.shape != a2_shape:
             a2 = a2.reshape(a2_shape)
 
-        if isinstance(a1, scipy.sparse.coo.coo_matrix):
+        if op == "sparse_tensordot":
             return a1 * a2
         if op == "tensordot":
             return np.tensordot(a1, a2, axes=axes)

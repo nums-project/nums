@@ -216,7 +216,7 @@ class Block(object):
     def bop(self, op, other, args: dict, options=None):
         if not isinstance(other, Block):
             other = self._block_from_other(other)
-        if op == "tensordot":
+        if op == "tensordot" or op == "sparse_tensordot":
             axes = args["axes"]
             result_grid_entry = tuple(list(self.grid_entry[:-axes]) + list(other.grid_entry[axes:]))
             result_grid_shape = tuple(list(self.grid_shape[:-axes]) + list(other.grid_shape[axes:]))
@@ -450,6 +450,13 @@ class SparseBlock(Block):
             global block_id_counter
             block_id_counter += 1
             self.id = block_id_counter
+
+    def tensordot(self, other, axes):
+        return self.bop("sparse_tensordot", other, args={"axes": axes})
+
+    def __matmul__(self, other):
+        return self.tensordot(other, axes=1)
+
 
 
 class SparseBlockArrayBase(BlockArrayBase):
