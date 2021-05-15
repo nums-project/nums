@@ -18,7 +18,7 @@ import itertools
 
 import numpy as np
 
-from nums.core.storage.storage import ArrayGrid
+from nums.core.grid.grid import ArrayGrid
 from nums.core.systems import utils as systems_utils
 
 

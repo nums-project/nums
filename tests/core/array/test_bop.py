@@ -16,15 +16,14 @@
 
 import itertools
 
-import tqdm
-import numpy as np
-import pytest
-
-from nums.core.storage.storage import BimodalGaussian
-from nums.core.array.application import ArrayApplication
-
 # pylint: disable=wrong-import-order
 import common
+import numpy as np
+import pytest
+import tqdm
+
+from nums.core.array.application import ArrayApplication
+from nums.core.storage.storage import BimodalGaussian
 
 
 def test_matmul(app_inst: ArrayApplication):
@@ -289,10 +288,13 @@ def test_conversions(conversions_data: tuple):
 
 if __name__ == "__main__":
     # pylint: disable=import-error
-    from tests import conftest
+    import conftest
 
-    app_inst = conftest.get_app("serial")
-    test_tensordot_large_shape(app_inst)
+    app_inst = conftest.get_app("ray-cyclic")
+    test_matmul(app_inst)
     # test_matvec(app_inst)
     # test_vecdot(app_inst)
+    # test_tensordot_basic(app_inst)
+    # test_tensordot_large_shape(app_inst)
+    # test_bops(app_inst)
     # test_conversions(conversions_data(None, app_inst))

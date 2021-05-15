@@ -18,9 +18,9 @@ import time
 
 import numpy as np
 
+from nums.core.array import utils as array_utils
 from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray, Block
-from nums.core.array import utils as array_utils
 
 
 def test_reshape_basic(app_inst):
