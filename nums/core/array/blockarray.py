@@ -405,9 +405,9 @@ class BlockArray(BlockArrayBase):
                                             keepdims=keepdims,
                                             transposed=block.transposed,
                                             syskwargs={
-                                                    "grid_entry": block.grid_entry,
-                                                    "grid_shape": block.grid_shape
-                                                })
+                                                "grid_entry": block.grid_entry,
+                                                "grid_shape": block.grid_shape
+                                            })
             block_reduced_oids[grid_entry] = (block_oid, block.grid_entry, block.grid_shape, False)
         result_shape = []
         result_block_shape = []
@@ -505,9 +505,9 @@ class BlockArray(BlockArrayBase):
                                              other_block.transposed,
                                              axes=axes,
                                              syskwargs={
-                                                     "grid_entry": dot_grid_args[0],
-                                                     "grid_shape": dot_grid_args[1]
-                                                 })
+                                                 "grid_entry": dot_grid_args[0],
+                                                 "grid_shape": dot_grid_args[1]
+                                             })
                     sum_oids.append((dotted_oid,
                                      dot_grid_args[0],
                                      dot_grid_args[1],
@@ -522,19 +522,28 @@ class BlockArray(BlockArrayBase):
         Implements fast scheduling for basic element-wise operations.
         """
         # Schedule the op first.
-        r: BlockArray = BlockArray(self.grid.copy(), self.cm)
+        blocks = np.empty(shape=self.grid.grid_shape, dtype=Block)
         for grid_entry in self.grid.get_entry_iterator():
-            r.blocks[grid_entry].oid = self.cm.bop(op_name,
-                                                   self.blocks[grid_entry].oid,
-                                                   other.blocks[grid_entry].oid,
-                                                   self.blocks[grid_entry].transposed,
-                                                   other.blocks[grid_entry].transposed,
-                                                   axes={},
-                                                   syskwargs={
-                                                       "grid_entry": grid_entry,
-                                                       "grid_shape": r.grid.grid_shape
-                                                   })
-        return r
+            self_block: Block = self.blocks[grid_entry]
+            other_block: Block = other.blocks[grid_entry]
+            blocks[grid_entry] = block = Block(grid_entry=grid_entry,
+                                               grid_shape=self_block.grid_shape,
+                                               rect=self_block.rect,
+                                               shape=self_block.shape,
+                                               dtype=self_block.dtype,
+                                               transposed=False,
+                                               cm=self.cm)
+            block.oid = self.cm.bop(op_name,
+                                    self_block.oid,
+                                    other_block.oid,
+                                    self_block.transposed,
+                                    other_block.transposed,
+                                    axes={},
+                                    syskwargs={
+                                        "grid_entry": grid_entry,
+                                        "grid_shape": self.grid.grid_shape
+                                    })
+        return BlockArray(self.grid.copy(), self.cm, blocks=blocks)
 
     def __add__(self, other):
         other = self.check_or_convert_other(other)
@@ -755,9 +764,9 @@ class Reshape(object):
                 index_pairs = src_blocks[src_grid_entry]
                 syskwargs = {"grid_entry": dst_grid_entry, "grid_shape": dst_arr.grid.grid_shape}
                 dst_block.oid = cm.update_block_by_index(dst_block.oid,
-                                                             src_block.oid,
-                                                             index_pairs,
-                                                             syskwargs=syskwargs)
+                                                         src_block.oid,
+                                                         index_pairs,
+                                                         syskwargs=syskwargs)
         return dst_arr
 
     def _block_shape_reshape(self, arr, block_shape):
