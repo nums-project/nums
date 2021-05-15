@@ -517,107 +517,29 @@ class BlockArray(BlockArrayBase):
                                                      result_block.grid_shape)
         return result
 
-    def _vecdot(self, other):
-        assert self.shape[-1] == other.shape[0], str((self.shape[1], other.shape[0]))
-        result_shape = tuple(self.shape[:-1] + other.shape[1:])
-        result_block_shape = tuple(self.block_shape[:-1] + other.block_shape[1:])
-        result_grid = ArrayGrid(shape=result_shape,
-                                block_shape=result_block_shape,
-                                dtype=self.dtype.__name__)
-        result = BlockArray(result_grid, self.cm)
-        self_num_axes = len(self.grid.grid_shape)
-        other_num_axes = len(other.grid.grid_shape)
-        oids = []
-        for i in range(self.grid.grid_shape[-1]):
-            self_grid_entry = tuple(i if axis == self_num_axes-1 else 0
-                                    for axis in range(self_num_axes))
-            other_grid_entry = tuple(i if axis == 0 else 0 for axis in range(other_num_axes))
-            self_block: Block = self.blocks[self_grid_entry]
-            other_block: Block = other.blocks[other_grid_entry]
-            if self_block.transposed != other_block.transposed:
-                # The vectors are aligned if their transpositions satisfy the xor relation.
-                if self_block.transposed:
-                    # Use other grid entry for dot,
-                    # because physically,
-                    # other block is located on same node as self block.
-                    sch_grid_entry = other_grid_entry
-                    sch_grid_shape = other.grid.grid_shape
-                elif other_block.transposed:
-                    # Use self grid entry for dot.
-                    sch_grid_entry = self_grid_entry
-                    sch_grid_shape = self.grid.grid_shape
-                else:
-                    raise Exception("Impossible.")
-            else:
-                # They're either both transposed or not.
-                # Either way, one will need to be transmitted, so transmit other.
-                sch_grid_entry = self_grid_entry
-                sch_grid_shape = self.grid.grid_shape
-            dot_oid = self.cm.bop("tensordot",
-                                  a1=self_block.oid,
-                                  a2=other_block.oid,
-                                  a1_T=self_block.transposed,
-                                  a2_T=other_block.transposed,
-                                  axes=1,
-                                  syskwargs={
-                                          "grid_entry": sch_grid_entry,
-                                          "grid_shape": sch_grid_shape
-                                      })
-            oids.append((dot_oid, sch_grid_entry, sch_grid_shape, False))
-        result_grid_entry = tuple(0 for _ in range(len(result.grid.grid_shape)))
-        result_oid = self._tree_reduce("sum", oids,
-                                       result_grid_entry,
-                                       result.grid.grid_shape)
-        result.blocks[result_grid_entry].oid = result_oid
-        return result
-
-    def _matvec(self, other):
-        # Schedule block matmult on existing block nodes of the matrix.
-        # This is cheaper than moving matrix and vec blocks to result node.
-        assert self.shape[1] == other.shape[0], str((self.shape[1], other.shape[0]))
-        result_shape = tuple(self.shape[:1] + other.shape[1:])
-        result_block_shape = tuple(self.block_shape[:1] + other.block_shape[1:])
-        result_grid = ArrayGrid(shape=result_shape,
-                                block_shape=result_block_shape,
-                                dtype=self.dtype.__name__)
-        result = BlockArray(result_grid, self.cm)
-        for i in range(self.grid.grid_shape[0]):
-            row = []
-            for j in range(self.grid.grid_shape[1]):
-                grid_entry = (i, j)
-                self_block: Block = self.blocks[grid_entry]
-                if len(other.shape) == 2:
-                    other_block: Block = other.blocks[(grid_entry[1], 0)]
-                    result_grid_entry = (i, 0)
-                else:
-                    other_block: Block = other.blocks[grid_entry[1]]
-                    result_grid_entry = (i,)
-                if self_block.transposed:
-                    # Reverse grid shape and entry to obtain virtual layout of matrix blocks.
-                    sch_grid_shape = tuple(reversed(self.grid.grid_shape))
-                    sch_grid_entry = tuple(reversed(grid_entry))
-                else:
-                    sch_grid_shape = self.grid.grid_shape
-                    sch_grid_entry = grid_entry
-                dot_oid = self.cm.bop("tensordot",
-                                      a1=self_block.oid,
-                                      a2=other_block.oid,
-                                      a1_T=self_block.transposed,
-                                      a2_T=other_block.transposed,
-                                      axes=1,
-                                      syskwargs={
-                                              "grid_entry": sch_grid_entry,
-                                              "grid_shape": sch_grid_shape
-                                          })
-                row.append((dot_oid, sch_grid_entry, sch_grid_shape, False))
-            result_oid = self._tree_reduce("sum", row,
-                                           result_grid_entry,
-                                           result.grid.grid_shape)
-            result.blocks[result_grid_entry].oid = result_oid
-        return result
+    def _fast_element_wise(self, op_name, other):
+        """
+        Implements fast scheduling for basic element-wise operations.
+        """
+        # Schedule the op first.
+        r: BlockArray = BlockArray(self.grid.copy(), self.cm)
+        for grid_entry in self.grid.get_entry_iterator():
+            r.blocks[grid_entry].oid = self.cm.bop(op_name,
+                                                   self.blocks[grid_entry].oid,
+                                                   other.blocks[grid_entry].oid,
+                                                   self.blocks[grid_entry].transposed,
+                                                   other.blocks[grid_entry].transposed,
+                                                   axes={},
+                                                   syskwargs={
+                                                       "grid_entry": grid_entry,
+                                                       "grid_shape": r.grid.grid_shape
+                                                   })
+        return r
 
     def __add__(self, other):
         other = self.check_or_convert_other(other)
+        if self.shape == other.shape:
+            return self._fast_element_wise("add", other)
         return BlockArray.from_blocks(self.blocks + other.blocks,
                                       result_shape=None,
                                       cm=self.cm)
