@@ -490,7 +490,7 @@ class BlockArray(BlockArrayBase):
         if isinstance(axes, int):
             pass
         elif array_utils.is_array_like(axes):
-            raise NotImplementedError("Tensordot across multiple axes not supported yet.")
+            raise NotImplementedError("Non-integer axes is currently not supported.")
         else:
             raise TypeError(f"Unexpected axes type '{type(axes).__name__}'")
 
