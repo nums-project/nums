@@ -492,7 +492,7 @@ class BlockArray(BlockArrayBase):
         elif array_utils.is_array_like(axes):
             raise NotImplementedError("Tensordot across multiple axes not supported yet.")
         else:
-            raise TypeError(f"'{type(axes).__name__}' object cannot be interpreted as an integer")
+            raise TypeError(f"Unexpected axes type '{type(axes).__name__}'")
 
         if array_utils.np_tensordot_param_test(self.shape, self.ndim,
                                                other.shape, other.ndim, axes):
