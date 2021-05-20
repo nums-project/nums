@@ -140,7 +140,9 @@ class DeviceGrid(object):
 
         for i, cluster_entry in enumerate(self.get_cluster_entry_iterator()):
             self.device_grid[cluster_entry] = self.device_ids[i]
-            logging.getLogger().info("device_grid %s %s", cluster_entry, str(self.device_ids[i]))
+            logging.getLogger(__name__).info("device_grid %s %s",
+                                             cluster_entry,
+                                             str(self.device_ids[i]))
 
     def get_cluster_entry_iterator(self):
         return itertools.product(*map(range, self.grid_shape))
