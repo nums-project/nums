@@ -23,6 +23,7 @@ import ray
 from nums.core.grid.grid import DeviceID
 from nums.core.systems.system_interface import SystemInterface
 from nums.core.systems.utils import get_private_ip, get_num_cores
+from nums.core import settings
 
 
 class SerialSystem(SystemInterface):
@@ -85,24 +86,33 @@ class RaySystem(SystemInterface):
         if self._manage_ray:
             ray.init()
         # Compute available nodes, based on CPU resource.
-        local_ip = get_private_ip()
+        if settings.head_ip is None:
+            # TODO (hme): Have this be a class argument vs. using what's set in settings directly.
+            logging.getLogger(__name__).info("Using driver node ip as head node.")
+            head_ip = get_private_ip()
+        else:
+            head_ip = settings.head_ip
         total_cpus = 0
         nodes = ray.nodes()
         for node in nodes:
             node_ip = self._node_ip(node)
-            if local_ip == node_ip:
-                # TODO (hme): The driver node is not necessarily the head node.
-                logging.getLogger().info("head node %s", node_ip)
+            if head_ip == node_ip:
+                logging.getLogger(__name__).info("head node %s", node_ip)
                 self._head_node = node
             elif self._has_cpu_resources(node):
-                logging.getLogger().info("worker node %s", node_ip)
+                logging.getLogger(__name__).info("worker node %s", node_ip)
                 total_cpus += node["Resources"]["CPU"]
                 self._worker_nodes.append(node)
                 self._available_nodes.append(node)
-        if self._use_head and self._has_cpu_resources(self._head_node):
+        if self._head_node is None:
+            if self._use_head:
+                logging.getLogger(__name__).warning("Failed to determine which node is the head."
+                                                    " The head node will be used even though"
+                                                    " nums.core.settings.use_head = False.")
+        elif self._use_head and self._has_cpu_resources(self._head_node):
             total_cpus += self._head_node["Resources"]["CPU"]
             self._available_nodes.append(self._head_node)
-        logging.getLogger().info("total cpus %s", total_cpus)
+        logging.getLogger(__name__).info("total cpus %s", total_cpus)
 
         if self._num_nodes is None:
             self._num_nodes = len(self._available_nodes)

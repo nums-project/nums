@@ -95,6 +95,7 @@ def destroy():
 
 
 def configure_logging():
+    # TODO (hme): Fix this to avoid debug messages for all packages.
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
     handler = logging.StreamHandler(sys.stdout)

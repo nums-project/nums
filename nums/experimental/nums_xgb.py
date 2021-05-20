@@ -70,7 +70,7 @@ def xgb_train_remote(X, y, rabit_args, params, args, kwargs, *evals_flat):
             evals_result=evals_result,
             **kwargs
         )
-        logging.getLogger().info("Local Train: {}".format(time.time() - s))
+        logging.getLogger(__name__).info("Local Train: {}".format(time.time() - s))
         return np.array({"bst": bst, "evals_result": evals_result}, dtype=dict)
 
 

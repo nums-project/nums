@@ -113,9 +113,9 @@ class StoredArrayS3(StoredArray):
                 Key=self.get_key(grid_entry),
             )
         except Exception as e:
-            logging.getLogger().error("[Error] StoredArrayS3: Failed to get %s %s",
-                                      self.container_name,
-                                      self.get_key(grid_entry))
+            logging.getLogger(__name__).error("[Error] StoredArrayS3: Failed to get %s %s",
+                                              self.container_name,
+                                              self.get_key(grid_entry))
             raise e
         block_bytes = response['Body'].read()
         dtype = self.grid.dtype
@@ -123,9 +123,10 @@ class StoredArrayS3(StoredArray):
         try:
             block = np.frombuffer(block_bytes, dtype=dtype).reshape(shape)
         except Exception as e:
-            logging.getLogger().error("[Error] StoredArrayS3: Failed to read from buffer %s %s",
-                                      self.container_name,
-                                      self.get_key(grid_entry))
+            logging.getLogger(__name__).error("[Error] StoredArrayS3: "
+                                              "Failed to read from buffer %s %s",
+                                              self.container_name,
+                                              self.get_key(grid_entry))
             raise e
         return block
 
