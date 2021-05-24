@@ -14,8 +14,8 @@
 # limitations under the License.
 
 
+from nums.core.compute import numpy_compute
 from nums.core.systems import utils as systems_utils
-from nums.core.systems import numpy_compute
 
 
 def test_utils():

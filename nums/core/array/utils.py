@@ -14,12 +14,14 @@
 # limitations under the License.
 
 
+import itertools
 from typing import Tuple, Iterator
 
-import itertools
 import numpy as np
 import scipy.special
+
 from nums.core.settings import np_ufunc_map
+
 
 # pylint: disable = no-member
 
@@ -49,12 +51,12 @@ def is_uint(val, type_test=False):
 
 def is_int(val, type_test=False):
     return is_type(type_test, val,
-                   (int, np.int, np.int8, np.int16, np.int32, np.int64))
+                   (int, np.int8, np.int16, np.int32, np.int64))
 
 
 def is_float(val, type_test=False):
     return is_type(type_test, val,
-                   (float, np.float, np.float16, np.float32, np.float64))
+                   (float, np.float16, np.float32, np.float64))
 
 
 def is_complex(val, type_test=False):
@@ -75,7 +77,7 @@ def get_reduce_output_type(op_name, dtype):
 def shape_from_block_array(arr: np.ndarray):
     grid_shape = arr.shape
     num_axes = len(arr.shape)
-    shape = np.zeros(num_axes, dtype=np.int)
+    shape = np.zeros(num_axes, dtype=int)
     for j in range(num_axes):
         pos = [[0]] * num_axes
         pos[j] = range(grid_shape[j])

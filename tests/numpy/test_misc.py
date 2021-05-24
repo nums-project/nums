@@ -49,6 +49,8 @@ def test_loadtxt(nps_app_inst):
     rs = np.random.RandomState(seed)
 
     fname = "test_text.out"
+    # TODO (hme): There's a reshape issue that causes this method to currently fallback to numpy.
+    #  Using a nice shape for now.
     data = rs.random_sample(99).reshape(33, 3)
 
     np.savetxt(fname=fname, X=data)
@@ -207,15 +209,29 @@ def test_properties(nps_app_inst):
     assert A_copy is not A
 
 
+def test_arange(nps_app_inst):
+    import nums.numpy as nps
+    assert nps_app_inst is not None
+
+    start_indices = [3.1, 3, 3.1]
+    stop_indices = [5.1, 5.1, 5]
+
+    for start, stop in zip(start_indices, stop_indices):
+        a = nps.arange(start, stop).get()
+        b = np.arange(start, stop)
+        assert np.allclose(a, b)
+
+
 if __name__ == "__main__":
     from nums.core import application_manager
     from nums.core import settings
 
-    settings.system_name = "serial"
+    settings.system_name = "ray-task"
     nps_app_inst = application_manager.instance()
-    # test_where(nps_app_inst)
+    test_where(nps_app_inst)
     # test_loadtxt(nps_app_inst)
     # test_reshape(nps_app_inst)
     # test_all_alltrue_any(nps_app_inst)
     # test_array_eq(nps_app_inst)
-    test_properties(nps_app_inst)
+    # test_properties(nps_app_inst)
+    # test_arange(nps_app_inst)

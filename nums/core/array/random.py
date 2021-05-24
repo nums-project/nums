@@ -17,23 +17,23 @@
 import numpy as np
 
 from nums.core.array.blockarray import BlockArray, Block
-from nums.core.storage.storage import ArrayGrid
-from nums.core.systems.systems import System
+from nums.core.compute.compute_manager import ComputeManager
+from nums.core.grid.grid import ArrayGrid
 
 
 class NumsRandomState(object):
 
-    def __init__(self, system: System, seed):
-        self._system = system
-        self._rng = self._system.get_rng(seed)
+    def __init__(self, cm: ComputeManager, seed):
+        self._cm = cm
+        self._rng = self._cm.get_rng(seed)
 
     def seed(self, seed=None):
         # New RNG based on given seed.
-        self._rng = self._system.get_rng(seed)
+        self._rng = self._cm.get_rng(seed)
 
     def numpy(self):
         # pylint: disable = import-outside-toplevel
-        from nums.core.systems.numpy_compute import block_rng
+        from nums.core.compute.numpy_compute import block_rng
         return block_rng(*self._rng.new_block_rng_params())
 
     def random(self, shape=None, block_shape=None, dtype=None):
@@ -152,7 +152,7 @@ class NumsRandomState(object):
             dtype = np.float64
         assert isinstance(dtype, type)
         grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype=dtype.__name__)
-        ba: BlockArray = BlockArray(grid, self._system)
+        ba: BlockArray = BlockArray(grid, self._cm)
         for grid_entry in ba.grid.get_entry_iterator():
             rng_params = list(self._rng.new_block_rng_params())
             # Size and dtype to begin with.
@@ -167,12 +167,12 @@ class NumsRandomState(object):
             else:
                 rfunc_args_final = tuple(list(rfunc_args) + [size])
             block: Block = ba.blocks[grid_entry]
-            block.oid = self._system.random_block(rng_params,
-                                                  rfunc_name,
-                                                  rfunc_args_final,
-                                                  this_block_shape,
-                                                  dtype,
-                                                  syskwargs={
+            block.oid = self._cm.random_block(rng_params,
+                                              rfunc_name,
+                                              rfunc_args_final,
+                                              this_block_shape,
+                                              dtype,
+                                              syskwargs={
                                                       "grid_entry": grid_entry,
                                                       "grid_shape": grid.grid_shape
                                                   })
@@ -182,13 +182,13 @@ class NumsRandomState(object):
         shape = (size,)
         block_shape = (block_size,)
         grid: ArrayGrid = ArrayGrid(shape=shape, block_shape=shape, dtype=np.int64.__name__)
-        ba = BlockArray(grid, self._system)
+        ba = BlockArray(grid, self._cm)
         for grid_entry in ba.grid.get_entry_iterator():
             rng_params = list(self._rng.new_block_rng_params())
             block: Block = ba.blocks[grid_entry]
-            block.oid = self._system.permutation(rng_params,
-                                                 size,
-                                                 syskwargs={
+            block.oid = self._cm.permutation(rng_params,
+                                             size,
+                                             syskwargs={
                                                       "grid_entry": grid_entry,
                                                       "grid_shape": grid.grid_shape
                                                   })

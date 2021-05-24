@@ -20,8 +20,8 @@ import numpy as np
 import scipy.linalg
 from scipy.linalg import lapack
 
-from nums.core.storage.storage import BimodalGaussian
 from nums.core.array.application import ArrayApplication
+from nums.core.storage.storage import BimodalGaussian
 
 
 # pylint: disable=protected-access
@@ -192,12 +192,12 @@ def test_rr(app_inst: ArrayApplication):
 
 if __name__ == "__main__":
     # pylint: disable=import-error
-    from tests import conftest
+    import conftest
 
-    app_inst = conftest.get_app("serial")
+    app_inst = conftest.get_app("ray")
     # test_inv_assumptions(app_inst)
-    test_inv(app_inst)
-    # test_qr(app_inst)
+    # test_inv(app_inst)
+    test_qr(app_inst)
     # test_svd(app_inst)
     # test_lr(app_inst)
     # test_rr(app_inst)
