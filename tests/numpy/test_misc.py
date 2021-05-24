@@ -49,6 +49,8 @@ def test_loadtxt(nps_app_inst):
     rs = np.random.RandomState(seed)
 
     fname = "test_text.out"
+    # TODO (hme): There's a reshape issue that causes this method to currently fallback to numpy.
+    #  Using a nice shape for now.
     data = rs.random_sample(99).reshape(33, 3)
 
     np.savetxt(fname=fname, X=data)
@@ -107,7 +109,7 @@ def test_reshape(nps_app_inst):
     import nums.numpy as nps
     assert nps_app_inst is not None
     ba = nps.arange(2 * 3 * 4).reshape((2, 3, 4), block_shape=(2, 3, 4))
-    assert nps.allclose(ba.reshape(shape=(6, 4), block_shape=(6, 4)),
+    assert nps.allclose(ba.reshape((6, 4), block_shape=(6, 4)),
                         nps.reshape(ba, shape=(6, 4)))
 
 
@@ -129,8 +131,8 @@ def test_all_alltrue_any(nps_app_inst):
         assert nps.all(nps_array).get() == np.all(array)
         assert nps.alltrue(nps_array).get() == np.alltrue(array)
 
-        assert nps.all(nps_array).dtype is np.bool
-        assert nps.alltrue(nps_array).dtype is np.bool
+        assert nps.all(nps_array).dtype is bool
+        assert nps.alltrue(nps_array).dtype is bool
 
     false_int = np.array([[0, 0, 0], [0, 0, 0]])
     false_bool = np.array([[False, False, False], [False, False, False]])
@@ -142,7 +144,7 @@ def test_all_alltrue_any(nps_app_inst):
         nps_array = nps.array(array).reshape(block_shape=(2, 2))
         assert nps.any(nps_array).get() == np.any(array)
 
-        assert nps.any(nps_array).dtype is np.bool
+        assert nps.any(nps_array).dtype is bool
 
 
 def test_array_eq(nps_app_inst):
@@ -170,9 +172,9 @@ def test_array_eq(nps_app_inst):
         assert nps.allclose(nps_array_1, nps_array_1).get() == np.allclose(check[0], check[0])
         assert nps.allclose(nps_array_1, nps_array_2).get() == np.allclose(check[0], check[1])
 
-        assert nps.array_equal(nps_array_1, nps_array_2).dtype is np.bool
-        assert nps.array_equiv(nps_array_1, nps_array_2).dtype is np.bool
-        assert nps.allclose(nps_array_1, nps_array_2).dtype is np.bool
+        assert nps.array_equal(nps_array_1, nps_array_2).dtype is bool
+        assert nps.array_equiv(nps_array_1, nps_array_2).dtype is bool
+        assert nps.allclose(nps_array_1, nps_array_2).dtype is bool
 
     # False interaction test
     checks_1 = [np.array([False]), np.array([False]),
@@ -207,15 +209,29 @@ def test_properties(nps_app_inst):
     assert A_copy is not A
 
 
+def test_arange(nps_app_inst):
+    import nums.numpy as nps
+    assert nps_app_inst is not None
+
+    start_indices = [3.1, 3, 3.1]
+    stop_indices = [5.1, 5.1, 5]
+
+    for start, stop in zip(start_indices, stop_indices):
+        a = nps.arange(start, stop).get()
+        b = np.arange(start, stop)
+        assert np.allclose(a, b)
+
+
 if __name__ == "__main__":
     from nums.core import application_manager
     from nums.core import settings
 
-    settings.system_name = "serial"
+    settings.system_name = "ray-task"
     nps_app_inst = application_manager.instance()
-    # test_where(nps_app_inst)
+    test_where(nps_app_inst)
     # test_loadtxt(nps_app_inst)
     # test_reshape(nps_app_inst)
     # test_all_alltrue_any(nps_app_inst)
     # test_array_eq(nps_app_inst)
-    test_properties(nps_app_inst)
+    # test_properties(nps_app_inst)
+    # test_arange(nps_app_inst)

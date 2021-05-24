@@ -27,12 +27,32 @@ from nums.numpy import numpy_utils
 # pylint: disable = redefined-builtin, too-many-lines
 
 
-def _not_implemented(fun):
+def _not_implemented(func):
     # From project JAX: https://github.com/google/jax/blob/master/jax/numpy/lax_numpy.py
     def wrapped(*args, **kwargs):
         # pylint: disable=unused-argument
         msg = "NumPy function {} not yet implemented."
-        raise NotImplementedError(msg.format(fun))
+        raise NotImplementedError(msg.format(func))
+
+    return wrapped
+
+
+# TODO (mwe): Convert this to invoke the NumPy op on a worker instead of the driver.
+def _default_to_numpy(func):
+    def wrapped(*args, **kwargs):
+        warnings.warn("Operation " + func.__name__ + " not implemented, falling back to NumPy. " +
+                      "If this is too slow or failing, please open an issue on GitHub.",
+                      RuntimeWarning)
+        new_args = [arg.get() if isinstance(arg, BlockArray) else arg for arg in args]
+        new_kwargs = {k: v.get() if isinstance(v, BlockArray) else v
+                      for k, v in zip(kwargs.keys(), kwargs.values())}
+        res = np.__getattribute__(func.__name__)(*new_args, **new_kwargs)
+        if isinstance(res, tuple):
+            nps_res = tuple(array(x) for x in res)
+        else:
+            nps_res = array(res)
+        return nps_res
+
     return wrapped
 
 
@@ -50,27 +70,29 @@ PZERO = np.PZERO
 NZERO = np.NZERO
 nan = NAN = NaN = np.nan
 
-
 ############################################
 # Data Types
 ############################################
 
 
 bool_ = np.bool_
+
 uint = np.uint
 uint8 = np.uint8
 uint16 = np.uint16
 uint32 = np.uint32
 uint64 = np.uint64
-int = np.int
+
 int8 = np.int8
 int16 = np.int16
 int32 = np.int32
 int64 = np.int64
-float = np.float
+
 float16 = np.float16
 float32 = np.float32
 float64 = np.float64
+float128 = np.float128
+
 complex64 = np.complex64
 complex128 = np.complex128
 
@@ -84,7 +106,7 @@ def loadtxt(fname, dtype=float, comments='# ', delimiter=' ',
             converters=None, skiprows=0, usecols=None, unpack=False,
             ndmin=0, encoding='bytes', max_rows=None) -> BlockArray:
     app = _instance()
-    num_rows = numpy_utils.get_num_cores(app)
+    num_rows = app.cm.num_cores_total()
     try:
         ba: BlockArray = app.loadtxt(
             fname, dtype=dtype, comments=comments, delimiter=delimiter,
@@ -128,20 +150,26 @@ def array(object, dtype=None, copy=True, order="K", ndmin=0, subok=False) -> Blo
     return app.array(result, block_shape)
 
 
-def empty(shape, dtype=np.float):
+def empty(shape, dtype=float):
     app = _instance()
+    if isinstance(shape, int):
+        shape = (shape,)
     block_shape = app.compute_block_shape(shape, dtype)
     return app.empty(shape=shape, block_shape=block_shape, dtype=dtype)
 
 
-def zeros(shape, dtype=np.float):
+def zeros(shape, dtype=float):
     app = _instance()
+    if isinstance(shape, int):
+        shape = (shape,)
     block_shape = app.get_block_shape(shape, dtype)
     return app.zeros(shape=shape, block_shape=block_shape, dtype=dtype)
 
 
-def ones(shape, dtype=np.float):
+def ones(shape, dtype=float):
     app = _instance()
+    if isinstance(shape, int):
+        shape = (shape,)
     block_shape = app.get_block_shape(shape, dtype)
     return app.ones(shape=shape, block_shape=block_shape, dtype=dtype)
 
@@ -207,11 +235,11 @@ def split(ary: BlockArray, indices_or_sections, axis=0):
     return tuple(results)
 
 
-def identity(n: int, dtype=np.float) -> BlockArray:
+def identity(n: int, dtype=float) -> BlockArray:
     return eye(n, n, dtype=dtype)
 
 
-def eye(N, M=None, k=0, dtype=np.float):
+def eye(N, M=None, k=0, dtype=float):
     app = _instance()
     if k != 0:
         raise NotImplementedError("Only k==0 is currently supported.")
@@ -229,21 +257,47 @@ def diag(v: BlockArray, k=0) -> BlockArray:
     return app.diag(v)
 
 
+def trace(a: BlockArray, offset=0, axis1=0, axis2=1, dtype=None, out=None):
+    if offset != 0:
+        raise NotImplementedError("offset != 0 is currently not supported.")
+    if out is not None:
+        raise NotImplementedError("out is currently not supported.")
+    if axis1 != 0 or axis2 != 1:
+        raise NotImplementedError(" axis1 != 0 or axis2 != 1 is currently not supported.")
+    return sum(diag(a, offset), dtype=dtype, out=out)
+
+
+def atleast_1d(*arys):
+    return _instance().atleast_1d(*arys)
+
+
+def atleast_2d(*arys):
+    return _instance().atleast_2d(*arys)
+
+
+def atleast_3d(*arys):
+    return _instance().atleast_3d(*arys)
+
+
 ############################################
 # Manipulation Ops
 ############################################
 
 
-def arange(start=None, stop=None, step=1, dtype=np.int64) -> BlockArray:
+def arange(start=None, stop=None, step=1, dtype=None) -> BlockArray:
+    if start is None:
+        raise TypeError("Missing required argument start")
     if stop is None:
         stop = start
         start = 0
     if step != 1:
         raise NotImplementedError("Only step size of 1 is currently supported.")
-    shape = (stop - start,)
+    if dtype is None:
+        dtype = np.__getattribute__(str(np.result_type(start, stop)))
+    shape = (int(np.ceil(stop - start)),)
     app = _instance()
     block_shape = app.get_block_shape(shape, dtype)
-    return app.arange(shape, block_shape, step, dtype)
+    return app.arange(start, shape, block_shape, step, dtype)
 
 
 def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None, axis=0):
@@ -318,6 +372,10 @@ def expand_dims(a: BlockArray, axis):
 def squeeze(a: BlockArray, axis=None):
     assert axis is None, "axis not supported."
     return a.squeeze()
+
+
+def swapaxes(a: BlockArray, axis1: int, axis2: int):
+    return a.swapaxes(axis1, axis2)
 
 
 def transpose(a: BlockArray, axes=None):
@@ -432,6 +490,7 @@ def any(a: BlockArray, axis=None, out=None, keepdims=False):
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().reduce("any", a, axis=axis, keepdims=keepdims)
 
+
 ############################################
 # NaN Ops
 ############################################
@@ -461,6 +520,18 @@ def nanmean(a: BlockArray, axis=None, dtype=None, out=None, keepdims=False):
     return _instance().nanmean(a, axis=axis, dtype=dtype, keepdims=keepdims)
 
 
+def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+    if out is not None:
+        raise NotImplementedError("'out' is currently not supported.")
+    return _instance().nanvar(a, axis=axis, dtype=dtype, ddof=ddof, keepdims=keepdims)
+
+
+def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+    if out is not None:
+        raise NotImplementedError("'out' is currently not supported.")
+    return _instance().nanstd(a, axis=axis, dtype=dtype, ddof=ddof, keepdims=keepdims)
+
+
 ############################################
 # Utility Ops
 ############################################
@@ -480,6 +551,7 @@ def allclose(a: BlockArray, b: BlockArray, rtol=1.e-5, atol=1.e-8, equal_nan=Fal
     if equal_nan is not False:
         raise NotImplementedError("equal_nan=True not supported.")
     return _instance().allclose(a, b, rtol, atol)
+
 
 ############################################
 # Generated Ops (Unary, Binary)

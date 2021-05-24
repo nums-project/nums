@@ -16,8 +16,12 @@
 
 import numpy as np
 
-from nums.core.array.blockarray import BlockArray
+from nums.core.application_manager import instance as _instance
+from nums.core.array import utils as array_utils
 from nums.core.array.application import ArrayApplication
+from nums.core.array.blockarray import BlockArray
+from nums.core.array.random import NumsRandomState
+
 
 # The GLMs are expressed in the following notation.
 # f(y) = exp((y.T @ theta - b(theta))/phi + c(y, phi))
@@ -56,11 +60,6 @@ from nums.core.array.application import ArrayApplication
 #   g(mu) = (b')^{-1}(mu) = ln(mu/(1-mu)) = ln(p/(1-p)) = theta(p)
 
 
-from nums.core.application_manager import instance as _instance
-from nums.core.array import utils as array_utils
-from nums.core.array.random import NumsRandomState
-
-
 class GLM(object):
 
     def __init__(self,
@@ -83,7 +82,7 @@ class GLM(object):
         if random_state is None:
             self.rs: NumsRandomState = self._app.random
         elif array_utils.is_int(random_state):
-            self.rs: NumsRandomState = NumsRandomState(system=self._app.system, seed=random_state)
+            self.rs: NumsRandomState = NumsRandomState(cm=self._app.cm, seed=random_state)
         elif isinstance(random_state, NumsRandomState):
             self.rs: NumsRandomState = random_state
         else:
@@ -235,7 +234,7 @@ class LogisticRegression(GLM):
         if mu is None:
             mu = self.forward(X)
         dim, block_dim = mu.shape[0], mu.block_shape[0]
-        s = (mu * (self._app.one - mu)).reshape(shape=(dim, 1), block_shape=(block_dim, 1))
+        s = (mu * (self._app.one - mu)).reshape((dim, 1), block_shape=(block_dim, 1))
         if self._penalty is None:
             return X.T @ (s * X)
         else:
@@ -248,7 +247,7 @@ class LogisticRegression(GLM):
         return (self.forward(X) > 0.5).astype(np.int)
 
     def predict_proba(self, X: BlockArray) -> BlockArray:
-        y_pos = self.forward(X).reshape(shape=(X.shape[0], 1), block_shape=(X.block_shape[0], 1))
+        y_pos = self.forward(X).reshape((X.shape[0], 1), block_shape=(X.block_shape[0], 1))
         y_neg = 1 - y_pos
         return self._app.concatenate([y_pos, y_neg], axis=1, axis_block_size=2)
 
