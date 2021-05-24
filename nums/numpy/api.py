@@ -108,7 +108,7 @@ def loadtxt(fname, dtype=float, comments='# ', delimiter=' ',
             converters=None, skiprows=0, usecols=None, unpack=False,
             ndmin=0, encoding='bytes', max_rows=None) -> BlockArray:
     app = _instance()
-    num_rows = numpy_utils.get_num_cores(app)
+    num_rows = app.cm.num_cores_total()
     try:
         ba: BlockArray = app.loadtxt(
             fname, dtype=dtype, comments=comments, delimiter=delimiter,
@@ -257,6 +257,16 @@ def diag(v: BlockArray, k=0) -> BlockArray:
     if k != 0:
         raise NotImplementedError("Only k==0 is currently supported.")
     return app.diag(v)
+
+
+def trace(a: BlockArray, offset=0, axis1=0, axis2=1, dtype=None, out=None):
+    if offset != 0:
+        raise NotImplementedError("offset != 0 is currently not supported.")
+    if out is not None:
+        raise NotImplementedError("out is currently not supported.")
+    if axis1 != 0 or axis2 != 1:
+        raise NotImplementedError(" axis1 != 0 or axis2 != 1 is currently not supported.")
+    return sum(diag(a, offset), dtype=dtype, out=out)
 
 
 def atleast_1d(*arys):

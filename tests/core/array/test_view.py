@@ -16,14 +16,14 @@
 
 import itertools
 
-import tqdm
 import numpy as np
 import pytest
+import tqdm
 
-from nums.core.array import utils as array_utils
 import nums.core.array.selection as sel_module
-from nums.core.array.view import ArrayView
+from nums.core.array import utils as array_utils
 from nums.core.array.application import ArrayApplication
+from nums.core.array.view import ArrayView
 
 
 def get_slices(size, index_multiplier=1, limit=None, basic_step=False):

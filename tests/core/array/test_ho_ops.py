@@ -16,8 +16,8 @@
 
 import numpy as np
 
-from nums.core.storage.storage import BimodalGaussian
 from nums.core.array.application import ArrayApplication
+from nums.core.storage.storage import BimodalGaussian
 
 
 def test_log(app_inst: ArrayApplication):

@@ -171,8 +171,9 @@ print("accuracy", (nps.sum(y == y_pred) / X.shape[0]).get())
 ```
 
 # Installation
-NumS is currently supported on Linux-based systems running Python 3.6, 3.7, and 3.8.
-Currently, only CPU-based workloads are supported; we are working on providing GPU support.
+NumS releases are tested on Linux-based systems running Python 3.6, 3.7, and 3.8.
+
+NumS runs on Windows, but not all features are tested. We recommend using Anaconda on Windows. Download and install Anaconda for Windows [here](https://docs.anaconda.com/anaconda/install/windows/). Make sure to add Anaconda to your PATH environment variable during installation.
 
 #### pip installation
 To install NumS on Ray with CPU support, simply run the following command.
@@ -204,7 +205,7 @@ using the following set of commands:
 ```sh
 cd nums
 conda create --name nums python=3.7 -y
-source activate nums
+conda activate nums
 pip install -e ".[testing]"
 ```
 

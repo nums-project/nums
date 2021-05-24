@@ -14,11 +14,11 @@
 # limitations under the License.
 
 import re
+
 import numpy as np
 
 from nums.core.array.application import ArrayApplication
 from nums.core.systems import utils as systems_utils
-from nums.core.systems.systems import RaySystem, SerialSystem
 
 
 def ufunc_kwargs(kwargs):
@@ -64,13 +64,7 @@ def ufunc_op_signatures():
 
 
 def get_num_cores(app: ArrayApplication):
-    if isinstance(app.system, RaySystem):
-        system: RaySystem = app.system
-        nodes = system.nodes()
-        return sum(map(lambda n: n["Resources"]["CPU"], nodes))
-    else:
-        assert isinstance(app.system, SerialSystem)
-        return systems_utils.get_num_cores()
+    return app.cm.num_cores_total()
 
 
 def update_doc_string(doc_string):

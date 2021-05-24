@@ -16,8 +16,6 @@
 
 import os
 from pathlib import Path
-import multiprocessing
-
 
 pj = lambda *paths: os.path.abspath(os.path.expanduser(os.path.join(*paths)))
 core_root = os.path.abspath(os.path.dirname(__file__))
@@ -28,20 +26,21 @@ Path(data_dir).mkdir(parents=True, exist_ok=True)
 
 
 # System settings.
-system_name = os.environ.get("NUMS_SYSTEM", "ray-cyclic")
+system_name = os.environ.get("NUMS_SYSTEM", "ray")
 # TODO (hme):
-#  - Make cluster shape an environment variable. Default depends on available resources.
-#  - use_head => use_driver, and should be an environment variable.
-#  - Remove ray_init_default -- this should be handled in RaySystem.
+#  - Make cluster shape an environment variable.
+#  - use_head should be an environment variable.
 use_head = True
-cluster_shape = (1, 1)
-ray_init_default = {
-    "num_cpus": multiprocessing.cpu_count()
-}
+head_ip = os.environ.get("NUMS_HEAD_IP", None)
 
 
 # Compute settings.
 compute_name = os.environ.get("NUMS_COMPUTE", "numpy")
+
+
+# Device grid settings.
+cluster_shape = (1, 1)
+device_grid_name = os.environ.get("NUMS_DEVICE_GRID", "packed")
 
 
 # NumPy operator map.
