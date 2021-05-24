@@ -152,7 +152,7 @@ def test_broadcast_block_shape_error(nps_app_inst):
     import pytest
     assert nps_app_inst is not None
 
-    _ops = ['add', 'subtract', 'divide', 'bitwise_and']
+    _ops = ['add', 'subtract', 'divide']
 
     def check_value_error(_ns_a, _ns_b, _a_blockshape=None, _b_blockshape=None):
         for _op in _ops:
@@ -171,7 +171,7 @@ def test_broadcast_block_shape_error(nps_app_inst):
     check_value_error(nps_A, nps_B, _a_blockshape=(10, 10), _b_blockshape=(2, 2))
 
     nps_A = nps.random.randn(20, 20)
-    nps_B = nps.random.randn(20)
+    nps_B = nps.random.randn(20, 1)
     check_value_error(nps_A, nps_B, _a_blockshape=(10, 10))
 
     nps_A = nps.random.randn(20, 20, 20)
