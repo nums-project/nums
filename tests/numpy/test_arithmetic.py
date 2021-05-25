@@ -163,15 +163,16 @@ def test_broadcast_block_shape_error(nps_app_inst):
             if _b_blockshape:
                 _ns_b = _ns_b.reshape(block_shape=_b_blockshape)
 
+            # TODO(bcp): Remove touch() when synchronous error is implemented.
             with pytest.raises(ValueError):
-                ns_op(_ns_a, _ns_b)
+                ns_op(_ns_a, _ns_b).touch()
 
     nps_A = nps.random.randn(20, 20)
     nps_B = nps.random.randn(20, 20)
     check_value_error(nps_A, nps_B, _a_blockshape=(10, 10), _b_blockshape=(2, 2))
 
     nps_A = nps.random.randn(20, 20)
-    nps_B = nps.random.randn(20, 1)
+    nps_B = nps.random.randn(20)
     check_value_error(nps_A, nps_B, _a_blockshape=(10, 10))
 
     nps_A = nps.random.randn(20, 20, 20)
