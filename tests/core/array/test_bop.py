@@ -33,18 +33,18 @@ def test_matmul(app_inst: ArrayApplication):
     assert np.allclose(X_sqr.get(), real_X.T @ real_X)
 
 
-def test_matvec(app_inst: ArrayApplication):
-    X = app_inst.array(np.arange(200).reshape(2, 100), block_shape=(1, 10))
-    y1 = app_inst.array(np.arange(100).reshape(100, 1), block_shape=(10, 1))
-    assert np.allclose((X @ y1).get(), X.get() @ y1.get())
-    y2 = app_inst.array(np.arange(100).reshape(100), block_shape=(10,))
-    assert np.allclose((X @ y2).get(), X.get() @ y2.get())
-    # This won't trigger optimized routine, but it is rare and strange so not worth addressing.
-    # TODO (hme): Apparently this is invalid. Figure out why.
-    # y3 = app_inst.array(np.arange(100).reshape((100, 1, 1)), block_shape=(10, 1, 1))
-    # assert np.allclose((X @ y3).get(), X.get() @ y3.get())
-
-
+# def test_matvec(app_inst: ArrayApplication):
+#     X = app_inst.array(np.arange(200).reshape(2, 100), block_shape=(1, 10))
+#     y1 = app_inst.array(np.arange(100).reshape(100, 1), block_shape=(10, 1))
+#     assert np.allclose((X @ y1).get(), X.get() @ y1.get())
+#     y2 = app_inst.array(np.arange(100).reshape(100), block_shape=(10,))
+#     assert np.allclose((X @ y2).get(), X.get() @ y2.get())
+#     # This won't trigger optimized routine, but it is rare and strange so not worth addressing.
+#     # TODO (hme): Apparently this is invalid. Figure out why.
+#     # y3 = app_inst.array(np.arange(100).reshape((100, 1, 1)), block_shape=(10, 1, 1))
+#     # assert np.allclose((X @ y3).get(), X.get() @ y3.get())
+#
+#
 # def test_vecdot(app_inst: ArrayApplication):
 #     size = 9
 #     block_size = 3
