@@ -23,12 +23,11 @@ import pytest
 import tqdm
 
 from nums.core.array.application import ArrayApplication
-from nums.core.storage.storage import BimodalGaussian
 
 
 def test_matmul(app_inst: ArrayApplication):
-    real_X, _ = BimodalGaussian.get_dataset(100, 9)
-    X = app_inst.array(real_X, block_shape=(100, 1))
+    X = app_inst.random.random(shape=(100, 9), block_shape=(100, 1))
+    real_X = X.get()
     X_sqr = X.T @ X
     assert np.allclose(X_sqr.get(), real_X.T @ real_X)
 
