@@ -23,6 +23,7 @@ import tqdm
 from nums.core.array import utils as array_utils
 
 
+@pytest.mark.skip
 def test_assign_broadcasting():
     # https://numpy.org/doc/stable/user/basics.indexing.html#assigning-values-to-indexed-arrays
     # Note that the above documentation does not fully capture the broadcasting behavior of NumPy.
@@ -73,6 +74,7 @@ def test_assign_broadcasting():
         pbar.update(1)
 
 
+@pytest.mark.skip
 def test_bop_broadcasting():
     def get_array(shape):
         shape = tuple(filter(lambda x: x > 0, shape))
