@@ -15,15 +15,15 @@
 
 
 # pylint: disable=import-outside-toplevel, no-member
+import numpy as np
+import pytest
 
+from nums.numpy import BlockArray
+from nums.numpy import numpy_utils
+from nums.core.array.utils import is_array_like
+from nums import numpy as nps
 
 def test_ufunc(nps_app_inst):
-    import numpy as np
-
-    from nums.numpy import BlockArray
-    from nums.numpy import numpy_utils
-    from nums import numpy as nps
-
     assert nps_app_inst is not None
 
     uops, bops = numpy_utils.ufunc_op_signatures()
@@ -79,10 +79,6 @@ def test_ufunc(nps_app_inst):
 
 
 def test_matmul_tensordot(nps_app_inst):
-    import numpy as np
-
-    from nums import numpy as nps
-
     assert nps_app_inst is not None
 
     def check_matmul_op(_np_a, _np_b):
@@ -116,11 +112,6 @@ def test_matmul_tensordot(nps_app_inst):
 
 
 def test_matmul_tensor_error(nps_app_inst):
-
-    from nums import numpy as nps
-
-    import pytest
-
     assert nps_app_inst is not None
 
     # TODO (bcp): Replace with matmul tests for rank > 2 once implemented.
@@ -134,8 +125,6 @@ def test_matmul_tensor_error(nps_app_inst):
 
 
 def test_inner_outer(nps_app_inst):
-    import numpy as np
-    from nums import numpy as nps
     assert nps_app_inst is not None
     A = np.random.randn(10)
     B = np.random.randn(10)
@@ -147,27 +136,7 @@ def test_inner_outer(nps_app_inst):
 # TODO (hme): Add broadcast tests.
 
 def test_tensordot_shape_error(nps_app_inst):
-    import numpy as np
-    from nums.core.array.utils import is_array_like
-    from nums import numpy as nps
-    import pytest
     assert nps_app_inst is not None
-
-    def check_simple_shape_mismatch_error(_np_a, _np_b):
-        _ops = ['add', 'subtract']
-
-        for _op in _ops:
-            ns_op = nps.__getattribute__(_op)
-            np_op = np.__getattribute__(_op)
-            _ns_a = nps.array(_np_a)
-            _ns_b = nps.array(_np_b)
-
-            with pytest.raises(ValueError):
-                np_op(_np_a, _np_b)
-            with pytest.raises(ValueError):
-                # TODO (bcp): Add synchronous broadcast checks for simple operands.
-                res = ns_op(_ns_a, _ns_b)
-                res.touch()
 
     def check_tensordot_mismatch_simple_error(_np_a, _np_b, axes):
         _ns_a = nps.array(_np_a)
@@ -191,10 +160,6 @@ def test_tensordot_shape_error(nps_app_inst):
                 np.tensordot(_np_a, _np_b, axes=axes)
             with pytest.raises(TypeError):
                 nps.tensordot(_ns_a, _ns_b, axes=axes)
-
-    np_A = np.random.randn(2, 4)
-    np_B = np.random.randn(2, 2)
-    check_simple_shape_mismatch_error(np_A, np_B)
 
     np_A = np.random.randn(2, 1)
     np_B = np.random.randn(2, 1)
