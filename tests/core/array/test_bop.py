@@ -44,52 +44,52 @@ def test_matvec(app_inst: ArrayApplication):
     # assert np.allclose((X @ y3).get(), X.get() @ y3.get())
 
 
-# def test_vecdot(app_inst: ArrayApplication):
-#     size = 9
-#     block_size = 3
-#     y1 = app_inst.array(np.arange(size).reshape(size, 1), block_shape=(block_size, 1))
-#     y2 = app_inst.array(np.arange(size).reshape(size, 1), block_shape=(block_size, 1))
-#     assert np.allclose((y1.T @ y2).get(), y1.T.get() @ y2.get())
-#     y1 = app_inst.array(np.arange(size).reshape(size), block_shape=(block_size,))
-#     y2 = app_inst.array(np.arange(size).reshape(size), block_shape=(block_size,))
-#     assert np.allclose((y1.T @ y2).get(), y1.T.get() @ y2.get())
-#     y1 = app_inst.array(np.arange(size).reshape(size), block_shape=(block_size,))
-#     y2 = app_inst.array(np.arange(size).reshape(size, 1), block_shape=(block_size, 1))
-#     assert np.allclose((y1.T @ y2).get(), y1.T.get() @ y2.get())
-#     assert np.allclose((y2.T @ y1).get(), y2.T.get() @ y1.get())
-#     y1 = app_inst.array(np.arange(size).reshape(1, size), block_shape=(1, block_size))
-#     y2 = app_inst.array(np.arange(size).reshape(size, 1), block_shape=(block_size, 1))
-#     assert np.allclose((y1 @ y2).get(), y1.get() @ y2.get())
-#     y1 = app_inst.array(np.arange(size).reshape(1, size), block_shape=(1, block_size))
-#     y2 = app_inst.array(np.arange(size).reshape(1, size), block_shape=(1, block_size))
-#     assert np.allclose((y1 @ y2.T).get(), y1.get() @ y2.T.get())
-#
-#
-# def test_tensordot_basic(app_inst: ArrayApplication):
-#     shape = 2, 4, 10, 15
-#     npX = np.arange(np.product(shape)).reshape(*shape)
-#     rX = app_inst.array(npX, block_shape=(1, 2, 10, 3))
-#
-#     rResult = rX.T.tensordot(rX, axes=1)
-#     assert np.allclose(
-#         rResult.get(),
-#         (np.tensordot(npX.T, npX, axes=1))
-#     )
-#     common.check_block_integrity(rResult)
-#
-#
-# def test_tensordot_large_shape(app_inst: ArrayApplication):
-#     a = np.arange(4 * 6 * 10 * 90).reshape((90, 10, 6, 4))
-#     b = np.arange(4 * 6 * 10 * 75).reshape((4, 6, 10, 75))
-#     c = np.tensordot(a, b, axes=1)
-#
-#     block_a = app_inst.array(a, block_shape=(30, 5, 3, 2))
-#     block_b = app_inst.array(b, block_shape=(2, 3, 5, 25))
-#     block_c = block_a.tensordot(block_b, axes=1)
-#     assert np.allclose(block_c.get(), c)
-#     common.check_block_integrity(block_c)
-#
-#
+def test_vecdot(app_inst: ArrayApplication):
+    size = 9
+    block_size = 3
+    y1 = app_inst.array(np.arange(size).reshape(size, 1), block_shape=(block_size, 1))
+    y2 = app_inst.array(np.arange(size).reshape(size, 1), block_shape=(block_size, 1))
+    assert np.allclose((y1.T @ y2).get(), y1.T.get() @ y2.get())
+    y1 = app_inst.array(np.arange(size).reshape(size), block_shape=(block_size,))
+    y2 = app_inst.array(np.arange(size).reshape(size), block_shape=(block_size,))
+    assert np.allclose((y1.T @ y2).get(), y1.T.get() @ y2.get())
+    y1 = app_inst.array(np.arange(size).reshape(size), block_shape=(block_size,))
+    y2 = app_inst.array(np.arange(size).reshape(size, 1), block_shape=(block_size, 1))
+    assert np.allclose((y1.T @ y2).get(), y1.T.get() @ y2.get())
+    assert np.allclose((y2.T @ y1).get(), y2.T.get() @ y1.get())
+    y1 = app_inst.array(np.arange(size).reshape(1, size), block_shape=(1, block_size))
+    y2 = app_inst.array(np.arange(size).reshape(size, 1), block_shape=(block_size, 1))
+    assert np.allclose((y1 @ y2).get(), y1.get() @ y2.get())
+    y1 = app_inst.array(np.arange(size).reshape(1, size), block_shape=(1, block_size))
+    y2 = app_inst.array(np.arange(size).reshape(1, size), block_shape=(1, block_size))
+    assert np.allclose((y1 @ y2.T).get(), y1.get() @ y2.T.get())
+
+
+def test_tensordot_basic(app_inst: ArrayApplication):
+    shape = 2, 4, 10, 15
+    npX = np.arange(np.product(shape)).reshape(*shape)
+    rX = app_inst.array(npX, block_shape=(1, 2, 10, 3))
+
+    rResult = rX.T.tensordot(rX, axes=1)
+    assert np.allclose(
+        rResult.get(),
+        (np.tensordot(npX.T, npX, axes=1))
+    )
+    common.check_block_integrity(rResult)
+
+
+def test_tensordot_large_shape(app_inst: ArrayApplication):
+    a = np.arange(4 * 6 * 10 * 90).reshape((90, 10, 6, 4))
+    b = np.arange(4 * 6 * 10 * 75).reshape((4, 6, 10, 75))
+    c = np.tensordot(a, b, axes=1)
+
+    block_a = app_inst.array(a, block_shape=(30, 5, 3, 2))
+    block_b = app_inst.array(b, block_shape=(2, 3, 5, 25))
+    block_c = block_a.tensordot(block_b, axes=1)
+    assert np.allclose(block_c.get(), c)
+    common.check_block_integrity(block_c)
+
+
 # @pytest.mark.skip
 # def test_tensordot_all_shapes(app_inst: ArrayApplication):
 #     for axes in [0, 1, 2]:
