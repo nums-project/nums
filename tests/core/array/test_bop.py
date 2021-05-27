@@ -23,12 +23,11 @@ import pytest
 import tqdm
 
 from nums.core.array.application import ArrayApplication
-from nums.core.storage.storage import BimodalGaussian
 
 
 def test_matmul(app_inst: ArrayApplication):
-    real_X, _ = BimodalGaussian.get_dataset(100, 9)
-    X = app_inst.array(real_X, block_shape=(100, 1))
+    X = app_inst.random.random(shape=(100, 9), block_shape=(100, 1))
+    real_X = X.get()
     X_sqr = X.T @ X
     assert np.allclose(X_sqr.get(), real_X.T @ real_X)
 
@@ -70,8 +69,8 @@ def test_tensordot_basic(app_inst: ArrayApplication):
     shape = 2, 4, 10, 15
     npX = np.arange(np.product(shape)).reshape(*shape)
     rX = app_inst.array(npX, block_shape=(1, 2, 10, 3))
-
-    rResult = rX.T.tensordot(rX, axes=1)
+    rY = app_inst.array(npX, block_shape=(1, 2, 10, 3))
+    rResult = rX.T.tensordot(rY, axes=1)
     assert np.allclose(
         rResult.get(),
         (np.tensordot(npX.T, npX, axes=1))
