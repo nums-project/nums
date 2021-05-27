@@ -65,17 +65,17 @@ def test_vecdot(app_inst: ArrayApplication):
     assert np.allclose((y1 @ y2.T).get(), y1.get() @ y2.T.get())
 
 
-# def test_tensordot_basic(app_inst: ArrayApplication):
-#     shape = 2, 4, 10, 15
-#     npX = np.arange(np.product(shape)).reshape(*shape)
-#     rX = app_inst.array(npX, block_shape=(1, 2, 10, 3))
-#
-#     rResult = rX.T.tensordot(rX, axes=1)
-#     assert np.allclose(
-#         rResult.get(),
-#         (np.tensordot(npX.T, npX, axes=1))
-#     )
-#     common.check_block_integrity(rResult)
+def test_tensordot_basic(app_inst: ArrayApplication):
+    shape = 2, 4, 10, 15
+    npX = np.arange(np.product(shape)).reshape(*shape)
+    rX = app_inst.array(npX, block_shape=(1, 2, 10, 3))
+    rY = app_inst.array(npX, block_shape=(1, 2, 10, 3))
+    rResult = rX.T.tensordot(rY, axes=1)
+    assert np.allclose(
+        rResult.get(),
+        (np.tensordot(npX.T, npX, axes=1))
+    )
+    common.check_block_integrity(rResult)
 
 
 def test_tensordot_large_shape(app_inst: ArrayApplication):
