@@ -68,7 +68,8 @@ def test_vecdot(app_inst: ArrayApplication):
 def test_tensordot_basic(app_inst: ArrayApplication):
     shape = 2, 4, 10, 15
     npX = np.arange(np.product(shape)).reshape(*shape)
-    rX = app_inst.array(npX, block_shape=(1, 2, 10, 3)).touch()
+    rX = app_inst.array(npX, block_shape=(1, 2, 10, 3))
+    rX.get()
     rResult = rX.T.tensordot(rX, axes=1)
     assert np.allclose(
         rResult.get(),
