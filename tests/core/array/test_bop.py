@@ -160,6 +160,7 @@ def bop_data(request, app_inst):
     }[request.param]()
 
 
+@pytest.mark.skip
 def test_bops(bop_data: tuple):
     X, Y, npX, npY = bop_data
 
@@ -212,6 +213,7 @@ def conversions_data(request, app_inst):
     return X, npX, Y
 
 
+@pytest.mark.skip
 def test_conversions(conversions_data: tuple):
     X, npX, Y = conversions_data
 
