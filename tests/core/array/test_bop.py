@@ -69,8 +69,8 @@ def test_tensordot_basic(app_inst: ArrayApplication):
     shape = 2, 4, 10, 15
     npX = np.arange(np.product(shape)).reshape(*shape)
     rX = app_inst.array(npX, block_shape=(1, 2, 10, 3))
-    rX.get()
-    rResult = rX.T.tensordot(rX, axes=1)
+    rY = app_inst.array(npX, block_shape=(1, 2, 10, 3))
+    rResult = rX.T.tensordot(rY, axes=1)
     assert np.allclose(
         rResult.get(),
         (np.tensordot(npX.T, npX, axes=1))
@@ -90,199 +90,199 @@ def test_tensordot_large_shape(app_inst: ArrayApplication):
     common.check_block_integrity(block_c)
 
 
-# @pytest.mark.skip
-# def test_tensordot_all_shapes(app_inst: ArrayApplication):
-#     for axes in [0, 1, 2]:
-#         if axes == 2:
-#             a = np.arange(7 * 6 * 4).reshape((7, 6, 4))
-#             b = np.arange(6 * 4 * 9).reshape((6, 4, 9))
-#             c = np.tensordot(a, b, axes=axes)
-#         elif axes in (1, 0):
-#             a = np.arange(7 * 6 * 4).reshape((7, 6, 4))
-#             b = np.arange(6 * 4 * 9).reshape((4, 6, 9))
-#             c = np.tensordot(a, b, axes=axes)
-#         else:
-#             raise Exception()
-#         a_block_shapes = list(itertools.product(*list(map(lambda x: list(range(1, x + 1)),
-#                                                           a.shape))))
-#         b_block_shapes = list(itertools.product(*list(map(lambda x: list(range(1, x + 1)),
-#                                                           b.shape))))
-#         pbar = tqdm.tqdm(total=np.product([len(a_block_shapes), len(b_block_shapes)]))
-#         for a_block_shape in a_block_shapes:
-#             for b_block_shape in b_block_shapes:
-#                 pbar.update(1)
-#                 if a_block_shape[-axes:] != b_block_shape[:axes]:
-#                     continue
-#                 pbar.set_description("axes=%s %s @ %s" % (str(axes),
-#                                                           str(a_block_shape),
-#                                                           str(b_block_shape)))
-#                 block_a = app_inst.array(a, block_shape=a_block_shape)
-#                 block_b = app_inst.array(b, block_shape=b_block_shape)
-#                 block_c = block_a.tensordot(block_b, axes=axes)
-#                 assert np.allclose(block_c.get(), c)
-#                 common.check_block_integrity(block_c)
-#
-#
-# @pytest.fixture(scope="module", params=["same_dim", "broadcasting", "scalars"])
-# def bop_data(request, app_inst):
-#
-#     def same_dim():
-#         X_shape = 6, 8
-#         Y_shape = 6, 8
-#         npX = np.random.random_sample(np.product(X_shape)).reshape(*X_shape)
-#         X = app_inst.array(npX, block_shape=(3, 2))
-#         npY = np.random.random_sample(np.product(Y_shape)).reshape(*Y_shape)
-#         Y = app_inst.array(npY, block_shape=(3, 2))
-#         return X, Y, npX, npY
-#
-#     def broadcasting():
-#         X_shape = 6, 1
-#         Y_shape = 8,
-#         npX = np.random.random_sample(np.product(X_shape)).reshape(*X_shape)
-#         X = app_inst.array(npX, block_shape=(3, 1))
-#         npY = np.random.random_sample(np.product(Y_shape)).reshape(*Y_shape)
-#         Y = app_inst.array(npY, block_shape=(2,))
-#         return X, Y, npX, npY
-#
-#     def scalars():
-#         X_shape = 6, 8
-#         npX = np.random.random_sample(np.product(X_shape)).reshape(*X_shape)
-#         X = app_inst.array(npX, block_shape=(3, 2))
-#         npY = .5
-#         Y = app_inst.scalar(npY)
-#         return X, Y, npX, npY
-#
-#     return {
-#         "same_dim": same_dim,
-#         "broadcasting": broadcasting,
-#         "scalars": scalars,
-#     }[request.param]()
-#
-#
-# def test_bops(bop_data: tuple):
-#     X, Y, npX, npY = bop_data
-#
-#     # Add
-#     Z = X + Y
-#     npZ = npX + npY
-#     assert np.allclose(Z.get(), npZ)
-#     common.check_block_integrity(Z)
-#
-#     # Subtract
-#     Z = X - Y
-#     npZ = npX - npY
-#     assert np.allclose(Z.get(), npZ)
-#     common.check_block_integrity(Z)
-#
-#     # Multiply
-#     Z = X * Y
-#     npZ = npX * npY
-#     assert np.allclose(Z.get(), npZ)
-#     common.check_block_integrity(Z)
-#
-#     # Divide
-#     Z = X / Y
-#     npZ = npX / npY
-#     assert np.allclose(Z.get(), npZ)
-#     common.check_block_integrity(Z)
-#
-#     # Power
-#     Z = X ** Y
-#     npZ = npX ** npY
-#     assert np.allclose(Z.get(), npZ)
-#     common.check_block_integrity(Z)
-#
-#
-# @pytest.fixture(scope="module", params=["scalar", "list", "ndarray"])
-# def conversions_data(request, app_inst):
-#     X_shape = 6, 6
-#     npX = np.random.random_sample(np.product(X_shape)).reshape(*X_shape)
-#     X = app_inst.array(npX, block_shape=(3, 3))
-#
-#     if request.param == "scalar":
-#         Y = 1.23
-#     elif request.param == "list":
-#         Y = list(range(6))
-#     elif request.param == "ndarray":
-#         Y = np.arange(6)
-#     else:
-#         raise Exception("impossible.")
-#
-#     return X, npX, Y
-#
-#
-# def test_conversions(conversions_data: tuple):
-#     X, npX, Y = conversions_data
-#
-#     # Add
-#     Z = X + Y
-#     npZ = npX + Y
-#     assert np.allclose(Z.get(), npZ)
-#     common.check_block_integrity(Z)
-#     if isinstance(Y, np.ndarray):
-#         with pytest.raises(ValueError):
-#             Z = Y + X
-#     else:
-#         Z = Y + X
-#         npZ = Y + npX
-#         assert np.allclose(Z.get(), npZ)
-#         common.check_block_integrity(Z)
-#
-#     # Subtract
-#     Z = X - Y
-#     npZ = npX - Y
-#     assert np.allclose(Z.get(), npZ)
-#     common.check_block_integrity(Z)
-#     if isinstance(Y, np.ndarray):
-#         with pytest.raises(ValueError):
-#             Z = Y - X
-#     else:
-#         Z = Y - X
-#         npZ = Y - npX
-#         assert np.allclose(Z.get(), npZ)
-#         common.check_block_integrity(Z)
-#
-#     # Multiply
-#     Z = X * Y
-#     npZ = npX * Y
-#     assert np.allclose(Z.get(), npZ)
-#     common.check_block_integrity(Z)
-#     if isinstance(Y, np.ndarray):
-#         with pytest.raises(ValueError):
-#             Z = Y * X
-#     else:
-#         Z = Y * X
-#         npZ = Y * npX
-#         assert np.allclose(Z.get(), npZ)
-#         common.check_block_integrity(Z)
-#
-#     # Divide
-#     Z = X / Y
-#     npZ = npX / Y
-#     assert np.allclose(Z.get(), npZ)
-#     common.check_block_integrity(Z)
-#     if isinstance(Y, np.ndarray):
-#         with pytest.raises(ValueError):
-#             Z = Y / X
-#     else:
-#         Z = Y / X
-#         npZ = Y / npX
-#         assert np.allclose(Z.get(), npZ)
-#         common.check_block_integrity(Z)
-#
-#     # Power
-#     Z = X ** Y
-#     npZ = npX ** Y
-#     assert np.allclose(Z.get(), npZ)
-#     common.check_block_integrity(Z)
-#     if isinstance(Y, np.ndarray):
-#         with pytest.raises(ValueError):
-#             Z = Y ** X
-#     else:
-#         Z = Y ** X
-#         npZ = Y ** npX
-#         assert np.allclose(Z.get(), npZ)
-#         common.check_block_integrity(Z)
+@pytest.mark.skip
+def test_tensordot_all_shapes(app_inst: ArrayApplication):
+    for axes in [0, 1, 2]:
+        if axes == 2:
+            a = np.arange(7 * 6 * 4).reshape((7, 6, 4))
+            b = np.arange(6 * 4 * 9).reshape((6, 4, 9))
+            c = np.tensordot(a, b, axes=axes)
+        elif axes in (1, 0):
+            a = np.arange(7 * 6 * 4).reshape((7, 6, 4))
+            b = np.arange(6 * 4 * 9).reshape((4, 6, 9))
+            c = np.tensordot(a, b, axes=axes)
+        else:
+            raise Exception()
+        a_block_shapes = list(itertools.product(*list(map(lambda x: list(range(1, x + 1)),
+                                                          a.shape))))
+        b_block_shapes = list(itertools.product(*list(map(lambda x: list(range(1, x + 1)),
+                                                          b.shape))))
+        pbar = tqdm.tqdm(total=np.product([len(a_block_shapes), len(b_block_shapes)]))
+        for a_block_shape in a_block_shapes:
+            for b_block_shape in b_block_shapes:
+                pbar.update(1)
+                if a_block_shape[-axes:] != b_block_shape[:axes]:
+                    continue
+                pbar.set_description("axes=%s %s @ %s" % (str(axes),
+                                                          str(a_block_shape),
+                                                          str(b_block_shape)))
+                block_a = app_inst.array(a, block_shape=a_block_shape)
+                block_b = app_inst.array(b, block_shape=b_block_shape)
+                block_c = block_a.tensordot(block_b, axes=axes)
+                assert np.allclose(block_c.get(), c)
+                common.check_block_integrity(block_c)
+
+
+@pytest.fixture(scope="module", params=["same_dim", "broadcasting", "scalars"])
+def bop_data(request, app_inst):
+
+    def same_dim():
+        X_shape = 6, 8
+        Y_shape = 6, 8
+        npX = np.random.random_sample(np.product(X_shape)).reshape(*X_shape)
+        X = app_inst.array(npX, block_shape=(3, 2))
+        npY = np.random.random_sample(np.product(Y_shape)).reshape(*Y_shape)
+        Y = app_inst.array(npY, block_shape=(3, 2))
+        return X, Y, npX, npY
+
+    def broadcasting():
+        X_shape = 6, 1
+        Y_shape = 8,
+        npX = np.random.random_sample(np.product(X_shape)).reshape(*X_shape)
+        X = app_inst.array(npX, block_shape=(3, 1))
+        npY = np.random.random_sample(np.product(Y_shape)).reshape(*Y_shape)
+        Y = app_inst.array(npY, block_shape=(2,))
+        return X, Y, npX, npY
+
+    def scalars():
+        X_shape = 6, 8
+        npX = np.random.random_sample(np.product(X_shape)).reshape(*X_shape)
+        X = app_inst.array(npX, block_shape=(3, 2))
+        npY = .5
+        Y = app_inst.scalar(npY)
+        return X, Y, npX, npY
+
+    return {
+        "same_dim": same_dim,
+        "broadcasting": broadcasting,
+        "scalars": scalars,
+    }[request.param]()
+
+
+def test_bops(bop_data: tuple):
+    X, Y, npX, npY = bop_data
+
+    # Add
+    Z = X + Y
+    npZ = npX + npY
+    assert np.allclose(Z.get(), npZ)
+    common.check_block_integrity(Z)
+
+    # Subtract
+    Z = X - Y
+    npZ = npX - npY
+    assert np.allclose(Z.get(), npZ)
+    common.check_block_integrity(Z)
+
+    # Multiply
+    Z = X * Y
+    npZ = npX * npY
+    assert np.allclose(Z.get(), npZ)
+    common.check_block_integrity(Z)
+
+    # Divide
+    Z = X / Y
+    npZ = npX / npY
+    assert np.allclose(Z.get(), npZ)
+    common.check_block_integrity(Z)
+
+    # Power
+    Z = X ** Y
+    npZ = npX ** npY
+    assert np.allclose(Z.get(), npZ)
+    common.check_block_integrity(Z)
+
+
+@pytest.fixture(scope="module", params=["scalar", "list", "ndarray"])
+def conversions_data(request, app_inst):
+    X_shape = 6, 6
+    npX = np.random.random_sample(np.product(X_shape)).reshape(*X_shape)
+    X = app_inst.array(npX, block_shape=(3, 3))
+
+    if request.param == "scalar":
+        Y = 1.23
+    elif request.param == "list":
+        Y = list(range(6))
+    elif request.param == "ndarray":
+        Y = np.arange(6)
+    else:
+        raise Exception("impossible.")
+
+    return X, npX, Y
+
+
+def test_conversions(conversions_data: tuple):
+    X, npX, Y = conversions_data
+
+    # Add
+    Z = X + Y
+    npZ = npX + Y
+    assert np.allclose(Z.get(), npZ)
+    common.check_block_integrity(Z)
+    if isinstance(Y, np.ndarray):
+        with pytest.raises(ValueError):
+            Z = Y + X
+    else:
+        Z = Y + X
+        npZ = Y + npX
+        assert np.allclose(Z.get(), npZ)
+        common.check_block_integrity(Z)
+
+    # Subtract
+    Z = X - Y
+    npZ = npX - Y
+    assert np.allclose(Z.get(), npZ)
+    common.check_block_integrity(Z)
+    if isinstance(Y, np.ndarray):
+        with pytest.raises(ValueError):
+            Z = Y - X
+    else:
+        Z = Y - X
+        npZ = Y - npX
+        assert np.allclose(Z.get(), npZ)
+        common.check_block_integrity(Z)
+
+    # Multiply
+    Z = X * Y
+    npZ = npX * Y
+    assert np.allclose(Z.get(), npZ)
+    common.check_block_integrity(Z)
+    if isinstance(Y, np.ndarray):
+        with pytest.raises(ValueError):
+            Z = Y * X
+    else:
+        Z = Y * X
+        npZ = Y * npX
+        assert np.allclose(Z.get(), npZ)
+        common.check_block_integrity(Z)
+
+    # Divide
+    Z = X / Y
+    npZ = npX / Y
+    assert np.allclose(Z.get(), npZ)
+    common.check_block_integrity(Z)
+    if isinstance(Y, np.ndarray):
+        with pytest.raises(ValueError):
+            Z = Y / X
+    else:
+        Z = Y / X
+        npZ = Y / npX
+        assert np.allclose(Z.get(), npZ)
+        common.check_block_integrity(Z)
+
+    # Power
+    Z = X ** Y
+    npZ = npX ** Y
+    assert np.allclose(Z.get(), npZ)
+    common.check_block_integrity(Z)
+    if isinstance(Y, np.ndarray):
+        with pytest.raises(ValueError):
+            Z = Y ** X
+    else:
+        Z = Y ** X
+        npZ = Y ** npX
+        assert np.allclose(Z.get(), npZ)
+        common.check_block_integrity(Z)
 
 
 if __name__ == "__main__":
