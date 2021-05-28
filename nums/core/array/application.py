@@ -332,7 +332,7 @@ class ArrayApplication(object):
                 syskwargs = {"grid_entry": grid_entry, "grid_shape": grid.grid_shape}
                 if np.all(np.diff(grid_entry) == 0):
                     # This is a diagonal block.
-                    rarr.blocks[grid_entry].oid = self.cm.diag(X.blocks[grid_entry[0]].oid,
+                    rarr.blocks[grid_entry].oid = self.cm.diag(X.blocks[grid_entry[0]].oid, [],
                                                                syskwargs=syskwargs)
                 else:
                     rarr.blocks[grid_entry].oid = self.cm.new_block("zeros",
@@ -340,20 +340,35 @@ class ArrayApplication(object):
                                                                     grid_meta,
                                                                     syskwargs=syskwargs)
         elif len(X.shape) == 2:
-            assert X.shape[0] == X.shape[1], "X must be a square array."
-            assert X.block_shape[0] == X.block_shape[1], "block_shape must be square."
-            shape = X.shape[0],
-            block_shape = X.block_shape[0],
+            shape = min(X.shape),
+            block_shape = min(X.block_shape),
             grid = ArrayGrid(shape, block_shape, X.dtype.__name__)
             rarr = BlockArray(grid, self.cm)
-            for grid_entry in X.grid.get_entry_iterator():
-                out_grid_entry = grid_entry[:1]
+            block_i, block_j, element_i, element_j = 0, 0, 0, 0
+            count, total_elements = 1, min(shape)
+            block, diagonal, block_dict = X.blocks[(0, 0)], {}, {}
+            while count <= total_elements:
+                if element_i > block.shape[0] - 1:
+                    block_i = block_i + 1
+                    element_i = 0
+                if element_j > block.shape[1] - 1:
+                    block_j = block_j + 1
+                    element_j = 0
+                block = X.blocks[(block_i, block_j)]
+                while True:
+                    block_rows, block_cols = block.shape[0], block.shape[1]
+                    if element_i > block_rows - 1 or element_j > block_cols - 1:
+                        break
+                    array = diagonal.get((block_i, block_j), [])
+                    array.append((element_i, element_j))
+                    diagonal[(block_i, block_j)] = array
+                    count, element_i, element_j = count + 1, element_i + 1, element_j + 1
+            for key in diagonal.keys():
+                grid_entry = key
                 out_grid_shape = grid.grid_shape[:1]
-                syskwargs = {"grid_entry": out_grid_entry, "grid_shape": out_grid_shape}
-                if np.all(np.diff(grid_entry) == 0):
-                    # This is a diagonal block.
-                    rarr.blocks[out_grid_entry].oid = self.cm.diag(X.blocks[grid_entry].oid,
-                                                                   syskwargs=syskwargs)
+                syskwargs = {"grid_entry": grid_entry[:1], "grid_shape": out_grid_shape}
+                rarr.blocks[grid_entry[:1]].oid = self.cm.diag(X.blocks[key].oid, diagonal[key],
+                                                                    syskwargs=syskwargs)
         else:
             raise ValueError("X must have 1 or 2 axes.")
         return rarr
