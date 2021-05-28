@@ -18,33 +18,32 @@ import itertools
 
 import numpy as np
 
-from nums.core import settings
-from nums.core.storage.storage import ArrayGrid
+from nums.core.array import selection
 from nums.core.array import utils as array_utils
 from nums.core.array.base import BlockArrayBase, Block
 from nums.core.array.view import ArrayView
-from nums.core.array import selection
+from nums.core.grid.grid import ArrayGrid
 
 
 class BlockArray(BlockArrayBase):
 
     @classmethod
-    def empty(cls, shape, block_shape, dtype, system):
+    def empty(cls, shape, block_shape, dtype, cm):
         grid = ArrayGrid(shape=shape,
                          block_shape=block_shape,
                          dtype=dtype.__name__)
         grid_meta = grid.to_meta()
-        arr = BlockArray(grid, system)
+        arr = BlockArray(grid, cm)
         for grid_entry in grid.get_entry_iterator():
-            arr.blocks[grid_entry].oid = system.empty(grid_entry, grid_meta,
-                                                      syskwargs={
-                                                          "grid_entry": grid_entry,
-                                                          "grid_shape": grid.grid_shape
-                                                      })
+            arr.blocks[grid_entry].oid = cm.empty(grid_entry, grid_meta,
+                                                  syskwargs={
+                                                      "grid_entry": grid_entry,
+                                                      "grid_shape": grid.grid_shape
+                                                  })
         return arr
 
     @classmethod
-    def from_scalar(cls, val, system):
+    def from_scalar(cls, val, cm):
         if isinstance(val, int):
             dtype = int
         elif isinstance(val, float):
@@ -55,35 +54,35 @@ class BlockArray(BlockArrayBase):
         return BlockArray.from_np(np.array(val, dtype=dtype),
                                   block_shape=(),
                                   copy=False,
-                                  system=system)
+                                  cm=cm)
 
     @classmethod
-    def from_oid(cls, oid, shape, dtype, system):
+    def from_oid(cls, oid, shape, dtype, cm):
         block_shape = shape
         grid = ArrayGrid(shape, block_shape, dtype.__name__)
-        ba = BlockArray(grid, system)
+        ba = BlockArray(grid, cm)
         for i, grid_entry in enumerate(grid.get_entry_iterator()):
             assert i == 0
             ba.blocks[grid_entry].oid = oid
         return ba
 
     @classmethod
-    def from_np(cls, arr, block_shape, copy, system):
+    def from_np(cls, arr, block_shape, copy, cm):
         dtype_str = str(arr.dtype)
         grid = ArrayGrid(arr.shape, block_shape, dtype_str)
-        rarr = BlockArray(grid, system)
+        rarr = BlockArray(grid, cm)
         grid_entry_iterator = grid.get_entry_iterator()
         for grid_entry in grid_entry_iterator:
             grid_slice = grid.get_slice(grid_entry)
             block = arr[grid_slice]
             if copy:
                 block = np.copy(block)
-            rarr.blocks[grid_entry].oid = system.put(block)
+            rarr.blocks[grid_entry].oid = cm.put(block)
             rarr.blocks[grid_entry].dtype = getattr(np, dtype_str)
         return rarr
 
     @classmethod
-    def from_blocks(cls, arr: np.ndarray, result_shape, system):
+    def from_blocks(cls, arr: np.ndarray, result_shape, cm):
         sample_idx = tuple(0 for dim in arr.shape)
         if isinstance(arr, Block):
             sample_block = arr
@@ -98,7 +97,7 @@ class BlockArray(BlockArrayBase):
                                 block_shape=result_block_shape,
                                 dtype=result_dtype_str)
         assert arr.shape == result_grid.grid_shape
-        result = BlockArray(result_grid, system)
+        result = BlockArray(result_grid, cm)
         for grid_entry in result_grid.get_entry_iterator():
             if isinstance(arr, Block):
                 block: Block = arr
@@ -109,7 +108,7 @@ class BlockArray(BlockArrayBase):
 
     def copy(self):
         grid_copy = self.grid.from_meta(self.grid.to_meta())
-        rarr_copy = BlockArray(grid_copy, self.system)
+        rarr_copy = BlockArray(grid_copy, self.cm)
         for grid_entry in grid_copy.get_entry_iterator():
             rarr_copy.blocks[grid_entry] = self.blocks[grid_entry].copy()
         return rarr_copy
@@ -121,8 +120,11 @@ class BlockArray(BlockArrayBase):
         oids = []
         for grid_entry in self.grid.get_entry_iterator():
             block: Block = self.blocks[grid_entry]
-            oids.append(self.system.touch(block.oid, syskwargs=block.syskwargs()))
-        self.system.get(oids)
+            oids.append(self.cm.touch(block.oid, syskwargs={
+                "grid_entry": block.grid_entry,
+                "grid_shape": block.grid_shape
+            }))
+        self.cm.get(oids)
         return self
 
     def reshape(self, *shape, **kwargs):
@@ -142,19 +144,8 @@ class BlockArray(BlockArrayBase):
                 # This is a noop.
                 block_shape = self.block_shape
             else:
-                block_shape = self._get_and_register_block_shape(shape)
+                block_shape = self.cm.get_block_shape(shape, self.dtype)
         return Reshape()(self, shape, block_shape)
-
-    # TODO (hme): Remove this during engine/sys refactor.
-    # Temporary hack to obtain block_shape for reshape invocations.
-    def _get_and_register_block_shape(self, shape):
-        # pylint: disable=import-outside-toplevel
-        # Only allow this to be used if app manager is maintaining an app instance.
-        import nums.core.application_manager as am
-        assert am.is_initialized(), "Unexpected application state: " \
-                                    "application instance doesn't exist."
-        app = am.instance()
-        return app.get_block_shape(shape, self.dtype)
 
     def expand_dims(self, axis):
         """
@@ -202,7 +193,7 @@ class BlockArray(BlockArrayBase):
             rarr_src[grid_entry] = self.blocks[grid_entry].swapaxes(axis1, axis2)
         rarr_src = rarr_src.swapaxes(axis1, axis2)
 
-        rarr_swap = BlockArray(grid_swap, self.system, rarr_src)
+        rarr_swap = BlockArray(grid_swap, self.cm, rarr_src)
         return rarr_swap
 
     def __getattr__(self, item):
@@ -216,7 +207,7 @@ class BlockArray(BlockArrayBase):
             metaT["shape"] = tuple(reversed(metaT["shape"]))
             metaT["block_shape"] = tuple(reversed(metaT["block_shape"]))
             gridT = ArrayGrid.from_meta(metaT)
-            rarrT = BlockArray(gridT, self.system)
+            rarrT = BlockArray(gridT, self.cm)
             rarrT.blocks = np.copy(self.blocks.T)
             for grid_entry in rarrT.grid.get_entry_iterator():
                 rarrT.blocks[grid_entry] = rarrT.blocks[grid_entry].transpose()
@@ -312,8 +303,8 @@ class BlockArray(BlockArrayBase):
         block_shape = tuple(list(self.block_shape[:axis])
                             + [block_size]
                             + list(self.block_shape[axis+1:]))
-        dst_arr = BlockArray.empty(shape=shape,  block_shape=block_shape,
-                                   dtype=self.dtype,  system=self.system)
+        dst_arr = BlockArray.empty(shape=shape, block_shape=block_shape,
+                                   dtype=self.dtype, cm=self.cm)
 
         for dst_grid_entry in dst_arr.grid.get_entry_iterator():
             dst_block: Block = dst_arr.blocks[dst_grid_entry]
@@ -334,11 +325,11 @@ class BlockArray(BlockArrayBase):
                 src_block: Block = self.blocks[src_grid_entry]
                 index_pairs = src_blocks[src_grid_entry]
                 syskwargs = {"grid_entry": dst_grid_entry, "grid_shape": dst_arr.grid.grid_shape}
-                dst_block.oid = self.system.update_block_along_axis(dst_block.oid,
-                                                                    src_block.oid,
-                                                                    index_pairs,
-                                                                    axis,
-                                                                    syskwargs=syskwargs)
+                dst_block.oid = self.cm.update_block_along_axis(dst_block.oid,
+                                                                src_block.oid,
+                                                                index_pairs,
+                                                                axis,
+                                                                syskwargs=syskwargs)
         return dst_arr
 
     def __setitem__(self, key, value):
@@ -351,15 +342,15 @@ class BlockArray(BlockArrayBase):
         if isinstance(other, np.ndarray):
             # TODO (MWE): for self.shape (4,) self.block_shape: (1,),
             #  other.shape: (1, 4) this fails due to a failure to broadcast block shape
-            return self.from_np(other, self.block_shape, False, self.system)
+            return self.from_np(other, self.block_shape, False, self.cm)
         if isinstance(other, list):
             other = np.array(other)
-            return self.from_np(other, self.block_shape, False, self.system)
+            return self.from_np(other, self.block_shape, False, self.cm)
         if isinstance(other, (np.int32, np.int64, np.float32, np.float64, int, float)):
-            return self.from_scalar(other, self.system)
+            return self.from_scalar(other, self.cm)
         if isinstance(other, (np.bool, np.bool_, bool)):
             other = np.array(other)
-            return self.from_np(other, self.block_shape, False, self.system)
+            return self.from_np(other, self.block_shape, False, self.cm)
         raise Exception("Unsupported type %s" % type(other))
 
     def ufunc(self, op_name):
@@ -368,14 +359,56 @@ class BlockArray(BlockArrayBase):
             result.blocks[grid_entry] = self.blocks[grid_entry].ufunc(op_name)
         return result
 
+    def _tree_reduce(self, op_name, blocks_or_oids, result_grid_entry, result_grid_shape):
+        """
+        Basic tree reduce imp.
+        Schedules op on same node as left operand.
+        :param op_name: The reduction op.
+        :param blocks_or_oids: A list of type Block or a list of tuples.
+                               Tuples must be of the form
+                               (oid, grid_entry, grid_shape, transposed)
+        :param result_grid_entry: The grid entry of the result block. This will be used
+                                  to compute the final reduction step.
+        :param result_grid_shape: The grid entry of the result block. This will be used
+                                  to compute the final reduction step.
+        :return: The oid of the result.
+        """
+        oid_list = blocks_or_oids
+        if isinstance(blocks_or_oids[0], Block):
+            oid_list = [(b.oid, b.grid_entry, b.grid_shape, b.transposed) for b in blocks_or_oids]
+        if len(oid_list) == 1:
+            return oid_list[0][0]
+        q = oid_list
+        while len(q) > 1:
+            a_oid, a_ge, a_gs, a_T = q.pop(0)
+            b_oid, _, _, b_T = q.pop(0)
+            ge, gs = (result_grid_entry, result_grid_shape) if len(q) == 0 else (a_ge, a_gs)
+            c_oid = self.cm.bop_reduce(op_name, a_oid, b_oid, a_T, b_T, syskwargs={
+                "grid_entry": ge,
+                "grid_shape": gs,
+            })
+            q.append((c_oid, ge, gs, False))
+        r_oid, r_ge, r_gs, _ = q.pop(0)
+        assert r_ge == result_grid_entry
+        assert r_gs == result_grid_shape
+        return r_oid
+
     def reduce_axis(self, op_name, axis, keepdims=False):
         if not (axis is None or isinstance(axis, (int, np.int32, np.int64))):
             raise NotImplementedError("Only integer axis is currently supported.")
-        result_blocks = np.empty_like(self.blocks, dtype=Block)
+        block_reduced_oids = np.empty_like(self.blocks, dtype=tuple)
         for grid_entry in self.grid.get_entry_iterator():
-            result_blocks[grid_entry] = self.blocks[grid_entry].reduce_axis(op_name,
-                                                                            axis,
-                                                                            keepdims=keepdims)
+            block = self.blocks[grid_entry]
+            block_oid = self.cm.reduce_axis(op_name=op_name,
+                                            arr=block.oid,
+                                            axis=axis,
+                                            keepdims=keepdims,
+                                            transposed=block.transposed,
+                                            syskwargs={
+                                                "grid_entry": block.grid_entry,
+                                                "grid_shape": block.grid_shape
+                                            })
+            block_reduced_oids[grid_entry] = (block_oid, block.grid_entry, block.grid_shape, False)
         result_shape = []
         result_block_shape = []
         for curr_axis in range(len(self.shape)):
@@ -393,45 +426,33 @@ class BlockArray(BlockArrayBase):
         result_grid = ArrayGrid(shape=result_shape,
                                 block_shape=result_block_shape,
                                 dtype=result_dtype.__name__)
-        result = BlockArray(result_grid, self.system)
+        result = BlockArray(result_grid, self.cm)
 
-        if op_name in settings.np_bop_reduction_set:
-            if axis is None:
-                reduced_block: Block = None
-                for grid_entry in self.grid.get_entry_iterator():
-                    if reduced_block is None:
-                        reduced_block = result_blocks[grid_entry]
-                        continue
-                    next_block = result_blocks[grid_entry]
-                    reduced_block = reduced_block.bop_reduce(op_name, other=next_block)
-                if result.shape == ():
-                    result.blocks[()] = reduced_block
-                else:
-                    result.blocks[:] = reduced_block
-
-            else:
-                for result_grid_entry in result_grid.get_entry_iterator():
-                    reduced_block: Block = None
-                    for sum_dim in range(self.grid.grid_shape[axis]):
-                        grid_entry = list(result_grid_entry)
-                        if keepdims:
-                            grid_entry[axis] = sum_dim
-                        else:
-                            grid_entry = grid_entry[:axis] + [sum_dim] + grid_entry[axis:]
-                        grid_entry = tuple(grid_entry)
-                        next_block: Block = result_blocks[grid_entry]
-                        if reduced_block is None:
-                            reduced_block = next_block
-                        else:
-                            reduced_block = reduced_block.bop_reduce(op_name, other=next_block)
-
-                    result.blocks[result_grid_entry] = reduced_block
-        else:
-            op_func = np.__getattribute__(op_name)
+        if axis is None:
             if result.shape == ():
-                result.blocks[()] = op_func(result_blocks, axis=axis, keepdims=keepdims)
+                result_block: Block = result.blocks[()]
             else:
-                result.blocks = op_func(result_blocks, axis=axis, keepdims=keepdims)
+                result_block: Block = result.blocks[:].item()
+            result_block.oid = self._tree_reduce(op_name,
+                                                 block_reduced_oids.flatten().tolist(),
+                                                 result_block.grid_entry,
+                                                 result_block.grid_shape)
+        else:
+            for result_grid_entry in result_grid.get_entry_iterator():
+                block_reduced_oids_axis = []
+                for sum_dim in range(self.grid.grid_shape[axis]):
+                    grid_entry = list(result_grid_entry)
+                    if keepdims:
+                        grid_entry[axis] = sum_dim
+                    else:
+                        grid_entry = grid_entry[:axis] + [sum_dim] + grid_entry[axis:]
+                    grid_entry = tuple(grid_entry)
+                    block_reduced_oids_axis.append(block_reduced_oids[grid_entry])
+                result_block: Block = result.blocks[result_grid_entry]
+                result_block.oid = self._tree_reduce(op_name,
+                                                     block_reduced_oids_axis,
+                                                     result_block.grid_entry,
+                                                     result_block.grid_shape)
         return result
 
     def __matmul__(self, other):
@@ -441,30 +462,16 @@ class BlockArray(BlockArrayBase):
         else:
             return self.tensordot(other, 1)
 
-    def tensordot(self, other, axes=2):
-        if not isinstance(other, BlockArray):
-            raise ValueError("Cannot automatically construct BlockArray for tensor operations.")
-
-        def basic_vector(ba: BlockArray, axis):
-            if len(ba.shape) == 0:
-                return False
-            if len(ba.shape) == 1:
-                return True
-            size = ba.shape[axis]
-            rest = list(ba.shape[:axis]) + list(ba.shape[axis + 1:])
-            return np.sum(rest) == len(rest) <= 1 < size
-
-        other = self.check_or_convert_other(other)
-        if basic_vector(self, len(self.shape) - 1) and basic_vector(other, 0):
-            return self._vecdot(other)
-        elif len(self.shape) == 2 and (len(other.shape) == 1
-                                       or (len(other.shape) == 2 and other.shape[1] == 1)):
-            # Optimized matrix vector multiply.
-            return self._matvec(other)
+    def _compute_tensordot_syskwargs(self, self_block: Block, other_block: Block):
+        # Schedule on larger block.
+        if np.product(self_block.shape) >= np.product(other_block.shape):
+            return self_block.true_grid_entry(), self_block.true_grid_shape()
         else:
-            return self._tensordot(other, axes)
+            return other_block.true_grid_entry(), other_block.true_grid_shape()
 
-    def _tensordot(self, other, axes):
+    def tensordot(self, other, axes=2):
+        other = self.check_or_convert_other(other)
+
         this_axes = self.grid.grid_shape[:-axes]
         this_sum_axes = self.grid.grid_shape[-axes:]
         other_axes = other.grid.grid_shape[axes:]
@@ -478,161 +485,97 @@ class BlockArray(BlockArrayBase):
                                                                       self.dtype,
                                                                       other.dtype).__name__)
         assert result_grid.grid_shape == tuple(this_axes + other_axes)
-        result = BlockArray(result_grid, self.system)
+        result = BlockArray(result_grid, self.cm)
         this_dims = list(itertools.product(*map(range, this_axes)))
         other_dims = list(itertools.product(*map(range, other_axes)))
         sum_dims = list(itertools.product(*map(range, this_sum_axes)))
         for i in this_dims:
             for j in other_dims:
                 grid_entry = tuple(i + j)
-                result_block = None
+                result_block: Block = result.blocks[grid_entry]
+                sum_oids = []
                 for k in sum_dims:
                     self_block: Block = self.blocks[tuple(i + k)]
                     other_block: Block = other.blocks[tuple(k + j)]
-                    dotted_block = self_block.tensordot(other_block, axes=axes)
-                    if result_block is None:
-                        result_block = dotted_block
-                    else:
-                        result_block += dotted_block
-                result.blocks[grid_entry] = result_block
+                    dot_grid_args = self._compute_tensordot_syskwargs(self_block, other_block)
+                    dotted_oid = self.cm.bop("tensordot",
+                                             self_block.oid,
+                                             other_block.oid,
+                                             self_block.transposed,
+                                             other_block.transposed,
+                                             axes=axes,
+                                             syskwargs={
+                                                 "grid_entry": dot_grid_args[0],
+                                                 "grid_shape": dot_grid_args[1]
+                                             })
+                    sum_oids.append((dotted_oid,
+                                     dot_grid_args[0],
+                                     dot_grid_args[1],
+                                     False))
+                result_block.oid = self._tree_reduce("sum", sum_oids,
+                                                     result_block.grid_entry,
+                                                     result_block.grid_shape)
         return result
 
-    def _vecdot(self, other):
-        assert self.shape[-1] == other.shape[0], str((self.shape[1], other.shape[0]))
-        result_shape = tuple(self.shape[:-1] + other.shape[1:])
-        result_block_shape = tuple(self.block_shape[:-1] + other.block_shape[1:])
-        result_grid = ArrayGrid(shape=result_shape,
-                                block_shape=result_block_shape,
-                                dtype=self.dtype.__name__)
-        result = BlockArray(result_grid, self.system)
-        self_num_axes = len(self.grid.grid_shape)
-        other_num_axes = len(other.grid.grid_shape)
-        oids = []
-        for i in range(self.grid.grid_shape[-1]):
-            self_grid_entry = tuple(i if axis == self_num_axes-1 else 0
-                                    for axis in range(self_num_axes))
-            other_grid_entry = tuple(i if axis == 0 else 0 for axis in range(other_num_axes))
-            self_block: Block = self.blocks[self_grid_entry]
-            other_block: Block = other.blocks[other_grid_entry]
-            if self_block.transposed != other_block.transposed:
-                # The vectors are aligned if their transpositions satisfy the xor relation.
-                if self_block.transposed:
-                    # Use other grid entry for dot,
-                    # because physically,
-                    # other block is located on same node as self block.
-                    sch_grid_entry = other_grid_entry
-                    sch_grid_shape = other.grid.grid_shape
-                elif other_block.transposed:
-                    # Use self grid entry for dot.
-                    sch_grid_entry = self_grid_entry
-                    sch_grid_shape = self.grid.grid_shape
-                else:
-                    raise Exception("Impossible.")
-            else:
-                # They're either both transposed or not.
-                # Either way, one will need to be transmitted, so transmit other.
-                sch_grid_entry = self_grid_entry
-                sch_grid_shape = self.grid.grid_shape
-            dot_oid = self.system.bop("tensordot",
-                                      a1=self_block.oid,
-                                      a2=other_block.oid,
-                                      a1_shape=self_block.shape,
-                                      a2_shape=other_block.shape,
-                                      a1_T=self_block.transposed,
-                                      a2_T=other_block.transposed,
-                                      axes=1,
-                                      syskwargs={
-                                          "grid_entry": sch_grid_entry,
-                                          "grid_shape": sch_grid_shape
-                                      })
-            oids.append(dot_oid)
-        result_grid_entry = tuple(0 for _ in range(len(result.grid.grid_shape)))
-        result_oid = self.system.sum_reduce(*oids,
-                                            syskwargs={
-                                                "grid_entry": result_grid_entry,
-                                                "grid_shape": result.grid.grid_shape
-                                            })
-        result.blocks[result_grid_entry].oid = result_oid
-        return result
-
-    def _matvec(self, other):
-        # Schedule block matmult on existing block nodes of the matrix.
-        # This is cheaper than moving matrix and vec blocks to result node.
-        assert self.shape[1] == other.shape[0], str((self.shape[1], other.shape[0]))
-        result_shape = tuple(self.shape[:1] + other.shape[1:])
-        result_block_shape = tuple(self.block_shape[:1] + other.block_shape[1:])
-        result_grid = ArrayGrid(shape=result_shape,
-                                block_shape=result_block_shape,
-                                dtype=self.dtype.__name__)
-        result = BlockArray(result_grid, self.system)
-        for i in range(self.grid.grid_shape[0]):
-            row = []
-            for j in range(self.grid.grid_shape[1]):
-                grid_entry = (i, j)
-                self_block: Block = self.blocks[grid_entry]
-                if len(other.shape) == 2:
-                    other_block: Block = other.blocks[(grid_entry[1], 0)]
-                    result_grid_entry = (i, 0)
-                else:
-                    other_block: Block = other.blocks[grid_entry[1]]
-                    result_grid_entry = (i,)
-                if self_block.transposed:
-                    # Reverse grid shape and entry to obtain virtual layout of matrix blocks.
-                    sch_grid_shape = tuple(reversed(self.grid.grid_shape))
-                    sch_grid_entry = tuple(reversed(grid_entry))
-                else:
-                    sch_grid_shape = self.grid.grid_shape
-                    sch_grid_entry = grid_entry
-                dot_oid = self.system.bop("tensordot",
-                                          a1=self_block.oid,
-                                          a2=other_block.oid,
-                                          a1_shape=self_block.shape,
-                                          a2_shape=other_block.shape,
-                                          a1_T=self_block.transposed,
-                                          a2_T=other_block.transposed,
-                                          axes=1,
-                                          syskwargs={
-                                              "grid_entry": sch_grid_entry,
-                                              "grid_shape": sch_grid_shape
-                                          })
-                row.append(dot_oid)
-            result_oid = self.system.sum_reduce(*row,
-                                                syskwargs={
-                                                    "grid_entry": result_grid_entry,
-                                                    "grid_shape": result.grid.grid_shape
-                                                })
-            result.blocks[result_grid_entry].oid = result_oid
-        return result
+    def _fast_element_wise(self, op_name, other):
+        """
+        Implements fast scheduling for basic element-wise operations.
+        """
+        # Schedule the op first.
+        blocks = np.empty(shape=self.grid.grid_shape, dtype=Block)
+        for grid_entry in self.grid.get_entry_iterator():
+            self_block: Block = self.blocks[grid_entry]
+            other_block: Block = other.blocks[grid_entry]
+            blocks[grid_entry] = block = Block(grid_entry=grid_entry,
+                                               grid_shape=self_block.grid_shape,
+                                               rect=self_block.rect,
+                                               shape=self_block.shape,
+                                               dtype=self_block.dtype,
+                                               transposed=False,
+                                               cm=self.cm)
+            block.oid = self.cm.bop(op_name,
+                                    self_block.oid,
+                                    other_block.oid,
+                                    self_block.transposed,
+                                    other_block.transposed,
+                                    axes={},
+                                    syskwargs={
+                                        "grid_entry": grid_entry,
+                                        "grid_shape": self.grid.grid_shape
+                                    })
+        return BlockArray(self.grid.copy(), self.cm, blocks=blocks)
 
     def __add__(self, other):
         other = self.check_or_convert_other(other)
+        if self.shape == other.shape:
+            return self._fast_element_wise("add", other)
         return BlockArray.from_blocks(self.blocks + other.blocks,
                                       result_shape=None,
-                                      system=self.system)
+                                      cm=self.cm)
 
     def __sub__(self, other):
         other = self.check_or_convert_other(other)
         return BlockArray.from_blocks(self.blocks - other.blocks,
                                       result_shape=None,
-                                      system=self.system)
+                                      cm=self.cm)
 
     def __mul__(self, other):
         other = self.check_or_convert_other(other)
         return BlockArray.from_blocks(self.blocks * other.blocks,
                                       result_shape=None,
-                                      system=self.system)
+                                      cm=self.cm)
 
     def __truediv__(self, other):
         other = self.check_or_convert_other(other)
         return BlockArray.from_blocks(self.blocks / other.blocks,
                                       result_shape=None,
-                                      system=self.system)
+                                      cm=self.cm)
 
     def __pow__(self, other):
         other = self.check_or_convert_other(other)
         return BlockArray.from_blocks(self.blocks ** other.blocks,
                                       result_shape=None,
-                                      system=self.system)
+                                      cm=self.cm)
 
     def __invert__(self):
         return self.ufunc("invert")
@@ -663,7 +606,7 @@ class BlockArray(BlockArrayBase):
         block_shape = array_utils.broadcast_block_shape(self.shape, other.shape, self.block_shape)
         dtype = bool.__name__
         grid = ArrayGrid(shape, block_shape, dtype)
-        result = BlockArray(grid, self.system)
+        result = BlockArray(grid, self.cm)
         for grid_entry in result.grid.get_entry_iterator():
             if other.shape == ():
                 other_block: Block = other.blocks.item()
@@ -721,10 +664,17 @@ class BlockArray(BlockArrayBase):
 
     def astype(self, dtype):
         grid = ArrayGrid(self.shape, self.block_shape, dtype.__name__)
-        result = BlockArray(grid, self.system)
+        result = BlockArray(grid, self.cm)
         for grid_entry in result.grid.get_entry_iterator():
             result.blocks[grid_entry] = self.blocks[grid_entry].astype(dtype)
         return result
+
+    def flattened_oids(self):
+        oids = []
+        for grid_entry in self.grid.get_entry_iterator():
+            oid = self.blocks[grid_entry].oid
+            oids.append(oid)
+        return oids
 
 
 class Reshape(object):
@@ -795,9 +745,9 @@ class Reshape(object):
         # This is the worst-case scenario.
         # Generate index mappings per block, and group source indices to minimize
         # RPCs and generation of new objects.
-        system = arr.system
+        cm = arr.cm
         dst_arr = BlockArray.empty(shape=shape, block_shape=block_shape,
-                                   dtype=arr.dtype, system=system)
+                                   dtype=arr.dtype, cm=cm)
         for dst_grid_entry in dst_arr.grid.get_entry_iterator():
             dst_block: Block = dst_arr.blocks[dst_grid_entry]
             dst_slice_selection = dst_arr.grid.get_slice(dst_grid_entry)
@@ -813,14 +763,14 @@ class Reshape(object):
                 src_block: Block = arr.blocks[src_grid_entry]
                 index_pairs = src_blocks[src_grid_entry]
                 syskwargs = {"grid_entry": dst_grid_entry, "grid_shape": dst_arr.grid.grid_shape}
-                dst_block.oid = system.update_block_by_index(dst_block.oid,
-                                                             src_block.oid,
-                                                             index_pairs,
-                                                             syskwargs=syskwargs)
+                dst_block.oid = cm.update_block_by_index(dst_block.oid,
+                                                         src_block.oid,
+                                                         index_pairs,
+                                                         syskwargs=syskwargs)
         return dst_arr
 
     def _block_shape_reshape(self, arr, block_shape):
-        rarr: BlockArray = BlockArray.empty(arr.shape, block_shape, arr.dtype, arr.system)
+        rarr: BlockArray = BlockArray.empty(arr.shape, block_shape, arr.dtype, arr.cm)
         for grid_entry in rarr.grid.get_entry_iterator():
             grid_entry_slice = rarr.grid.get_slice(grid_entry)
             # TODO (hme): This could be less costly.
@@ -848,14 +798,14 @@ class Reshape(object):
         # to simplify access to source blocks.
         grid = ArrayGrid(shape, block_shape, dtype=arr.dtype.__name__)
         src_blocks = arr.blocks.reshape(grid.grid_shape)
-        rarr = BlockArray(grid, arr.system)
+        rarr = BlockArray(grid, arr.cm)
         for grid_entry in grid.get_entry_iterator():
             src_block: Block = src_blocks[grid_entry]
             dst_block: Block = rarr.blocks[grid_entry]
             syskwargs = {"grid_entry": grid_entry, "grid_shape": grid.grid_shape}
-            dst_block.oid = arr.system.reshape(src_block.oid,
-                                               dst_block.shape,
-                                               syskwargs=syskwargs)
+            dst_block.oid = arr.cm.reshape(src_block.oid,
+                                           dst_block.shape,
+                                           syskwargs=syskwargs)
         return rarr
 
     def _validate(self, arr, shape, block_shape):

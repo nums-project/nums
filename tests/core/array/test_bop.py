@@ -16,20 +16,18 @@
 
 import itertools
 
-import tqdm
+# pylint: disable=wrong-import-order
+import common  # pylint: disable=import-error
 import numpy as np
 import pytest
+import tqdm
 
-from nums.core.storage.storage import BimodalGaussian
 from nums.core.array.application import ArrayApplication
-
-# pylint: disable=wrong-import-order
-import common
 
 
 def test_matmul(app_inst: ArrayApplication):
-    real_X, _ = BimodalGaussian.get_dataset(100, 9)
-    X = app_inst.array(real_X, block_shape=(100, 1))
+    X = app_inst.random.random(shape=(100, 9), block_shape=(100, 1))
+    real_X = X.get()
     X_sqr = X.T @ X
     assert np.allclose(X_sqr.get(), real_X.T @ real_X)
 
@@ -71,8 +69,8 @@ def test_tensordot_basic(app_inst: ArrayApplication):
     shape = 2, 4, 10, 15
     npX = np.arange(np.product(shape)).reshape(*shape)
     rX = app_inst.array(npX, block_shape=(1, 2, 10, 3))
-
-    rResult = rX.T.tensordot(rX, axes=1)
+    rY = app_inst.array(npX, block_shape=(1, 2, 10, 3))
+    rResult = rX.T.tensordot(rY, axes=1)
     assert np.allclose(
         rResult.get(),
         (np.tensordot(npX.T, npX, axes=1))
@@ -289,10 +287,13 @@ def test_conversions(conversions_data: tuple):
 
 if __name__ == "__main__":
     # pylint: disable=import-error
-    from tests import conftest
+    import conftest
 
-    app_inst = conftest.get_app("serial")
-    test_tensordot_large_shape(app_inst)
+    app_inst = conftest.get_app("ray-cyclic")
+    test_matmul(app_inst)
     # test_matvec(app_inst)
     # test_vecdot(app_inst)
+    # test_tensordot_basic(app_inst)
+    # test_tensordot_large_shape(app_inst)
+    # test_bops(app_inst)
     # test_conversions(conversions_data(None, app_inst))

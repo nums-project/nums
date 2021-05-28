@@ -83,10 +83,30 @@ class RandomState(object):
 
 
 # Default imp.
-_default_random = RandomState()
-seed = _default_random.seed
-random_sample = _default_random.random_sample
-rand = _default_random.rand
-randn = _default_random.randn
-randint = _default_random.randint
-permutation = _default_random.permutation
+def reset():
+    # pylint: disable = global-statement
+    global _default_random
+    global seed
+    global random_sample
+    global rand
+    global randn
+    global randint
+    global permutation
+
+    _default_random = RandomState()
+    seed = _default_random.seed
+    random_sample = _default_random.random_sample
+    rand = _default_random.rand
+    randn = _default_random.randn
+    randint = _default_random.randint
+    permutation = _default_random.permutation
+
+
+_default_random = None
+seed = None
+random_sample = None
+rand = None
+randn = None
+randint = None
+permutation = None
+reset()

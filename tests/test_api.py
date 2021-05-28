@@ -15,8 +15,8 @@
 
 
 import boto3
-from moto import mock_s3
 import numpy as np
+from moto import mock_s3
 
 from nums.core.array.blockarray import BlockArray
 

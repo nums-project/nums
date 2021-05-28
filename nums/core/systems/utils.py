@@ -14,12 +14,12 @@
 # limitations under the License.
 
 
-import types
+import errno
 import inspect
-from functools import wraps
 import multiprocessing
 import socket
-import errno
+import types
+from functools import wraps
 
 import numpy as np
 
