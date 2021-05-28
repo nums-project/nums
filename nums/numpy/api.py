@@ -504,7 +504,7 @@ def average(a: BlockArray,
         avg = mean(a, axis)
         if not returned:
             return avg
-        weights_sum = BlockArray.from_scalar(a.size / avg.size, a.system)
+        weights_sum = BlockArray.from_scalar(a.size / avg.size, a.cm)
         return avg, weights_sum
 
     if a.shape != weights.shape:
