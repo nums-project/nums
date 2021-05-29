@@ -346,7 +346,7 @@ class ArrayApplication(object):
             rarr = BlockArray(grid, self.cm)
             block_i, block_j, element_i, element_j = 0, 0, 0, 0
             count, total_elements = 1, min(shape)
-            block, diagonal, block_dict = X.blocks[(0, 0)], {}, {}
+            block, diagonal = X.blocks[(0, 0)], {}
             while count <= total_elements:
                 if element_i > block.shape[0] - 1:
                     block_i = block_i + 1
@@ -363,12 +363,17 @@ class ArrayApplication(object):
                     array.append((element_i, element_j))
                     diagonal[(block_i, block_j)] = array
                     count, element_i, element_j = count + 1, element_i + 1, element_j + 1
-            for key in diagonal.keys():
-                grid_entry = key
-                out_grid_shape = grid.grid_shape[:1]
-                syskwargs = {"grid_entry": grid_entry[:1], "grid_shape": out_grid_shape}
-                rarr.blocks[grid_entry[:1]].oid = self.cm.diag(X.blocks[key].oid, diagonal[key],
+            grid_i, grid_j = 0, 0
+            out_grid_shape = grid.grid_shape
+            for key in diagonal:
+                syskwargs = {"grid_entry": (grid_i,) ,"grid_shape": out_grid_shape}
+                rarr.blocks[(grid_i, )].oid = self.cm.diag(X.blocks[key].oid, diagonal[key],
                                                                     syskwargs=syskwargs)
+                if len(out_grid_shape) == 2 and grid_i == out_grid_shape[0] - 1:
+                    grid_i = 0
+                    grid_j += 1
+                else:
+                    grid_i += 1
         else:
             raise ValueError("X must have 1 or 2 axes.")
         return rarr
