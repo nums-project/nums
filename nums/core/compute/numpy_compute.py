@@ -173,10 +173,8 @@ class ComputeCls(ComputeImp):
         if elements == []:
             return np.diag(arr)
         else:
-            rarr = np.array([])
-            for index in elements:
-                rarr = np.append(rarr, arr[index[0]][index[1]])
-            return rarr
+            rarr = list(map(lambda index: arr[index[0]][index[1]], elements))
+            return np.array(rarr)
 
     def arange(self, start, stop, step, dtype):
         return np.arange(start, stop, step, dtype)

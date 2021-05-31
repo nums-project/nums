@@ -26,6 +26,9 @@ from nums.core.grid.grid import ArrayGrid
 from nums.core.grid.grid import DeviceID
 from nums.core.storage.storage import StoredArray, StoredArrayS3
 from nums.core.systems.filesystem import FileSystem
+from nums.core.utils import find_slices
+
+from collections import OrderedDict
 
 
 # pylint: disable = too-many-lines
@@ -346,7 +349,7 @@ class ArrayApplication(object):
             rarr = BlockArray(grid, self.cm)
             block_i, block_j, element_i, element_j = 0, 0, 0, 0
             count, total_elements = 1, min(shape)
-            block, diagonal = X.blocks[(0, 0)], {}
+            block, diagonal, block_no, current_block_length = X.blocks[(0, 0)], OrderedDict(), 1, 0
             while count <= total_elements:
                 if element_i > block.shape[0] - 1:
                     block_i = block_i + 1
@@ -359,16 +362,35 @@ class ArrayApplication(object):
                     block_rows, block_cols = block.shape[0], block.shape[1]
                     if element_i > block_rows - 1 or element_j > block_cols - 1:
                         break
-                    array = diagonal.get((block_i, block_j), [])
-                    array.append((element_i, element_j))
-                    diagonal[(block_i, block_j)] = array
+                    if current_block_length == block_shape[0]:
+                        block_no += 1
+                        current_block_length = 1
+                    else:
+                        current_block_length += 1
+                    block_dict = diagonal.get(block_no, OrderedDict())
+                    elements = block_dict.get((block_i, block_j), [])
+                    elements.append((element_i, element_j))
+                    block_dict[(block_i, block_j)] = elements
+                    diagonal[block_no] = block_dict
                     count, element_i, element_j = count + 1, element_i + 1, element_j + 1
             grid_i, grid_j = 0, 0
             out_grid_shape = grid.grid_shape
-            for key in diagonal:
+            for block_no in diagonal:
                 syskwargs = {"grid_entry": (grid_i,) ,"grid_shape": out_grid_shape}
-                rarr.blocks[(grid_i, )].oid = self.cm.diag(X.blocks[key].oid, diagonal[key],
-                                                                    syskwargs=syskwargs)
+                blocks = diagonal[block_no]
+                if len(blocks) == 1:
+                    block = list(blocks.keys())[0]
+                    rarr.blocks[(grid_i, )].oid = self.cm.diag(X.blocks[block].oid, blocks[block], syskwargs=syskwargs)
+                else:
+                    def diag_by_block(block):
+                        return self.cm.diag(X.blocks[block].oid, blocks[block], syskwargs=syskwargs)
+                    all_oids = list(map(diag_by_block, blocks.keys()))
+                    
+                    # find slices function is defined in utils. 
+                    src_params, dst_params, total = find_slices(blocks) 
+                    block_oid = self.cm.create_block(*all_oids, src_params=src_params, 
+                            dst_params=dst_params, dst_shape=(total,), dst_shape_bc=None, syskwargs=syskwargs)
+                    rarr.blocks[(grid_i, )].oid = block_oid
                 if len(out_grid_shape) == 2 and grid_i == out_grid_shape[0] - 1:
                     grid_i = 0
                     grid_j += 1
