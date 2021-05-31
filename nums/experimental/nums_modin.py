@@ -1,8 +1,8 @@
 import numpy as np
 
+from nums.core.application_manager import instance as _instance
 from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray
-from nums.core.application_manager import instance as _instance
 
 
 def from_modin(df):
@@ -25,7 +25,7 @@ def from_modin(df):
     frame: PandasOnRayFrame = df._query_compiler._modin_frame
 
     app: ArrayApplication = _instance()
-    system = app.system
+    system = app.cm
 
     # Make sure the partitions are numeric.
     dtype = frame.dtypes[0]

@@ -19,9 +19,9 @@ import warnings
 import numpy as np
 from scipy import stats
 
-from nums.core.array.random import NumsRandomState
-from nums.core.array.blockarray import BlockArray
 from nums.core.array.application import ArrayApplication
+from nums.core.array.blockarray import BlockArray
+from nums.core.array.random import NumsRandomState
 
 
 # pylint: disable=unused-variable

@@ -14,15 +14,27 @@
 # limitations under the License.
 
 
+# pylint: disable=wrong-import-order
+import common  # pylint: disable=import-error
 import numpy as np
 
-from nums.core.systems import utils as systems_utils
-from nums.core.storage.storage import BimodalGaussian, ArrayGrid
 from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray
+from nums.core.grid.grid import ArrayGrid
+from nums.core.grid.grid import DeviceID
+from nums.core.storage.storage import BimodalGaussian
+from nums.core.systems import utils as systems_utils
 
-# pylint: disable=wrong-import-order
-import common
+
+def test_device_id_hashing(app_inst: ArrayApplication):
+    assert app_inst is not None
+    d1 = DeviceID(0, "node:localhost1", "cpu", 0)
+    d2 = DeviceID(1, "node:localhost2", "cpu", 0)
+    x = {}
+    x[d1] = "one"
+    x[d2] = "two"
+    assert x[d1] == "one"
+    assert x[d2] == "two"
 
 
 def test_array_integrity(app_inst: ArrayApplication):
@@ -68,14 +80,17 @@ def test_concatenate(app_inst: ArrayApplication):
 def test_split(app_inst: ArrayApplication):
     # TODO (hme): Implement a split leveraging block_shape param in reshape op.
     x = app_inst.array(np.array([1.0, 2.0, 3.0, 4.0]), block_shape=(4,))
-    syskwargs = x.blocks[0].syskwargs()
-    syskwargs["options"] = {"num_returns": 2}
-    res1, res2 = x.system.split(x.blocks[0].oid,
-                                2,
-                                axis=0,
-                                transposed=False,
-                                syskwargs=syskwargs)
-    ba = BlockArray(ArrayGrid((4,), (2,), x.dtype.__name__), x.system)
+    syskwargs = {
+        "grid_entry": x.blocks[0].grid_entry,
+        "grid_shape": x.blocks[0].grid_shape,
+        "options": {"num_returns": 2}
+    }
+    res1, res2 = x.cm.split(x.blocks[0].oid,
+                            2,
+                            axis=0,
+                            transposed=False,
+                            syskwargs=syskwargs)
+    ba = BlockArray(ArrayGrid((4,), (2,), x.dtype.__name__), x.cm)
     ba.blocks[0].oid = res1
     ba.blocks[1].oid = res2
     assert np.allclose([1.0, 2.0, 3.0, 4.0], ba.get())
@@ -87,7 +102,7 @@ def test_touch(app_inst: ArrayApplication):
 
 
 def test_num_cores(app_inst: ArrayApplication):
-    assert np.allclose(app_inst.num_cores_total(), systems_utils.get_num_cores())
+    assert np.allclose(app_inst.cm.num_cores_total(), systems_utils.get_num_cores())
 
 
 def ideal_tall_skinny_shapes(size, dtype):
@@ -180,10 +195,10 @@ def test_compute_block_shape(app_inst: ArrayApplication):
         num_nodes = size // 64
         cluster_shape = (16, 1)
         shape, expected_block_shape, expected_grid_shape = ideal_tall_skinny_shapes(size_str, dtype)
-        block_shape = app_inst.compute_block_shape(shape,
-                                                   dtype,
-                                                   cluster_shape,
-                                                   num_nodes*cores_per_node)
+        block_shape = app_inst.cm.compute_block_shape(shape,
+                                                      dtype,
+                                                      cluster_shape,
+                                                      num_nodes*cores_per_node)
         grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype.__name__)
         print("tall-skinny",
               "cluster_shape=%s" % str(cluster_shape),
@@ -199,10 +214,10 @@ def test_compute_block_shape(app_inst: ArrayApplication):
         num_nodes = 1 if size < 64 else size//64
         cluster_shape = int(np.sqrt(num_nodes)), int(np.sqrt(num_nodes))
         shape, expected_block_shape, expected_grid_shape = ideal_square_shapes(size_str, dtype)
-        block_shape = app_inst.compute_block_shape(shape,
-                                                   dtype,
-                                                   cluster_shape,
-                                                   num_nodes*cores_per_node)
+        block_shape = app_inst.cm.compute_block_shape(shape,
+                                                      dtype,
+                                                      cluster_shape,
+                                                      num_nodes*cores_per_node)
         grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype.__name__)
         print("square",
               "cluster_shape=%s" % str(cluster_shape),
@@ -220,8 +235,8 @@ if __name__ == "__main__":
     import conftest
 
     app_inst = conftest.get_app("serial")
-    # test_array_integrity(app_inst)
-    # test_concatenate(app_inst)
-    # test_touch(app_inst)
-    # test_split(app_inst)
+    test_array_integrity(app_inst)
+    test_concatenate(app_inst)
+    test_touch(app_inst)
+    test_split(app_inst)
     test_compute_block_shape(app_inst)

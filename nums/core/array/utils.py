@@ -14,12 +14,14 @@
 # limitations under the License.
 
 
+import itertools
 from typing import Tuple, Iterator
 
-import itertools
 import numpy as np
 import scipy.special
+
 from nums.core.settings import np_ufunc_map
+
 
 # pylint: disable = no-member
 

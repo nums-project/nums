@@ -16,8 +16,6 @@
 
 import os
 from pathlib import Path
-import multiprocessing
-
 
 pj = lambda *paths: os.path.abspath(os.path.expanduser(os.path.join(*paths)))
 core_root = os.path.abspath(os.path.dirname(__file__))
@@ -28,18 +26,21 @@ Path(data_dir).mkdir(parents=True, exist_ok=True)
 
 
 # System settings.
-system_name = os.environ.get("NUMS_SYSTEM", "ray-cyclic")
+system_name = os.environ.get("NUMS_SYSTEM", "ray")
 # TODO (hme):
-#  - Make cluster shape an environment variable. Default depends on available resources.
-#  - use_head => use_driver, and should be an environment variable.
-#  - Remove ray_init_default -- this should be handled in RaySystem.
+#  - Make cluster shape an environment variable.
+#  - use_head should be an environment variable.
 use_head = True
-cluster_shape = (1, 1)
-ray_init_default = {"num_cpus": multiprocessing.cpu_count()}
+head_ip = os.environ.get("NUMS_HEAD_IP", None)
 
 
 # Compute settings.
 compute_name = os.environ.get("NUMS_COMPUTE", "numpy")
+
+
+# Device grid settings.
+cluster_shape = (1, 1)
+device_grid_name = os.environ.get("NUMS_DEVICE_GRID", "packed")
 
 
 # NumPy operator map.
@@ -55,200 +56,55 @@ np_ufunc_map = {
     "gt": "greater",
     "ge": "greater_equal",
     "eq": "equal",
-    "ne": "not_equal",
+    "ne": "not_equal"
 }
 
-np_bop_reduction_set = {"min", "amin", "max", "amax", "nanmax", "nanmin", "nansum"}
+np_bop_reduction_set = {
+    "min",
+    "amin",
+    "max",
+    "amax",
+    "nanmax",
+    "nanmin",
+    "nansum"
+}
 
 # Fallback on NumPy for these operations.
 # This is achieved by converting the block array to a single block, performing the operation,
 # and converting back to the original block shape.
 doctest_fallback = {
-    "argwhere",
-    "asscalar",
-    "clip",
-    "compress",
-    "convolve",
-    "corrcoef",
-    "cumprod",
-    "cumproduct",
-    "cumsum",
-    "diag_indices_from",
-    "diagflat",
-    "fix",
-    "fromiter",
-    "full",
-    "msort",
-    "nancumprod",
-    "nancumsum",
-    "nanprod",
-    "partition",
-    "polysub",
-    "product",
-    "ravel_multi_index",
-    "repeat",
-    "resize",
-    "roll",
-    "roots",
-    "rot90",
-    "round",
-    "round_",
-    "searchsorted",
-    "setdiff1d",
-    "setxor1d",
-    "sometrue",
-    "sort_complex",
-    "swapaxes",
-    "tile",
-    "trapz",
-    "tri",
-    "tril",
-    "tril_indices_from",
-    "triu",
-    "triu_indices_from",
-    "union1d",
+    'argwhere', 'asscalar', 'clip', 'compress', 'convolve', 'corrcoef', 'cumprod',
+    'cumproduct', 'cumsum', 'diag_indices_from', 'diagflat', 'fix', 'fromiter', 'full',
+    'msort', 'nancumprod', 'nancumsum', 'nanprod', 'partition', 'polysub', 'product',
+    'ravel_multi_index', 'repeat', 'resize', 'roll', 'roots', 'rot90', 'round',
+    'round_', 'searchsorted', 'setdiff1d', 'setxor1d', 'sometrue', 'sort_complex', 'swapaxes',
+    'tile', 'trapz', 'tri', 'tril', 'tril_indices_from', 'triu', 'triu_indices_from', 'union1d'
 }
 
-manually_tested_fallback = {"cov"}
+manually_tested_fallback = {
+    'cov'
+}
 
 failed_fallback = {
-    "angle",
-    "append",
-    "apply_along_axis",
-    "apply_over_axes",
-    "argsort",
-    "around",
-    "array_split",
-    "argpartition",
-    "asarray",
-    "asarray_chkfinite",
-    "average",
-    "bartlett",
-    "bincount",
-    "blackman",
-    "choose",
-    "column_stack",
-    "common_type",
-    "correlate",
-    "count_nonzero",
-    "cov",
-    "cross",
-    "delete",
-    "diag_indices",
-    "diagonal",
-    "diff",
-    "digitize",
-    "divmod",
-    "dot",
-    "dsplit",
-    "dstack",
-    "ediff1d",
-    "einsum",
-    "einsum_path",
-    "extract",
-    "fill_diagonal",
-    "flatnonzero",
-    "flip",
-    "fliplr",
-    "flipud",
-    "frexp",
-    "frombuffer",
-    "fromfile",
-    "fromfunction",
-    "frompyfunc",
-    "full_like",
-    "geomspace",
-    "gradient",
-    "hamming",
-    "hanning",
-    "histogram",
-    "histogram2d",
-    "histogram_bin_edges",
-    "histogramdd",
-    "hsplit",
-    "hstack",
-    "i0",
-    "imag",
-    "in1d",
-    "indices",
-    "insert",
-    "interp",
-    "intersect1d",
-    "isclose",
-    "iscomplex",
-    "iscomplexobj",
-    "isin",
-    "isneginf",
-    "isposinf",
-    "isreal",
-    "isrealobj",
-    "isscalar",
-    "ix_",
-    "kaiser",
-    "kron",
-    "lexsort",
-    "maximum_sctype",
-    "median",
-    "meshgrid",
-    "min_scalar_type",
-    "mintypecode",
-    "modf",
-    "moveaxis",
-    "nan_to_num",
-    "nanargmax",
-    "nanargmin",
-    "nanmedian",
-    "nanpercentile",
-    "nanquantile",
-    "nonzero",
-    "obj2sctype",
-    "packbits",
-    "pad",
-    "percentile",
-    "piecewise",
-    "place",
-    "poly",
-    "polyadd",
-    "polyder",
-    "polydiv",
-    "polyfit",
-    "polyint",
-    "polymul",
-    "polyval",
-    "prod",
-    "promote_types",
-    "ptp",
-    "put",
-    "put_along_axis",
-    "putmask",
-    "quantile",
-    "ravel",
-    "real",
-    "real_if_close",
-    "require",
-    "result_type",
-    "rollaxis",
-    "row_stack",
-    "sctype2char",
-    "select",
-    "sinc",
-    "sort",
-    "stack",
-    "take",
-    "take_along_axis",
-    "trace",
-    "tril_indices",
-    "trim_zeros",
-    "triu_indices",
-    "unique",
-    "unpackbits",
-    "unravel_index",
-    "unwrap",
-    "vander",
-    "vdot",
-    "vsplit",
-    "vstack",
-    "who",
+    'angle', 'append', 'apply_along_axis', 'apply_over_axes', 'argsort', 'around', 'array_split',
+    'argpartition', 'asarray', 'asarray_chkfinite', 'average', 'bartlett', 'bincount', 'blackman',
+    'choose', 'column_stack', 'common_type', 'correlate', 'count_nonzero', 'cov', 'cross', 'delete',
+    'diag_indices', 'diagonal', 'diff', 'digitize', 'divmod', 'dot', 'dsplit', 'dstack', 'ediff1d',
+    'einsum', 'einsum_path', 'extract', 'fill_diagonal', 'flatnonzero', 'flip', 'fliplr', 'flipud',
+    'frexp', 'frombuffer', 'fromfile', 'fromfunction', 'frompyfunc', 'full_like', 'geomspace',
+    'gradient', 'hamming', 'hanning', 'histogram', 'histogram2d', 'histogram_bin_edges',
+    'histogramdd', 'hsplit', 'hstack', 'i0', 'imag', 'in1d', 'indices', 'insert', 'interp',
+    'intersect1d', 'isclose', 'iscomplex', 'iscomplexobj', 'isin', 'isneginf',
+    'isposinf', 'isreal', 'isrealobj', 'isscalar', 'ix_', 'kaiser', 'kron', 'lexsort',
+    'maximum_sctype', 'median', 'meshgrid', 'min_scalar_type', 'mintypecode', 'modf', 'moveaxis',
+    'nan_to_num', 'nanargmax', 'nanargmin', 'nanmedian', 'nanpercentile', 'nanquantile', 'nonzero',
+    'obj2sctype', 'packbits', 'pad', 'percentile', 'piecewise', 'place', 'poly',
+    'polyadd', 'polyder', 'polydiv', 'polyfit', 'polyint', 'polymul', 'polyval', 'prod',
+    'promote_types', 'ptp', 'put', 'put_along_axis', 'putmask', 'quantile', 'ravel', 'real',
+    'real_if_close', 'require', 'result_type', 'rollaxis', 'row_stack', 'sctype2char', 'select',
+    'sinc', 'sort', 'stack', 'take', 'take_along_axis', 'trace', 'tril_indices', 'trim_zeros',
+    'triu_indices', 'unique', 'unpackbits', 'unravel_index', 'unwrap', 'vander', 'vdot', 'vsplit',
+    'vstack', 'who'
 }
 
 fallback = doctest_fallback | manually_tested_fallback | failed_fallback

@@ -16,8 +16,9 @@
 
 import argparse
 
-from nums.core.systems import utils as systems_utils
 from nums.core import settings
+from nums.core.systems import utils as systems_utils
+
 
 # pylint: disable = import-outside-toplevel
 

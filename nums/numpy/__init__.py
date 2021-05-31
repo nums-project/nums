@@ -16,12 +16,12 @@
 
 # pylint: disable = redefined-builtin
 
-from nums.numpy import random
-from nums.numpy import linalg
-from nums.numpy.api import _not_implemented
-from nums.numpy.api import _default_to_numpy
-from nums.numpy.api import *
 from nums.core import settings
+from nums.numpy import linalg
+from nums.numpy import random
+from nums.numpy.api import *
+from nums.numpy.api import _default_to_numpy
+from nums.numpy.api import _not_implemented
 
 
 # TODO(hme): Generate __all__, or control import hints some other way.
