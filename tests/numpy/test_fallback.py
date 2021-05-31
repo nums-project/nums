@@ -28,16 +28,26 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 # pylint: disable=import-outside-toplevel, possibly-unused-variable, eval-used, reimported
 
+
 def test_doctest_fallback(nps_app_inst):
     import nums.numpy as nps
     import numpy as np
+
     assert nps_app_inst is not None
 
     passed = []
     failed = []
     excepted = []
 
-    plot_funcs = {"kaiser", "bartlett", "hanning", "blackman", "histogram2d", "interp", "sinc"}
+    plot_funcs = {
+        "kaiser",
+        "bartlett",
+        "hanning",
+        "blackman",
+        "histogram2d",
+        "interp",
+        "sinc",
+    }
 
     for func in settings.doctest_fallback:
         nps_func = nps.__getattribute__(func)
@@ -52,7 +62,9 @@ def test_doctest_fallback(nps_app_inst):
                 print("Failure")
             else:
                 optionflags = doctest.NORMALIZE_WHITESPACE | doctest.FAIL_FAST
-                doctest.run_docstring_examples(nps_func, locals(), optionflags=optionflags)
+                doctest.run_docstring_examples(
+                    nps_func, locals(), optionflags=optionflags
+                )
 
         if f.getvalue() == "":
             passed.append(func)
@@ -72,7 +84,7 @@ def test_manual_cov(nps_app_inst):
     assert nps_app_inst is not None
 
     x = np.array([[0, 2], [1, 1], [2, 0]]).T
-    assert np.allclose(np.cov(x), np.array([[1., -1.], [-1., 1.]]))
+    assert np.allclose(np.cov(x), np.array([[1.0, -1.0], [-1.0, 1.0]]))
     x = [-2.1, -1, 4.3]
     y = [3, 1.1, 0.12]
     X = np.stack((x, y), axis=0)

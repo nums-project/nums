@@ -21,7 +21,6 @@ from nums.core.grid.grid import DeviceID
 
 
 class SystemInterface(object):
-
     def init(self):
         raise NotImplementedError()
 
@@ -53,8 +52,9 @@ class SystemInterface(object):
         raise NotImplementedError("Implements a way to register new remote functions.")
 
     def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
-        raise NotImplementedError("Implement RPC as e.g. "
-                                  "self.remote_functions[name](*args, **new_kwargs)")
+        raise NotImplementedError(
+            "Implement RPC as e.g. " "self.remote_functions[name](*args, **new_kwargs)"
+        )
 
     def num_cores_total(self):
         raise NotImplementedError()

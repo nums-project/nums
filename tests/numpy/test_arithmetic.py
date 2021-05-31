@@ -30,10 +30,12 @@ def test_ufunc(nps_app_inst):
     for name, _ in sorted(uops):
         if name in ("arccosh", "arcsinh"):
             np_val = np.array([np.e])
-        elif name == "invert" or name.startswith("bitwise") or name.startswith("logical"):
+        elif (
+            name == "invert" or name.startswith("bitwise") or name.startswith("logical")
+        ):
             np_val = np.array([True, False], dtype=np.bool_)
         else:
-            np_val = np.array([.1, .2, .3])
+            np_val = np.array([0.1, 0.2, 0.3])
         ns_val = nps.array(np_val)
         ns_ufunc = nps.__getattribute__(name)
         np_ufunc = np.__getattribute__(name)
@@ -62,17 +64,14 @@ def test_ufunc(nps_app_inst):
             np_b = np.array([4, 12, 13], dtype=int)
             check_bop(name, np_a, np_b)
         elif name.endswith("shift"):
-            np_a = np.array([7*10**3, 8*10**3, 9*10**3], dtype=int)
+            np_a = np.array([7 * 10 ** 3, 8 * 10 ** 3, 9 * 10 ** 3], dtype=int)
             np_b = np.array([1, 2, 3], dtype=int)
             check_bop(name, np_a, np_b)
         else:
             pairs = [
-                (np.array([.1, 5.0, .3]),
-                 np.array([.2, 6.0, .3])),
-                (np.array([.1, 5.0, .3]),
-                 np.array([4, 2, 6], dtype=int)),
-                (np.array([3, 7, 3], dtype=int),
-                 np.array([4, 2, 6], dtype=int)),
+                (np.array([0.1, 5.0, 0.3]), np.array([0.2, 6.0, 0.3])),
+                (np.array([0.1, 5.0, 0.3]), np.array([4, 2, 6], dtype=int)),
+                (np.array([3, 7, 3], dtype=int), np.array([4, 2, 6], dtype=int)),
             ]
             for np_a, np_b in pairs:
                 check_bop(name, np_a, np_b)
@@ -86,7 +85,7 @@ def test_matmul_tensordot(nps_app_inst):
     assert nps_app_inst is not None
 
     def check_matmul_op(_np_a, _np_b):
-        _name = 'matmul'
+        _name = "matmul"
         np_ufunc = np.__getattribute__(_name)
         ns_ufunc = nps.__getattribute__(_name)
         _ns_a = nps.array(_np_a)
@@ -96,7 +95,7 @@ def test_matmul_tensordot(nps_app_inst):
         assert np.allclose(_np_result, _ns_result.get())
 
     def check_tensordot_op(_np_a, _np_b, axes):
-        _name = 'tensordot'
+        _name = "tensordot"
         np_ufunc = np.__getattribute__(_name)
         ns_ufunc = nps.__getattribute__(_name)
         _ns_a = nps.array(_np_a)
@@ -136,6 +135,7 @@ def test_matmul_tensor(nps_app_inst):
 def test_inner_outer(nps_app_inst):
     import numpy as np
     from nums import numpy as nps
+
     assert nps_app_inst is not None
     A = np.random.randn(10)
     B = np.random.randn(10)

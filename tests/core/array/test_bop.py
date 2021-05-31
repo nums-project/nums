@@ -71,10 +71,7 @@ def test_tensordot_basic(app_inst: ArrayApplication):
     rX = app_inst.array(npX, block_shape=(1, 2, 10, 3))
     rY = app_inst.array(npX, block_shape=(1, 2, 10, 3))
     rResult = rX.T.tensordot(rY, axes=1)
-    assert np.allclose(
-        rResult.get(),
-        (np.tensordot(npX.T, npX, axes=1))
-    )
+    assert np.allclose(rResult.get(), (np.tensordot(npX.T, npX, axes=1)))
     common.check_block_integrity(rResult)
 
 
@@ -103,19 +100,22 @@ def test_tensordot_all_shapes(app_inst: ArrayApplication):
             c = np.tensordot(a, b, axes=axes)
         else:
             raise Exception()
-        a_block_shapes = list(itertools.product(*list(map(lambda x: list(range(1, x + 1)),
-                                                          a.shape))))
-        b_block_shapes = list(itertools.product(*list(map(lambda x: list(range(1, x + 1)),
-                                                          b.shape))))
+        a_block_shapes = list(
+            itertools.product(*list(map(lambda x: list(range(1, x + 1)), a.shape)))
+        )
+        b_block_shapes = list(
+            itertools.product(*list(map(lambda x: list(range(1, x + 1)), b.shape)))
+        )
         pbar = tqdm.tqdm(total=np.product([len(a_block_shapes), len(b_block_shapes)]))
         for a_block_shape in a_block_shapes:
             for b_block_shape in b_block_shapes:
                 pbar.update(1)
                 if a_block_shape[-axes:] != b_block_shape[:axes]:
                     continue
-                pbar.set_description("axes=%s %s @ %s" % (str(axes),
-                                                          str(a_block_shape),
-                                                          str(b_block_shape)))
+                pbar.set_description(
+                    "axes=%s %s @ %s"
+                    % (str(axes), str(a_block_shape), str(b_block_shape))
+                )
                 block_a = app_inst.array(a, block_shape=a_block_shape)
                 block_b = app_inst.array(b, block_shape=b_block_shape)
                 block_c = block_a.tensordot(block_b, axes=axes)
@@ -125,7 +125,6 @@ def test_tensordot_all_shapes(app_inst: ArrayApplication):
 
 @pytest.fixture(scope="module", params=["same_dim", "broadcasting", "scalars"])
 def bop_data(request, app_inst):
-
     def same_dim():
         X_shape = 6, 8
         Y_shape = 6, 8
@@ -137,7 +136,7 @@ def bop_data(request, app_inst):
 
     def broadcasting():
         X_shape = 6, 1
-        Y_shape = 8,
+        Y_shape = (8,)
         npX = np.random.random_sample(np.product(X_shape)).reshape(*X_shape)
         X = app_inst.array(npX, block_shape=(3, 1))
         npY = np.random.random_sample(np.product(Y_shape)).reshape(*Y_shape)
@@ -148,7 +147,7 @@ def bop_data(request, app_inst):
         X_shape = 6, 8
         npX = np.random.random_sample(np.product(X_shape)).reshape(*X_shape)
         X = app_inst.array(npX, block_shape=(3, 2))
-        npY = .5
+        npY = 0.5
         Y = app_inst.scalar(npY)
         return X, Y, npX, npY
 
