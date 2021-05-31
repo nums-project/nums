@@ -14,7 +14,6 @@
 # limitations under the License.
 
 
-import numpy as np
 import ray
 
 from nums.core.systems.systems import RaySystem
