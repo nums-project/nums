@@ -17,9 +17,6 @@
 import numpy as np
 import ray
 
-from nums.core.array.application import ArrayApplication
-from nums.core.array.blockarray import BlockArray, Block
-from nums.core.grid.grid import CyclicDeviceGrid
 from nums.core.systems.systems import RaySystem
 from nums.core.systems import utils as systems_utils
 from nums.core import settings

@@ -18,7 +18,6 @@ import numpy as np
 
 from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray, Block
-from nums.core.grid.grid import CyclicDeviceGrid
 from nums.core.systems.systems import RaySystem
 
 
