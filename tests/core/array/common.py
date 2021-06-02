@@ -14,14 +14,7 @@
 # limitations under the License.
 
 
-import numpy as np
-
-from nums.core.array.application import ArrayApplication, BlockArray
-from nums.core.compute import numpy_compute
-from nums.core.compute.compute_manager import ComputeManager
-from nums.core.grid.grid import DeviceGrid, CyclicDeviceGrid
-from nums.core.systems.filesystem import FileSystem
-from nums.core.systems.systems import SystemInterface, RaySystem
+from nums.core.array.application import BlockArray
 
 
 def check_block_integrity(arr: BlockArray):
@@ -29,4 +22,3 @@ def check_block_integrity(arr: BlockArray):
         assert arr.blocks[grid_entry].grid_entry == grid_entry
         assert arr.blocks[grid_entry].rect == arr.grid.get_slice_tuples(grid_entry)
         assert arr.blocks[grid_entry].shape == arr.grid.get_block_shape(grid_entry)
-

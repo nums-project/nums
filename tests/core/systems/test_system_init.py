@@ -15,38 +15,39 @@
 
 
 import numpy as np
+import ray
 
 from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray, Block
 from nums.core.grid.grid import CyclicDeviceGrid
 from nums.core.systems.systems import RaySystem
-
+from nums.core.systems import utils as systems_utils
+from nums.core import settings
 
 # pylint: disable=protected-access
 
 
-def test_warmup(app_inst_all: ArrayApplication):
-    sys = app_inst_all.cm.system
-    if isinstance(sys, RaySystem):
-        sys.warmup(10)
-    assert True
+def test_head_detection():
+    ray.init()
 
+    assert settings.head_ip is None
+    sys = RaySystem(use_head=True)
+    sys.init()
+    assert sys._head_node is not None
+    sys.shutdown()
 
-def test_block_grid_entry(app_inst_all: ArrayApplication):
-    ba: BlockArray = app_inst_all.array(np.array([[1, 2, 3], [4, 5, 6]]), block_shape=(1, 3))
-    block1: Block = ba.T.blocks[0, 1]
-    assert block1.size() == 3
-    assert block1.transposed
-    assert block1.grid_entry == (0, 1)
-    assert block1.grid_shape == (1, 2)
-    assert block1.true_grid_entry() == (1, 0)
-    assert block1.true_grid_shape() == (2, 1)
+    settings.head_ip = "1.2.3.4"
+    sys = RaySystem(use_head=True)
+    sys.init()
+    assert sys._head_node is None
+    sys.shutdown()
+
+    settings.head_ip = systems_utils.get_private_ip()
+    sys = RaySystem(use_head=True)
+    sys.init()
+    assert sys._head_node is not None
+    sys.shutdown()
 
 
 if __name__ == "__main__":
-    # pylint: disable=import-error
-    import conftest
-
-    app_inst = conftest.get_app("ray-none")
-    test_warmup(app_inst)
-    test_block_grid_entry(app_inst)
+    test_head_detection()

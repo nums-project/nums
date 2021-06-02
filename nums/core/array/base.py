@@ -279,7 +279,7 @@ class Block(object):
 
 class BlockArrayBase(object):
 
-    def __init__(self, grid: ArrayGrid, cm: ComputeManager = None, blocks: np.ndarray = None):
+    def __init__(self, grid: ArrayGrid, cm: ComputeManager, blocks: np.ndarray = None):
         self.grid = grid
         self.cm = cm
         self.shape = self.grid.shape
