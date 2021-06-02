@@ -333,10 +333,9 @@ class BlockArray(BlockArrayBase):
         av[key] = value
 
     @staticmethod
-    def to_block_array(obj, cm: ComputeManager):
+    def to_block_array(obj, cm: ComputeManager, block_shape=None):
         if isinstance(obj, BlockArray):
             return obj
-        np_array = None
         if isinstance(obj, np.ndarray):
             np_array = obj
         elif isinstance(obj, list):
@@ -345,14 +344,14 @@ class BlockArray(BlockArrayBase):
             return BlockArray.from_scalar(obj, cm)
         else:
             raise Exception("Unsupported type %s" % type(obj))
-        block_shape = ComputeManager.compute_block_shape_static(np_array.shape,
-                                                                np_array.dtype,
-                                                                cm.device_grid.grid_shape,
-                                                                cm.num_cores_total())
+        if block_shape is None:
+            block_shape = cm.get_block_shape(np_array.shape,
+                                             np_array.dtype)
         return BlockArray.from_np(np_array, block_shape, False, cm)
 
-    def check_or_convert_other(self, other):
-        return BlockArray.to_block_array(other, self.cm)
+    def check_or_convert_other(self, other, compute_block_shape=False):
+        block_shape = None if compute_block_shape else self.block_shape
+        return BlockArray.to_block_array(other, self.cm, block_shape=block_shape)
 
     def ufunc(self, op_name):
         result = self.copy()
@@ -485,7 +484,7 @@ class BlockArray(BlockArrayBase):
                                                other.shape, other.ndim, axes):
             raise ValueError("shape-mismatch for sum")
 
-        other = self.check_or_convert_other(other)
+        other = self.check_or_convert_other(other, compute_block_shape=True)
 
         this_axes = self.grid.grid_shape[:-axes]
         this_sum_axes = self.grid.grid_shape[-axes:]

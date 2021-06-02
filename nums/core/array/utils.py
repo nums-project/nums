@@ -45,7 +45,12 @@ def get_bop_output_type(op_name, dtype_a, dtype_b):
 
 
 def is_scalar(val):
-    return is_uint(val) or is_int(val) or is_float(val) or is_complex(val)
+    return is_bool(val) or is_uint(val) or is_int(val) or is_float(val) or is_complex(val)
+
+
+def is_bool(val, type_test=False):
+    return is_type(type_test, val,
+                   (bool, np.bool_))
 
 
 def is_uint(val, type_test=False):
