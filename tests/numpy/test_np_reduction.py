@@ -91,33 +91,32 @@ def test_average(nps_app_inst):
     assert nps_app_inst is not None
 
     bas = [
-        nps.array([[[5, -2, 4, 8],
-                    [1, 2, 3, 4],
-                    [3, 2, 1, 0],
-                    [-1, -2, -3, 0]],
-                   [[6, -4, 2, 7],
-                    [4, 3, 2, 1],
-                    [1, 2, 0, 3],
-                    [0, -2, -3, -1]]]),
-        nps.array([[[5, -2, 4, 8],
-                    [1, 2, 3, 4],
-                    [3, 2, 1, 0],
-                    [-1, -2, -3, 0]],
-                   [[6, -4, 2, 7],
-                    [4, 3, 2, 1],
-                    [1, 2, 0, 3],
-                    [0, -2, -3, -1]]]),
+        nps.array(
+            [
+                [[5, -2, 4, 8], [1, 2, 3, 4], [3, 2, 1, 0], [-1, -2, -3, 0]],
+                [[6, -4, 2, 7], [4, 3, 2, 1], [1, 2, 0, 3], [0, -2, -3, -1]],
+            ]
+        ),
+        nps.array(
+            [
+                [[5, -2, 4, 8], [1, 2, 3, 4], [3, 2, 1, 0], [-1, -2, -3, 0]],
+                [[6, -4, 2, 7], [4, 3, 2, 1], [1, 2, 0, 3], [0, -2, -3, -1]],
+            ]
+        ),
     ]
     ba_wts = [
         None,
-        nps.array([[[1, 2, 3, 4],
-                    [1, 2, 3, 4],
-                    [1, 2, 3, 4],
-                    [1, 2, 3, 4]],
-                   [[-2, -3, -4, -5],
+        nps.array(
+            [
+                [[1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4]],
+                [
                     [-2, -3, -4, -5],
                     [-2, -3, -4, -5],
-                    [-2, -3, -4, -5]]]),
+                    [-2, -3, -4, -5],
+                    [-2, -3, -4, -5],
+                ],
+            ]
+        ),
     ]
     ba_shapes = [(1, 1, 1), (1, 2, 2), (2, 1, 4), (2, 4, 2), (2, 4, 4)]
     for ba, ba_wt in zip(bas, ba_wts):
@@ -134,7 +133,9 @@ def test_average(nps_app_inst):
                 ns_op = nps.__getattribute__(op)
                 np_op = np.__getattribute__(op)
                 np_result = np_op(np_arr, axis=axis, weights=np_wt, returned=True)
-                ba_result: BlockArray = ns_op(ba, axis=axis, weights=ba_wt, returned=True)
+                ba_result: BlockArray = ns_op(
+                    ba, axis=axis, weights=ba_wt, returned=True
+                )
 
                 np_avg, np_ws = np_result[0], np_result[1]
                 ba_avg, ba_ws = ba_result[0], ba_result[1]
@@ -144,22 +145,23 @@ def test_average(nps_app_inst):
                 assert np.allclose(ba_avg.get(), np_avg)
 
     # Test zero division error
-    ba = nps.array([[[5, -2, 4, 8],
-                    [1, 2, 3, 4],
-                    [3, 2, 1, 0],
-                    [-1, -2, -3, 0]],
-                   [[6, -4, 2, 7],
-                    [4, 3, 2, 1],
-                    [1, 2, 0, 3],
-                    [0, -2, -3, -1]]])
-    ba_wt = nps.array([[[1, 2, 3, 4],
-                        [1, 2, 3, -12], # axis 1
-                        [1, 2, 3, 4],
-                        [1, 2, 3, 4]],
-                       [[-2, -3, 10, -5], # axis 2
-                        [-2, -3, -4, -5],
-                        [-2, -2, -4, -5], # axis 0
-                        [-2, -3, -4, -5]]])
+    ba = nps.array(
+        [
+            [[5, -2, 4, 8], [1, 2, 3, 4], [3, 2, 1, 0], [-1, -2, -3, 0]],
+            [[6, -4, 2, 7], [4, 3, 2, 1], [1, 2, 0, 3], [0, -2, -3, -1]],
+        ]
+    )
+    ba_wt = nps.array(
+        [
+            [[1, 2, 3, 4], [1, 2, 3, -12], [1, 2, 3, 4], [1, 2, 3, 4]],  # axis 1
+            [
+                [-2, -3, 10, -5],  # axis 2
+                [-2, -3, -4, -5],
+                [-2, -2, -4, -5],  # axis 0
+                [-2, -3, -4, -5],
+            ],
+        ]
+    )
     for ax in range(3):
         err_match = True
         try:

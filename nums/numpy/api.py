@@ -539,10 +539,12 @@ def any(a: BlockArray, axis=None, out=None, keepdims=False):
     return _instance().reduce("any", a, axis=axis, keepdims=keepdims)
 
 
-def average(a: BlockArray,
-            axis: Union[None, int, List[int]] = None,
-            weights: Optional[BlockArray] = None,
-            returned: bool = False):
+def average(
+    a: BlockArray,
+    axis: Union[None, int, List[int]] = None,
+    weights: Optional[BlockArray] = None,
+    returned: bool = False,
+):
     if axis and not isinstance(axis, int):
         raise NotImplementedError("Only single 'axis' is currently supported.")
 
@@ -554,8 +556,10 @@ def average(a: BlockArray,
         return avg, weights_sum
 
     if a.shape != weights.shape:
-        raise NotImplementedError("1D weights broadcasting is currently not supported; "
-                                  "dimensions of 'a' and 'weights' must match.")
+        raise NotImplementedError(
+            "1D weights broadcasting is currently not supported; "
+            "dimensions of 'a' and 'weights' must match."
+        )
     weights_sum = sum(weights, axis=axis)
     if not all(weights_sum):
         raise ZeroDivisionError("Weights along one or more axes sum to zero.")
