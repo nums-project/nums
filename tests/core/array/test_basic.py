@@ -14,6 +14,9 @@
 # limitations under the License.
 
 
+# pylint: disable=wrong-import-order
+import common
+
 import numpy as np
 import pytest
 
@@ -23,9 +26,6 @@ from nums.core.grid.grid import ArrayGrid
 from nums.core.grid.grid import DeviceID
 from nums.core.storage.storage import BimodalGaussian
 from nums.core.systems import utils as systems_utils
-
-# pylint: disable=wrong-import-order
-import common
 
 
 def test_scalar_op(app_inst: ArrayApplication):
