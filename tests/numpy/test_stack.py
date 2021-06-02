@@ -108,6 +108,8 @@ def test_stack(nps_app_inst):
         np_a, np_b = a.get(), b.get()
         assert np.allclose(nps_func((a, b)).get(), np_func((np_a, np_b)))
 
+    # TODO (hme): Add equivalence tests for vstack and row_stack.
+
 
 if __name__ == "__main__":
     # pylint: disable=import-error
