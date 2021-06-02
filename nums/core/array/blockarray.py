@@ -457,7 +457,7 @@ class BlockArray(BlockArrayBase):
 
     def __matmul__(self, other):
         if len(self.shape) > 2:
-            # TODO: (bcp) NumPy's implementation does a stacked matmul, which is not supported yet.
+            # TODO (bcp): NumPy's implementation does a stacked matmul, which is not supported yet.
             raise NotImplementedError("Matrix multiply for tensors of rank > 2 not supported yet.")
         else:
             return self.tensordot(other, 1)
@@ -470,6 +470,20 @@ class BlockArray(BlockArrayBase):
             return other_block.true_grid_entry(), other_block.true_grid_shape()
 
     def tensordot(self, other, axes=2):
+        if not isinstance(other, BlockArray):
+            raise ValueError("Cannot automatically construct BlockArray for tensor operations.")
+
+        if isinstance(axes, int):
+            pass
+        elif array_utils.is_array_like(axes):
+            raise NotImplementedError("Non-integer axes is currently not supported.")
+        else:
+            raise TypeError(f"Unexpected axes type '{type(axes).__name__}'")
+
+        if array_utils.np_tensordot_param_test(self.shape, self.ndim,
+                                               other.shape, other.ndim, axes):
+            raise ValueError("shape-mismatch for sum")
+
         other = self.check_or_convert_other(other)
 
         this_axes = self.grid.grid_shape[:-axes]
