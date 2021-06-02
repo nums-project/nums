@@ -1048,13 +1048,9 @@ class ArrayApplication(object):
         return res
 
     def atleast_1d(self, *arys):
-        # TODO (hme): Refactor this to use check_or_convert_other
         res = []
         for ary in arys:
-            if not isinstance(ary, BlockArray):
-                ary = np.array(ary)
-                block_shape = self.cm.compute_block_shape(ary.shape, ary.dtype)
-                ary = self.array(ary, block_shape)
+            ary = BlockArray.to_block_array(ary, self.cm)
             if ary.ndim == 0:
                 result = ary.reshape(1)
             else:
@@ -1066,13 +1062,9 @@ class ArrayApplication(object):
             return res
 
     def atleast_2d(self, *arys):
-        # TODO (hme): Refactor this to use check_or_convert_other
         res = []
         for ary in arys:
-            if not isinstance(ary, BlockArray):
-                ary = np.array(ary)
-                block_shape = self.cm.compute_block_shape(ary.shape, ary.dtype)
-                ary = self.array(ary, block_shape)
+            ary = BlockArray.to_block_array(ary, self.cm)
             if ary.ndim == 0:
                 result = ary.reshape(1, 1)
 
@@ -1090,13 +1082,9 @@ class ArrayApplication(object):
             return res
 
     def atleast_3d(self, *arys):
-        # TODO (hme): Refactor this to use check_or_convert_other
         res = []
         for ary in arys:
-            if not isinstance(ary, BlockArray):
-                ary = np.array(ary)
-                block_shape = self.cm.compute_block_shape(ary.shape, ary.dtype)
-                ary = self.array(ary, block_shape)
+            ary = BlockArray.to_block_array(ary, self.cm)
             if ary.ndim == 0:
                 result = ary.reshape(1, 1, 1)
 
@@ -1115,30 +1103,37 @@ class ArrayApplication(object):
         else:
             return res
 
-    def hstack(self, tup):
-        arrs = self.atleast_1d(*tup)
+    def _check_or_covert_stack_array(self, arrs):
         if not isinstance(arrs, list):
             arrs = [arrs]
+        return arrs
+
+    def hstack(self, tup, axis_block_size=None):
+        arrs = self._check_or_covert_stack_array(self.atleast_1d(*tup))
         # As a special case, dimension 0 of 1-dimensional arrays is "horizontal"
         if arrs and arrs[0].ndim == 1:
-            return self.concatenate(arrs, 0)
+            return self.concatenate(arrs, 0, axis_block_size=axis_block_size)
         else:
-            return self.concatenate(arrs, 1)
+            return self.concatenate(arrs, 1, axis_block_size=axis_block_size)
 
-    def vstack(self, tup):
-        arrs = self.atleast_2d(*tup)
-        if not isinstance(arrs, list):
-            arrs = [arrs]
-        return self.concatenate(arrs, 0)
+    def vstack(self, tup, axis_block_size=None):
+        arrs = self._check_or_covert_stack_array(self.atleast_2d(*tup))
+        return self.concatenate(arrs, 0, axis_block_size=axis_block_size)
 
-    def dstack(self, tup):
-        arrs = self.atleast_3d(*tup)
-        if not isinstance(arrs, list):
-            arrs = [arrs]
-        return self.concatenate(arrs, 2)
+    def dstack(self, tup, axis_block_size=None):
+        arrs = self._check_or_covert_stack_array(self.atleast_3d(*tup))
+        return self.concatenate(arrs, 2, axis_block_size=axis_block_size)
 
-    def row_stack(self, tup):
-        return self.vstack(tup)
+    def row_stack(self, tup, axis_block_size=None):
+        return self.vstack(tup, axis_block_size=axis_block_size)
 
-    def column_stack(self, tup):
-        return self.vstack(tup).T
+    def column_stack(self, tup, axis_block_size=None):
+        # Based on numpy source.
+        arrays = []
+        for obj in tup:
+            arr = BlockArray.to_block_array(obj, self.cm)
+            if arr.ndim < 2:
+                arrays.append(self.atleast_2d(arr).T)
+            else:
+                arrays.append(self.atleast_2d(arr))
+        return self.concatenate(arrays, 1, axis_block_size=axis_block_size)

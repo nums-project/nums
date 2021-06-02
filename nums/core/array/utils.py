@@ -44,6 +44,10 @@ def get_bop_output_type(op_name, dtype_a, dtype_b):
         return np.__getattribute__(str(dtype))
 
 
+def is_scalar(val):
+    return is_uint(val) or is_int(val) or is_float(val) or is_complex(val)
+
+
 def is_uint(val, type_test=False):
     return is_type(type_test, val,
                    (np.uint, np.uint8, np.uint16, np.uint32, np.uint64))
@@ -274,17 +278,17 @@ def normalize_axis_index(axis, ndim):
     ndim : int
         The number of dimensions of the array that `axis` should be normalized
         against
-    
+
     Returns
     -------
     normalized_axis : int
         The normalized axis index, such that `0 <= normalized_axis < ndim`
-    
+
     Raises
     ------
     AxisError
         If the axis index is invalid, when `-ndim <= axis < ndim` is false.
-    
+
     Examples
     --------
     >>> normalize_axis_index(0, ndim=3)
@@ -293,7 +297,7 @@ def normalize_axis_index(axis, ndim):
     1
     >>> normalize_axis_index(-1, ndim=3)
     2
-    
+
     >>> normalize_axis_index(3, ndim=3)
     Traceback (most recent call last):
     ...

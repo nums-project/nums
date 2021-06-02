@@ -69,7 +69,6 @@ NINF = np.NINF
 PZERO = np.PZERO
 NZERO = np.NZERO
 nan = NAN = NaN = np.nan
-newaxis = None
 
 ############################################
 # Data Types
