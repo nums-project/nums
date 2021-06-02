@@ -16,6 +16,7 @@
 
 import itertools
 from typing import Tuple, Iterator
+from collections import OrderedDict
 
 import numpy as np
 import scipy.special
@@ -25,6 +26,60 @@ from nums.core.settings import np_ufunc_map
 
 # pylint: disable = no-member
 
+
+def find_slices(blocks):
+    src_params, dst_params, count = [], [], 0
+    for key in blocks:
+        start, end = blocks[key]
+        length = end - start
+        slice_obj_dst = slice(count, count + length, 1)
+        slice_obj_src = slice(start, end, 1)
+        src_params.append((slice_obj_src, False))
+        dst_params.append((slice_obj_dst, False))
+        count += length
+    return src_params, dst_params, count
+
+def find_output_blocks(X_blocks, out_shape, out_block_shape):
+    block_i, block_j, element_i, element_j = 0, 0, 0, 0
+    count, total_elements = 0, out_shape[0]
+    block, diagonal = X_blocks[(0, 0)], OrderedDict()
+    block_no, curr_block_length, blocks = 1, 0, []
+    while count < total_elements:
+        if element_i > block.shape[0] - 1:
+            block_i = block_i + 1
+            element_i = 0
+        if element_j > block.shape[1] - 1:
+            block_j = block_j + 1
+            element_j = 0
+
+        block = X_blocks[(block_i, block_j)]
+        block_rows, block_cols = block.shape[0], block.shape[1]
+        offset = -element_i if element_i > element_j else element_j
+        blocks.append(((block_i, block_j), offset))
+        total_elements_block = min(block_rows - 1 - element_i, block_cols - 1 - element_j) + 1
+        left_curr_block = out_block_shape[0] - curr_block_length
+        block_dict = diagonal.get(block_no, OrderedDict())
+        if left_curr_block >= total_elements_block:
+            block_dict[(block_i, block_j)] = (0, total_elements_block)
+            diagonal[block_no] = block_dict
+            curr_block_length = curr_block_length + total_elements_block
+            if left_curr_block - total_elements_block == 0:
+                curr_block_length = 0
+                block_no += 1
+        else:
+            block_dict[(block_i, block_j)] = (0, left_curr_block)  
+            diagonal[block_no] = block_dict             
+
+            block_no += 1
+            
+            curr_block_length = total_elements_block - left_curr_block
+            block_dict = diagonal.get(block_no, OrderedDict())
+            block_dict[(block_i, block_j)] = (left_curr_block, total_elements_block)
+            diagonal[block_no] = block_dict
+
+        count, element_i = count + total_elements_block, element_i + total_elements_block
+        element_j = element_j + total_elements_block
+    return diagonal, blocks
 
 def get_uop_output_type(op_name, dtype):
     a = np.array(1, dtype=dtype)

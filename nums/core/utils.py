@@ -12,19 +12,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from collections import OrderedDict
-
-def find_slices(blocks):
-    src_params, dst_params, count = [], [], 0
-    for key in blocks:
-        length = len(blocks[key])
-        slice_obj_dst = slice(count, count + length, 1)
-        slice_obj_src = slice(0, length, 1)
-        src_params.append((slice_obj_src, False))
-        dst_params.append((slice_obj_dst, False))
-        count += length
-    return src_params, dst_params, count
-
-
-

@@ -169,12 +169,8 @@ class ComputeCls(ComputeImp):
             result[tuple(dst_sel)] = src_arr[tuple(src_sel)]
         return result
 
-    def diag(self, arr, elements):
-        if elements == []:
-            return np.diag(arr)
-        else:
-            rarr = list(map(lambda index: arr[index[0]][index[1]], elements))
-            return np.array(rarr)
+    def diag(self, arr, offset):
+        return np.diag(arr, k=offset)
 
     def arange(self, start, stop, step, dtype):
         return np.arange(start, stop, step, dtype)
