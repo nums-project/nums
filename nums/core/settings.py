@@ -88,12 +88,12 @@ manually_tested_fallback = {
 failed_fallback = {
     'angle', 'append', 'apply_along_axis', 'apply_over_axes', 'argsort', 'around', 'array_split',
     'argpartition', 'asarray', 'asarray_chkfinite', 'average', 'bartlett', 'bincount', 'blackman',
-    'choose', 'column_stack', 'common_type', 'correlate', 'count_nonzero', 'cov', 'cross', 'delete',
-    'diag_indices', 'diagonal', 'diff', 'digitize', 'divmod', 'dot', 'dsplit', 'dstack', 'ediff1d',
+    'choose', 'common_type', 'correlate', 'count_nonzero', 'cov', 'cross', 'delete',
+    'diag_indices', 'diagonal', 'diff', 'digitize', 'divmod', 'dot', 'dsplit', 'ediff1d',
     'einsum', 'einsum_path', 'extract', 'fill_diagonal', 'flatnonzero', 'flip', 'fliplr', 'flipud',
     'frexp', 'frombuffer', 'fromfile', 'fromfunction', 'frompyfunc', 'full_like', 'geomspace',
     'gradient', 'hamming', 'hanning', 'histogram', 'histogram2d', 'histogram_bin_edges',
-    'histogramdd', 'hsplit', 'hstack', 'i0', 'imag', 'in1d', 'indices', 'insert', 'interp',
+    'histogramdd', 'hsplit', 'i0', 'imag', 'in1d', 'indices', 'insert', 'interp',
     'intersect1d', 'isclose', 'iscomplex', 'iscomplexobj', 'isin', 'isneginf',
     'isposinf', 'isreal', 'isrealobj', 'isscalar', 'ix_', 'kaiser', 'kron', 'lexsort',
     'maximum_sctype', 'median', 'meshgrid', 'min_scalar_type', 'mintypecode', 'modf', 'moveaxis',
@@ -101,10 +101,10 @@ failed_fallback = {
     'obj2sctype', 'packbits', 'pad', 'percentile', 'piecewise', 'place', 'poly',
     'polyadd', 'polyder', 'polydiv', 'polyfit', 'polyint', 'polymul', 'polyval', 'prod',
     'promote_types', 'ptp', 'put', 'put_along_axis', 'putmask', 'quantile', 'ravel', 'real',
-    'real_if_close', 'require', 'result_type', 'rollaxis', 'row_stack', 'sctype2char', 'select',
+    'real_if_close', 'require', 'result_type', 'rollaxis', 'sctype2char', 'select',
     'sinc', 'sort', 'stack', 'take', 'take_along_axis', 'trace', 'tril_indices', 'trim_zeros',
     'triu_indices', 'unique', 'unpackbits', 'unravel_index', 'unwrap', 'vander', 'vdot', 'vsplit',
-    'vstack', 'who'
+    'who'
 }
 
 fallback = doctest_fallback | manually_tested_fallback | failed_fallback
