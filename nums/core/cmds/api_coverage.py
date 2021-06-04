@@ -23,25 +23,20 @@ from nums.core.systems import utils as systems_utils
 # pylint: disable = import-outside-toplevel
 
 
-def execute(module_name, print_missing, count_fallback):
+def execute(module_name, print_missing):
     if module_name == "api":
-        return api_coverage(print_missing, count_fallback)
+        return api_coverage(print_missing)
     elif module_name == "random":
-        import numpy.random as numpy_module
-        import nums.numpy.random as nums_module
+        return random_coverage(print_missing)
     elif module_name == "linalg":
-        import numpy.linalg as numpy_module
-        import nums.numpy.linalg as nums_module
+        return linalg_coverage(print_missing)
     elif module_name == "fft":
-        import numpy.fft as numpy_module
-        import nums.numpy.fft as nums_module
+        return fft_coverage(print_missing)
     else:
         raise Exception("Unknown module %s" % module_name)
-    return module_coverage(module_name, print_missing, count_fallback,
-                           numpy_module, nums_module)
 
 
-def module_coverage(module_name, print_missing, count_fallback,
+def module_coverage(module_name, print_missing,
                     numpy_module, nums_module, ignore=None, fallback=None):
 
     print()
@@ -50,7 +45,7 @@ def module_coverage(module_name, print_missing, count_fallback,
     print("-"*75)
 
     for name, func in systems_utils.get_module_functions(nums_module).items():
-        if name in ("_not_implemented", "_instance", "_default_to_numpy"):
+        if name in ("_not_implemented", "_instance", "_default_to_numpy", "reset"):
             continue
         if getattr(numpy_module, name, None) is None:
             raise Exception("Implemented method that does not exist! %s" % name)
@@ -59,14 +54,16 @@ def module_coverage(module_name, print_missing, count_fallback,
     fallback = [] if fallback is None else fallback
     coverage = 0.0
     total = 0.0
+    fallback_coverage = 0.0
     missing = []
     for name, func in systems_utils.get_module_functions(numpy_module).items():
         if name in ignore:
             continue
         total += 1.0
-        if count_fallback and name in fallback:
-            coverage += 1.0
+        if name in fallback:
+            fallback_coverage += 1.0
             continue
+        print_tuple = name, "Unavailable"
         try:
             doc_lines = func.__doc__.split("\n")
             descr = ""
@@ -79,12 +76,8 @@ def module_coverage(module_name, print_missing, count_fallback,
             try:
                 print_tuple = name, func.__code__.co_varnames
             except Exception as _:
-                print_tuple = name, "Unavailable"
-        if print_tuple is None:
-            continue
-        if name in fallback:
-            print("Fallback %s: %s" % print_tuple)
-        elif getattr(nums_module, name, None) is None:
+                pass
+        if getattr(nums_module, name, None) is None:
             print("Missing %s: %s" % print_tuple)
             missing.append("%s" % name)
         else:
@@ -93,14 +86,18 @@ def module_coverage(module_name, print_missing, count_fallback,
     print("-"*75)
     print(module_name)
     print("-"*75)
-    print("coverage", coverage)
-    print("total", total)
-    print("percent covered", "%.1f" % (coverage / total * 100))
+    print("scalable coverage", coverage)
+    print("fallback coverage", fallback_coverage)
+    print("total coverage", coverage + fallback_coverage)
+    print("total functions", total)
+    print("scalable percent covered", "%.1f" % (coverage / total * 100))
+    print("fallback percent covered", "%.1f" % (fallback_coverage / total * 100))
+    print("total percent covered", "%.1f" % ((coverage + fallback_coverage) / total * 100))
     if print_missing:
         print(str(missing))
 
 
-def api_coverage(print_missing, count_fallback):
+def api_coverage(print_missing):
     # pylint: disable = unused-variable
 
     # Functions ignored for various reasons.
@@ -136,15 +133,36 @@ def api_coverage(print_missing, count_fallback):
         'copyto',
     }
 
-    not_implemented = {
-        'array_repr', 'array_str',
-        'can_cast', 'find_common_type',
-        'savetxt', 'shares_memory'
-    }
-
     import numpy as numpy_module
     import nums.numpy.api as nums_module
-    module_coverage("api", print_missing, count_fallback,
+    module_coverage("api", print_missing,
+                    numpy_module, nums_module, ignore=ignore, fallback=settings.fallback)
+
+
+def random_coverage(print_missing):
+    ignore = ["__RandomState_ctor"]
+
+    import numpy.random as numpy_module
+    import nums.numpy.random as nums_module
+    module_coverage("api", print_missing,
+                    numpy_module, nums_module, ignore=ignore, fallback=settings.fallback)
+
+
+def linalg_coverage(print_missing):
+    ignore = []
+
+    import numpy.linalg as numpy_module
+    import nums.numpy.linalg as nums_module
+    module_coverage("api", print_missing,
+                    numpy_module, nums_module, ignore=ignore, fallback=settings.fallback)
+
+
+def fft_coverage(print_missing):
+    ignore = []
+
+    import numpy.fft as numpy_module
+    import nums.numpy.fft as nums_module
+    module_coverage("api", print_missing,
                     numpy_module, nums_module, ignore=ignore, fallback=settings.fallback)
 
 
@@ -152,9 +170,6 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--module-name', default="api", help='Which module to test.',
                         choices={"api", "random", "linalg", "fft"})
-
-    parser.add_argument('--count-fallback', action="store_true", help='Include fallback functions '
-                                                                      'in converage.')
 
     parser.add_argument('--print-missing', action="store_true", help='Output array of missing '
                                                                      'values.')

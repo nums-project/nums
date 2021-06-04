@@ -21,9 +21,9 @@ import numpy as np
 import scipy.special
 
 from nums.core.settings import np_ufunc_map
+from nums.core.array.errors import AxisError
 
-
-# pylint: disable = no-member
+# pylint: disable = no-member, trailing-whitespace
 
 
 def get_uop_output_type(op_name, dtype):
@@ -42,6 +42,15 @@ def get_bop_output_type(op_name, dtype_a, dtype_b):
     except Exception as _:
         dtype = scipy.special.__getattribute__(op_name)(a, b).dtype
         return np.__getattribute__(str(dtype))
+
+
+def is_scalar(val):
+    return is_bool(val) or is_uint(val) or is_int(val) or is_float(val) or is_complex(val)
+
+
+def is_bool(val, type_test=False):
+    return is_type(type_test, val,
+                   (bool, np.bool_))
 
 
 def is_uint(val, type_test=False):
@@ -208,7 +217,7 @@ def get_slices(total_size, batch_size, order, reverse_blocks=False):
             # If reverse order blocks are not multiples of axis dimension,
             # then the last block is smaller than block size and should be
             # the first block.
-            result = list(reversed(list(range(-total_size-1, -1, batch_size)) + [-1]))
+            result = list(reversed(list(range(-total_size - 1, -1, batch_size)) + [-1]))
         else:
             result = list(range(-1, -total_size - 1, -batch_size)) + [-total_size - 1]
         return list(map(lambda s: slice(*s, order), zip(*(result[:-1], result[1:]))))
@@ -259,7 +268,7 @@ def addr2idx(addr: int, shape: tuple):
     val = addr
     for i in range(len(strides)):
         stride = strides[i]
-        axis_index = int(val/stride)
+        axis_index = int(val / stride)
         index.append(axis_index)
         val %= stride
     return tuple(index)
@@ -282,3 +291,95 @@ def translate_index_list(from_index_list, from_shape, to_shape):
         addr = idx2addr(src_index, from_shape)
         to_index_list.append(addr2idx(addr, to_shape))
     return to_index_list
+
+
+def np_tensordot_param_test(as_, nda, bs, ndb, axes):
+    # Error checking before everything gets passed into BlockArray operations. Modified from the
+    # original NumPy tensordot method for error checking:
+    # https://github.com/numpy/numpy/blob/v1.20.0/numpy/core/numeric.py#L949-L1139
+
+    try:
+        iter(axes)
+    except Exception:
+        axes_a = list(range(-axes, 0))
+        axes_b = list(range(0, axes))
+    else:
+        axes_a, axes_b = axes
+    try:
+        na = len(axes_a)
+        axes_a = list(axes_a)
+    except TypeError:
+        axes_a = [axes_a]
+        na = 1
+    try:
+        nb = len(axes_b)
+        axes_b = list(axes_b)
+    except TypeError:
+        axes_b = [axes_b]
+        nb = 1
+
+    equal = True
+    if na != nb:
+        equal = False
+
+    else:
+        for k in range(na):
+            if as_[axes_a[k]] != bs[axes_b[k]]:
+                equal = False
+                break
+            if axes_a[k] < 0:
+                axes_a[k] += nda
+            if axes_b[k] < 0:
+                axes_b[k] += ndb
+
+    if not equal:
+        return True
+
+    return False
+
+
+# NumPy's internal axis-checking logic
+# https://www.kite.com/python/docs/numpy.core.multiarray.normalize_axis_index
+def normalize_axis_index(axis, ndim):
+    """
+    Parameters
+    ----------
+    axis : int
+        The un-normalized index of the axis. Can be negative
+    ndim : int
+        The number of dimensions of the array that `axis` should be normalized
+        against
+
+    Returns
+    -------
+    normalized_axis : int
+        The normalized axis index, such that `0 <= normalized_axis < ndim`
+
+    Raises
+    ------
+    AxisError
+        If the axis index is invalid, when `-ndim <= axis < ndim` is false.
+
+    Examples
+    --------
+    >>> normalize_axis_index(0, ndim=3)
+    0
+    >>> normalize_axis_index(1, ndim=3)
+    1
+    >>> normalize_axis_index(-1, ndim=3)
+    2
+
+    >>> normalize_axis_index(3, ndim=3)
+    Traceback (most recent call last):
+    ...
+    AxisError: axis 3 is out of bounds for array of dimension 3
+    >>> normalize_axis_index(-4, ndim=3, msg_prefix='axes_arg')
+    Traceback (most recent call last):
+    ...
+    AxisError: axes_arg: axis -4 is out of bounds for array of dimension 3
+    """
+
+    if -ndim > axis >= ndim:
+        raise AxisError("axis {} is out of bounds for array of dimension {}".format(axis, ndim))
+
+    return axis % ndim

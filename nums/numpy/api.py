@@ -16,6 +16,8 @@
 
 import warnings
 
+from typing import List, Optional, Union
+
 import numpy as np
 import scipy.stats
 
@@ -279,6 +281,26 @@ def atleast_3d(*arys):
     return _instance().atleast_3d(*arys)
 
 
+def hstack(tup):
+    return _instance().hstack(tup)
+
+
+def vstack(tup):
+    return _instance().vstack(tup)
+
+
+def dstack(tup):
+    return _instance().dstack(tup)
+
+
+def row_stack(tup):
+    return _instance().row_stack(tup)
+
+
+def column_stack(tup):
+    return _instance().column_stack(tup)
+
+
 ############################################
 # Manipulation Ops
 ############################################
@@ -489,6 +511,35 @@ def any(a: BlockArray, axis=None, out=None, keepdims=False):
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().reduce("any", a, axis=axis, keepdims=keepdims)
+
+
+def average(a: BlockArray,
+            axis: Union[None, int, List[int]] = None,
+            weights: Optional[BlockArray] = None,
+            returned: bool = False):
+    if axis and not isinstance(axis, int):
+        raise NotImplementedError("Only single 'axis' is currently supported.")
+
+    if weights is None:
+        avg = mean(a, axis)
+        if not returned:
+            return avg
+        weights_sum = BlockArray.from_scalar(a.size / avg.size, a.cm)
+        return avg, weights_sum
+
+    if a.shape != weights.shape:
+        raise NotImplementedError("1D weights broadcasting is currently not supported; "
+                                  "dimensions of 'a' and 'weights' must match.")
+    weights_sum = sum(weights, axis=axis)
+    if not all(weights_sum):
+        raise ZeroDivisionError("Weights along one or more axes sum to zero.")
+    avg = divide(sum(multiply(a, weights), axis=axis), weights_sum)
+
+    if not returned:
+        return avg
+    if avg.shape != weights_sum.shape:
+        weights_sum = weights_sum.broadcast_to(avg.shape)
+    return avg, weights_sum
 
 
 ############################################

@@ -151,11 +151,11 @@ class ComputeManager(ComputeInterface):
     # Block Shape Management
     #########################
 
-    def compute_block_shape(self,
-                            shape: tuple,
-                            dtype: Union[type, np.dtype],
-                            cluster_shape=None,
-                            num_cores=None):
+    @staticmethod
+    def compute_block_shape_static(shape: tuple,
+                                   dtype: Union[type, np.dtype],
+                                   cluster_shape: tuple,
+                                   num_cores: int):
         # TODO (hme): This should also compute parameters for DeviceGrid.
         if array_utils.is_float(dtype, type_test=True):
             dtype = np.finfo(dtype).dtype
@@ -176,12 +176,6 @@ class ComputeManager(ComputeInterface):
         if size < 10 ** 8:
             block_shape = shape
             return block_shape
-
-        if num_cores is None:
-            num_cores = self.num_cores_total()
-
-        if cluster_shape is None:
-            cluster_shape = self.device_grid.grid_shape
 
         if len(shape) < len(cluster_shape):
             cluster_shape = cluster_shape[:len(shape)]
@@ -214,6 +208,20 @@ class ComputeManager(ComputeInterface):
         # so that resulting grid shape is <= to what we compute above.
         block_shape = tuple((shape_np + grid_shape - 1) // grid_shape)
         return block_shape
+
+    def compute_block_shape(self,
+                            shape: tuple,
+                            dtype: Union[type, np.dtype],
+                            cluster_shape=None,
+                            num_cores=None):
+
+        if num_cores is None:
+            num_cores = self.num_cores_total()
+
+        if cluster_shape is None:
+            cluster_shape = self.device_grid.grid_shape
+
+        return ComputeManager.compute_block_shape_static(shape, dtype, cluster_shape, num_cores)
 
     def get_block_shape(self, shape, dtype):
         # Simple way to ensure shape compatibility for basic linear algebra operations.

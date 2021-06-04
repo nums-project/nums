@@ -91,6 +91,26 @@ def test_atleast_3d(nps_app_inst):
 
     try_multiple_nd(np.atleast_3d, nps.atleast_3d)
 
+
+def test_stack(nps_app_inst):
+    import nums.numpy as nps
+    assert nps_app_inst is not None
+
+    for fname in ["hstack", "vstack", "dstack", "row_stack", "column_stack"]:
+        nps_func = nps.__getattribute__(fname)
+        np_func = np.__getattribute__(fname)
+        a = nps.array((1, 2, 3))
+        b = nps.array((2, 3, 4))
+        np_a, np_b = a.get(), b.get()
+        assert np.allclose(nps_func((a, b)).get(), np_func((np_a, np_b)))
+        a = nps.array([[1], [2], [3]])
+        b = nps.array([[2], [3], [4]])
+        np_a, np_b = a.get(), b.get()
+        assert np.allclose(nps_func((a, b)).get(), np_func((np_a, np_b)))
+
+    # TODO (hme): Add equivalence tests for vstack and row_stack.
+
+
 if __name__ == "__main__":
     # pylint: disable=import-error
     from nums.core import application_manager
@@ -101,3 +121,4 @@ if __name__ == "__main__":
     test_atleast_1d(nps_app_inst)
     test_atleast_2d(nps_app_inst)
     test_atleast_3d(nps_app_inst)
+    test_stack(nps_app_inst)

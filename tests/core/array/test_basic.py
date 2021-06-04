@@ -14,9 +14,8 @@
 # limitations under the License.
 
 
-# pylint: disable=wrong-import-order
-import common
 import numpy as np
+import pytest
 
 from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray
@@ -24,6 +23,19 @@ from nums.core.grid.grid import ArrayGrid
 from nums.core.grid.grid import DeviceID
 from nums.core.storage.storage import BimodalGaussian
 from nums.core.systems import utils as systems_utils
+
+import common  # pylint: disable=import-error, wrong-import-order
+
+
+def test_scalar_op(app_inst: ArrayApplication):
+    app_inst.scalar(1)
+    app_inst.scalar(False)
+    app_inst.scalar(2.0)
+    app_inst.scalar(np.float32(1))
+    app_inst.scalar(np.complex64(1))
+
+    with pytest.raises(ValueError):
+        app_inst.scalar(np.array(1))
 
 
 def test_device_id_hashing(app_inst: ArrayApplication):
@@ -235,6 +247,7 @@ if __name__ == "__main__":
     import conftest
 
     app_inst = conftest.get_app("serial")
+    test_scalar_op(app_inst)
     test_array_integrity(app_inst)
     test_concatenate(app_inst)
     test_touch(app_inst)

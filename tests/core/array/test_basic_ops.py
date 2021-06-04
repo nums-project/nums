@@ -80,7 +80,7 @@ def test_trans(app_inst):
 
 if __name__ == "__main__":
     # pylint: disable=import-error
-    from tests import conftest
+    import conftest
 
     app_inst = conftest.get_app("serial")
     test_stats(app_inst)

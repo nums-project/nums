@@ -726,280 +726,7 @@ class ArrayApplication(object):
     def allclose(self, a: BlockArray, b: BlockArray, rtol=1.e-5, atol=1.e-8):
         return self.array_compare("allclose", a, b, rtol, atol)
 
-    def qr(self, X: BlockArray):
-        return self.indirect_tsqr(X)
-
-    def indirect_tsr(self, X: BlockArray, reshape_output=True):
-        assert len(X.shape) == 2
-        # TODO (hme): This assertion is temporary and ensures returned
-        #  shape of qr of block is correct.
-        assert X.block_shape[0] >= X.shape[1]
-        # Compute R for each block.
-        grid = X.grid
-        grid_shape = grid.grid_shape
-        shape = X.shape
-        block_shape = X.block_shape
-        R_oids = []
-        # Assume no blocking along second dim.
-        for i in range(grid_shape[0]):
-            # Select a row according to block_shape.
-            row = []
-            for j in range(grid_shape[1]):
-                row.append(X.blocks[i, j].oid)
-            R_oids.append(self.cm.qr(*row,
-                                     mode="r",
-                                     axis=1,
-                                     syskwargs={
-                                         "grid_entry": (i, 0),
-                                         "grid_shape": (grid_shape[0], 1),
-                                         "options": {"num_returns": 1}
-                                     })
-                          )
-
-        # Construct R by summing over R blocks.
-        # TODO (hme): Communication may be inefficient due to redundancy of data.
-        R_shape = (shape[1], shape[1])
-        R_block_shape = (block_shape[1], block_shape[1])
-        tsR = BlockArray(ArrayGrid(shape=R_shape,
-                                   block_shape=R_shape,
-                                   dtype=X.dtype.__name__),
-                         self.cm)
-        tsR.blocks[0, 0].oid = self.cm.qr(*R_oids,
-                                          mode="r",
-                                          axis=0,
-                                          syskwargs={
-                                              "grid_entry": (0, 0),
-                                              "grid_shape": (1, 1),
-                                              "options": {"num_returns": 1}
-                                          })
-        # If blocking is "tall-skinny," then we're done.
-        if R_shape != R_block_shape:
-            if reshape_output:
-                R = tsR.reshape(R_shape, block_shape=R_block_shape)
-            else:
-                R = tsR
-        else:
-            R = tsR
-        return R
-
-    def indirect_tsqr(self, X: BlockArray, reshape_output=True):
-        shape = X.shape
-        block_shape = X.block_shape
-        R_shape = (shape[1], shape[1])
-        R_block_shape = (block_shape[1], block_shape[1])
-        tsR = self.indirect_tsr(X, reshape_output=False)
-
-        # Compute inverse of R.
-        tsR_inverse = self.inv(tsR)
-        # If blocking is "tall-skinny," then we're done.
-        if R_shape != R_block_shape:
-            R_inverse = tsR_inverse.reshape(R_shape, block_shape=R_block_shape)
-            if reshape_output:
-                R = tsR.reshape(R_shape, block_shape=R_block_shape)
-            else:
-                R = tsR
-        else:
-            R_inverse = tsR_inverse
-            R = tsR
-
-        Q = X @ R_inverse
-        return Q, R
-
-    def direct_tsqr(self, X, reshape_output=True):
-        assert len(X.shape) == 2
-
-        # Compute R for each block.
-        shape = X.shape
-        grid = X.grid
-        grid_shape = grid.grid_shape
-        block_shape = X.block_shape
-        Q_oids = []
-        R_oids = []
-        QR_dims = []
-        Q2_shape = [0, shape[1]]
-        for i in range(grid_shape[0]):
-            # Select a row according to block_shape.
-            row = []
-            for j in range(grid_shape[1]):
-                row.append(X.blocks[i, j].oid)
-            # We invoke "reduced", so q, r is returned with dimensions (M, K), (K, N), K = min(M, N)
-            M = grid.get_block_shape((i, 0))[0]
-            N = shape[1]
-            K = min(M, N)
-            QR_dims.append(((M, K), (K, N)))
-            Q2_shape[0] += K
-            # Run each row on separate nodes along first axis.
-            # This maintains some data locality.
-            Q_oid, R_oid = self.cm.qr(*row,
-                                      mode="reduced",
-                                      axis=1,
-                                      syskwargs={
-                                          "grid_entry": (i, 0),
-                                          "grid_shape": (grid_shape[0], 1),
-                                          "options": {"num_returns": 2}
-                                      })
-            R_oids.append(R_oid)
-            Q_oids.append(Q_oid)
-
-        # TODO (hme): This pulls several order N^2 R matrices on a single node.
-        #  A solution is the recursive extension to direct TSQR.
-        Q2_oid, R2_oid = self.cm.qr(*R_oids,
-                                    mode="reduced",
-                                    axis=0,
-                                    syskwargs={
-                                        "grid_entry": (0, 0),
-                                        "grid_shape": (1, 1),
-                                        "options": {"num_returns": 2}
-                                    })
-
-        Q2_shape = tuple(Q2_shape)
-        Q2_block_shape = (QR_dims[0][1][0], shape[1])
-        Q2 = self._vec_from_oids([Q2_oid],
-                                 shape=Q2_shape,
-                                 block_shape=Q2_block_shape,
-                                 dtype=X.dtype)
-        # The resulting Q's from this operation are N^2 (same size as above R's).
-        Q2_oids = list(map(lambda block: block.oid, Q2.blocks.flatten()))
-
-        # Construct Q.
-        Q = self.zeros(shape=shape,
-                       block_shape=(block_shape[0], shape[1]),
-                       dtype=X.dtype)
-        for i, grid_entry in enumerate(Q.grid.get_entry_iterator()):
-            Q.blocks[grid_entry].oid = self.cm.bop("tensordot", Q_oids[i], Q2_oids[i],
-                                                   a1_T=False, a2_T=False, axes=1,
-                                                   syskwargs={"grid_entry": grid_entry,
-                                                              "grid_shape": Q.grid.grid_shape})
-
-        # Construct R.
-        shape = X.shape
-        R_shape = (shape[1], shape[1])
-        R_block_shape = (block_shape[1], block_shape[1])
-        tsR = self._vec_from_oids([R2_oid], shape=R_shape, block_shape=R_shape, dtype=X.dtype)
-        # If blocking is "tall-skinny," then we're done.
-        if R_shape == R_block_shape or not reshape_output:
-            R = tsR
-        else:
-            R = tsR.reshape(R_shape, block_shape=R_block_shape)
-
-        if Q.shape != block_shape or not reshape_output:
-            Q = Q.reshape(shape, block_shape=block_shape)
-
-        return Q, R
-
-    def svd(self, X):
-        # TODO(hme): Optimize by merging with direct qr to compute U directly,
-        #  to avoid wasting space storing intermediate Q.
-        #  This may not really help until we have operator fusion.
-        assert len(X.shape) == 2
-        block_shape = X.block_shape
-        shape = X.shape
-        R_shape = (shape[1], shape[1])
-        R_block_shape = (block_shape[1], block_shape[1])
-        Q, R = self.direct_tsqr(X, reshape_output=False)
-        assert R.shape == R.block_shape
-        R_U, S, VT = self.cm.svd(R.blocks[(0, 0)].oid,
-                                 syskwargs={"grid_entry": (0, 0),
-                                            "grid_shape": (1, 1)})
-        R_U: BlockArray = self._vec_from_oids([R_U], R_shape, R_block_shape, X.dtype)
-        S: BlockArray = self._vec_from_oids([S], R_shape[:1], R_block_shape[:1], X.dtype)
-        VT = self._vec_from_oids([VT], R_shape, R_block_shape, X.dtype)
-        U = Q @ R_U
-
-        return U, S, VT
-
-    def inv(self, X: BlockArray):
-        return self._inv(self.cm.inv, {}, X)
-
-    def _inv(self, remote_func, kwargs, X: BlockArray):
-        # TODO (hme): Implement scalable version.
-        block_shape = X.block_shape
-        assert len(X.shape) == 2
-        assert X.shape[0] == X.shape[1]
-        single_block = X.shape[0] == X.block_shape[0] and X.shape[1] == X.block_shape[1]
-        if single_block:
-            result = X.copy()
-        else:
-            result = X.reshape(block_shape=X.shape)
-        result.blocks[0, 0].oid = remote_func(result.blocks[0, 0].oid,
-                                              **kwargs,
-                                              syskwargs={
-                                                  "grid_entry": (0, 0),
-                                                  "grid_shape": (1, 1)
-                                              })
-        if not single_block:
-            result = result.reshape(block_shape=block_shape)
-        return result
-
-    def cholesky(self, X: BlockArray):
-        # TODO (hme): Implement scalable version.
-        # Note:
-        # A = Q, R
-        # A.T @ A = R.T @ R
-        # A.T @ A = L @ L.T
-        # => R == L.T
-        block_shape = X.block_shape
-        assert len(X.shape) == 2
-        assert X.shape[0] == X.shape[1]
-        single_block = X.shape[0] == X.block_shape[0] and X.shape[1] == X.block_shape[1]
-        if single_block:
-            result = X.copy()
-        else:
-            result = X.reshape(block_shape=X.shape)
-        result.blocks[0, 0].oid = self.cm.cholesky(result.blocks[0, 0].oid,
-                                                   syskwargs={
-                                                       "grid_entry": (0, 0),
-                                                       "grid_shape": (1, 1)
-                                                   })
-        if not single_block:
-            result = result.reshape(block_shape=block_shape)
-        return result
-
-    def fast_linear_regression(self, X: BlockArray, y: BlockArray):
-        assert len(X.shape) == 2
-        assert len(y.shape) == 1
-        block_shape = X.block_shape
-        shape = X.shape
-        R_shape = (shape[1], shape[1])
-        R_block_shape = (block_shape[1], block_shape[1])
-        Q, R = self.indirect_tsqr(X, reshape_output=False)
-        R_inv = self.inv(R)
-        if R_shape != R_block_shape:
-            R_inv = R_inv.reshape(R_shape, block_shape=R_block_shape)
-        theta = R_inv @ (Q.T @ y)
-        return theta
-
-    def linear_regression(self, X: BlockArray, y: BlockArray):
-        assert len(X.shape) == 2
-        assert len(y.shape) == 1
-        block_shape = X.block_shape
-        shape = X.shape
-        R_shape = (shape[1], shape[1])
-        R_block_shape = (block_shape[1], block_shape[1])
-        Q, R = self.direct_tsqr(X, reshape_output=False)
-        # Invert R.
-        R_inv = self.inv(R)
-        if R_shape != R_block_shape:
-            R_inv = R_inv.reshape(R_shape, block_shape=R_block_shape)
-        theta = R_inv @ (Q.T @ y)
-        return theta
-
-    def ridge_regression(self, X: BlockArray, y: BlockArray, lamb: float):
-        assert len(X.shape) == 2
-        assert len(y.shape) == 1
-        assert lamb >= 0
-        block_shape = X.block_shape
-        shape = X.shape
-        R_shape = (shape[1], shape[1])
-        R_block_shape = (block_shape[1], block_shape[1])
-        R = self.indirect_tsr(X)
-        lamb_vec = self.array(lamb * np.eye(R_shape[0]), block_shape=R_block_shape)
-        # TODO (hme): A better solution exists, which inverts R by augmenting X and y.
-        #  See Murphy 7.5.2.
-        theta = self.inv(lamb_vec + R.T @ R) @ (X.T @ y)
-        return theta
-
-    def _vec_from_oids(self, oids, shape, block_shape, dtype):
+    def vec_from_oids(self, oids, shape, block_shape, dtype):
         arr = BlockArray(ArrayGrid(shape=shape,
                                    block_shape=shape,
                                    dtype=dtype.__name__),
@@ -1052,13 +779,9 @@ class ArrayApplication(object):
         return res
 
     def atleast_1d(self, *arys):
-        # TODO (hme): Refactor this to use check_or_convert_other
         res = []
         for ary in arys:
-            if not isinstance(ary, BlockArray):
-                ary = np.array(ary)
-                block_shape = self.cm.compute_block_shape(ary.shape, ary.dtype)
-                ary = self.array(ary, block_shape)
+            ary = BlockArray.to_block_array(ary, self.cm)
             if ary.ndim == 0:
                 result = ary.reshape(1)
             else:
@@ -1070,13 +793,9 @@ class ArrayApplication(object):
             return res
 
     def atleast_2d(self, *arys):
-        # TODO (hme): Refactor this to use check_or_convert_other
         res = []
         for ary in arys:
-            if not isinstance(ary, BlockArray):
-                ary = np.array(ary)
-                block_shape = self.cm.compute_block_shape(ary.shape, ary.dtype)
-                ary = self.array(ary, block_shape)
+            ary = BlockArray.to_block_array(ary, self.cm)
             if ary.ndim == 0:
                 result = ary.reshape(1, 1)
 
@@ -1094,13 +813,9 @@ class ArrayApplication(object):
             return res
 
     def atleast_3d(self, *arys):
-        # TODO (hme): Refactor this to use check_or_convert_other
         res = []
         for ary in arys:
-            if not isinstance(ary, BlockArray):
-                ary = np.array(ary)
-                block_shape = self.cm.compute_block_shape(ary.shape, ary.dtype)
-                ary = self.array(ary, block_shape)
+            ary = BlockArray.to_block_array(ary, self.cm)
             if ary.ndim == 0:
                 result = ary.reshape(1, 1, 1)
 
@@ -1118,3 +833,38 @@ class ArrayApplication(object):
             return res[0]
         else:
             return res
+
+    def _check_or_covert_stack_array(self, arrs):
+        if not isinstance(arrs, list):
+            arrs = [arrs]
+        return arrs
+
+    def hstack(self, tup, axis_block_size=None):
+        arrs = self._check_or_covert_stack_array(self.atleast_1d(*tup))
+        # As a special case, dimension 0 of 1-dimensional arrays is "horizontal"
+        if arrs and arrs[0].ndim == 1:
+            return self.concatenate(arrs, 0, axis_block_size=axis_block_size)
+        else:
+            return self.concatenate(arrs, 1, axis_block_size=axis_block_size)
+
+    def vstack(self, tup, axis_block_size=None):
+        arrs = self._check_or_covert_stack_array(self.atleast_2d(*tup))
+        return self.concatenate(arrs, 0, axis_block_size=axis_block_size)
+
+    def dstack(self, tup, axis_block_size=None):
+        arrs = self._check_or_covert_stack_array(self.atleast_3d(*tup))
+        return self.concatenate(arrs, 2, axis_block_size=axis_block_size)
+
+    def row_stack(self, tup, axis_block_size=None):
+        return self.vstack(tup, axis_block_size=axis_block_size)
+
+    def column_stack(self, tup, axis_block_size=None):
+        # Based on numpy source.
+        arrays = []
+        for obj in tup:
+            arr = BlockArray.to_block_array(obj, self.cm)
+            if arr.ndim < 2:
+                arrays.append(self.atleast_2d(arr).T)
+            else:
+                arrays.append(self.atleast_2d(arr))
+        return self.concatenate(arrays, 1, axis_block_size=axis_block_size)
