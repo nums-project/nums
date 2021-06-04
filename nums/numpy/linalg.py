@@ -15,7 +15,7 @@
 
 
 from nums.core.application_manager import instance as _instance
-from nums.core import linalg as linalg
+from nums.core import linalg
 
 
 def qr(a, mode="reduced"):
