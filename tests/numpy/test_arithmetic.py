@@ -135,19 +135,6 @@ def test_inner_outer(nps_app_inst):
 
 # TODO (hme): Add broadcast tests.
 
-def test_tensordot_shape_error(nps_app_inst):
-    assert nps_app_inst is not None
-
-    def check_tensordot_mismatch_simple_error(_np_a, _np_b, axes):
-        _ns_a = nps.array(_np_a)
-        _ns_b = nps.array(_np_b)
-
-        with pytest.raises(ValueError):
-            np.tensordot(_np_a, _np_b, axes=axes)
-        with pytest.raises(ValueError):
-            nps.tensordot(_ns_a, _ns_b, axes=axes)
-
-
 def test_broadcast_block_shape_error(nps_app_inst):
     from nums import numpy as nps
     import pytest
@@ -179,6 +166,17 @@ def test_broadcast_block_shape_error(nps_app_inst):
     nps_B = nps.random.randn(20, 20, 20)
     check_value_error(nps_A, nps_B, _a_blockshape=(10, 10, 10), _b_blockshape=(2, 2, 2))
 
+def test_tensordot_shape_error(nps_app_inst):
+    assert nps_app_inst is not None
+
+    def check_tensordot_mismatch_simple_error(_np_a, _np_b, axes):
+        _ns_a = nps.array(_np_a)
+        _ns_b = nps.array(_np_b)
+
+        with pytest.raises(ValueError):
+            np.tensordot(_np_a, _np_b, axes=axes)
+        with pytest.raises(ValueError):
+            nps.tensordot(_ns_a, _ns_b, axes=axes)
 
     def check_tensordot_axes_type_error(_np_a, _np_b, axes):
         _ns_a = nps.array(_np_a)
