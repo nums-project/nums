@@ -136,8 +136,6 @@ def test_inner_outer(nps_app_inst):
 # TODO (hme): Add broadcast tests.
 
 def test_broadcast_block_shape_error(nps_app_inst):
-    from nums import numpy as nps
-    import pytest
     assert nps_app_inst is not None
 
     _ops = ['add', 'subtract', 'divide']
