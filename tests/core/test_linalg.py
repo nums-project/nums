@@ -22,7 +22,7 @@ from scipy.linalg import lapack
 
 from nums.core.array.application import ArrayApplication
 from nums.core.storage.storage import BimodalGaussian
-
+from nums.core import linalg
 
 # pylint: disable=protected-access
 
@@ -51,7 +51,7 @@ def test_inv_assumptions(app_inst: ArrayApplication):
 
     # Compute the inverse of np_Z using sym_psd routine.
     Z = app_inst.array(np_Z, np_Z.shape)
-    Z_inv = app_inst.inv(Z).get()
+    Z_inv = linalg.inv(app_inst, Z).get()
     Z_true_inv = np.linalg.inv(np_Z)
     assert np.allclose(Z_true_inv, Z_inv)
 
@@ -111,25 +111,25 @@ def test_inv(app_inst: ArrayApplication):
     for dtype in (np.float32, np.float64):
         mat = app_inst.array(sample_sym_pd_mat(shape=shape).astype(dtype), block_shape=shape)
         _, r = np.linalg.qr(mat.get())
-        r_inv = app_inst.inv(app_inst.array(r, block_shape=shape)).get()
+        r_inv = linalg.inv(app_inst, app_inst.array(r, block_shape=shape)).get()
         assert np.allclose(np.linalg.inv(r), r_inv, rtol=1e-4, atol=1e-4)
-        L = app_inst.cholesky(mat).get()
+        L = linalg.cholesky(app_inst, mat).get()
         assert np.allclose(np.linalg.cholesky(mat.get()), L, rtol=1e-4, atol=1e-4)
 
 
 def test_qr(app_inst: ArrayApplication):
     real_X, _ = BimodalGaussian.get_dataset(2345, 9)
     X = app_inst.array(real_X, block_shape=(123, 4))
-    Q, R = app_inst.indirect_tsqr(X)
+    Q, R = linalg.indirect_tsqr(app_inst, X)
     assert np.allclose(Q.get() @ R.get(), real_X)
-    Q, R = app_inst.direct_tsqr(X)
+    Q, R = linalg.direct_tsqr(app_inst, X)
     assert np.allclose(Q.get() @ R.get(), real_X)
 
 
 def test_svd(app_inst: ArrayApplication):
     real_X, _ = BimodalGaussian.get_dataset(2345, 9)
     X = app_inst.array(real_X, block_shape=(123, 4))
-    U, S, VT = app_inst.svd(X)
+    U, S, VT = linalg.svd(app_inst, X)
     assert np.allclose((U.get() * S.get()) @ VT.get(), real_X)
 
 
@@ -145,7 +145,7 @@ def test_lr(app_inst: ArrayApplication):
         y = app_inst.array(real_y, block_shape=(15,))
 
         # Direct TSQR LR
-        theta = app_inst.linear_regression(X, y)
+        theta = linalg.linear_regression(app_inst, X, y)
         error = app_inst.sum((((X @ theta) - y)**2)).get()
         if dtype == np.float64:
             assert np.allclose(0, error), error
@@ -154,7 +154,7 @@ def test_lr(app_inst: ArrayApplication):
             assert np.allclose(0, error, rtol=1.e-4, atol=1.e-4), error
 
         # Fast LR
-        theta = app_inst.fast_linear_regression(X, y)
+        theta = linalg.fast_linear_regression(app_inst, X, y)
         error = app_inst.sum((((X @ theta) - y)**2)).get()
         if dtype == np.float64:
             assert np.allclose(0, error), error
@@ -178,8 +178,8 @@ def test_rr(app_inst: ArrayApplication):
 
     X = app_inst.array(real_X, block_shape=(15, 5))
     y = app_inst.array(real_y, block_shape=(15,))
-    theta = app_inst.ridge_regression(X, y, lamb=0.0)
-    robust_theta = app_inst.ridge_regression(X, y, lamb=10000.0)
+    theta = linalg.ridge_regression(app_inst, X, y, lamb=0.0)
+    robust_theta = linalg.ridge_regression(app_inst, X, y, lamb=10000.0)
 
     # Generate a test set to evaluate robustness to outliers.
     test_X, test_y = BimodalGaussian.get_dataset(100, num_features, p=0.5, theta=real_theta)

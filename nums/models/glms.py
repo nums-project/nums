@@ -21,7 +21,7 @@ from nums.core.array import utils as array_utils
 from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray
 from nums.core.array.random import NumsRandomState
-
+from nums.core import linalg
 
 # The GLMs are expressed in the following notation.
 # f(y) = exp((y.T @ theta - b(theta))/phi + c(y, phi))
@@ -367,7 +367,7 @@ def newton(app: ArrayApplication, model: GLM, beta,
         mu: BlockArray = model.forward(X, beta)
         g = model.gradient(X, y, mu, beta=beta)
         # These are PSD, but inv is faster than psd inv.
-        beta += - app.inv(model.hessian(X, y, mu)) @ g
+        beta += - linalg.inv(app, model.hessian(X, y, mu)) @ g
         if app.max(app.abs(g)) <= tol:
             break
     return beta
@@ -382,7 +382,7 @@ def irls(app: ArrayApplication, model: LogisticRegression, beta,
         s = mu * (1 - mu) + 1e-16
         XT_s = (X.T * s)
         # These are PSD, but inv is faster than psd inv.
-        XTsX_inv = app.inv(XT_s @ X)
+        XTsX_inv = linalg.inv(app, XT_s @ X)
         z = eta + (y-mu)/s
         beta = XTsX_inv @ XT_s @ z
         g = model.gradient(X, y, mu, beta)

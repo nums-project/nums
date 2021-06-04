@@ -15,9 +15,10 @@
 
 
 from nums.core.application_manager import instance as _instance
+from nums.core import linalg as linalg
 
 
 def qr(a, mode="reduced"):
     if mode != "reduced":
         raise NotImplementedError("Only reduced QR decomposition is supported.")
-    return _instance().qr(a)
+    return linalg.qr(_instance(), a)
