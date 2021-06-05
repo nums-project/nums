@@ -339,10 +339,10 @@ class ArrayApplication(object):
                                                                     grid_meta,
                                                                     syskwargs=syskwargs)
         elif len(X.shape) == 2:
-            # The main idea in this algorithm is that using find_output_blocks 
-            # we obtain all the relevant blocks which contain the diagonal 
+            # The main idea in this algorithm is that using find_output_blocks
+            # we obtain all the relevant blocks which contain the diagonal
             # of the matrix. Then we obtain the diagonals and combine them
-            # together as one BlockArray using concetenate. 
+            # together as one BlockArray using concetenate.
             out_shape = min(X.shape),
             out_block_shape = min(X.block_shape),
             diag_meta = array_utils.find_output_blocks(X.blocks, out_shape[0])
@@ -355,12 +355,12 @@ class ArrayApplication(object):
                 block_grid = ArrayGrid(result_block_shape, result_block_shape,
                                         X.blocks[block_indices].dtype.__name__)
                 block = BlockArray(block_grid, self.cm)
-                block.blocks[0].oid = self.cm.diag(X.blocks[block_indices].oid, 
+                block.blocks[0].oid = self.cm.diag(X.blocks[block_indices].oid,
                                                  offset, syskwargs=syskwargs)
                 all_result_blocks.append(block)
                 count += 1
             if len(all_result_blocks) > 1:
-                return self.concatenate(all_result_blocks, axis=0, 
+                return self.concatenate(all_result_blocks, axis=0,
                                         axis_block_size=out_block_shape[0])
             return block
         else:
