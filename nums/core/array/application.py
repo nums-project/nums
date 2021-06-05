@@ -282,11 +282,13 @@ class ArrayApplication(object):
                     curr_ba: BlockArray = arrays[i]
                     size = curr_ba.shape[curr_axis]
                     result_size += size
+                # print("Result Block Size {}   Result Size {}".format(result_block_size, result_size))
             else:
                 result_size = first_arr.shape[curr_axis]
                 result_block_size = first_arr.block_shape[curr_axis]
             result_shape.append(result_size)
             result_block_shape.append(result_block_size)
+        # print("Result Shape {}     Result Block Shape {}".format(result_shape, result_block_shape))
         result_shape, result_block_shape = tuple(result_shape), tuple(result_block_shape)
         result_ba = self.empty(result_shape, result_block_shape, first_arr.dtype)
 
@@ -342,37 +344,26 @@ class ArrayApplication(object):
                                                                     grid_meta,
                                                                     syskwargs=syskwargs)
         elif len(X.shape) == 2:
-            shape = min(X.shape),
-            block_shape = min(X.block_shape),
-            grid = ArrayGrid(shape, block_shape, X.dtype.__name__)
-            rarr = BlockArray(grid, self.cm)
-            diagonal, blocks = array_utils.find_output_blocks(X.blocks, shape, block_shape)
+            # The main idea in this algorithm is that using find_output_blocks we obtain all the relevant
+            # blocks which contain the diagonal of the matrix. Then we obtain the diagonals and combine them
+            # together as one BlockArray using concetenate. 
+            out_shape = min(X.shape),
+            out_block_shape = min(X.block_shape),
+            diag_meta = array_utils.find_output_blocks(X.blocks, out_shape, out_block_shape)
 
-            all_result_oids = {}
-            out_grid_shape, count = (len(blocks),), 0
-            for block_indices, offset in blocks:
+            all_result_blocks = []
+            out_grid_shape, count = (len(diag_meta),), 0
+            for block_indices, offset, total_elements in diag_meta:
                 syskwargs = {"grid_entry": (count,) ,"grid_shape": out_grid_shape}
-                all_result_oids[block_indices] = self.cm.diag(X.blocks[block_indices].oid, offset, syskwargs=syskwargs)
+                result_block_shape = total_elements,
+                block_grid = ArrayGrid(result_block_shape, result_block_shape, X.blocks[block_indices].dtype.__name__)
+                block = BlockArray(block_grid, self.cm)
+                block.blocks[0].oid = self.cm.diag(X.blocks[block_indices].oid, offset, syskwargs=syskwargs)
+                all_result_blocks.append(block)
                 count += 1
-
-            
-            grid_i, grid_j = 0, 0
-            for block_no in diagonal:
-                syskwargs = {"grid_entry": (grid_i,) ,"grid_shape": out_grid_shape}
-                blocks = diagonal[block_no]
-                if len(blocks) == 1:
-                    rarr.blocks[(grid_i, )].oid = all_result_oids[list(blocks.keys())[0]]
-                else:
-                    all_oids = [all_result_oids[key] for key in blocks]
-                    src_params, dst_params,total = array_utils.find_slices(blocks)
-                    block_oid = self.cm.create_block(*all_oids, src_params=src_params, 
-                            dst_params=dst_params, dst_shape=(total,), dst_shape_bc=None, syskwargs=syskwargs)
-                    rarr.blocks[(grid_i, )].oid = block_oid
-                if len(out_grid_shape) == 2 and grid_i == out_grid_shape[0] - 1:
-                    grid_i = 0
-                    grid_j += 1
-                else:
-                    grid_i += 1
+            if len(all_result_blocks) > 1:
+                return self.concatenate(all_result_blocks, axis=0, axis_block_size=out_block_shape[0])
+            return block
         else:
             raise ValueError("X must have 1 or 2 axes.")
         return rarr
