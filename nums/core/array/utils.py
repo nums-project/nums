@@ -16,7 +16,6 @@
 
 import itertools
 from typing import Tuple, Iterator
-from collections import OrderedDict
 
 import numpy as np
 import scipy.special
@@ -27,22 +26,20 @@ from nums.core.settings import np_ufunc_map
 # pylint: disable = no-member
 
 
-def find_output_blocks(X_blocks, out_shape, out_block_shape):
+def find_output_blocks(X_blocks, total_elements):
     # Block_i: row index, Block_j: col index, element_i: x index for elements of the block. 
     # element_j: y_index for elements of the block. 
     block_i, block_j, element_i, element_j = 0, 0, 0, 0
 
     # count keeps track of the no of elements found so far. 
-    # total_elements that this diagonal contains
-    count, total_elements = 0, out_shape[0]
+    count = 0
 
     # Block is intialized to be the first block of the entire Blocks array.
     block = X_blocks[(0, 0)]
     
-    # Block no keeps track of the current output block that we are filling in.
     # Diag_meta is an array where each element is the block indices, the offset 
     # where we will begin the diagonal and the total elements we take from the block. 
-    block_no, diag_meta = 1, []
+    diag_meta = 1, []
     while count < total_elements:
         if element_i > block.shape[0] - 1:
             block_i = block_i + 1
