@@ -39,7 +39,7 @@ def find_output_blocks(X_blocks, total_elements):
     
     # Diag_meta is an array where each element is the block indices, the offset 
     # where we will begin the diagonal and the total elements we take from the block. 
-    diag_meta = 1, []
+    diag_meta = []
     while count < total_elements:
         if element_i > block.shape[0] - 1:
             block_i = block_i + 1
