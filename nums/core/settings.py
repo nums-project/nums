@@ -72,7 +72,7 @@ np_bop_reduction_set = {
 # Fallback on NumPy for these operations.
 # This is achieved by converting the block array to a single block, performing the operation,
 # and converting back to the original block shape.
-doctest_fallback = {
+doctest_fallbacks = {
     'argwhere', 'asscalar', 'clip', 'compress', 'convolve', 'corrcoef', 'cumprod',
     'cumproduct', 'cumsum', 'diag_indices_from', 'diagflat', 'fix', 'fromiter', 'full',
     'msort', 'nancumprod', 'nancumsum', 'nanprod', 'partition', 'polysub', 'product',
@@ -81,30 +81,35 @@ doctest_fallback = {
     'tile', 'trapz', 'tri', 'tril', 'tril_indices_from', 'triu', 'triu_indices_from', 'union1d'
 }
 
-manually_tested_fallback = {
-    'cov'
+tested_fallbacks = {
+    'angle', 'append', 'argsort', 'around', 'apply_along_axis', 'apply_over_axes',
+    'bartlett',
+    'cov',
+    'kaiser'
 }
 
-failed_fallback = {
-    'angle', 'append', 'apply_along_axis', 'apply_over_axes', 'argsort', 'around', 'array_split',
-    'argpartition', 'asarray', 'asarray_chkfinite', 'average', 'bartlett', 'bincount', 'blackman',
-    'choose', 'column_stack', 'common_type', 'correlate', 'count_nonzero', 'cov', 'cross', 'delete',
-    'diag_indices', 'diagonal', 'diff', 'digitize', 'divmod', 'dot', 'dsplit', 'dstack', 'ediff1d',
+untested_fallbacks = {
+    'array_split', 'argpartition', 'asarray', 'asarray_chkfinite', 'average',
+    'bincount', 'blackman',
+    'choose', 'common_type', 'correlate', 'count_nonzero', 'cross', 'delete',
+    'diag_indices', 'diagonal', 'diff', 'digitize', 'divmod', 'dot', 'dsplit', 'ediff1d',
     'einsum', 'einsum_path', 'extract', 'fill_diagonal', 'flatnonzero', 'flip', 'fliplr', 'flipud',
     'frexp', 'frombuffer', 'fromfile', 'fromfunction', 'frompyfunc', 'full_like', 'geomspace',
     'gradient', 'hamming', 'hanning', 'histogram', 'histogram2d', 'histogram_bin_edges',
-    'histogramdd', 'hsplit', 'hstack', 'i0', 'imag', 'in1d', 'indices', 'insert', 'interp',
+    'histogramdd', 'hsplit', 'i0', 'imag', 'in1d', 'indices', 'insert', 'interp',
     'intersect1d', 'isclose', 'iscomplex', 'iscomplexobj', 'isin', 'isneginf',
-    'isposinf', 'isreal', 'isrealobj', 'isscalar', 'ix_', 'kaiser', 'kron', 'lexsort',
+    'isposinf', 'isreal', 'isrealobj', 'isscalar', 'ix_', 'kron', 'lexsort',
     'maximum_sctype', 'median', 'meshgrid', 'min_scalar_type', 'mintypecode', 'modf', 'moveaxis',
     'nan_to_num', 'nanargmax', 'nanargmin', 'nanmedian', 'nanpercentile', 'nanquantile', 'nonzero',
     'obj2sctype', 'packbits', 'pad', 'percentile', 'piecewise', 'place', 'poly',
     'polyadd', 'polyder', 'polydiv', 'polyfit', 'polyint', 'polymul', 'polyval', 'prod',
     'promote_types', 'ptp', 'put', 'put_along_axis', 'putmask', 'quantile', 'ravel', 'real',
-    'real_if_close', 'require', 'result_type', 'rollaxis', 'row_stack', 'sctype2char', 'select',
+    'real_if_close', 'require', 'result_type', 'rollaxis', 'sctype2char', 'select',
     'sinc', 'sort', 'stack', 'take', 'take_along_axis', 'trace', 'tril_indices', 'trim_zeros',
     'triu_indices', 'unique', 'unpackbits', 'unravel_index', 'unwrap', 'vander', 'vdot', 'vsplit',
-    'vstack', 'who'
+    'who'
 }
 
-fallback = doctest_fallback | manually_tested_fallback | failed_fallback
+excluded_fallbacks = set()
+assert len(doctest_fallbacks & tested_fallbacks & untested_fallbacks & excluded_fallbacks) == 0
+fallback = doctest_fallbacks | tested_fallbacks | untested_fallbacks

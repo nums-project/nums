@@ -23,12 +23,13 @@ from nums.core.array import utils as array_utils
 from nums.core.array.base import BlockArrayBase, Block
 from nums.core.array.view import ArrayView
 from nums.core.grid.grid import ArrayGrid
+from nums.core.compute.compute_manager import ComputeManager
 
 
 class BlockArray(BlockArrayBase):
 
     @classmethod
-    def empty(cls, shape, block_shape, dtype, cm):
+    def empty(cls, shape, block_shape, dtype, cm: ComputeManager):
         grid = ArrayGrid(shape=shape,
                          block_shape=block_shape,
                          dtype=dtype.__name__)
@@ -44,14 +45,9 @@ class BlockArray(BlockArrayBase):
 
     @classmethod
     def from_scalar(cls, val, cm):
-        if isinstance(val, int):
-            dtype = int
-        elif isinstance(val, float):
-            dtype = float
-        else:
-            assert isinstance(val, (np.int32, np.int64, np.float32, np.float64))
-            dtype = None
-        return BlockArray.from_np(np.array(val, dtype=dtype),
+        if not array_utils.is_scalar(val):
+            raise ValueError("%s is not a scalar." % val)
+        return BlockArray.from_np(np.array(val),
                                   block_shape=(),
                                   copy=False,
                                   cm=cm)
@@ -336,22 +332,26 @@ class BlockArray(BlockArrayBase):
         av: ArrayView = ArrayView.from_block_array(self)
         av[key] = value
 
-    def check_or_convert_other(self, other):
-        if isinstance(other, BlockArray):
-            return other
-        if isinstance(other, np.ndarray):
-            # TODO (MWE): for self.shape (4,) self.block_shape: (1,),
-            #  other.shape: (1, 4) this fails due to a failure to broadcast block shape
-            return self.from_np(other, self.block_shape, False, self.cm)
-        if isinstance(other, list):
-            other = np.array(other)
-            return self.from_np(other, self.block_shape, False, self.cm)
-        if isinstance(other, (np.int32, np.int64, np.float32, np.float64, int, float)):
-            return self.from_scalar(other, self.cm)
-        if isinstance(other, (np.bool, np.bool_, bool)):
-            other = np.array(other)
-            return self.from_np(other, self.block_shape, False, self.cm)
-        raise Exception("Unsupported type %s" % type(other))
+    @staticmethod
+    def to_block_array(obj, cm: ComputeManager, block_shape=None):
+        if isinstance(obj, BlockArray):
+            return obj
+        if isinstance(obj, np.ndarray):
+            np_array = obj
+        elif isinstance(obj, list):
+            np_array = np.array(obj)
+        elif array_utils.is_scalar(obj):
+            return BlockArray.from_scalar(obj, cm)
+        else:
+            raise Exception("Unsupported type %s" % type(obj))
+        if block_shape is None:
+            block_shape = cm.get_block_shape(np_array.shape,
+                                             np_array.dtype)
+        return BlockArray.from_np(np_array, block_shape, False, cm)
+
+    def check_or_convert_other(self, other, compute_block_shape=False):
+        block_shape = None if compute_block_shape else self.block_shape
+        return BlockArray.to_block_array(other, self.cm, block_shape=block_shape)
 
     def ufunc(self, op_name):
         result = self.copy()
@@ -484,7 +484,7 @@ class BlockArray(BlockArrayBase):
                                                other.shape, other.ndim, axes):
             raise ValueError("shape-mismatch for sum")
 
-        other = self.check_or_convert_other(other)
+        other = self.check_or_convert_other(other, compute_block_shape=True)
 
         this_axes = self.grid.grid_shape[:-axes]
         this_sum_axes = self.grid.grid_shape[-axes:]

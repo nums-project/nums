@@ -21,9 +21,9 @@ import numpy as np
 import scipy.special
 
 from nums.core.settings import np_ufunc_map
+from nums.core.array.errors import AxisError
 
-
-# pylint: disable = no-member
+# pylint: disable = no-member, trailing-whitespace
 
 
 def find_output_blocks(X_blocks, total_elements):
@@ -73,6 +73,15 @@ def get_bop_output_type(op_name, dtype_a, dtype_b):
     except Exception as _:
         dtype = scipy.special.__getattribute__(op_name)(a, b).dtype
         return np.__getattribute__(str(dtype))
+
+
+def is_scalar(val):
+    return is_bool(val) or is_uint(val) or is_int(val) or is_float(val) or is_complex(val)
+
+
+def is_bool(val, type_test=False):
+    return is_type(type_test, val,
+                   (bool, np.bool_))
 
 
 def is_uint(val, type_test=False):
@@ -337,3 +346,50 @@ def np_tensordot_param_test(as_, nda, bs, ndb, axes):
         return True
 
     return False
+
+
+# NumPy's internal axis-checking logic
+# https://www.kite.com/python/docs/numpy.core.multiarray.normalize_axis_index
+def normalize_axis_index(axis, ndim):
+    """
+    Parameters
+    ----------
+    axis : int
+        The un-normalized index of the axis. Can be negative
+    ndim : int
+        The number of dimensions of the array that `axis` should be normalized
+        against
+
+    Returns
+    -------
+    normalized_axis : int
+        The normalized axis index, such that `0 <= normalized_axis < ndim`
+
+    Raises
+    ------
+    AxisError
+        If the axis index is invalid, when `-ndim <= axis < ndim` is false.
+
+    Examples
+    --------
+    >>> normalize_axis_index(0, ndim=3)
+    0
+    >>> normalize_axis_index(1, ndim=3)
+    1
+    >>> normalize_axis_index(-1, ndim=3)
+    2
+
+    >>> normalize_axis_index(3, ndim=3)
+    Traceback (most recent call last):
+    ...
+    AxisError: axis 3 is out of bounds for array of dimension 3
+    >>> normalize_axis_index(-4, ndim=3, msg_prefix='axes_arg')
+    Traceback (most recent call last):
+    ...
+    AxisError: axes_arg: axis -4 is out of bounds for array of dimension 3
+    """
+
+    if -ndim > axis >= ndim:
+        raise AxisError("axis {} is out of bounds for array of dimension {}".format(axis, ndim))
+
+    return axis % ndim
