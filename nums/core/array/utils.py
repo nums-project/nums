@@ -138,6 +138,8 @@ def broadcastable(a_shape, b_shape, a_block_shape, b_block_shape):
         return False
     if len(a_shape) == len(b_shape):
         return a_block_shape == b_block_shape
+    if a_shape == a_block_shape == () or b_shape == b_block_shape == ():
+        return True
 
     min_bs, max_bs = sorted([a_block_shape, b_block_shape], key=len)
     for i in range(-1, -len(max_bs) - 1, -1):

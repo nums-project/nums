@@ -160,6 +160,10 @@ def test_broadcast_block_shape_error(nps_app_inst):
     nps_B = nps.random.randn(20)
     check_value_error(nps_A, nps_B, _a_blockshape=(10, 10))
 
+    nps_A = nps.random.randn(20, 20)
+    nps_B = nps.random.randn(20, 1)
+    check_value_error(nps_A, nps_B, _a_blockshape=(10, 10))
+
     nps_A = nps.random.randn(20, 20, 20)
     nps_B = nps.random.randn(20, 20, 20)
     check_value_error(nps_A, nps_B, _a_blockshape=(10, 10, 10), _b_blockshape=(2, 2, 2))
