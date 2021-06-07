@@ -221,6 +221,38 @@ class ComputeCls(ComputeImp):
             arr = arr.T
         return np.split(arr, indices_or_sections, axis)
 
+    def size(self, arr):
+        return arr.size
+
+    def select_median(self, arr):
+        """Find value closest to median as part of quickselect algorithm."""
+        if arr.size == 0:
+            return 0 # Dummy value that has no effect on weighted median.
+        index = arr.size // 2
+        return np.partition(arr, index)[index]
+
+    def weighted_median(self, *arr_and_weights):
+        """Find the weighted median of arr."""
+        mid = len(arr_and_weights) // 2
+        arr, weights = arr_and_weights[:mid], arr_and_weights[mid:]
+        argsorted_arr = np.argsort(arr)
+        sorted_weights_sum = np.cumsum(np.take(weights, argsorted_arr))
+        half = sorted_weights_sum[-1] / 2
+        return arr[argsorted_arr[np.searchsorted(sorted_weights_sum, half)]]
+
+    def less_than(self, arr, pivot):
+        """Return subarrays of elements less than `pivot`."""
+        if arr.size == 0:
+            return arr, 0
+        less = arr[np.where(arr < pivot)]
+        return less, less.size
+
+    def greater_than(self, arr, pivot):
+        if arr.size == 0:
+            return arr, 0
+        greater = arr[np.where(arr > pivot)]
+        return greater, greater.size
+
     def bop(self, op, a1, a2, a1_T, a2_T, axes):
         if a1_T:
             a1 = a1.T

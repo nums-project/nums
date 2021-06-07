@@ -550,6 +550,63 @@ class ArrayApplication(object):
                 result_arrays.append(axis_result)
             return tuple(result_arrays)
 
+    def quickselect(self,
+                    arr_oids: List[np.object],
+                    kth: int):
+        """Find the k-th smallest element in a distributed 1D array in O(n) time.
+
+        Args:
+            arr_oids: Flattened list of oids for array objects.
+            kth: Index of the element (in ascending order) to select.
+
+        Returns:
+            Value of the k-th smallest element.
+        """
+        num_arrs = len(arr_oids)
+
+        # Compute weighted median of medians (wmm).
+        m_oids, s_oids = [], []
+        for i, arr_oid in enumerate(arr_oids):
+            syskwargs = {
+                "grid_entry": (i,),
+                "grid_shape": (num_arrs,),
+                "options": {"num_returns": 1}
+            }
+            m_oids.append(self.cm.select_median(arr_oid, syskwargs=syskwargs))
+            s_oids.append(self.cm.size(arr_oid, syskwargs=syskwargs))
+        ms_oids = m_oids + s_oids
+        device_0 = self.cm.system.devices()[0]
+        wmm_oid = self.cm.system.call("weighted_median", ms_oids, {}, device_0, {})
+
+        # Partition using wmm as pivot.
+        ls_oids, ls_size_oids = [], []
+        gr_oids, gr_size_oids = [], []
+        for i, arr_oid in enumerate(arr_oids):
+            syskwargs = {
+                "grid_entry": (i,),
+                "grid_shape": (num_arrs,),
+                "options": {"num_returns": 2}
+            }
+            ls_oid, ls_size_oid = self.cm.less_than(arr_oid, wmm_oid, syskwargs=syskwargs)
+            ls_oids.append(ls_oid)
+            ls_size_oids.append(ls_size_oid)
+            gr_oid, gr_size_oid = self.cm.greater_than(arr_oid, wmm_oid, syskwargs=syskwargs)
+            gr_oids.append(gr_oid)
+            gr_size_oids.append(gr_size_oid)
+
+        # Branch and recurse based on partition sizes.
+        total_size = sum(self.cm.get(s) for s in s_oids)
+        assert -total_size <= kth and kth < total_size, "kth must be a valid index for arr."
+        if kth < 0:
+            kth += total_size
+        ls_size = sum(self.cm.get(s) for s in ls_size_oids)
+        if kth < ls_size:
+            return self.quickselect(ls_oids, kth)
+        gr_size = sum(self.cm.get(s) for s in gr_size_oids)
+        if kth >= total_size - gr_size:
+            return self.quickselect(gr_oids, kth - (total_size - gr_size))
+        return self.cm.get(wmm_oid)
+
     def map_uop(self,
                 op_name: str,
                 arr: BlockArray,

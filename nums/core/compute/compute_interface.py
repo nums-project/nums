@@ -58,6 +58,21 @@ class ComputeInterface(object):
     def split(self, arr, indices_or_sections, axis, transposed, syskwargs: Dict):
         raise NotImplementedError()
 
+    def size(self, arr, syskwargs: Dict):
+        raise NotImplementedError()
+
+    def select_median(self, arr, syskwargs: Dict):
+        raise NotImplementedError()
+
+    def weighted_median(self, *arr_and_weights, syskwargs: Dict):
+        raise NotImplementedError()
+
+    def less_than(self, arr, pivot, syskwargs: Dict):
+        raise NotImplementedError()
+
+    def greater_than(self, arr, pivot, syskwargs: Dict):
+        raise NotImplementedError()
+
     @method_meta(num_returns=2)
     def qr(self, *arrays, mode="reduced", axis=None, syskwargs: Dict):
         raise NotImplementedError()
