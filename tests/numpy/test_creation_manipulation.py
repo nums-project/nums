@@ -15,7 +15,6 @@
 
 
 import numpy as np
-import time
 import pytest
 
 from nums.numpy import BlockArray
@@ -142,7 +141,7 @@ def test_trace(nps_app_inst):
     np_arr = ba.get()
     ba = nps.trace(ba)
     np_arr = np.trace(np_arr)
-    
+
     assert np.allclose(ba.get(), np_arr)
 
 
