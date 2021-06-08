@@ -26,7 +26,7 @@ from nums.core.array.errors import AxisError
 # pylint: disable = no-member, trailing-whitespace
 
 
-def find_output_blocks(X_blocks, total_elements):
+def find_diag_output_blocks(X_blocks, total_elements):
     # Block_i: row index, Block_j: col index, element_i: x index for elements of the block. 
     # element_j: y_index for elements of the block. 
     block_i, block_j, element_i, element_j = 0, 0, 0, 0

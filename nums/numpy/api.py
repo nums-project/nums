@@ -93,7 +93,7 @@ int64 = np.int64
 float16 = np.float16
 float32 = np.float32
 float64 = np.float64
-float128 = np.float128
+# float128 = np.float128
 
 complex64 = np.complex64
 complex128 = np.complex128

@@ -15,6 +15,7 @@
 
 
 import numpy as np
+import time
 import pytest
 
 from nums.numpy import BlockArray
@@ -78,6 +79,17 @@ def test_diag(nps_app_inst):
     ba = nps.diag(ba)
     np_arr = np.diag(np_arr)
     assert np.allclose(ba.get(), np_arr)
+    # Tests all combinations of sizes and block sizes in the range 1 to 4
+    for i in range(1, 4):
+        for j in range(1, 4):
+            for k in range(1, i + 1):
+                for l in range(1, j + 1):
+                    ba: BlockArray = nps.array(np.full((i, j), 1))
+                    ba = ba.reshape(block_shape=(k, l))
+                    np_arr = ba.get()
+                    ba = nps.diag(ba)
+                    np_arr = np.diag(np_arr)
+                    assert np.allclose(ba.get(), np_arr)
 
 def test_trace(nps_app_inst):
     import nums.numpy as nps
@@ -123,6 +135,15 @@ def test_trace(nps_app_inst):
 
     assert np.allclose(mat_diag_trace, mat_diag_np_trace)
     assert mat_diag_trace.dtype == int
+
+    # Test trace on non-square matrices
+    ba: BlockArray = nps.array(np.full((10, 12), 1))
+    ba = ba.reshape(block_shape=(3, 4))
+    np_arr = ba.get()
+    ba = nps.trace(ba)
+    np_arr = np.trace(np_arr)
+    
+    assert np.allclose(ba.get(), np_arr)
 
 
 def test_arange(nps_app_inst):

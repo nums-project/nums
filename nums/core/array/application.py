@@ -345,24 +345,25 @@ class ArrayApplication(object):
             # together as one BlockArray using concetenate.
             out_shape = min(X.shape),
             out_block_shape = min(X.block_shape),
-            diag_meta = array_utils.find_output_blocks(X.blocks, out_shape[0])
+            diag_meta = array_utils.find_diag_output_blocks(X.blocks, out_shape[0])
 
-            all_result_blocks = []
-            out_grid_shape, count = (len(diag_meta),), 0
+            output_block_arrays = []
+            out_grid_shape = (len(diag_meta),)
+            count = 0
             for block_indices, offset, total_elements in diag_meta:
                 syskwargs = {"grid_entry": (count,) ,"grid_shape": out_grid_shape}
                 result_block_shape = total_elements,
                 block_grid = ArrayGrid(result_block_shape, result_block_shape,
                                         X.blocks[block_indices].dtype.__name__)
-                block = BlockArray(block_grid, self.cm)
-                block.blocks[0].oid = self.cm.diag(X.blocks[block_indices].oid,
+                block_array = BlockArray(block_grid, self.cm)
+                block_array.blocks[0].oid = self.cm.diag(X.blocks[block_indices].oid,
                                                  offset, syskwargs=syskwargs)
-                all_result_blocks.append(block)
+                output_block_arrays.append(block_array)
                 count += 1
-            if len(all_result_blocks) > 1:
-                return self.concatenate(all_result_blocks, axis=0,
+            if len(output_block_arrays) > 1:
+                return self.concatenate(output_block_arrays, axis=0,
                                         axis_block_size=out_block_shape[0])
-            return block
+            return output_block_arrays[0]
         else:
             raise ValueError("X must have 1 or 2 axes.")
         return rarr
