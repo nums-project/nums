@@ -27,18 +27,22 @@ from nums.core.array.errors import AxisError
 
 
 def find_diag_output_blocks(X_blocks, total_elements):
-    # Block_i: row index, Block_j: col index, element_i: x index for elements of the block. 
-    # element_j: y_index for elements of the block. 
-    block_i, block_j, element_i, element_j = 0, 0, 0, 0
+    # The i,j entry corresponding to a block in X_blocks.
+    block_i, block_j = 0, 0
+
+    # The i,j entry within the current block.
+    element_i, element_j = 0, 0
 
     # Keep track of the no of elements found so far.
     count = 0
-
+    
+    # Start at block 0,0.
     block = X_blocks[(0, 0)]
 
-    # An array where each element is the block indices, the offset 
-    # where we will begin the diagonal and the total elements we take from the block.
+    # Each element contains block indices, diag offset, 
+    # and the total elements required from the block.
     diag_meta = []
+
     while count < total_elements:
         if element_i > block.shape[0] - 1:
             block_i = block_i + 1
