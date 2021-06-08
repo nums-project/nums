@@ -341,10 +341,12 @@ class ArrayApplication(object):
         elif len(X.shape) == 2:
             out_shape = min(X.shape),
             out_block_shape = min(X.block_shape),
+             # Obtain the block indices which contain the diagonal of the matrix.
             diag_meta = array_utils.find_diag_output_blocks(X.blocks, out_shape[0])
             output_block_arrays = []
             out_grid_shape = (len(diag_meta),)
             count = 0
+            # Obtain the diagonals.
             for block_indices, offset, total_elements in diag_meta:
                 syskwargs = {"grid_entry": (count,) ,"grid_shape": out_grid_shape}
                 result_block_shape = total_elements,
@@ -356,6 +358,7 @@ class ArrayApplication(object):
                 output_block_arrays.append(block_array)
                 count += 1
             if len(output_block_arrays) > 1:
+                # If there are multiple blocks, concatenate them.
                 return self.concatenate(output_block_arrays, axis=0,
                                         axis_block_size=out_block_shape[0])
             return output_block_arrays[0]
