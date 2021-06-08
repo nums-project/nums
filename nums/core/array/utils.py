@@ -31,14 +31,13 @@ def find_diag_output_blocks(X_blocks, total_elements):
     # element_j: y_index for elements of the block. 
     block_i, block_j, element_i, element_j = 0, 0, 0, 0
 
-    # count keeps track of the no of elements found so far. 
+    # Keep track of the no of elements found so far.
     count = 0
 
-    # Block is intialized to be the first block of the entire Blocks array.
     block = X_blocks[(0, 0)]
-    
-    # Diag_meta is an array where each element is the block indices, the offset 
-    # where we will begin the diagonal and the total elements we take from the block. 
+
+    # An array where each element is the block indices, the offset 
+    # where we will begin the diagonal and the total elements we take from the block.
     diag_meta = []
     while count < total_elements:
         if element_i > block.shape[0] - 1:
