@@ -21,7 +21,7 @@ from nums.core.array import utils as array_utils
 from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray
 from nums.core.array.random import NumsRandomState
-
+from nums.core import linalg
 
 # The GLMs are expressed in the following notation.
 # f(y) = exp((y.T @ theta - b(theta))/phi + c(y, phi))
@@ -61,18 +61,17 @@ from nums.core.array.random import NumsRandomState
 
 
 class GLM(object):
-    def __init__(
-        self,
-        penalty="none",
-        C=1.0,
-        tol=0.0001,
-        max_iter=100,
-        solver="newton-cg",
-        lr=0.01,
-        random_state=None,
-        fit_intercept=True,
-        normalize=False,
-    ):
+
+    def __init__(self,
+                 penalty='none',
+                 C=1.0,
+                 tol=0.0001,
+                 max_iter=100,
+                 solver="newton-cg",
+                 lr=0.01,
+                 random_state=None,
+                 fit_intercept=True,
+                 normalize=False):
 
         if fit_intercept is False:
             raise NotImplementedError("fit_incercept=False currently not supported.")
@@ -83,16 +82,12 @@ class GLM(object):
         if random_state is None:
             self.rs: NumsRandomState = self._app.random
         elif array_utils.is_int(random_state):
-            self.rs: NumsRandomState = NumsRandomState(
-                cm=self._app.cm, seed=random_state
-            )
+            self.rs: NumsRandomState = NumsRandomState(cm=self._app.cm, seed=random_state)
         elif isinstance(random_state, NumsRandomState):
             self.rs: NumsRandomState = random_state
         else:
-            raise Exception(
-                "Unexpected type for random_state %s" % str(type(random_state))
-            )
-        self._penalty = None if penalty == "none" else penalty
+            raise Exception("Unexpected type for random_state %s" % str(type(random_state)))
+        self._penalty = None if penalty == 'none' else penalty
         if not (self._penalty is None or self._penalty == "l2"):
             raise NotImplementedError("%s penalty not supported" % self._penalty)
         self._lambda = 1.0 / C
@@ -111,28 +106,19 @@ class GLM(object):
         # by referencing X's existing blocks.
         # TODO: Option to do concat.
         # TODO: Provide support for batching.
-        X = self._app.concatenate(
-            [
-                X,
-                self._app.ones(
-                    shape=(X.shape[0], 1),
-                    block_shape=(X.block_shape[0], 1),
-                    dtype=X.dtype,
-                ),
-            ],
-            axis=1,
-            axis_block_size=X.block_shape[1],
-        )
+        X = self._app.concatenate([X, self._app.ones(shape=(X.shape[0], 1),
+                                                     block_shape=(X.block_shape[0], 1),
+                                                     dtype=X.dtype)],
+                                  axis=1,
+                                  axis_block_size=X.block_shape[1])
         assert len(X.shape) == 2 and len(y.shape) == 1
-        beta: BlockArray = self._app.zeros(
-            (X.shape[1],), (X.block_shape[1],), dtype=X.dtype
-        )
+        beta: BlockArray = self._app.zeros((X.shape[1],), (X.block_shape[1],), dtype=X.dtype)
         tol: BlockArray = self._app.scalar(self._tol)
         max_iter: int = self._max_iter
         if self._penalty == "l2":
-            self._lambda_vec = (
-                self._app.ones(beta.shape, beta.block_shape, beta.dtype) * self._lambda
-            )
+            self._lambda_vec = self._app.ones(beta.shape,
+                                              beta.block_shape,
+                                              beta.dtype) * self._lambda
         if self._opt == "gd" or self._opt == "sgd" or self._opt == "block_sgd":
             lr: BlockArray = self._app.scalar(self._lr)
             if self._opt == "gd":
@@ -170,13 +156,8 @@ class GLM(object):
     def objective(self, X: BlockArray, y: BlockArray, beta=None):
         raise NotImplementedError()
 
-    def gradient(
-        self,
-        X: BlockArray,
-        y: BlockArray,
-        mu: BlockArray = None,
-        beta: BlockArray = None,
-    ):
+    def gradient(self, X: BlockArray, y: BlockArray,
+                 mu: BlockArray = None, beta: BlockArray = None):
         # gradient w.r.t. beta.
         raise NotImplementedError()
 
@@ -210,15 +191,10 @@ class LinearRegression(GLM):
     def objective(self, X: BlockArray, y: BlockArray, beta=None):
         assert beta is not None or self._beta is not None
         mu = self.forward(X, beta)
-        return self._app.sum((y - mu) ** self._app.two)
+        return self._app.sum((y-mu)**self._app.two)
 
-    def gradient(
-        self,
-        X: BlockArray,
-        y: BlockArray,
-        mu: BlockArray = None,
-        beta: BlockArray = None,
-    ):
+    def gradient(self, X: BlockArray, y: BlockArray,
+                 mu: BlockArray = None, beta: BlockArray = None):
         if mu is None:
             mu = self.forward(X)
         return X.T @ (mu - y)
@@ -234,6 +210,7 @@ class LinearRegression(GLM):
 
 
 class LogisticRegression(GLM):
+
     def link_inv(self, eta: BlockArray):
         return self._app.one / (self._app.one + self._app.exp(-eta))
 
@@ -241,15 +218,10 @@ class LogisticRegression(GLM):
         assert beta is not None or self._beta is not None
         log, one = self._app.log, self._app.one
         mu = self.forward(X, beta)
-        return -self._app.sum(y * log(mu) + (one - y) * log(one - mu))
+        return - self._app.sum(y * log(mu) + (one - y) * log(one - mu))
 
-    def gradient(
-        self,
-        X: BlockArray,
-        y: BlockArray,
-        mu: BlockArray = None,
-        beta: BlockArray = None,
-    ):
+    def gradient(self, X: BlockArray, y: BlockArray,
+                 mu: BlockArray = None, beta: BlockArray = None):
         if mu is None:
             mu = self.forward(X)
         if self._penalty is None:
@@ -275,14 +247,13 @@ class LogisticRegression(GLM):
         return (self.forward(X) > 0.5).astype(np.int)
 
     def predict_proba(self, X: BlockArray) -> BlockArray:
-        y_pos = self.forward(X).reshape(
-            (X.shape[0], 1), block_shape=(X.block_shape[0], 1)
-        )
+        y_pos = self.forward(X).reshape((X.shape[0], 1), block_shape=(X.block_shape[0], 1))
         y_neg = 1 - y_pos
         return self._app.concatenate([y_pos, y_neg], axis=1, axis_block_size=2)
 
 
 class PoissonRegression(GLM):
+
     def link_inv(self, eta: BlockArray):
         return self._app.exp(eta)
 
@@ -294,13 +265,8 @@ class PoissonRegression(GLM):
         mu = self._app.exp(eta)
         return self._app.sum(mu - y * eta)
 
-    def gradient(
-        self,
-        X: BlockArray,
-        y: BlockArray,
-        mu: BlockArray = None,
-        beta: BlockArray = None,
-    ):
+    def gradient(self, X: BlockArray, y: BlockArray,
+                 mu: BlockArray = None, beta: BlockArray = None):
         if mu is None:
             mu = self.forward(X)
         return X.T @ (mu - y)
@@ -312,9 +278,7 @@ class PoissonRegression(GLM):
         return (X.T * mu) @ X
 
     def deviance(self, y: BlockArray, y_pred: BlockArray) -> BlockArray:
-        return self._app.sum(
-            self._app.two * self._app.xlogy(y, y / y_pred) - y + y_pred
-        )
+        return self._app.sum(self._app.two * self._app.xlogy(y, y / y_pred) - y + y_pred)
 
     def predict(self, X: BlockArray) -> BlockArray:
         return self.forward(X)
@@ -333,13 +297,8 @@ class ExponentialRegression(GLM):
     def objective(self, X: BlockArray, y: BlockArray, beta=None):
         raise NotImplementedError()
 
-    def gradient(
-        self,
-        X: BlockArray,
-        y: BlockArray,
-        mu: BlockArray = None,
-        beta: BlockArray = None,
-    ):
+    def gradient(self, X: BlockArray, y: BlockArray,
+                 mu: BlockArray = None, beta: BlockArray = None):
         raise NotImplementedError()
 
     def hessian(self, X: BlockArray, y: BlockArray, mu: BlockArray = None):
@@ -354,39 +313,27 @@ def line_search():
     raise NotImplementedError()
 
 
-def sgd(
-    model: GLM,
-    beta,
-    X: BlockArray,
-    y: BlockArray,
-    tol: BlockArray,
-    max_iter: int,
-    lr: BlockArray,
-):
+def sgd(model: GLM, beta,
+        X: BlockArray, y: BlockArray,
+        tol: BlockArray, max_iter: int, lr: BlockArray):
     # Classic SGD.
     app = _instance()
     for _ in range(max_iter):
         # Sample an entry uniformly at random.
         idx = model.rs.numpy().integers(X.shape[0])
-        X_sample, y_sample = X[idx : idx + 1], y[idx : idx + 1]
+        X_sample, y_sample = X[idx:idx+1], y[idx:idx+1]
         mu = model.forward(X_sample, beta)
         g = model.gradient(X_sample, y_sample, mu, beta=beta)
-        beta += -lr * g
+        beta += - lr * g
         if app.max(app.abs(g)) <= tol:
             # sklearn uses max instead of l2 norm.
             break
     return beta
 
 
-def block_sgd(
-    model: GLM,
-    beta,
-    X: BlockArray,
-    y: BlockArray,
-    tol: BlockArray,
-    max_iter: int,
-    lr: BlockArray,
-):
+def block_sgd(model: GLM, beta,
+              X: BlockArray, y: BlockArray,
+              tol: BlockArray, max_iter: int, lr: BlockArray):
     # SGD with batches equal to block shape along first axis.
     app = _instance()
     for _ in range(max_iter):
@@ -394,67 +341,49 @@ def block_sgd(
             X_batch, y_batch = X[start:stop], y[start:stop]
             mu = model.forward(X_batch, beta)
             g = model.gradient(X_batch, y_batch, mu, beta=beta)
-            beta += -lr * g
+            beta += - lr * g
             if app.max(app.abs(g)) <= tol:
                 break
     return beta
 
 
-def gd(
-    model: GLM,
-    beta,
-    X: BlockArray,
-    y: BlockArray,
-    tol: BlockArray,
-    max_iter: int,
-    lr: BlockArray,
-):
+def gd(model: GLM, beta,
+       X: BlockArray, y: BlockArray,
+       tol: BlockArray, max_iter: int, lr: BlockArray):
     app = _instance()
     for _ in range(max_iter):
         mu = model.forward(X, beta)
         g = model.gradient(X, y, mu, beta=beta)
-        beta += -lr * g
+        beta += - lr * g
         if app.max(app.abs(g)) <= tol:
             break
     return beta
 
 
-def newton(
-    app: ArrayApplication,
-    model: GLM,
-    beta,
-    X: BlockArray,
-    y: BlockArray,
-    tol: BlockArray,
-    max_iter: int,
-):
+def newton(app: ArrayApplication, model: GLM, beta,
+           X: BlockArray, y: BlockArray,
+           tol: BlockArray, max_iter: int):
     for _ in range(max_iter):
         mu: BlockArray = model.forward(X, beta)
         g = model.gradient(X, y, mu, beta=beta)
         # These are PSD, but inv is faster than psd inv.
-        beta += -app.inv(model.hessian(X, y, mu)) @ g
+        beta += - linalg.inv(app, model.hessian(X, y, mu)) @ g
         if app.max(app.abs(g)) <= tol:
             break
     return beta
 
 
-def irls(
-    app: ArrayApplication,
-    model: LogisticRegression,
-    beta,
-    X: BlockArray,
-    y: BlockArray,
-    tol: BlockArray,
-    max_iter: int,
-):
+def irls(app: ArrayApplication, model: LogisticRegression, beta,
+         X: BlockArray, y: BlockArray,
+         tol: BlockArray, max_iter: int):
     for _ in range(max_iter):
         eta: BlockArray = X @ beta
         mu: BlockArray = model.link_inv(eta)
         s = mu * (1 - mu) + 1e-16
-        XT_s = X.T * s
+        XT_s = (X.T * s)
         # These are PSD, but inv is faster than psd inv.
-        XTsX_inv = app.inv(XT_s @ X)
-        z = eta + (y - mu) / s
+        XTsX_inv = linalg.inv(app, XT_s @ X)
+        z = eta + (y-mu)/s
         beta = XTsX_inv @ XT_s @ z
         g = model.gradient(X, y, mu, beta)
         if app.max(app.abs(g)) <= tol:

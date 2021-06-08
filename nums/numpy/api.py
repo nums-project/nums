@@ -319,6 +319,26 @@ def atleast_3d(*arys):
     return _instance().atleast_3d(*arys)
 
 
+def hstack(tup):
+    return _instance().hstack(tup)
+
+
+def vstack(tup):
+    return _instance().vstack(tup)
+
+
+def dstack(tup):
+    return _instance().dstack(tup)
+
+
+def row_stack(tup):
+    return _instance().row_stack(tup)
+
+
+def column_stack(tup):
+    return _instance().column_stack(tup)
+
+
 ############################################
 # Manipulation Ops
 ############################################
