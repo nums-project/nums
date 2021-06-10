@@ -794,11 +794,10 @@ class Reshape(object):
     def _strip_ones(self, shape):
         return tuple(filter(lambda x: x != 1, shape))
 
-    def _is_simple_reshape(self, arr: BlockArray, shape, block_shape):
+    def _is_simple_reshape(self, arr: BlockArray, shape):
         # Is the reshape a difference of factors of 1?
         # Strip out 1s and compare.
-        return (self._strip_ones(shape) == self._strip_ones(arr.shape) and
-                self._strip_ones(block_shape) == self._strip_ones(arr.block_shape))
+        return self._strip_ones(shape) == self._strip_ones(arr.shape)
 
     def _simple_reshape(self, arr, shape, block_shape):
         # Reshape the array of blocks only.
@@ -832,10 +831,10 @@ class Reshape(object):
         self._validate(arr, shape, block_shape)
         if arr.shape == shape and arr.block_shape == block_shape:
             return arr
-        elif self._is_simple_reshape(arr, shape, block_shape):
-            return self._simple_reshape(arr, shape, block_shape)
         elif arr.shape == shape and arr.block_shape != block_shape:
             return self._block_shape_reshape(arr, block_shape)
+        elif self._is_simple_reshape(arr, shape):
+            return self._simple_reshape(arr, shape, block_shape)
         elif arr.shape != shape and arr.block_shape == block_shape:
             # Just do full reshape for this case as well.
             # Though there may be a better solution, we generally expect
