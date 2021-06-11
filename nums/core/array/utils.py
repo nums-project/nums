@@ -45,32 +45,29 @@ def get_bop_output_type(op_name, dtype_a, dtype_b):
 
 
 def is_scalar(val):
-    return is_bool(val) or is_uint(val) or is_int(val) or is_float(val) or is_complex(val)
+    return (
+        is_bool(val) or is_uint(val) or is_int(val) or is_float(val) or is_complex(val)
+    )
 
 
 def is_bool(val, type_test=False):
-    return is_type(type_test, val,
-                   (bool, np.bool_))
+    return is_type(type_test, val, (bool, np.bool_))
 
 
 def is_uint(val, type_test=False):
-    return is_type(type_test, val,
-                   (np.uint, np.uint8, np.uint16, np.uint32, np.uint64))
+    return is_type(type_test, val, (np.uint, np.uint8, np.uint16, np.uint32, np.uint64))
 
 
 def is_int(val, type_test=False):
-    return is_type(type_test, val,
-                   (int, np.int8, np.int16, np.int32, np.int64))
+    return is_type(type_test, val, (int, np.int8, np.int16, np.int32, np.int64))
 
 
 def is_float(val, type_test=False):
-    return is_type(type_test, val,
-                   (float, np.float16, np.float32, np.float64))
+    return is_type(type_test, val, (float, np.float16, np.float32, np.float64))
 
 
 def is_complex(val, type_test=False):
-    return is_type(type_test, val,
-                   (np.complex64, np.complex128))
+    return is_type(type_test, val, (np.complex64, np.complex128))
 
 
 def is_type(type_test, val, types):
@@ -151,7 +148,9 @@ def broadcast_shape_to_alt(from_shape, to_shape):
     to_num_axes = len(to_shape)
     result_shape = []
     if to_num_axes < from_num_axes:
-        raise ValueError("Input shape has more dimensions than allowed by the axis remapping.")
+        raise ValueError(
+            "Input shape has more dimensions than allowed by the axis remapping."
+        )
     if to_num_axes == 0 and from_shape != 0:
         raise ValueError("Cannot broadcast non-scalar shape to scalar shape ().")
     from_shape_r = list(reversed(from_shape))
@@ -163,7 +162,9 @@ def broadcast_shape_to_alt(from_shape, to_shape):
         elif to_dim == from_dim:
             result_shape.append(to_dim)
         else:
-            raise ValueError("Cannot broadcast %s to %s." % (str(from_shape), str(to_shape)))
+            raise ValueError(
+                "Cannot broadcast %s to %s." % (str(from_shape), str(to_shape))
+            )
     return tuple(reversed(result_shape + to_shape_r[from_num_axes:]))
 
 
@@ -203,9 +204,9 @@ def get_slices(total_size, batch_size, order, reverse_blocks=False):
 
 
 class OrderedGrid(object):
-
-    def __init__(self, shape: Tuple, block_shape: Tuple, order: Tuple,
-                 block_order=None):
+    def __init__(
+        self, shape: Tuple, block_shape: Tuple, order: Tuple, block_order=None
+    ):
         if block_order is not None:
             assert len(block_order) == len(shape)
         self.shape = tuple(shape)
@@ -226,8 +227,9 @@ class OrderedGrid(object):
         self.grid_shape = tuple(self.grid_shape)
         # Assumes C-style ordering.
         # We add len(shape) to allow for axis consisting of the actual slices.
-        self.slices = np.array(list(itertools.product(*self.grid_slices)),
-                               dtype=slice).reshape(tuple(list(self.grid_shape) + [len(shape)]))
+        self.slices = np.array(
+            list(itertools.product(*self.grid_slices)), dtype=slice
+        ).reshape(tuple(list(self.grid_shape) + [len(shape)]))
 
     def index_iterator(self) -> Iterator[Tuple]:
         if 0 in self.shape:
@@ -359,6 +361,8 @@ def normalize_axis_index(axis, ndim):
     """
 
     if -ndim > axis >= ndim:
-        raise AxisError("axis {} is out of bounds for array of dimension {}".format(axis, ndim))
+        raise AxisError(
+            "axis {} is out of bounds for array of dimension {}".format(axis, ndim)
+        )
 
     return axis % ndim

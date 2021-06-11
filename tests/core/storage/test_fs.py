@@ -33,27 +33,47 @@ def test_loadtxt(app_inst: ArrayApplication):
     header = ["field1", "field2", "field3"]
     data = rs.random_sample(99).reshape(33, 3)
 
-    np.savetxt(fname=fname,
-               X=data,
-               fmt='%.18e',
-               delimiter=',',
-               newline='\n',
-               header=",".join(header),
-               footer='',
-               comments='# ',
-               encoding=None)
+    np.savetxt(
+        fname=fname,
+        X=data,
+        fmt="%.18e",
+        delimiter=",",
+        newline="\n",
+        header=",".join(header),
+        footer="",
+        comments="# ",
+        encoding=None,
+    )
 
     np_loaded_data = np.loadtxt(
-        fname, dtype=float, comments='# ', delimiter=',',
-        converters=None, skiprows=0, usecols=None, unpack=False,
-        ndmin=0, encoding='bytes', max_rows=None)
+        fname,
+        dtype=float,
+        comments="# ",
+        delimiter=",",
+        converters=None,
+        skiprows=0,
+        usecols=None,
+        unpack=False,
+        ndmin=0,
+        encoding="bytes",
+        max_rows=None,
+    )
 
     assert np.allclose(data, np_loaded_data)
 
     nums_array = app_inst.loadtxt(
-        fname, dtype=float, comments='# ', delimiter=',',
-        converters=None, skiprows=0, usecols=None, unpack=False,
-        ndmin=0, encoding='bytes', max_rows=None)
+        fname,
+        dtype=float,
+        comments="# ",
+        delimiter=",",
+        converters=None,
+        skiprows=0,
+        usecols=None,
+        unpack=False,
+        ndmin=0,
+        encoding="bytes",
+        max_rows=None,
+    )
 
     np.allclose(data, nums_array.get())
 

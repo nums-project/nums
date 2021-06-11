@@ -31,28 +31,40 @@ def mock_device_ids(num_nodes):
 
 
 def test_bounds():
-    grid: ArrayGrid = ArrayGrid(shape=(2, 6, 10), block_shape=(1, 2, 5), dtype="float32")
+    grid: ArrayGrid = ArrayGrid(
+        shape=(2, 6, 10), block_shape=(1, 2, 5), dtype="float32"
+    )
     for cluster_shape in [(1,), (1, 1), (1, 1, 1), (1, 1, 1, 1)]:
-        cyclic_grid: CyclicDeviceGrid = CyclicDeviceGrid(cluster_shape, "cpu", mock_device_ids(1))
-        packed_grid: PackedDeviceGrid = PackedDeviceGrid(cluster_shape, "cpu", mock_device_ids(1))
+        cyclic_grid: CyclicDeviceGrid = CyclicDeviceGrid(
+            cluster_shape, "cpu", mock_device_ids(1)
+        )
+        packed_grid: PackedDeviceGrid = PackedDeviceGrid(
+            cluster_shape, "cpu", mock_device_ids(1)
+        )
         for grid_entry in grid.get_entry_iterator():
             cluster_entry = cyclic_grid.get_cluster_entry(grid_entry, grid.grid_shape)
-            assert cluster_entry == tuple([0]*len(cyclic_grid.grid_shape))
+            assert cluster_entry == tuple([0] * len(cyclic_grid.grid_shape))
             cluster_entry = packed_grid.get_cluster_entry(grid_entry, grid.grid_shape)
-            assert cluster_entry == tuple([0]*len(packed_grid.grid_shape))
+            assert cluster_entry == tuple([0] * len(packed_grid.grid_shape))
 
 
 def test_computations():
-    grid: ArrayGrid = ArrayGrid(shape=(2, 6, 10), block_shape=(1, 2, 5), dtype="float32")
-    cluster_shapes = list(itertools.product(list(range(1, 5)),
-                                            list(range(1, 7)),
-                                            list(range(1, 11))))
+    grid: ArrayGrid = ArrayGrid(
+        shape=(2, 6, 10), block_shape=(1, 2, 5), dtype="float32"
+    )
+    cluster_shapes = list(
+        itertools.product(list(range(1, 5)), list(range(1, 7)), list(range(1, 11)))
+    )
     for cluster_shape in cluster_shapes:
         device_ids = mock_device_ids(int(np.product(cluster_shape)))
-        cyclic_grid: CyclicDeviceGrid = CyclicDeviceGrid(cluster_shape, "cpu", device_ids)
+        cyclic_grid: CyclicDeviceGrid = CyclicDeviceGrid(
+            cluster_shape, "cpu", device_ids
+        )
         for grid_entry in grid.get_entry_iterator():
             cluster_entry = cyclic_grid.get_cluster_entry(grid_entry, grid.grid_shape)
-            assert cluster_entry == tuple(np.array(grid_entry) % np.array(cluster_shape))
+            assert cluster_entry == tuple(
+                np.array(grid_entry) % np.array(cluster_shape)
+            )
 
     def true_packed_entry(grid_entry, grid_shape, cluster_shape):
         grid_entry = np.array(grid_entry)
@@ -64,16 +76,22 @@ def test_computations():
 
     for cluster_shape in cluster_shapes:
         device_ids = mock_device_ids(int(np.product(cluster_shape)))
-        packed_grid: PackedDeviceGrid = PackedDeviceGrid(cluster_shape, "cpu", device_ids)
+        packed_grid: PackedDeviceGrid = PackedDeviceGrid(
+            cluster_shape, "cpu", device_ids
+        )
         for grid_entry in grid.get_entry_iterator():
             cluster_entry = packed_grid.get_cluster_entry(grid_entry, grid.grid_shape)
-            assert cluster_entry == true_packed_entry(grid_entry, grid.grid_shape, cluster_shape)
+            assert cluster_entry == true_packed_entry(
+                grid_entry, grid.grid_shape, cluster_shape
+            )
 
 
 def test_errors():
     cluster_shape = (1, 2, 3)
     device_ids = mock_device_ids(int(np.product(cluster_shape)))
-    grid: ArrayGrid = ArrayGrid(shape=(8, 20, 12), block_shape=(2, 5, 3), dtype="float32")
+    grid: ArrayGrid = ArrayGrid(
+        shape=(8, 20, 12), block_shape=(2, 5, 3), dtype="float32"
+    )
     packed_grid: PackedDeviceGrid = PackedDeviceGrid(cluster_shape, "cpu", device_ids)
 
     grid_shape = grid.grid_shape
@@ -91,7 +109,9 @@ def test_errors():
 def test_device_id():
     cluster_shape = (1, 2, 3)
     device_ids = mock_device_ids(int(np.product(cluster_shape)))
-    grid: ArrayGrid = ArrayGrid(shape=(8, 20, 12), block_shape=(2, 5, 3), dtype="float32")
+    grid: ArrayGrid = ArrayGrid(
+        shape=(8, 20, 12), block_shape=(2, 5, 3), dtype="float32"
+    )
 
     # A basic smoke test.
     device_ids: List[DeviceID] = mock_device_ids(int(np.product(cluster_shape)))
@@ -107,6 +127,7 @@ def test_device_id():
     for grid_entry in grid.get_entry_iterator():
         touched_devices.add(packed_grid.get_device_id(grid_entry, grid.grid_shape))
     assert len(touched_devices) == len(device_ids)
+
 
 if __name__ == "__main__":
     test_bounds()

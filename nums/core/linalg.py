@@ -42,32 +42,36 @@ def indirect_tsr(app: ArrayApplication, X: BlockArray, reshape_output=True):
         row = []
         for j in range(grid_shape[1]):
             row.append(X.blocks[i, j].oid)
-        R_oids.append(app.cm.qr(*row,
-                                mode="r",
-                                axis=1,
-                                syskwargs={
-                                    "grid_entry": (i, 0),
-                                    "grid_shape": (grid_shape[0], 1),
-                                    "options": {"num_returns": 1}
-                                })
-                      )
+        R_oids.append(
+            app.cm.qr(
+                *row,
+                mode="r",
+                axis=1,
+                syskwargs={
+                    "grid_entry": (i, 0),
+                    "grid_shape": (grid_shape[0], 1),
+                    "options": {"num_returns": 1},
+                }
+            )
+        )
 
     # Construct R by summing over R blocks.
     # TODO (hme): Communication may be inefficient due to redundancy of data.
     R_shape = (shape[1], shape[1])
     R_block_shape = (block_shape[1], block_shape[1])
-    tsR = BlockArray(ArrayGrid(shape=R_shape,
-                               block_shape=R_shape,
-                               dtype=X.dtype.__name__),
-                     app.cm)
-    tsR.blocks[0, 0].oid = app.cm.qr(*R_oids,
-                                     mode="r",
-                                     axis=0,
-                                     syskwargs={
-                                         "grid_entry": (0, 0),
-                                         "grid_shape": (1, 1),
-                                         "options": {"num_returns": 1}
-                                     })
+    tsR = BlockArray(
+        ArrayGrid(shape=R_shape, block_shape=R_shape, dtype=X.dtype.__name__), app.cm
+    )
+    tsR.blocks[0, 0].oid = app.cm.qr(
+        *R_oids,
+        mode="r",
+        axis=0,
+        syskwargs={
+            "grid_entry": (0, 0),
+            "grid_shape": (1, 1),
+            "options": {"num_returns": 1},
+        }
+    )
     # If blocking is "tall-skinny," then we're done.
     if R_shape != R_block_shape:
         if reshape_output:
@@ -128,46 +132,52 @@ def direct_tsqr(app: ArrayApplication, X, reshape_output=True):
         Q2_shape[0] += K
         # Run each row on separate nodes along first axis.
         # This maintains some data locality.
-        Q_oid, R_oid = app.cm.qr(*row,
-                                 mode="reduced",
-                                 axis=1,
-                                 syskwargs={
-                                     "grid_entry": (i, 0),
-                                     "grid_shape": (grid_shape[0], 1),
-                                     "options": {"num_returns": 2}
-                                 })
+        Q_oid, R_oid = app.cm.qr(
+            *row,
+            mode="reduced",
+            axis=1,
+            syskwargs={
+                "grid_entry": (i, 0),
+                "grid_shape": (grid_shape[0], 1),
+                "options": {"num_returns": 2},
+            }
+        )
         R_oids.append(R_oid)
         Q_oids.append(Q_oid)
 
     # TODO (hme): This pulls several order N^2 R matrices on a single node.
     #  A solution is the recursive extension to direct TSQR.
-    Q2_oid, R2_oid = app.cm.qr(*R_oids,
-                               mode="reduced",
-                               axis=0,
-                               syskwargs={
-                                   "grid_entry": (0, 0),
-                                   "grid_shape": (1, 1),
-                                   "options": {"num_returns": 2}
-                               })
+    Q2_oid, R2_oid = app.cm.qr(
+        *R_oids,
+        mode="reduced",
+        axis=0,
+        syskwargs={
+            "grid_entry": (0, 0),
+            "grid_shape": (1, 1),
+            "options": {"num_returns": 2},
+        }
+    )
 
     Q2_shape = tuple(Q2_shape)
     Q2_block_shape = (QR_dims[0][1][0], shape[1])
-    Q2 = app.vec_from_oids([Q2_oid],
-                           shape=Q2_shape,
-                           block_shape=Q2_block_shape,
-                           dtype=X.dtype)
+    Q2 = app.vec_from_oids(
+        [Q2_oid], shape=Q2_shape, block_shape=Q2_block_shape, dtype=X.dtype
+    )
     # The resulting Q's from this operation are N^2 (same size as above R's).
     Q2_oids = list(map(lambda block: block.oid, Q2.blocks.flatten()))
 
     # Construct Q.
-    Q = app.zeros(shape=shape,
-                  block_shape=(block_shape[0], shape[1]),
-                  dtype=X.dtype)
+    Q = app.zeros(shape=shape, block_shape=(block_shape[0], shape[1]), dtype=X.dtype)
     for i, grid_entry in enumerate(Q.grid.get_entry_iterator()):
-        Q.blocks[grid_entry].oid = app.cm.bop("tensordot", Q_oids[i], Q2_oids[i],
-                                              a1_T=False, a2_T=False, axes=1,
-                                              syskwargs={"grid_entry": grid_entry,
-                                                         "grid_shape": Q.grid.grid_shape})
+        Q.blocks[grid_entry].oid = app.cm.bop(
+            "tensordot",
+            Q_oids[i],
+            Q2_oids[i],
+            a1_T=False,
+            a2_T=False,
+            axes=1,
+            syskwargs={"grid_entry": grid_entry, "grid_shape": Q.grid.grid_shape},
+        )
 
     # Construct R.
     shape = X.shape
@@ -197,9 +207,9 @@ def svd(app: ArrayApplication, X):
     R_block_shape = (block_shape[1], block_shape[1])
     Q, R = direct_tsqr(app, X, reshape_output=False)
     assert R.shape == R.block_shape
-    R_U, S, VT = app.cm.svd(R.blocks[(0, 0)].oid,
-                            syskwargs={"grid_entry": (0, 0),
-                                       "grid_shape": (1, 1)})
+    R_U, S, VT = app.cm.svd(
+        R.blocks[(0, 0)].oid, syskwargs={"grid_entry": (0, 0), "grid_shape": (1, 1)}
+    )
     R_U: BlockArray = app.vec_from_oids([R_U], R_shape, R_block_shape, X.dtype)
     S: BlockArray = app.vec_from_oids([S], R_shape[:1], R_block_shape[:1], X.dtype)
     VT = app.vec_from_oids([VT], R_shape, R_block_shape, X.dtype)
@@ -218,11 +228,9 @@ def inv(app: ArrayApplication, X: BlockArray):
         result = X.copy()
     else:
         result = X.reshape(block_shape=X.shape)
-    result.blocks[0, 0].oid = app.cm.inv(result.blocks[0, 0].oid,
-                                         syskwargs={
-                                             "grid_entry": (0, 0),
-                                             "grid_shape": (1, 1)
-                                         })
+    result.blocks[0, 0].oid = app.cm.inv(
+        result.blocks[0, 0].oid, syskwargs={"grid_entry": (0, 0), "grid_shape": (1, 1)}
+    )
     if not single_block:
         result = result.reshape(block_shape=block_shape)
     return result
@@ -243,11 +251,9 @@ def cholesky(app: ArrayApplication, X: BlockArray):
         result = X.copy()
     else:
         result = X.reshape(block_shape=X.shape)
-    result.blocks[0, 0].oid = app.cm.cholesky(result.blocks[0, 0].oid,
-                                              syskwargs={
-                                                  "grid_entry": (0, 0),
-                                                  "grid_shape": (1, 1)
-                                              })
+    result.blocks[0, 0].oid = app.cm.cholesky(
+        result.blocks[0, 0].oid, syskwargs={"grid_entry": (0, 0), "grid_shape": (1, 1)}
+    )
     if not single_block:
         result = result.reshape(block_shape=block_shape)
     return result

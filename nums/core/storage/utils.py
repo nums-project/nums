@@ -54,7 +54,7 @@ class Batch(object):
             return [[0, total_size]]
         batches = list(range(0, total_size, batch_size))
         num_batches = int(total_size / batch_size)
-        batches = [batches[i:i + 2] for i in range(0, num_batches, 1)]
+        batches = [batches[i : i + 2] for i in range(0, num_batches, 1)]
         if len(batches[-1]) == 1:
             batches[-1].append(total_size)
         if batches[-1][1] != total_size:
@@ -74,7 +74,7 @@ def reverse_readline(filename, buf_size=8192):
             fh.seek(file_size - offset)
             buffer = fh.read(min(remaining_size, buf_size))
             remaining_size -= buf_size
-            lines = buffer.split('\n')
+            lines = buffer.split("\n")
             # The first line of the buffer is probably not a complete line so
             # we'll save it and append it to the last line of the next buffer
             # we read.
@@ -82,7 +82,7 @@ def reverse_readline(filename, buf_size=8192):
                 # If the previous chunk starts right from the beginning of line
                 # do not concat the segment to the last line of new chunk.
                 # Instead, yield the segment first.
-                if buffer[-1] != '\n':
+                if buffer[-1] != "\n":
                     lines[-1] += segment
                 else:
                     yield segment
