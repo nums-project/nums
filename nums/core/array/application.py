@@ -362,35 +362,41 @@ class ArrayApplication(object):
                 syskwargs = {"grid_entry": grid_entry, "grid_shape": grid.grid_shape}
                 if np.all(np.diff(grid_entry) == 0):
                     # This is a diagonal block.
-                    rarr.blocks[grid_entry].oid = self.cm.diag(X.blocks[grid_entry[0]].oid, 0,
-                                                               syskwargs=syskwargs)
+                    rarr.blocks[grid_entry].oid = self.cm.diag(
+                        X.blocks[grid_entry[0]].oid, 0, syskwargs=syskwargs
+                    )
                 else:
                     rarr.blocks[grid_entry].oid = self.cm.new_block(
                         "zeros", grid_entry, grid_meta, syskwargs=syskwargs
                     )
         elif len(X.shape) == 2:
-            out_shape = min(X.shape),
-            out_block_shape = min(X.block_shape),
-             # Obtain the block indices which contain the diagonal of the matrix.
+            out_shape = (min(X.shape),)
+            out_block_shape = (min(X.block_shape),)
+            # Obtain the block indices which contain the diagonal of the matrix.
             diag_meta = array_utils.find_diag_output_blocks(X.blocks, out_shape[0])
             output_block_arrays = []
             out_grid_shape = (len(diag_meta),)
             count = 0
             # Obtain the diagonals.
             for block_indices, offset, total_elements in diag_meta:
-                syskwargs = {"grid_entry": (count,) ,"grid_shape": out_grid_shape}
-                result_block_shape = total_elements,
-                block_grid = ArrayGrid(result_block_shape, result_block_shape,
-                                        X.blocks[block_indices].dtype.__name__)
+                syskwargs = {"grid_entry": (count,), "grid_shape": out_grid_shape}
+                result_block_shape = (total_elements,)
+                block_grid = ArrayGrid(
+                    result_block_shape,
+                    result_block_shape,
+                    X.blocks[block_indices].dtype.__name__,
+                )
                 block_array = BlockArray(block_grid, self.cm)
-                block_array.blocks[0].oid = self.cm.diag(X.blocks[block_indices].oid,
-                                                 offset, syskwargs=syskwargs)
+                block_array.blocks[0].oid = self.cm.diag(
+                    X.blocks[block_indices].oid, offset, syskwargs=syskwargs
+                )
                 output_block_arrays.append(block_array)
                 count += 1
             if len(output_block_arrays) > 1:
                 # If there are multiple blocks, concatenate them.
-                return self.concatenate(output_block_arrays, axis=0,
-                                        axis_block_size=out_block_shape[0])
+                return self.concatenate(
+                    output_block_arrays, axis=0, axis_block_size=out_block_shape[0]
+                )
             return output_block_arrays[0]
         else:
             raise ValueError("X must have 1 or 2 axes.")
