@@ -370,9 +370,7 @@ class ArrayApplication(object):
                         "zeros", grid_entry, grid_meta, syskwargs=syskwargs
                     )
         elif len(X.shape) == 2:
-            out_shape = (min(X.shape),)
-            out_block_shape = (min(X.block_shape),)
-            # Obtain the block indices which contain the diagonal of the matrix.
+
             def find_diag_output_blocks(X: BlockArray, total_elements: int):
                 # The i,j entry corresponding to a block in X_blocks.
                 block_i, block_j = 0, 0
@@ -411,6 +409,10 @@ class ArrayApplication(object):
                     )
                     element_j = element_j + total_elements_block
                 return diag_meta
+
+            out_shape = (min(X.shape),)
+            out_block_shape = (min(X.block_shape),)
+            # Obtain the block indices which contain the diagonal of the matrix.
 
             diag_meta = find_diag_output_blocks(X, out_shape[0])
             output_block_arrays = []
