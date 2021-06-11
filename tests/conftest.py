@@ -35,6 +35,7 @@ def nps_app_inst(request):
     from nums.core import settings
     from nums.core import application_manager
     import nums.numpy as nps
+
     settings.system_name, settings.device_grid_name = request.param
 
     # Need to reset numpy random state.
@@ -62,7 +63,9 @@ def app_inst_s3(request):
     ray.shutdown()
 
 
-@pytest.fixture(scope="module", params=[("serial", "cyclic"), ("ray", "cyclic"), ("ray", "packed")])
+@pytest.fixture(
+    scope="module", params=[("serial", "cyclic"), ("ray", "cyclic"), ("ray", "packed")]
+)
 def app_inst_all(request):
     # pylint: disable=protected-access
     app_inst = get_app(*request.param)
@@ -84,9 +87,13 @@ def get_app(system_name, device_grid_name="cyclic"):
 
     cluster_shape = (1, 1)
     if device_grid_name == "cyclic":
-        device_grid: DeviceGrid = CyclicDeviceGrid(cluster_shape, "cpu", system.devices())
+        device_grid: DeviceGrid = CyclicDeviceGrid(
+            cluster_shape, "cpu", system.devices()
+        )
     elif device_grid_name == "packed":
-        device_grid: DeviceGrid = PackedDeviceGrid(cluster_shape, "cpu", system.devices())
+        device_grid: DeviceGrid = PackedDeviceGrid(
+            cluster_shape, "cpu", system.devices()
+        )
     else:
         raise Exception("Unexpected device grid name %s" % device_grid_name)
 

@@ -35,10 +35,11 @@ def _init():
     for name, func in system_utils.get_module_functions(np).items():
         if name not in globals():
             # TODO(mwe): Allow failed fallback functions to be used in default function doctests
-            if hasattr(np, func.__name__) and \
-                    func.__name__ in (settings.doctest_fallbacks
-                                      | settings.tested_fallbacks
-                                      | settings.untested_fallbacks):
+            if hasattr(np, func.__name__) and func.__name__ in (
+                settings.doctest_fallbacks
+                | settings.tested_fallbacks
+                | settings.untested_fallbacks
+            ):
                 globals()[name] = _default_to_numpy(func)
             else:
                 globals()[name] = _not_implemented(func)

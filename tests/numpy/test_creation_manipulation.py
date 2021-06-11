@@ -90,6 +90,7 @@ def test_diag(nps_app_inst):
                     np_arr = np.diag(np_arr)
                     assert np.allclose(ba.get(), np_arr)
 
+
 def test_trace(nps_app_inst):
     import nums.numpy as nps
 
@@ -121,7 +122,7 @@ def test_trace(nps_app_inst):
         nps.trace(mat)
 
     # Test that trace raises when called with non-zero offset.
-    mat:  BlockArray = nps.array([1.0, 2.0, 3.0, 4.0])
+    mat: BlockArray = nps.array([1.0, 2.0, 3.0, 4.0])
     mat_diag = nps.diag(mat)
     with pytest.raises(NotImplementedError):
         nps.trace(mat_diag, offset=2)
@@ -192,6 +193,7 @@ def test_func_space(nps_app_inst):
     np_arr = np.logspace(12.3, 45.6, 23)
     assert np.allclose(ba.get(), np_arr)
 
+
 def test_shape(nps_app_inst):
     from nums import numpy as nps
     from nums.core import application_manager
@@ -203,10 +205,10 @@ def test_shape(nps_app_inst):
     ns_ins = application_manager.instance()
 
     def check_expand_and_squeeze(_np_a, axes):
-        np_expand_dims = np.__getattribute__('expand_dims')
-        ns_expand_dims = nps.__getattribute__('expand_dims')
-        np_squeeze = np.__getattribute__('squeeze')
-        ns_squeeze = nps.__getattribute__('squeeze')
+        np_expand_dims = np.__getattribute__("expand_dims")
+        ns_expand_dims = nps.__getattribute__("expand_dims")
+        np_squeeze = np.__getattribute__("squeeze")
+        ns_squeeze = nps.__getattribute__("squeeze")
 
         _ns_a = nps.array(_np_a)
         _ns_ins_a = ns_ins.array(_np_a, block_shape=block_shape)
@@ -228,13 +230,13 @@ def test_shape(nps_app_inst):
         check_dim(_np_result, _ns_ins_result)
 
     def check_dim(_np_a, _ns_a):
-        np_ndim = np.__getattribute__('ndim')
+        np_ndim = np.__getattribute__("ndim")
         assert np_ndim(_np_a) == np_ndim(_ns_a)
 
     def check_swapaxes(_np_a, axis1, axis2):
         ns_ins = application_manager.instance()
-        np_swapaxes = np.__getattribute__('swapaxes')
-        ns_swapaxes = nps.__getattribute__('swapaxes')
+        np_swapaxes = np.__getattribute__("swapaxes")
+        ns_swapaxes = nps.__getattribute__("swapaxes")
 
         _ns_a = nps.array(_np_a)
         _ns_ins_a = ns_ins.array(_np_a, block_shape=block_shape)
@@ -258,8 +260,10 @@ def test_shape(nps_app_inst):
         for a2 in range(4):
             check_swapaxes(np_A, axis1=a1, axis2=a2)
 
+
 if __name__ == "__main__":
     from nums.core import application_manager
+
     nps_app_inst = application_manager.instance()
     test_basic_creation(nps_app_inst)
     test_eye(nps_app_inst)

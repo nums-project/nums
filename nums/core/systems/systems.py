@@ -27,7 +27,6 @@ from nums.core import settings
 
 
 class SerialSystem(SystemInterface):
-
     def __init__(self):
         self._remote_functions: dict = {}
 
@@ -106,9 +105,11 @@ class RaySystem(SystemInterface):
                 self._available_nodes.append(node)
         if self._head_node is None:
             if self._use_head:
-                logging.getLogger(__name__).warning("Failed to determine which node is the head."
-                                                    " The head node will be used even though"
-                                                    " nums.core.settings.use_head = False.")
+                logging.getLogger(__name__).warning(
+                    "Failed to determine which node is the head."
+                    " The head node will be used even though"
+                    " nums.core.settings.use_head = False."
+                )
         elif self._use_head and self._has_cpu_resources(self._head_node):
             total_cpus += self._head_node["Resources"]["CPU"]
             self._available_nodes.append(self._head_node)
@@ -154,6 +155,7 @@ class RaySystem(SystemInterface):
             def warmup_func(n):
                 # pylint: disable=import-outside-toplevel
                 import random
+
                 r = ray.remote(num_cpus=1)(lambda x, y: x + y).remote
                 for _ in range(n):
                     _a = random.randint(0, 1000)
@@ -183,14 +185,16 @@ class RaySystem(SystemInterface):
             node_key = self._node_key(node)
             if "resources" in options:
                 assert node_key not in options
-            options["resources"] = {node_key: 1.0/10**4}
+            options["resources"] = {node_key: 1.0 / 10 ** 4}
         return self._remote_functions[name].options(**options).remote(*args, **kwargs)
 
     def devices(self):
         return self._devices
 
     def num_cores_total(self):
-        num_cores = sum(map(lambda n: n["Resources"]["CPU"], self._device_to_node.values()))
+        num_cores = sum(
+            map(lambda n: n["Resources"]["CPU"], self._device_to_node.values())
+        )
         return int(num_cores)
 
 
@@ -199,6 +203,7 @@ class RaySystemStockScheduler(RaySystem):
     An implementation of the Ray system which ignores scheduling commands given
     by the caller. For testing only.
     """
+
     def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
         if device_id is not None:
             node = self._device_to_node[device_id]
