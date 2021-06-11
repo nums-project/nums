@@ -373,7 +373,46 @@ class ArrayApplication(object):
             out_shape = (min(X.shape),)
             out_block_shape = (min(X.block_shape),)
             # Obtain the block indices which contain the diagonal of the matrix.
-            diag_meta = array_utils.find_diag_output_blocks(X.blocks, out_shape[0])
+            def find_diag_output_blocks(X: BlockArray, total_elements: int):
+                # The i,j entry corresponding to a block in X_blocks.
+                block_i, block_j = 0, 0
+
+                # The i,j entry within the current block.
+                element_i, element_j = 0, 0
+
+                # Keep track of the no of elements found so far.
+                count = 0
+
+                # Start at block 0,0.
+                block = X.blocks[(0, 0)]
+
+                # Each element contains block indices, diag offset,
+                # and the total elements required from the block.
+                diag_meta = []
+
+                while count < total_elements:
+                    if element_i > block.shape[0] - 1:
+                        block_i = block_i + 1
+                        element_i = 0
+                    if element_j > block.shape[1] - 1:
+                        block_j = block_j + 1
+                        element_j = 0
+
+                    block = X.blocks[(block_i, block_j)]
+                    block_rows, block_cols = block.shape[0], block.shape[1]
+                    offset = -element_i if element_i > element_j else element_j
+                    total_elements_block = (
+                        min(block_rows - 1 - element_i, block_cols - 1 - element_j) + 1
+                    )
+                    diag_meta.append(((block_i, block_j), offset, total_elements_block))
+                    count, element_i = (
+                        count + total_elements_block,
+                        element_i + total_elements_block,
+                    )
+                    element_j = element_j + total_elements_block
+                return diag_meta
+
+            diag_meta = find_diag_output_blocks(X, out_shape[0])
             output_block_arrays = []
             out_grid_shape = (len(diag_meta),)
             count = 0

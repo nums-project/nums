@@ -26,46 +26,6 @@ from nums.core.array.errors import AxisError
 # pylint: disable = no-member, trailing-whitespace
 
 
-def find_diag_output_blocks(X_blocks, total_elements):
-    # The i,j entry corresponding to a block in X_blocks.
-    block_i, block_j = 0, 0
-
-    # The i,j entry within the current block.
-    element_i, element_j = 0, 0
-
-    # Keep track of the no of elements found so far.
-    count = 0
-
-    # Start at block 0,0.
-    block = X_blocks[(0, 0)]
-
-    # Each element contains block indices, diag offset,
-    # and the total elements required from the block.
-    diag_meta = []
-
-    while count < total_elements:
-        if element_i > block.shape[0] - 1:
-            block_i = block_i + 1
-            element_i = 0
-        if element_j > block.shape[1] - 1:
-            block_j = block_j + 1
-            element_j = 0
-
-        block = X_blocks[(block_i, block_j)]
-        block_rows, block_cols = block.shape[0], block.shape[1]
-        offset = -element_i if element_i > element_j else element_j
-        total_elements_block = (
-            min(block_rows - 1 - element_i, block_cols - 1 - element_j) + 1
-        )
-        diag_meta.append(((block_i, block_j), offset, total_elements_block))
-        count, element_i = (
-            count + total_elements_block,
-            element_i + total_elements_block,
-        )
-        element_j = element_j + total_elements_block
-    return diag_meta
-
-
 def get_uop_output_type(op_name, dtype):
     a = np.array(1, dtype=dtype)
     result_dtype = np.__getattribute__(op_name)(a).dtype
