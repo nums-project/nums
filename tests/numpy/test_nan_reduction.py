@@ -34,13 +34,8 @@ def test_nan_reductions(nps_app_inst):
 
     assert nps_app_inst is not None
 
-    ba: BlockArray = nps.array([[-1, 4, np.nan, 5],
-                                [3, 2, nps.nan, 6]])
-    block_shapes = [(1, 1),
-                    (1, 2),
-                    (1, 4),
-                    (2, 1),
-                    (2, 4)]
+    ba: BlockArray = nps.array([[-1, 4, np.nan, 5], [3, 2, nps.nan, 6]])
+    block_shapes = [(1, 1), (1, 2), (1, 4), (2, 1), (2, 4)]
     for block_shape in block_shapes:
         ba = ba.reshape(block_shape=block_shape)
         np_arr = ba.get()
@@ -48,7 +43,9 @@ def test_nan_reductions(nps_app_inst):
         axis_params = [None, 0, 1]
         keepdims_params = [True, False]
 
-        for op, axis, keepdims in itertools.product(op_params, axis_params, keepdims_params):
+        for op, axis, keepdims in itertools.product(
+            op_params, axis_params, keepdims_params
+        ):
             ns_op = nps.__getattribute__(op)
             np_op = np.__getattribute__(op)
             np_result = np_op(np_arr, axis=axis, keepdims=keepdims)
@@ -61,6 +58,7 @@ def test_nan_reductions(nps_app_inst):
 if __name__ == "__main__":
     from nums.core import application_manager
     import nums.core.settings
+
     nums.core.settings.system_name = "serial"
     nps_app_inst = application_manager.instance()
     test_nan_reductions(nps_app_inst)

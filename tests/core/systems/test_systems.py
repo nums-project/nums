@@ -32,7 +32,9 @@ def test_warmup(app_inst_all: ArrayApplication):
 
 
 def test_block_grid_entry(app_inst_all: ArrayApplication):
-    ba: BlockArray = app_inst_all.array(np.array([[1, 2, 3], [4, 5, 6]]), block_shape=(1, 3))
+    ba: BlockArray = app_inst_all.array(
+        np.array([[1, 2, 3], [4, 5, 6]]), block_shape=(1, 3)
+    )
     block1: Block = ba.T.blocks[0, 1]
     assert block1.size() == 3
     assert block1.transposed

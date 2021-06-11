@@ -21,3 +21,19 @@ jobs:
         run: |
           pylint nums
           pylint tests
+  black:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: Install NumS
+        run: |
+          python3 -m pip install --upgrade pip
+          pip3 install .[testing]
+      - name: Run black
+        run: |
+          black --check nums
+          black --check tests

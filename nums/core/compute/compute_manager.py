@@ -41,14 +41,18 @@ class ComputeManager(ComputeInterface):
     def create(cls, system: SystemInterface, compute_module, device_grid: DeviceGrid):
         if cls.instance is not None:
             raise Exception()
-        cls.instance: ComputeManager = ComputeManager(system, compute_module, device_grid)
+        cls.instance: ComputeManager = ComputeManager(
+            system, compute_module, device_grid
+        )
         return cls.instance
 
     @classmethod
     def destroy(cls):
         cls.instance = None
 
-    def __init__(self, system: SystemInterface, compute_module, device_grid: DeviceGrid):
+    def __init__(
+        self, system: SystemInterface, compute_module, device_grid: DeviceGrid
+    ):
         self.system: SystemInterface = system
         self.device_grid: DeviceGrid = device_grid
         self.rng_cls = None
@@ -62,15 +66,19 @@ class ComputeManager(ComputeInterface):
         # Check that all of kernel interface is implemented.
         systems_utils.check_implementation(ComputeInterface, compute_imp)
         if getattr(compute_module, "RNG", None) is None:
-            raise Exception("No random number generator implemented "
-                            "for compute module %s" % str(compute_module))
+            raise Exception(
+                "No random number generator implemented "
+                "for compute module %s" % str(compute_module)
+            )
         self.rng_cls = compute_module.RNG
 
         # Collect implemented module functions.
         module_functions = systems_utils.extract_functions(compute_imp)
         # Collect function signatures.
         function_signatures: dict = {}
-        required_methods = inspect.getmembers(ComputeInterface(), predicate=inspect.ismethod)
+        required_methods = inspect.getmembers(
+            ComputeInterface(), predicate=inspect.ismethod
+        )
         for name, func in required_methods:
             function_signatures[name] = func
         for name, func in module_functions.items():
@@ -91,6 +99,7 @@ class ComputeManager(ComputeInterface):
     def get_callable(self, name: str):
         def new_func(*args, **kwargs):
             return self.call(name, *args, **kwargs)
+
         return new_func
 
     def __getattribute__(self, name: str):
@@ -127,7 +136,7 @@ class ComputeManager(ComputeInterface):
             device_id: DeviceID = self.device_grid.get_device_id(grid_entry, grid_shape)
         elif "device_id" in syskwargs:
             assert "grid_entry" not in syskwargs and "grid_sape" not in syskwargs
-            device_id: DeviceID = syskwargs['device_id']
+            device_id: DeviceID = syskwargs["device_id"]
         else:
             raise Exception("All calls require device_id or grid_entry and grid_shape.")
         if "options" in syskwargs:
@@ -152,15 +161,15 @@ class ComputeManager(ComputeInterface):
     #########################
 
     @staticmethod
-    def compute_block_shape_static(shape: tuple,
-                                   dtype: Union[type, np.dtype],
-                                   cluster_shape: tuple,
-                                   num_cores: int):
+    def compute_block_shape_static(
+        shape: tuple, dtype: Union[type, np.dtype], cluster_shape: tuple, num_cores: int
+    ):
         # TODO (hme): This should also compute parameters for DeviceGrid.
         if array_utils.is_float(dtype, type_test=True):
             dtype = np.finfo(dtype).dtype
-        elif array_utils.is_int(dtype, type_test=True) \
-                or array_utils.is_uint(dtype, type_test=True):
+        elif array_utils.is_int(dtype, type_test=True) or array_utils.is_uint(
+            dtype, type_test=True
+        ):
             dtype = np.iinfo(dtype).dtype
         elif array_utils.is_complex(dtype, type_test=True):
             dtype = np.dtype(dtype)
@@ -178,7 +187,7 @@ class ComputeManager(ComputeInterface):
             return block_shape
 
         if len(shape) < len(cluster_shape):
-            cluster_shape = cluster_shape[:len(shape)]
+            cluster_shape = cluster_shape[: len(shape)]
         elif len(shape) > len(cluster_shape):
             cluster_shape = list(cluster_shape)
             for axis in range(len(shape)):
@@ -188,7 +197,9 @@ class ComputeManager(ComputeInterface):
 
         shape_np = np.array(shape, dtype=int)
         # Softmax on cluster shape gives strong preference to larger dimensions.
-        cluster_weights = np.exp(np.array(cluster_shape)) / np.sum(np.exp(cluster_shape))
+        cluster_weights = np.exp(np.array(cluster_shape)) / np.sum(
+            np.exp(cluster_shape)
+        )
         shape_fracs = np.array(shape) / np.sum(shape)
         # cluster_weights weight the proportion of cores available along each axis,
         # and shape_fracs is the proportion of data along each axis.
@@ -209,11 +220,13 @@ class ComputeManager(ComputeInterface):
         block_shape = tuple((shape_np + grid_shape - 1) // grid_shape)
         return block_shape
 
-    def compute_block_shape(self,
-                            shape: tuple,
-                            dtype: Union[type, np.dtype],
-                            cluster_shape=None,
-                            num_cores=None):
+    def compute_block_shape(
+        self,
+        shape: tuple,
+        dtype: Union[type, np.dtype],
+        cluster_shape=None,
+        num_cores=None,
+    ):
 
         if num_cores is None:
             num_cores = self.num_cores_total()
@@ -221,7 +234,9 @@ class ComputeManager(ComputeInterface):
         if cluster_shape is None:
             cluster_shape = self.device_grid.grid_shape
 
-        return ComputeManager.compute_block_shape_static(shape, dtype, cluster_shape, num_cores)
+        return ComputeManager.compute_block_shape_static(
+            shape, dtype, cluster_shape, num_cores
+        )
 
     def get_block_shape(self, shape, dtype):
         # Simple way to ensure shape compatibility for basic linear algebra operations.

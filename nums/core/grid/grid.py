@@ -25,7 +25,6 @@ from nums.core.storage.utils import Batch
 
 
 class ArrayGrid(object):
-
     @classmethod
     def from_meta(cls, d: dict):
         return cls(**d)
@@ -52,7 +51,7 @@ class ArrayGrid(object):
         return {
             "shape": self.shape,
             "block_shape": self.block_shape,
-            "dtype": self.dtype.__name__
+            "dtype": self.dtype.__name__,
         }
 
     def copy(self):
@@ -85,8 +84,9 @@ class ArrayGrid(object):
     def nbytes(self):
         if array_utils.is_float(self.dtype, type_test=True):
             dtype = np.finfo(self.dtype).dtype
-        elif array_utils.is_int(self.dtype, type_test=True) \
-                or array_utils.is_uint(self.dtype, type_test=True):
+        elif array_utils.is_int(self.dtype, type_test=True) or array_utils.is_uint(
+            self.dtype, type_test=True
+        ):
             dtype = np.iinfo(self.dtype).dtype
         elif array_utils.is_complex(self.dtype, type_test=True):
             dtype = np.dtype(self.dtype)
@@ -101,7 +101,6 @@ class ArrayGrid(object):
 
 
 class DeviceID(object):
-
     @classmethod
     def from_str(cls, s: str):
         a, b = s.split("/")
@@ -122,15 +121,18 @@ class DeviceID(object):
         return hash(self.__repr__())
 
     def __repr__(self):
-        return "%s=%s/%s:%s" % (self.node_id, self.node_addr,
-                                self.device_type, self.device_id)
+        return "%s=%s/%s:%s" % (
+            self.node_id,
+            self.node_addr,
+            self.device_type,
+            self.device_id,
+        )
 
     def __eq__(self, other):
         return str(self) == str(other)
 
 
 class DeviceGrid(object):
-
     def __init__(self, grid_shape, device_type, device_ids):
         # TODO (hme): Work out what this becomes in the multi-node multi-device setting.
         self.grid_shape = grid_shape
@@ -140,9 +142,9 @@ class DeviceGrid(object):
 
         for i, cluster_entry in enumerate(self.get_cluster_entry_iterator()):
             self.device_grid[cluster_entry] = self.device_ids[i]
-            logging.getLogger(__name__).info("device_grid %s %s",
-                                             cluster_entry,
-                                             str(self.device_ids[i]))
+            logging.getLogger(__name__).info(
+                "device_grid %s %s", cluster_entry, str(self.device_ids[i])
+            )
 
     def get_cluster_entry_iterator(self):
         return itertools.product(*map(range, self.grid_shape))
@@ -155,7 +157,6 @@ class DeviceGrid(object):
 
 
 class CyclicDeviceGrid(DeviceGrid):
-
     def get_device_id(self, agrid_entry, agrid_shape):
         cluster_entry = self.get_cluster_entry(agrid_entry, agrid_shape)
         return self.device_grid[cluster_entry]
@@ -179,7 +180,6 @@ class CyclicDeviceGrid(DeviceGrid):
 
 
 class PackedDeviceGrid(DeviceGrid):
-
     def get_device_id(self, agrid_entry, agrid_shape):
         cluster_entry = self.get_cluster_entry(agrid_entry, agrid_shape)
         return self.device_grid[cluster_entry]
@@ -190,17 +190,21 @@ class PackedDeviceGrid(DeviceGrid):
         num_cluster_axes = len(self.grid_shape)
         for cluster_axis in range(num_cluster_axes):
             if cluster_axis < num_grid_entry_axes:
-                cluster_entry.append(self.compute_cluster_entry_axis(
-                    axis=cluster_axis,
-                    ge_axis_val=agrid_entry[cluster_axis],
-                    gs_axis_val=agrid_shape[cluster_axis],
-                    cs_axis_val=self.grid_shape[cluster_axis]
-                ))
+                cluster_entry.append(
+                    self.compute_cluster_entry_axis(
+                        axis=cluster_axis,
+                        ge_axis_val=agrid_entry[cluster_axis],
+                        gs_axis_val=agrid_shape[cluster_axis],
+                        cs_axis_val=self.grid_shape[cluster_axis],
+                    )
+                )
             else:
                 cluster_entry.append(0)
         return tuple(cluster_entry)
 
     def compute_cluster_entry_axis(self, axis, ge_axis_val, gs_axis_val, cs_axis_val):
         if ge_axis_val >= gs_axis_val:
-            raise ValueError("Array grid_entry is not < grid_shape along axis %s." % axis)
+            raise ValueError(
+                "Array grid_entry is not < grid_shape along axis %s." % axis
+            )
         return int(ge_axis_val / gs_axis_val * cs_axis_val)

@@ -36,10 +36,7 @@ def test_uops(app_inst: ArrayApplication):
 
 def test_bops(app_inst: ArrayApplication):
     # pylint: disable=no-member
-    pairs = [(1, 2),
-             (2.0, 3.0),
-             (2, 3.0),
-             (2.0, 3)]
+    pairs = [(1, 2), (2.0, 3.0), (2, 3.0), (2.0, 3)]
     for a, b in pairs:
         np_a, np_b = np.array(a), np.array(b)
         ba_a, ba_b = app_inst.scalar(a), app_inst.scalar(b)
@@ -48,8 +45,9 @@ def test_bops(app_inst: ArrayApplication):
         assert np.allclose(np_a * np_b, (ba_a * ba_b).get())
         assert np.allclose(np_a / np_b, (ba_a / ba_b).get())
         assert np.allclose(np_a ** np_b, (ba_a ** ba_b).get())
-        assert np.allclose(scipy.special.xlogy(np_a, np_b),
-                           app_inst.xlogy(ba_a, ba_b).get())
+        assert np.allclose(
+            scipy.special.xlogy(np_a, np_b), app_inst.xlogy(ba_a, ba_b).get()
+        )
 
 
 def test_bools(app_inst):

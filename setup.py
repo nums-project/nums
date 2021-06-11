@@ -19,7 +19,7 @@ from setuptools import setup, find_packages
 
 requirements = [
     'numpy>1.18.0,<=1.20.0',
-    'ray[default]>=1.0.0,<1.4.0',
+    'ray[default]>=1.0.0,<1.5.0',
     'scipy',
     'boto3'
 ]
@@ -31,6 +31,7 @@ test_requirements = [
     'moto==1.3.16',
     'coverage==5.3',
     'codecov==2.1.9',
+    'black==21.4b0',
     'tqdm'
 ]
 
