@@ -577,34 +577,44 @@ class ArrayApplication(object):
         ms_oids = m_oids + s_oids
         device_0 = self.cm.system.devices()[0]
         wmm_oid = self.cm.system.call("weighted_median", ms_oids, {}, device_0, {})
-
-        # Partition using wmm as pivot.
-        ls_oids, ls_size_oids = [], []
-        gr_oids, gr_size_oids = [], []
-        for i, arr_oid in enumerate(arr_oids):
-            syskwargs = {
-                "grid_entry": (i,),
-                "grid_shape": (num_arrs,),
-                "options": {"num_returns": 2}
-            }
-            ls_oid, ls_size_oid = self.cm.less_than(arr_oid, wmm_oid, syskwargs=syskwargs)
-            ls_oids.append(ls_oid)
-            ls_size_oids.append(ls_size_oid)
-            gr_oid, gr_size_oid = self.cm.greater_than(arr_oid, wmm_oid, syskwargs=syskwargs)
-            gr_oids.append(gr_oid)
-            gr_size_oids.append(gr_size_oid)
-
-        # Branch and recurse based on partition sizes.
         total_size = sum(self.cm.get(s) for s in s_oids)
-        assert -total_size <= kth and kth < total_size, "kth must be a valid index for arr."
         if kth < 0:
             kth += total_size
+        assert 0 <= kth and kth < total_size, "kth must be a valid index for arr."
+
+        # Compute LESS partition using wmm as pivot, conditionally recurse.
+        ls_oids, ls_size_oids = [], []
+        for i, arr_oid in enumerate(arr_oids):
+            ls_oid, ls_size_oid = self.cm.less_than(arr_oid,
+                                                    wmm_oid,
+                                                    syskwargs={
+                                                        "grid_entry": (i,),
+                                                        "grid_shape": (num_arrs,),
+                                                        "options": {"num_returns": 2}
+                                                    })
+            ls_oids.append(ls_oid)
+            ls_size_oids.append(ls_size_oid)
         ls_size = sum(self.cm.get(s) for s in ls_size_oids)
         if kth < ls_size:
             return self.quickselect(ls_oids, kth)
+
+        # Compute GREATER partition using wmm as pivot, conditionally recurse.
+        gr_oids, gr_size_oids = [], []
+        for i, arr_oid in enumerate(arr_oids):
+            gr_oid, gr_size_oid = self.cm.greater_than(arr_oid,
+                                                       wmm_oid,
+                                                       syskwargs={
+                                                           "grid_entry": (i,),
+                                                           "grid_shape": (num_arrs,),
+                                                           "options": {"num_returns": 2}
+                                                       })
+            gr_oids.append(gr_oid)
+            gr_size_oids.append(gr_size_oid)
         gr_size = sum(self.cm.get(s) for s in gr_size_oids)
         if kth >= total_size - gr_size:
             return self.quickselect(gr_oids, kth - (total_size - gr_size))
+
+        # wmm is the kth value.
         return self.cm.get(wmm_oid)
 
     def map_uop(self,

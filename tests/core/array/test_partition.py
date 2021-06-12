@@ -20,11 +20,12 @@ from nums.core.array.application import ArrayApplication
 
 
 def test_quickselect(app_inst: ArrayApplication):
-    np_x = np.array([1, 2, 3, 4, 5, 6, 7])
+    np_x = np.array([3, 7, 2, 4, 5, 1, 5, 6])
     ba_x = app_inst.array(np_x, block_shape=(3,))
     ba_oids = ba_x.flattened_oids()
-    k = app_inst.quickselect(ba_oids, -2)
-    print(k)
+    for i in range(-8, 8):
+        k = app_inst.quickselect(ba_oids, i)
+        print(k)
 
 if __name__ == "__main__":
     #pylint: disable=import-error
