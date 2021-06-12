@@ -18,28 +18,28 @@ from setuptools import setup, find_packages
 
 
 requirements = [
-    'numpy>1.18.0,<=1.20.0',
-    'ray[default]>=1.0.0,<1.5.0',
-    'scipy',
-    'boto3'
+    "numpy>1.18.0,<=1.20.0",
+    "ray[default]>=1.0.0,<1.5.0",
+    "scipy",
+    "boto3",
 ]
 
 
 test_requirements = [
-    'pytest==6.1.1',
-    'pytest-pylint==0.17.0',
-    'moto==1.3.16',
-    'coverage==5.3',
-    'codecov==2.1.9',
-    'black==21.4b0',
-    'tqdm'
+    "pytest==6.1.1",
+    "pytest-pylint==0.17.0",
+    "moto==1.3.16",
+    "coverage==5.3",
+    "codecov==2.1.9",
+    "black==21.4b0",
+    "tqdm",
 ]
 
 
 __version__ = None
 
 
-with open('nums/core/version.py') as f:
+with open("nums/core/version.py") as f:
     # pylint: disable=exec-used
     exec(f.read(), globals())
 
@@ -51,7 +51,7 @@ with open("README.md", "r") as fh:
 def main():
 
     setup(
-        name='nums',
+        name="nums",
         version=__version__,
         description="A numerical computing library for Python that scales.",
         long_description=long_description,
@@ -63,16 +63,14 @@ def main():
             "License :: OSI Approved :: MIT License",
             "Operating System :: Unix",
         ],
-        python_requires='>=3.6,<3.9',
+        python_requires=">=3.6,<3.9",
         install_requires=requirements,
-        extras_require={
-            'testing': test_requirements
-        },
+        extras_require={"testing": test_requirements},
         entry_points={
-            'console_scripts': [
-                'nums-coverage=nums.core.cmds.api_coverage:main',
+            "console_scripts": [
+                "nums-coverage=nums.core.cmds.api_coverage:main",
             ],
-        }
+        },
     )
 
 
