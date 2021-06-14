@@ -134,7 +134,109 @@ def test_inner_outer(nps_app_inst):
     assert np.allclose(np.outer(A, B), nps.outer(nps_A, nps_B).get())
 
 
-# TODO (hme): Add broadcast tests.
+def test_broadcast(nps_app_inst):
+    assert nps_app_inst is not None
+
+    _ops = ["add", "subtract", "divide"]
+
+    def check_basic_broadcast_correctness(_np_a, _np_b):
+        ns_a = nps.array(_np_a)
+        ns_b = nps.array(_np_b)
+
+        for _op in _ops:
+            np_op = np.__getattribute__(_op)
+            ns_op = nps.__getattribute__(_op)
+
+            _np_result = np_op(_np_a, _np_b)
+            _ns_result = ns_op(ns_a, ns_b)
+
+            assert np.allclose(_np_result, _ns_result.get())
+
+    np_a = np.random.randn(10)
+    np_b = np.random.randn()
+    check_basic_broadcast_correctness(np_a, np_b)
+
+    np_a = np.random.randn(10)
+    np_b = np.random.randn(1)
+    check_basic_broadcast_correctness(np_a, np_b)
+
+    np_a = np.random.randn(10, 1)
+    np_b = np.random.randn()
+    check_basic_broadcast_correctness(np_a, np_b)
+
+    np_a = np.random.randn(1, 10)
+    np_b = np.random.randn(1)
+    check_basic_broadcast_correctness(np_a, np_b)
+
+    np_a = np.random.randn(1, 10)
+    np_b = np.random.randn()
+    check_basic_broadcast_correctness(np_a, np_b)
+
+    np_a = np.random.randn(10, 10)
+    np_b = np.random.randn()
+    check_basic_broadcast_correctness(np_a, np_b)
+
+    np_a = np.random.randn(10, 10)
+    np_b = np.random.randn(1)
+    check_basic_broadcast_correctness(np_a, np_b)
+
+    np_a = np.random.randn(10, 10)
+    np_b = np.random.randn(10)
+    check_basic_broadcast_correctness(np_a, np_b)
+
+    np_a = np.random.randn(10, 10)
+    np_b = np.random.randn(10, 1)
+    check_basic_broadcast_correctness(np_a, np_b)
+
+    np_a = np.random.randn(10, 10)
+    np_b = np.random.randn(1, 10)
+    check_basic_broadcast_correctness(np_a, np_b)
+
+    np_a = np.random.randn(10, 10, 10)
+    np_b = np.random.randn()
+    check_basic_broadcast_correctness(np_a, np_b)
+
+    np_a = np.random.randn(10, 10, 10)
+    np_b = np.random.randn(1)
+    check_basic_broadcast_correctness(np_a, np_b)
+
+    np_a = np.random.randn(10, 10, 10)
+    np_b = np.random.randn(10)
+    check_basic_broadcast_correctness(np_a, np_b)
+
+    np_a = np.random.randn(10, 10, 10)
+    np_b = np.random.randn(1, 10)
+    check_basic_broadcast_correctness(np_a, np_b)
+
+    np_a = np.random.randn(10, 10, 10)
+    np_b = np.random.randn(10, 1)
+    check_basic_broadcast_correctness(np_a, np_b)
+
+    np_a = np.random.randn(10, 10, 10)
+    np_b = np.random.randn(10, 10)
+    check_basic_broadcast_correctness(np_a, np_b)
+
+    np_a = np.random.randn(10, 10, 10)
+    np_b = np.random.randn(10, 10, 1)
+    check_basic_broadcast_correctness(np_a, np_b)
+
+
+def test_broadcast_block(nps_app_inst):
+    def check_broadcast_block_correctness(block, grid_shape):
+        _np_result = np.tile(block, grid_shape)
+
+        ns_a = nps.zeros(_np_result.shape).reshape(block_shape=block.shape)
+        ns_b = nps.array(block)
+
+        _ns_result = ns_a + ns_b
+
+        assert np.allclose(_np_result, _ns_result.get())
+
+    check_broadcast_block_correctness(np.random.randn(10, 10), (2, 2))
+    check_broadcast_block_correctness(np.random.randn(10, 10), (2, 1))
+    check_broadcast_block_correctness(np.random.randn(10, 10), (1, 2))
+    check_broadcast_block_correctness(np.random.randn(10, 10, 10), (2, 2, 2))
+    check_broadcast_block_correctness(np.random.randn(10, 10, 10), (2, 2))
 
 
 def test_broadcast_block_shape_error(nps_app_inst):
@@ -169,6 +271,14 @@ def test_broadcast_block_shape_error(nps_app_inst):
     nps_A = nps.random.randn(20, 20, 20)
     nps_B = nps.random.randn(20, 20, 20)
     check_value_error(nps_A, nps_B, _a_blockshape=(10, 10, 10), _b_blockshape=(2, 2, 2))
+
+    nps_A = nps.random.randn(3, 20, 20)
+    nps_B = nps.random.randn(20, 20)
+    check_value_error(nps_A, nps_B, _a_blockshape=(3, 10, 10), _b_blockshape=(10, 10))
+
+    nps_A = nps.random.randn(1, 1, 3, 100, 100)
+    nps_B = nps.random.randn(10, 10)
+    check_value_error(nps_A, nps_B)
 
 
 def test_tensordot_shape_error(nps_app_inst):
