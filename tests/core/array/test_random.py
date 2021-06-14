@@ -30,34 +30,35 @@ from nums.core.array.random import NumsRandomState
 def test_basic(app_inst: ArrayApplication):
     # TODO (hme): Add more comprehensive tests for these distributions.
 
-    dists = [("beta", (1, 2, (3,), (3,))),
-             ("binomial", (3, .5, (3,), (3,))),
-             ("chisquare", (2, (3,), (3,))),
-             ("exponential", (1.0, (3,), (3,))),
-             ("f", (2, 1.0, (3,), (3,))),
-             ("gamma", (2, .7, (3,), (3,))),
-             ("geometric", (.5, (3,), (3,))),
-             ("gumbel", (0.0, 1.0, (3,), (3,))),
-             ("hypergeometric", (3, 2, 5, (3,), (3,))),
-             ("laplace", (0.0, 1.0, (3,), (3,))),
-             ("logistic", (0.0, 1.0, (3,), (3,))),
-             ("lognormal", (0.0, 1.0, (3,), (3,))),
-             ("logseries", (.5, (3,), (3,))),
-             ("negative_binomial", (5, .5, (3,), (3,))),
-             ("noncentral_chisquare", (2, 1.0, (3,), (3,))),
-             ("noncentral_f", (2, 3.0, 1.0, (3,), (3,))),
-             ("pareto", (2.0, (3,), (3,))),
-             ("poisson", (1.0, (3,), (3,))),
-             ("power", (2.0, (3,), (3,))),
-             ("rayleigh", (1.0, (3,), (3,))),
-             ("standard_cauchy", ((3,), (3,))),
-             ("standard_t", (2, (3,), (3,))),
-             ("triangular", (1, 3, 4, (3,), (3,))),
-             ("vonmises", (1.0, 3.0, (3,), (3,))),
-             ("wald", (4.0, 2.0, (3,), (3,))),
-             ("weibull", (2.0, (3,), (3,))),
-             ("zipf", (2.0, (3,), (3,))),
-             ]
+    dists = [
+        ("beta", (1, 2, (3,), (3,))),
+        ("binomial", (3, 0.5, (3,), (3,))),
+        ("chisquare", (2, (3,), (3,))),
+        ("exponential", (1.0, (3,), (3,))),
+        ("f", (2, 1.0, (3,), (3,))),
+        ("gamma", (2, 0.7, (3,), (3,))),
+        ("geometric", (0.5, (3,), (3,))),
+        ("gumbel", (0.0, 1.0, (3,), (3,))),
+        ("hypergeometric", (3, 2, 5, (3,), (3,))),
+        ("laplace", (0.0, 1.0, (3,), (3,))),
+        ("logistic", (0.0, 1.0, (3,), (3,))),
+        ("lognormal", (0.0, 1.0, (3,), (3,))),
+        ("logseries", (0.5, (3,), (3,))),
+        ("negative_binomial", (5, 0.5, (3,), (3,))),
+        ("noncentral_chisquare", (2, 1.0, (3,), (3,))),
+        ("noncentral_f", (2, 3.0, 1.0, (3,), (3,))),
+        ("pareto", (2.0, (3,), (3,))),
+        ("poisson", (1.0, (3,), (3,))),
+        ("power", (2.0, (3,), (3,))),
+        ("rayleigh", (1.0, (3,), (3,))),
+        ("standard_cauchy", ((3,), (3,))),
+        ("standard_t", (2, (3,), (3,))),
+        ("triangular", (1, 3, 4, (3,), (3,))),
+        ("vonmises", (1.0, 3.0, (3,), (3,))),
+        ("wald", (4.0, 2.0, (3,), (3,))),
+        ("weibull", (2.0, (3,), (3,))),
+        ("zipf", (2.0, (3,), (3,))),
+    ]
     rs = app_inst.random_state()
     for dist_name, dist_params in dists:
         assert len(rs.__getattribute__(dist_name)(*dist_params).get()) == 3
@@ -92,7 +93,9 @@ def test_np_random(app_inst: ArrayApplication):
     # If block shape differs, so does generated arrays.
     # This is a non-issue since we don't expose block shape as a param.
     rs4: NumsRandomState = app_inst.random_state(1337)
-    ba4: BlockArray = rs4.random(shape, block_shape=(6, 7)).reshape(block_shape=block_shape)
+    ba4: BlockArray = rs4.random(shape, block_shape=(6, 7)).reshape(
+        block_shape=block_shape
+    )
     assert not app_inst.allclose(ba2, ba4)
 
     # dtype tests.
@@ -114,7 +117,7 @@ def test_np_distributions(app_inst: ArrayApplication):
     assert str(ba.get().dtype) == "float32"
 
     # Distribution test.
-    cdf = lambda x: stats.uniform.cdf(x, loc=low, scale=high-low)
+    cdf = lambda x: stats.uniform.cdf(x, loc=low, scale=high - low)
     stat, pvalue = stats.kstest(ba.get().flatten(), cdf)
     assert pvalue > epsilon
     # Also just confirm standard uniform distribution fails test.
@@ -150,7 +153,9 @@ def test_default_random(app_inst: ArrayApplication):
         num_iters += 1
         num2 = app_inst.random_state().random()
     if num_iters > 0:
-        warnings.warn("More than one iteration required to generate unequal random numbers.")
+        warnings.warn(
+            "More than one iteration required to generate unequal random numbers."
+        )
     assert not app_inst.allclose(num1, num2)
 
     # Test default random seed.

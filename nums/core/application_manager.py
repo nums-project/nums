@@ -61,20 +61,21 @@ def create():
     elif system_name == "ray":
         use_head = settings.use_head
         num_nodes = int(np.product(settings.cluster_shape))
-        system: SystemInterface = RaySystem(use_head=use_head,
-                                            num_nodes=num_nodes)
+        system: SystemInterface = RaySystem(use_head=use_head, num_nodes=num_nodes)
     else:
         raise Exception("Unexpected system name %s" % settings.system_name)
     system.init()
 
-    compute_module = {
-        "numpy": numpy_compute
-    }[settings.compute_name]
+    compute_module = {"numpy": numpy_compute}[settings.compute_name]
 
     if settings.device_grid_name == "cyclic":
-        device_grid: DeviceGrid = CyclicDeviceGrid(settings.cluster_shape, "cpu", system.devices())
+        device_grid: DeviceGrid = CyclicDeviceGrid(
+            settings.cluster_shape, "cpu", system.devices()
+        )
     elif settings.device_grid_name == "packed":
-        device_grid: DeviceGrid = PackedDeviceGrid(settings.cluster_shape, "cpu", system.devices())
+        device_grid: DeviceGrid = PackedDeviceGrid(
+            settings.cluster_shape, "cpu", system.devices()
+        )
     else:
         raise Exception("Unexpected device grid name %s" % settings.device_grid_name)
 

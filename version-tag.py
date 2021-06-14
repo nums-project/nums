@@ -5,10 +5,9 @@ from nums.core.version import __version__
 
 def runproc(*args):
     print(" ".join(args))
-    return subprocess.Popen(args,
-                            stdin=subprocess.PIPE,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE)
+    return subprocess.Popen(
+        args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
 
 
 def communicate(*args):
