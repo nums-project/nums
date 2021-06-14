@@ -222,6 +222,8 @@ def test_broadcast(nps_app_inst):
 
 
 def test_broadcast_block(nps_app_inst):
+    assert nps_app_inst is not None
+
     def check_broadcast_block_correctness(block, grid_shape):
         _np_result = np.tile(block, grid_shape)
 
