@@ -645,7 +645,7 @@ class ArrayApplication(object):
                 result_arrays.append(axis_result)
             return tuple(result_arrays)
 
-    def quickselect(self, arr_oids: List[np.object], kth: int):
+    def quickselect(self, arr_oids: List[object], kth: int):
         """Find the k-th smallest element in a distributed 1D array in O(n) time.
 
         Args:
@@ -713,6 +713,32 @@ class ArrayApplication(object):
 
         # wmm is the kth value.
         return self.cm.get(wmm_oid)
+
+    def median(self, a: BlockArray, axis=None, out=None, keepdims=False):
+        """Compute median value of a BlockArray.
+
+        Args:
+            a: A BlockArray.
+
+        Returns:
+            The median value.
+        """
+        if axis is not None:
+            raise NotImplementedError("'axis' argument is not yet supported.")
+        if out is not None:
+            raise NotImplementedError("'out' argument is not yet supported.")
+        if keepdims:
+            raise NotImplementedError("'keepdims' argument is not yet supported.")
+        if a.ndim > 1:
+            raise NotImplementedError("Only 1D BlockArrays are current supported.")
+
+        a_oids = a.flattened_oids()
+        if a.size % 2 == 1:
+            return self.quickselect(a_oids, a.size // 2)
+        else:
+            m_0 = self.quickselect(a_oids, a.size // 2 - 1)
+            m_1 = self.quickselect(a_oids, a.size // 2)
+            return (m_0 + m_1) / 2
 
     def map_uop(
         self,

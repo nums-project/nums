@@ -226,6 +226,7 @@ class ComputeCls(ComputeImp):
 
     def select_median(self, arr):
         """Find value closest to median as part of quickselect algorithm."""
+        assert arr.ndim == 1
         if arr.size == 0:
             return 0 # Dummy value that has no effect on weighted median.
         index = arr.size // 2
