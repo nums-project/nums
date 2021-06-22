@@ -14,10 +14,12 @@
 # limitations under the License.
 
 
+
+import functools
 import itertools
 
 import numpy as np
-import functools
+
 
 from nums.core.array import selection
 from nums.core.array import utils as array_utils
