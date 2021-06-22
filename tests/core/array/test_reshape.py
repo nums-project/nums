@@ -17,6 +17,7 @@
 import time
 
 import numpy as np
+import pytest
 
 from nums.core.array import utils as array_utils
 from nums.core.array.application import ArrayApplication
@@ -116,11 +117,54 @@ def test_reshape_blocks_only(app_inst):
     assert np.allclose(arr_np, arr.reshape(shape, block_shape=(2, 3, 7)).get())
 
 
+def test_reshape_with_one_in_block_shape(app_inst):
+    arr = app_inst.random_state(1337).random((2, 2), block_shape=(2, 2))
+    arr_np = arr.get()
+    arr = arr.reshape(block_shape=(2, 1))
+    assert np.allclose(arr_np, arr.get())
+
+
+def test_reshape_multi(app_inst):
+    # Case 1
+    arr = app_inst.random_state(1337).random((1, 6, 2), block_shape=(1, 3, 2))
+    arr_np = arr.get()
+    with pytest.raises(ValueError):
+        arr.reshape((6, 2), block_shape=(1, 2))
+
+    # Case 2
+    arr_new = arr.reshape((6, 2))
+    assert arr_new.block_shape == (3, 2)
+    assert arr_new.grid.grid_shape == (2, 1)
+    assert np.allclose(arr_np, arr_new.get())
+
+    # Case 3
+    arr = app_inst.random_state(1337).random(
+        (1, 6, 2, 2, 1), block_shape=(1, 3, 1, 1, 1)
+    )
+    arr_np = arr.get()
+    arr_new = arr.reshape((6, 2, 2))
+    assert arr_new.block_shape == (3, 1, 1)
+    assert arr_new.grid.grid_shape == (2, 2, 2)
+
+    # Case 5
+    arr = app_inst.random_state(1337).random((6, 2), block_shape=(1, 3))
+    arr_np = arr.get()
+    arr_new = arr.reshape((1, 6, 2, 1, 1))
+    assert arr_new.block_shape == (1, 1, 2, 1, 1)
+    assert arr_new.grid.grid_shape == (1, 6, 1, 1, 1)
+
+    # Case 5
+    arr = app_inst.random_state(1337).random((1, 6, 2), block_shape=(1, 3, 2))
+    with pytest.raises(ValueError):
+        arr.reshape((6, 2), block_shape=(4, 1))
+
+
 if __name__ == "__main__":
     # pylint: disable=import-error, no-member
     from tests import conftest
 
     app_inst = conftest.get_app("serial")
-    test_reshape_basic(app_inst)
-    test_reshape_ones(app_inst)
-    test_reshape_blocks_only(app_inst)
+    test_reshape_multi(app_inst)
+    # test_reshape_basic(app_inst)
+    # test_reshape_ones(app_inst)
+    # test_reshape_blocks_only(app_inst)

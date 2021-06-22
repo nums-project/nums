@@ -17,6 +17,7 @@
 import itertools
 
 import numpy as np
+import functools
 
 from nums.core.array import selection
 from nums.core.array import utils as array_utils
@@ -893,9 +894,31 @@ class Reshape(object):
         # This is only used when the difference in shape are factors of 1s,
         # and the ordering of other factors are maintained.
 
-        # Check assumptions.
-        assert len(self._strip_ones(arr.shape)) == len(self._strip_ones(shape))
+        # Strip ones
+        arr_shape_stripped = self._strip_ones(arr.shape)
+        new_shape_stripped = self._strip_ones(shape)
 
+        # Check assumptions.
+        assert len(arr_shape_stripped) == len(new_shape_stripped)
+
+        if block_shape == shape:
+            indices = range(len(shape))
+            new_block_shape = []
+            arr_shape = list(arr.shape)
+            for i in indices:
+                if shape[i] in arr_shape_stripped:
+                    index = arr_shape.index(shape[i])
+                    new_block_shape.append(arr.block_shape[index])
+                    arr_shape[index] = -1
+                else:
+                    new_block_shape.append(1)
+            block_shape = tuple(new_block_shape)
+        else:
+            new_grid_shape = map(lambda i, j: (-(-i // j)), shape, block_shape)
+            grid_shape_list = list(list(new_grid_shape))
+            product = functools.reduce(lambda a, b: a * b, grid_shape_list)
+            if product != np.product(arr.grid.grid_shape):
+                raise ValueError("Incompatible block shape")
         # Create new grid, and perform reshape on blocks
         # to simplify access to source blocks.
         grid = ArrayGrid(shape, block_shape, dtype=arr.dtype.__name__)
