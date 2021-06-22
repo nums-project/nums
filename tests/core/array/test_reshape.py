@@ -167,6 +167,7 @@ if __name__ == "__main__":
 
     app_inst = conftest.get_app("serial")
     test_reshape_multi(app_inst)
-    # test_reshape_basic(app_inst)
-    # test_reshape_ones(app_inst)
-    # test_reshape_blocks_only(app_inst)
+    test_reshape_basic(app_inst)
+    test_reshape_ones(app_inst)
+    test_reshape_blocks_only(app_inst)
+    test_reshape_with_one_in_block_shape(app_inst)
