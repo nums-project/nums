@@ -138,20 +138,26 @@ def test_reshape_multi(app_inst):
     assert np.allclose(arr_np, arr_new.get())
 
     # Case 3
-    arr = app_inst.random_state(1337).random(
-        (1, 6, 2, 2, 1), block_shape=(1, 3, 1, 1, 1)
+    np_version = np.random.choice(5, (1, 6, 2, 2, 1))
+    nps_version = app_inst.array(
+        np_version, block_shape=(1, 3, 1, 1, 1)
     )
-    arr_np = arr.get()
-    arr_new = arr.reshape((6, 2, 2))
-    assert arr_new.block_shape == (3, 1, 1)
-    assert arr_new.grid.grid_shape == (2, 2, 2)
+    np_reshaped = np_version.reshape((6, 2, 2))
+    nps_reshaped = nps_version.reshape((6, 2, 2))
+    assert nps_reshaped.block_shape == (3, 1, 1)
+    assert nps_reshaped.grid.grid_shape == (2, 2, 2)
+    assert np.allclose(np_reshaped, nps_reshaped.get())
 
-    # Case 5
-    arr = app_inst.random_state(1337).random((6, 2), block_shape=(1, 3))
-    arr_np = arr.get()
-    arr_new = arr.reshape((1, 6, 2, 1, 1))
-    assert arr_new.block_shape == (1, 1, 2, 1, 1)
-    assert arr_new.grid.grid_shape == (1, 6, 1, 1, 1)
+    # Case 4
+    np_version = np.random.choice(5, (6, 2))
+    nps_version = app_inst.array(
+        np_version, block_shape=(1, 3)
+    )
+    np_reshaped = np_version.reshape((1, 6, 2, 1, 1))
+    nps_reshaped = nps_version.reshape((1, 6, 2, 1, 1))
+    assert nps_reshaped.block_shape == (1, 1, 2, 1, 1)
+    assert nps_reshaped.grid.grid_shape == (1, 6, 1, 1, 1)
+    assert np.allclose(np_reshaped, nps_reshaped.get())
 
     # Case 5
     arr = app_inst.random_state(1337).random((1, 6, 2), block_shape=(1, 3, 2))
