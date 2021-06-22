@@ -591,6 +591,24 @@ def average(
     return avg, weights_sum
 
 
+def median(a: BlockArray, axis=None, out=None, keepdims=False):
+    """Compute median value of a BlockArray.
+
+    Args:
+        a: A BlockArray.
+
+    Returns:
+        The median value.
+    """
+    if axis is not None:
+        raise NotImplementedError("'axis' argument is not yet supported.")
+    if out is not None:
+        raise NotImplementedError("'out' argument is not yet supported.")
+    if keepdims:
+        raise NotImplementedError("'keepdims' argument is not yet supported.")
+    return _instance().median(a)
+
+
 ############################################
 # NaN Ops
 ############################################

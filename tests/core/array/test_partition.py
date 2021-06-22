@@ -14,8 +14,9 @@
 # limitations under the License.
 
 
-import numpy as np
 import itertools
+
+import numpy as np
 
 from nums.core.array.application import ArrayApplication
 

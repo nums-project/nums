@@ -714,7 +714,7 @@ class ArrayApplication(object):
         # wmm is the kth value.
         return self.cm.get(wmm_oid)
 
-    def median(self, a: BlockArray, axis=None, out=None, keepdims=False):
+    def median(self, a: BlockArray):
         """Compute median value of a BlockArray.
 
         Args:
@@ -723,12 +723,6 @@ class ArrayApplication(object):
         Returns:
             The median value.
         """
-        if axis is not None:
-            raise NotImplementedError("'axis' argument is not yet supported.")
-        if out is not None:
-            raise NotImplementedError("'out' argument is not yet supported.")
-        if keepdims:
-            raise NotImplementedError("'keepdims' argument is not yet supported.")
         if a.ndim > 1:
             raise NotImplementedError("Only 1D BlockArrays are current supported.")
 
