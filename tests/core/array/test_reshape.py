@@ -139,9 +139,7 @@ def test_reshape_multi(app_inst):
 
     # Case 3
     np_version = np.random.choice(5, (1, 6, 2, 2, 1))
-    nps_version = app_inst.array(
-        np_version, block_shape=(1, 3, 1, 1, 1)
-    )
+    nps_version = app_inst.array(np_version, block_shape=(1, 3, 1, 1, 1))
     np_reshaped = np_version.reshape((6, 2, 2))
     nps_reshaped = nps_version.reshape((6, 2, 2))
     assert nps_reshaped.block_shape == (3, 1, 1)
@@ -150,9 +148,7 @@ def test_reshape_multi(app_inst):
 
     # Case 4
     np_version = np.random.choice(5, (6, 2))
-    nps_version = app_inst.array(
-        np_version, block_shape=(1, 3)
-    )
+    nps_version = app_inst.array(np_version, block_shape=(1, 3))
     np_reshaped = np_version.reshape((1, 6, 2, 1, 1))
     nps_reshaped = nps_version.reshape((1, 6, 2, 1, 1))
     assert nps_reshaped.block_shape == (1, 1, 2, 1, 1)
