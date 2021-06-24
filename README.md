@@ -5,6 +5,9 @@
 [![PyPI version](https://badge.fury.io/py/nums.svg)](https://badge.fury.io/py/nums)
 [![Build Status](https://travis-ci.com/nums-project/nums.svg?branch=master)](https://travis-ci.com/nums-project/nums)
 [![codecov](https://codecov.io/gh/nums-project/nums/branch/master/graph/badge.svg)](https://codecov.io/gh/nums-project/nums)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/nums-project/nums-binder-env/master?urlpath=git-pull%3Frepo%3Dhttps%253A%252F%252Fgithub.com%252Fnums-project%252Fnums%26urlpath%3Dtree%252Fnums%252Fexamples%252Fnotebooks%26branch%3Dmaster)
+
+[//]: # (See this link to generate binder links https://jupyterhub.github.io/nbgitpuller/link?tab=binder)
 
 # What is NumS?
 
@@ -89,7 +92,6 @@ dataset = nums.read_csv("path/to/csv", has_header=True)
 ```
 
 ##  Logistic Regression
-
 In this example, we'll run logistic regression on a 
 bimodal Gaussian. We'll begin by importing the necessary modules.
 
@@ -135,6 +137,7 @@ tree-based optimizer to minimize memory and network load across distributed memo
 For tall-skinny design matrices, NumS will automatically perform data-parallel
 distributed training, a near optimal solution to our optimizer's objective.
 
+
 #### Evaluation
 
 We evaluate our dataset by computing the accuracy on a sampled test set.
@@ -150,6 +153,8 @@ print("test accuracy", (nps.sum(y_test == model.predict(X_test)) / X_test.shape[
 
 We perform the `get` operation to transmit 
 the computed accuracy from distributed memory to "driver" (the locally running process) memory.
+
+You can run this example in your browser [here](https://mybinder.org/v2/gh/nums-project/nums-binder-env/master?urlpath=git-pull%3Frepo%3Dhttps%253A%252F%252Fgithub.com%252Fnums-project%252Fnums%26urlpath%3Dtree%252Fnums%252Fexamples%252Fnotebooks%252Flogistic_regression.ipynb%26branch%3Dmaster).
 
 #### Training on HIGGS
 
