@@ -490,6 +490,7 @@ def irls(
     return beta
 
 
+# pylint: disable = unused-argument
 def lbfgs(
     app: ArrayApplication,
     model: GLM,
