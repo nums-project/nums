@@ -843,6 +843,9 @@ class ArrayApplication(object):
     def random_state(self, seed=None):
         return NumsRandomState(self.cm, seed)
 
+    def isnan(self, X: BlockArray):
+        return self.map_uop("isnan", X)
+
     def nanmean(self, a: BlockArray, axis=None, keepdims=False, dtype=None):
         if not array_utils.is_float(a):
             a = a.astype(np.float64)
