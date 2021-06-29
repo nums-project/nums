@@ -50,7 +50,7 @@ def test_bops(app_inst: ArrayApplication):
         )
 
 
-def test_bools(app_inst):
+def test_bools(app_inst: ArrayApplication):
     np_one, np_two = np.array(1), np.array(2)
     ba_one, ba_two = app_inst.scalar(1), app_inst.scalar(2)
     assert (ba_one < ba_two) == (np_one < np_two)
@@ -61,7 +61,7 @@ def test_bools(app_inst):
     assert (ba_one != ba_two) == (np_one != np_two)
 
 
-def test_bool_reduction(app_inst):
+def test_bool_reduction(app_inst: ArrayApplication):
     np_arr = np.array([True, False, True, True, False, False], dtype=np.bool_)
     ba = app_inst.array(np_arr, block_shape=(2,))
     result_sum = app_inst.sum(ba, axis=0).get()
@@ -70,10 +70,15 @@ def test_bool_reduction(app_inst):
     assert result_sum == np_sum
 
 
-def test_trans(app_inst):
+def test_trans(app_inst: ArrayApplication):
     np_x = np.arange(40).reshape(10, 4)
     ba_x = app_inst.array(np_x, block_shape=(5, 2))
     assert np.array_equal(ba_x.T.get(), np_x.T)
+
+
+def test_isnan(app_inst: ArrayApplication):
+    assert not app_inst.isnan(app_inst.array([1.0], block_shape=(1,)))
+    assert app_inst.isnan(app_inst.array([np.nan], block_shape=(1,)))
 
 
 if __name__ == "__main__":
@@ -86,3 +91,4 @@ if __name__ == "__main__":
     test_bops(app_inst)
     test_bools(app_inst)
     test_bool_reduction(app_inst)
+    test_isnan(app_inst)

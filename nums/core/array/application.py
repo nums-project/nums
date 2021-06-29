@@ -234,7 +234,14 @@ class ArrayApplication(object):
     def scalar(self, value):
         return BlockArray.from_scalar(value, self.cm)
 
-    def array(self, array: np.ndarray, block_shape: tuple = None):
+    def array(self, array: Union[np.ndarray, List[float]], block_shape: tuple = None):
+        if not isinstance(array, np.ndarray):
+            if array_utils.is_array_like(array):
+                array = np.array(array)
+            else:
+                raise ValueError(
+                    "Unable to instantiate array from type %s" % type(array)
+                )
         assert len(array.shape) == len(block_shape)
         return BlockArray.from_np(
             array, block_shape=block_shape, copy=False, cm=self.cm
