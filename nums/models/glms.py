@@ -286,7 +286,8 @@ class LogisticRegression(GLM):
         if self._penalty is None:
             return X.T @ (s * X)
         else:
-            return X.T @ (s * X) + self._lambda_vec
+            # TODO (hme): Construct diag of _lambda_vec once.
+            return X.T @ (s * X) + self._app.diag(self._lambda_vec)
 
     def deviance(self, y, y_pred):
         raise NotImplementedError()
