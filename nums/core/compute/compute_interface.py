@@ -79,10 +79,7 @@ class ComputeInterface(object):
     def weighted_median(self, *arr_and_weights, syskwargs: Dict):
         raise NotImplementedError()
 
-    def less_than(self, arr, pivot, syskwargs: Dict):
-        raise NotImplementedError()
-
-    def greater_than(self, arr, pivot, syskwargs: Dict):
+    def pivot_partition(self, arr, pivot, op, syskwargs: Dict):
         raise NotImplementedError()
 
     @method_meta(num_returns=2)

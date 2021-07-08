@@ -14,6 +14,7 @@
 # limitations under the License.
 
 
+import operator
 import random
 
 import numpy as np
@@ -225,15 +226,15 @@ class ComputeCls(ComputeImp):
         return arr.size
 
     def select_median(self, arr):
-        """Find value closest to median as part of quickselect algorithm."""
-        assert arr.ndim == 1
+        """Find value in `arr` closest to median as part of quickselect algorithm."""
+        assert arr.ndim == 1, "Only 1D 'arr' is supported."
         if arr.size == 0:
-            return 0 # Dummy value that has no effect on weighted median.
+            return 0  # Dummy value that has no effect on weighted median.
         index = arr.size // 2
         return np.partition(arr, index)[index]
 
     def weighted_median(self, *arr_and_weights):
-        """Find the weighted median of arr."""
+        """Find the weighted median of an array."""
         mid = len(arr_and_weights) // 2
         arr, weights = arr_and_weights[:mid], arr_and_weights[mid:]
         argsorted_arr = np.argsort(arr)
@@ -241,18 +242,26 @@ class ComputeCls(ComputeImp):
         half = sorted_weights_sum[-1] / 2
         return arr[argsorted_arr[np.searchsorted(sorted_weights_sum, half)]]
 
-    def less_than(self, arr, pivot):
-        """Return subarrays of elements less than `pivot`."""
+    def pivot_partition(
+        self,
+        arr,
+        pivot: int,
+        op: str,
+    ):
+        """Return all elements in `arr` for which the comparsion to `pivot` is True."""
         if arr.size == 0:
-            return arr, 0
-        less = arr[np.where(arr < pivot)]
-        return less, less.size
-
-    def greater_than(self, arr, pivot):
-        if arr.size == 0:
-            return arr, 0
-        greater = arr[np.where(arr > pivot)]
-        return greater, greater.size
+            return 0, arr
+        ops = {
+            "gt": operator.gt,
+            "lt": operator.lt,
+            "ge": operator.ge,
+            "le": operator.le,
+            "eq": operator.eq,
+            "ne": operator.ne,
+        }
+        assert op in ops, "'op' must be a valid comparison operator."
+        comp = arr[ops[op](arr, pivot)]
+        return comp.size, comp
 
     def bop(self, op, a1, a2, a1_T, a2_T, axes):
         if a1_T:
