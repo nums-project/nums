@@ -131,7 +131,6 @@ dmypy.json
 build
 .idea
 scratch
-notebooks
 data
 condaforge
 

@@ -234,7 +234,14 @@ class ArrayApplication(object):
     def scalar(self, value):
         return BlockArray.from_scalar(value, self.cm)
 
-    def array(self, array: np.ndarray, block_shape: tuple = None):
+    def array(self, array: Union[np.ndarray, List[float]], block_shape: tuple = None):
+        if not isinstance(array, np.ndarray):
+            if array_utils.is_array_like(array):
+                array = np.array(array)
+            else:
+                raise ValueError(
+                    "Unable to instantiate array from type %s" % type(array)
+                )
         assert len(array.shape) == len(block_shape)
         return BlockArray.from_np(
             array, block_shape=block_shape, copy=False, cm=self.cm
@@ -975,6 +982,9 @@ class ArrayApplication(object):
 
     def random_state(self, seed=None):
         return NumsRandomState(self.cm, seed)
+
+    def isnan(self, X: BlockArray):
+        return self.map_uop("isnan", X)
 
     def nanmean(self, a: BlockArray, axis=None, keepdims=False, dtype=None):
         if not array_utils.is_float(a):

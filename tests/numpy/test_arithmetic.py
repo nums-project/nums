@@ -134,6 +134,20 @@ def test_inner_outer(nps_app_inst):
     assert np.allclose(np.outer(A, B), nps.outer(nps_A, nps_B).get())
 
 
+def test_dot(nps_app_inst):
+    assert nps_app_inst is not None
+    npsa = nps.array
+    A = np.random.randn(10)
+    B = np.random.randn(10)
+    assert np.allclose(np.dot(A, B), nps.dot(npsa(A), npsa(B)).get())
+    A = np.random.randn(10, 2)
+    B = np.random.randn(2, 10)
+    assert np.allclose(np.dot(A, B), nps.dot(npsa(A), npsa(B)).get())
+    A = np.random.randn(10, 2)
+    B = np.random.randn()
+    assert np.allclose(np.dot(A, B), nps.dot(npsa(A), npsa(B)).get())
+
+
 # TODO (hme): Add broadcast tests.
 
 
@@ -192,3 +206,4 @@ if __name__ == "__main__":
     settings.system_name = "serial"
     nps_app_inst = application_manager.instance()
     test_inner_outer(nps_app_inst)
+    test_dot(nps_app_inst)
