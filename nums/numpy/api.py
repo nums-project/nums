@@ -645,7 +645,7 @@ def top_k(
     to which ones are included in the top k.
 
     Args:
-        arr: A BlockArray.
+        a: A BlockArray.
         k: Number of top elements to return.
         largest: Whether to return largest or smallest elements.
 
