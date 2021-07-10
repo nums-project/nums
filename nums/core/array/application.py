@@ -653,7 +653,7 @@ class ArrayApplication(object):
             return tuple(result_arrays)
 
     def quickselect(self, arr_oids: List[object], kth: int):
-        """Find the k-th largest element in a 1D BlockArray in O(n) time.
+        """Find the `kth` largest element in a 1D BlockArray in O(n) time.
         Used as a subprocedure in `median` and `top_k`.
 
         Args:
@@ -661,7 +661,7 @@ class ArrayApplication(object):
             kth: Index of the element (in ascending order) to select.
 
         Returns:
-            Value of the k-th smallest element.
+            Value of the `kth` largest element.
         """
         num_arrs = len(arr_oids)
 
@@ -774,12 +774,14 @@ class ArrayApplication(object):
             raise IndexError("'k' must be at least 1 and at most the size of 'arr'.")
         arr_oids = arr.flattened_oids()
         if largest:
-            k_val = self.cm.get(self.quickselect(arr_oids, k - 1))
-            ie_indices = self.where(arr > k_val)[0]
+            k_oid = self.quickselect(arr_oids, k - 1)
+            k_val = BlockArray.from_oid(k_oid, (1,), arr.dtype, self.cm)
+            ie_indices = self.where(arr > k_val[0])[0]
         else:
-            k_val = self.cm.get(self.quickselect(arr_oids, -k))
-            ie_indices = self.where(arr < k_val)[0]
-        eq_indices = self.where(arr == k_val)[0]
+            k_oid = self.quickselect(arr_oids, -k)
+            k_val = BlockArray.from_oid(k_oid, (1,), arr.dtype, self.cm)
+            ie_indices = self.where(arr < k_val[0])[0]
+        eq_indices = self.where(arr == k_val[0])[0]
         eq_indices_pad = eq_indices[: k - ie_indices.size]
         axis_block_size = self.compute_block_shape((k,), int)[0]
         indices = self.concatenate([ie_indices, eq_indices_pad], 0, axis_block_size)
