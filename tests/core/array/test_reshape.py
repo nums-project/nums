@@ -100,6 +100,8 @@ def test_reshape_ones(app_inst: ArrayApplication):
                 new_shape = new_shape[:pos] + ones + new_shape[pos:]
                 new_block_shape = list(block_shape)
                 new_block_shape = new_block_shape[:pos] + ones + new_block_shape[pos:]
+                print("Shapes: {} {}".format(shape, new_shape))
+                print("Block Shapes: {} {}".format(block_shape, new_block_shape))
                 new_arr = arr.reshape(new_shape, block_shape=new_block_shape)
                 for grid_entry in new_arr.grid.get_entry_iterator():
                     new_block: Block = new_arr.blocks[grid_entry]
@@ -117,57 +119,11 @@ def test_reshape_blocks_only(app_inst):
     assert np.allclose(arr_np, arr.reshape(shape, block_shape=(2, 3, 7)).get())
 
 
-def test_reshape_with_one_in_block_shape(app_inst):
-    arr = app_inst.random_state(1337).random((2, 2), block_shape=(2, 2))
-    arr_np = arr.get()
-    arr = arr.reshape(block_shape=(2, 1))
-    assert np.allclose(arr_np, arr.get())
-
-
-def test_reshape_multi(app_inst):
-    # Case 1
-    arr = app_inst.random_state(1337).random((1, 6, 2), block_shape=(1, 3, 2))
-    arr_np = arr.get()
-    with pytest.raises(ValueError):
-        arr.reshape((6, 2), block_shape=(1, 2))
-
-    # Case 2
-    arr_new = arr.reshape((6, 2))
-    assert arr_new.block_shape == (3, 2)
-    assert arr_new.grid.grid_shape == (2, 1)
-    assert np.allclose(arr_np, arr_new.get())
-
-    # Case 3
-    np_version = np.random.choice(5, (1, 6, 2, 2, 1))
-    nps_version = app_inst.array(np_version, block_shape=(1, 3, 1, 1, 1))
-    np_reshaped = np_version.reshape((6, 2, 2))
-    nps_reshaped = nps_version.reshape((6, 2, 2))
-    assert nps_reshaped.block_shape == (3, 1, 1)
-    assert nps_reshaped.grid.grid_shape == (2, 2, 2)
-    assert np.allclose(np_reshaped, nps_reshaped.get())
-
-    # Case 4
-    np_version = np.random.choice(5, (6, 2))
-    nps_version = app_inst.array(np_version, block_shape=(1, 3))
-    np_reshaped = np_version.reshape((1, 6, 2, 1, 1))
-    nps_reshaped = nps_version.reshape((1, 6, 2, 1, 1))
-    assert nps_reshaped.block_shape == (1, 1, 2, 1, 1)
-    assert nps_reshaped.grid.grid_shape == (1, 6, 1, 1, 1)
-    assert np.allclose(np_reshaped, nps_reshaped.get())
-
-    # Case 5
-    arr = app_inst.random_state(1337).random((1, 6, 2), block_shape=(1, 3, 2))
-    with pytest.raises(ValueError):
-        arr.reshape((6, 2), block_shape=(4, 1))
-
-
 if __name__ == "__main__":
     # pylint: disable=import-error, no-member
     from tests import conftest
 
     app_inst = conftest.get_app("serial")
-    test_reshape_multi(app_inst)
     test_reshape_basic(app_inst)
     test_reshape_ones(app_inst)
     test_reshape_blocks_only(app_inst)
-    test_reshape_with_one_in_block_shape(app_inst)

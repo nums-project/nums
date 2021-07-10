@@ -14,11 +14,9 @@
 # limitations under the License.
 
 
-import functools
 import itertools
 
 import numpy as np
-
 
 from nums.core.array import selection
 from nums.core.array import utils as array_utils
@@ -885,41 +883,35 @@ class Reshape(object):
     def _strip_ones(self, shape):
         return tuple(filter(lambda x: x != 1, shape))
 
-    def _is_simple_reshape(self, arr: BlockArray, shape):
+    def _check_positions_ones(self, shape, block_shape):
+        for i in range(len(shape)):
+            if shape[i] == 1:
+                if shape[i] != block_shape[i]:
+                    return False
+        return True
+
+    def _is_simple_reshape(self, arr: BlockArray, shape, block_shape):
         # Is the reshape a difference of factors of 1?
         # Strip out 1s and compare.
-        return self._strip_ones(shape) == self._strip_ones(arr.shape)
+        if not (shape != arr.shape and block_shape != arr.block_shape):
+            return False
+        if not (
+            self._strip_ones(shape) == self._strip_ones(arr.shape)
+            and self._strip_ones(block_shape) == self._strip_ones(arr.block_shape)
+        ):
+            return False
+        if not self._check_positions_ones(shape, block_shape):
+            return False
+        return True
 
     def _simple_reshape(self, arr, shape, block_shape):
         # Reshape the array of blocks only.
         # This is only used when the difference in shape are factors of 1s,
         # and the ordering of other factors are maintained.
 
-        # Strip ones
-        arr_shape_stripped = self._strip_ones(arr.shape)
-        new_shape_stripped = self._strip_ones(shape)
-
         # Check assumptions.
-        assert len(arr_shape_stripped) == len(new_shape_stripped)
+        assert len(self._strip_ones(arr.shape)) == len(self._strip_ones(shape))
 
-        if block_shape == shape:
-            indices = range(len(shape))
-            new_block_shape = []
-            arr_shape = list(arr.shape)
-            for i in indices:
-                if shape[i] in arr_shape_stripped:
-                    index = arr_shape.index(shape[i])
-                    new_block_shape.append(arr.block_shape[index])
-                    arr_shape[index] = -1
-                else:
-                    new_block_shape.append(1)
-            block_shape = tuple(new_block_shape)
-        else:
-            new_grid_shape = map(lambda i, j: (-(-i // j)), shape, block_shape)
-            grid_shape_list = list(list(new_grid_shape))
-            product = functools.reduce(lambda a, b: a * b, grid_shape_list)
-            if product != np.product(arr.grid.grid_shape):
-                raise ValueError("Incompatible block shape")
         # Create new grid, and perform reshape on blocks
         # to simplify access to source blocks.
         grid = ArrayGrid(shape, block_shape, dtype=arr.dtype.__name__)
@@ -944,10 +936,10 @@ class Reshape(object):
         self._validate(arr, shape, block_shape)
         if arr.shape == shape and arr.block_shape == block_shape:
             return arr
+        elif self._is_simple_reshape(arr, shape, block_shape):
+            return self._simple_reshape(arr, shape, block_shape)
         elif arr.shape == shape and arr.block_shape != block_shape:
             return self._block_shape_reshape(arr, block_shape)
-        elif self._is_simple_reshape(arr, shape):
-            return self._simple_reshape(arr, shape, block_shape)
         elif arr.shape != shape and arr.block_shape == block_shape:
             # Just do full reshape for this case as well.
             # Though there may be a better solution, we generally expect
