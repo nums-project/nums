@@ -17,7 +17,6 @@
 import time
 
 import numpy as np
-import pytest
 
 from nums.core.array import utils as array_utils
 from nums.core.array.application import ArrayApplication
