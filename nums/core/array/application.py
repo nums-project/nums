@@ -27,7 +27,6 @@ from nums.core.grid.grid import DeviceID
 from nums.core.storage.storage import StoredArray, StoredArrayS3
 from nums.core.systems.filesystem import FileSystem
 
-
 # pylint: disable = too-many-lines
 
 
@@ -235,7 +234,14 @@ class ArrayApplication(object):
     def scalar(self, value):
         return BlockArray.from_scalar(value, self.cm)
 
-    def array(self, array: np.ndarray, block_shape: tuple = None):
+    def array(self, array: Union[np.ndarray, List[float]], block_shape: tuple = None):
+        if not isinstance(array, np.ndarray):
+            if array_utils.is_array_like(array):
+                array = np.array(array)
+            else:
+                raise ValueError(
+                    "Unable to instantiate array from type %s" % type(array)
+                )
         assert len(array.shape) == len(block_shape)
         return BlockArray.from_np(
             array, block_shape=block_shape, copy=False, cm=self.cm
@@ -353,6 +359,45 @@ class ArrayApplication(object):
         return rarr
 
     def diag(self, X: BlockArray) -> BlockArray:
+        def find_diag_output_blocks(X: BlockArray, total_elements: int):
+            # The i,j entry corresponding to a block in X_blocks.
+            block_i, block_j = 0, 0
+
+            # The i,j entry within the current block.
+            element_i, element_j = 0, 0
+
+            # Keep track of the no of elements found so far.
+            count = 0
+
+            # Start at block 0,0.
+            block = X.blocks[(0, 0)]
+
+            # Each element contains block indices, diag offset,
+            # and the total elements required from the block.
+            diag_meta = []
+
+            while count < total_elements:
+                if element_i > block.shape[0] - 1:
+                    block_i = block_i + 1
+                    element_i = 0
+                if element_j > block.shape[1] - 1:
+                    block_j = block_j + 1
+                    element_j = 0
+
+                block = X.blocks[(block_i, block_j)]
+                block_rows, block_cols = block.shape[0], block.shape[1]
+                offset = -element_i if element_i > element_j else element_j
+                total_elements_block = (
+                    min(block_rows - 1 - element_i, block_cols - 1 - element_j) + 1
+                )
+                diag_meta.append(((block_i, block_j), offset, total_elements_block))
+                count, element_i = (
+                    count + total_elements_block,
+                    element_i + total_elements_block,
+                )
+                element_j = element_j + total_elements_block
+            return diag_meta
+
         if len(X.shape) == 1:
             shape = X.shape[0], X.shape[0]
             block_shape = X.block_shape[0], X.block_shape[0]
@@ -364,28 +409,42 @@ class ArrayApplication(object):
                 if np.all(np.diff(grid_entry) == 0):
                     # This is a diagonal block.
                     rarr.blocks[grid_entry].oid = self.cm.diag(
-                        X.blocks[grid_entry[0]].oid, syskwargs=syskwargs
+                        X.blocks[grid_entry[0]].oid, 0, syskwargs=syskwargs
                     )
                 else:
                     rarr.blocks[grid_entry].oid = self.cm.new_block(
                         "zeros", grid_entry, grid_meta, syskwargs=syskwargs
                     )
         elif len(X.shape) == 2:
-            assert X.shape[0] == X.shape[1], "X must be a square array."
-            assert X.block_shape[0] == X.block_shape[1], "block_shape must be square."
-            shape = (X.shape[0],)
-            block_shape = (X.block_shape[0],)
-            grid = ArrayGrid(shape, block_shape, X.dtype.__name__)
-            rarr = BlockArray(grid, self.cm)
-            for grid_entry in X.grid.get_entry_iterator():
-                out_grid_entry = grid_entry[:1]
-                out_grid_shape = grid.grid_shape[:1]
-                syskwargs = {"grid_entry": out_grid_entry, "grid_shape": out_grid_shape}
-                if np.all(np.diff(grid_entry) == 0):
-                    # This is a diagonal block.
-                    rarr.blocks[out_grid_entry].oid = self.cm.diag(
-                        X.blocks[grid_entry].oid, syskwargs=syskwargs
-                    )
+            out_shape = (min(X.shape),)
+            out_block_shape = (min(X.block_shape),)
+            # Obtain the block indices which contain the diagonal of the matrix.
+
+            diag_meta = find_diag_output_blocks(X, out_shape[0])
+            output_block_arrays = []
+            out_grid_shape = (len(diag_meta),)
+            count = 0
+            # Obtain the diagonals.
+            for block_indices, offset, total_elements in diag_meta:
+                syskwargs = {"grid_entry": (count,), "grid_shape": out_grid_shape}
+                result_block_shape = (total_elements,)
+                block_grid = ArrayGrid(
+                    result_block_shape,
+                    result_block_shape,
+                    X.blocks[block_indices].dtype.__name__,
+                )
+                block_array = BlockArray(block_grid, self.cm)
+                block_array.blocks[0].oid = self.cm.diag(
+                    X.blocks[block_indices].oid, offset, syskwargs=syskwargs
+                )
+                output_block_arrays.append(block_array)
+                count += 1
+            if len(output_block_arrays) > 1:
+                # If there are multiple blocks, concatenate them.
+                return self.concatenate(
+                    output_block_arrays, axis=0, axis_block_size=out_block_shape[0]
+                )
+            return output_block_arrays[0]
         else:
             raise ValueError("X must have 1 or 2 axes.")
         return rarr
@@ -795,6 +854,9 @@ class ArrayApplication(object):
 
     def random_state(self, seed=None):
         return NumsRandomState(self.cm, seed)
+
+    def isnan(self, X: BlockArray):
+        return self.map_uop("isnan", X)
 
     def nanmean(self, a: BlockArray, axis=None, keepdims=False, dtype=None):
         if not array_utils.is_float(a):

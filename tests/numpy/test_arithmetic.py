@@ -283,6 +283,20 @@ def test_broadcast_block_shape_error(nps_app_inst):
     check_value_error(nps_A, nps_B)
 
 
+def test_dot(nps_app_inst):
+    assert nps_app_inst is not None
+    npsa = nps.array
+    A = np.random.randn(10)
+    B = np.random.randn(10)
+    assert np.allclose(np.dot(A, B), nps.dot(npsa(A), npsa(B)).get())
+    A = np.random.randn(10, 2)
+    B = np.random.randn(2, 10)
+    assert np.allclose(np.dot(A, B), nps.dot(npsa(A), npsa(B)).get())
+    A = np.random.randn(10, 2)
+    B = np.random.randn()
+    assert np.allclose(np.dot(A, B), nps.dot(npsa(A), npsa(B)).get())
+
+
 def test_tensordot_shape_error(nps_app_inst):
     assert nps_app_inst is not None
 
@@ -338,3 +352,4 @@ if __name__ == "__main__":
     settings.system_name = "serial"
     nps_app_inst = application_manager.instance()
     test_inner_outer(nps_app_inst)
+    test_dot(nps_app_inst)

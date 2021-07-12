@@ -99,7 +99,6 @@ int64 = np.int64
 float16 = np.float16
 float32 = np.float32
 float64 = np.float64
-float128 = np.float128
 
 complex64 = np.complex64
 complex128 = np.complex128
@@ -398,6 +397,21 @@ def inner(a: BlockArray, b: BlockArray):
 def outer(a: BlockArray, b: BlockArray):
     assert len(a.shape) == len(b.shape) == 1, "Only single-axis inputs supported."
     return a.reshape((a.shape[0], 1)) @ b.reshape((1, b.shape[0]))
+
+
+def dot(a: BlockArray, b: BlockArray, out=None) -> BlockArray:
+    assert out is None, "Specifying an output array is not supported."
+    a_len, b_len = len(a.shape), len(b.shape)
+    if a_len == b_len == 1:
+        return inner(a, b)
+    elif a_len == b_len == 2:
+        return matmul(a, b)
+    elif a_len == 0 or b_len == 0:
+        return multiply(a, b)
+    else:
+        raise NotImplementedError(
+            "The dot operation on arbitrary arrays is not yet supported."
+        )
 
 
 ############################################
