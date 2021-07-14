@@ -99,8 +99,6 @@ def test_reshape_ones(app_inst: ArrayApplication):
                 new_shape = new_shape[:pos] + ones + new_shape[pos:]
                 new_block_shape = list(block_shape)
                 new_block_shape = new_block_shape[:pos] + ones + new_block_shape[pos:]
-                print("Shapes: {} {}".format(shape, new_shape))
-                print("Block Shapes: {} {}".format(block_shape, new_block_shape))
                 new_arr = arr.reshape(new_shape, block_shape=new_block_shape)
                 for grid_entry in new_arr.grid.get_entry_iterator():
                     new_block: Block = new_arr.blocks[grid_entry]
