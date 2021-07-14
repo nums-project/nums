@@ -34,14 +34,15 @@ ray attach autoscaler-aws.yaml
 
 ## Example
 After you set up the cluster using the steps above, you can refer to [this example](https://github.com/nums-project/nums/blob/main/autoscaler/example.py).
-* In this example
+* In this example:
   * We first inititialize ray and set the nums cluster shape.
   * Then we create two nums arrays with random values that get created in a distributed fashion on the worker nodes of the cluser. 
   * We then perform a sum operation on the two nums arrays.
   * Then we do a ```SUM.get()``` which waits and fetches final values of ```X+Y```.
 
 * To run this example:
-  * First run the following command from your local machine to copy the example.py file to head node of the cluster \
-  ```ray rsync_up autoscaler_aws.yaml '/home/ubuntu/example.py' '<local_path_to_this_repo>/autoscaler/example.py'```.
+  * First run the following commands from your local machine to copy the example.py file to head node of the cluster \
+  ```cd <local_path_to_this_repo>/autoscaler``` \
+  ```ray rsync-up autoscaler-aws.yaml 'example.py' '/home/ubuntu'```.
   * Then ssh on the head node of the cluster ```ray attach autoscaler-aws.yaml```.
-  * Then on the head node, run ```python nums/autoscaler/example.py``` to run this example on the cluster.
+  * Then on the head node, run ```python example.py``` to run this example on the cluster.
