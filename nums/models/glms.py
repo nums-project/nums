@@ -147,6 +147,8 @@ class GLM(object):
             # TODO (hme): Provide irls for all GLMs.
             assert isinstance(self, LogisticRegression)
             beta = irls(self._app, self, beta, X, y, tol, max_iter)
+        elif self._opt == "lbfgs":
+            beta = lbfgs(self._app, self, beta, X, y, tol, max_iter)
         else:
             raise Exception("Unsupported optimizer specified %s." % self._opt)
         self._beta0 = beta[-1]
@@ -167,7 +169,13 @@ class GLM(object):
     def link_inv(self, eta: BlockArray):
         raise NotImplementedError()
 
-    def objective(self, X: BlockArray, y: BlockArray, beta=None):
+    def objective(
+        self,
+        X: BlockArray,
+        y: BlockArray,
+        beta: BlockArray = None,
+        mu: BlockArray = None,
+    ):
         raise NotImplementedError()
 
     def gradient(
@@ -207,9 +215,15 @@ class LinearRegression(GLM):
     def link_inv(self, eta: BlockArray):
         return eta
 
-    def objective(self, X: BlockArray, y: BlockArray, beta=None):
+    def objective(
+        self,
+        X: BlockArray,
+        y: BlockArray,
+        beta: BlockArray = None,
+        mu: BlockArray = None,
+    ):
         assert beta is not None or self._beta is not None
-        mu = self.forward(X, beta)
+        mu = self.forward(X, beta) if mu is None else mu
         return self._app.sum((y - mu) ** self._app.two)
 
     def gradient(
@@ -237,10 +251,16 @@ class LogisticRegression(GLM):
     def link_inv(self, eta: BlockArray):
         return self._app.one / (self._app.one + self._app.exp(-eta))
 
-    def objective(self, X: BlockArray, y: BlockArray, beta=None):
+    def objective(
+        self,
+        X: BlockArray,
+        y: BlockArray,
+        beta: BlockArray = None,
+        mu: BlockArray = None,
+    ):
         assert beta is not None or self._beta is not None
         log, one = self._app.log, self._app.one
-        mu = self.forward(X, beta)
+        mu = self.forward(X, beta) if mu is None else mu
         return -self._app.sum(y * log(mu) + (one - y) * log(one - mu))
 
     def gradient(
@@ -266,7 +286,8 @@ class LogisticRegression(GLM):
         if self._penalty is None:
             return X.T @ (s * X)
         else:
-            return X.T @ (s * X) + self._lambda_vec
+            # TODO (hme): Construct diag of _lambda_vec once.
+            return X.T @ (s * X) + self._app.diag(self._lambda_vec)
 
     def deviance(self, y, y_pred):
         raise NotImplementedError()
@@ -286,12 +307,18 @@ class PoissonRegression(GLM):
     def link_inv(self, eta: BlockArray):
         return self._app.exp(eta)
 
-    def objective(self, X: BlockArray, y: BlockArray, beta=None):
+    def objective(
+        self,
+        X: BlockArray,
+        y: BlockArray,
+        beta: BlockArray = None,
+        mu: BlockArray = None,
+    ):
         if beta is None:
             eta = X @ self._beta + self._beta0
         else:
             eta = X @ beta
-        mu = self._app.exp(eta)
+        mu = self._app.exp(eta) if mu is None else mu
         return self._app.sum(mu - y * eta)
 
     def gradient(
@@ -330,7 +357,13 @@ class ExponentialRegression(GLM):
     def link_inv(self, eta: BlockArray):
         raise NotImplementedError()
 
-    def objective(self, X: BlockArray, y: BlockArray, beta=None):
+    def objective(
+        self,
+        X: BlockArray,
+        y: BlockArray,
+        beta: BlockArray = None,
+        mu: BlockArray = None,
+    ):
         raise NotImplementedError()
 
     def gradient(
@@ -348,10 +381,6 @@ class ExponentialRegression(GLM):
 
 # Scikit-Learn aliases.
 PoissonRegressor = PoissonRegression
-
-
-def line_search():
-    raise NotImplementedError()
 
 
 def sgd(
@@ -462,8 +491,21 @@ def irls(
     return beta
 
 
-def lbfgs():
-    raise NotImplementedError()
+# pylint: disable = unused-argument
+def lbfgs(
+    app: ArrayApplication,
+    model: GLM,
+    beta,
+    X: BlockArray,
+    y: BlockArray,
+    tol: BlockArray,
+    max_iter: int,
+):
+    # TODO (hme): Enable a way to provide memory length and line search parameters.
+    from nums.models.lbfgs import LBFGS  # pylint: disable = import-outside-toplevel
+
+    lbfgs_optimizer = LBFGS(model, m=10, max_iter=max_iter, dtype=X.dtype, thresh=tol)
+    return lbfgs_optimizer.execute(X, y, beta)
 
 
 def admm():

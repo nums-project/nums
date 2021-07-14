@@ -399,6 +399,21 @@ def outer(a: BlockArray, b: BlockArray):
     return a.reshape((a.shape[0], 1)) @ b.reshape((1, b.shape[0]))
 
 
+def dot(a: BlockArray, b: BlockArray, out=None) -> BlockArray:
+    assert out is None, "Specifying an output array is not supported."
+    a_len, b_len = len(a.shape), len(b.shape)
+    if a_len == b_len == 1:
+        return inner(a, b)
+    elif a_len == b_len == 2:
+        return matmul(a, b)
+    elif a_len == 0 or b_len == 0:
+        return multiply(a, b)
+    else:
+        raise NotImplementedError(
+            "The dot operation on arbitrary arrays is not yet supported."
+        )
+
+
 ############################################
 # Shape Ops
 ############################################
