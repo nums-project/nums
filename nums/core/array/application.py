@@ -14,7 +14,7 @@
 # limitations under the License.
 
 
-from typing import List, Tuple, Union
+from typing import List, Tuple, Dict, Union
 
 import numpy as np
 
@@ -34,7 +34,7 @@ class ArrayApplication(object):
     def __init__(self, cm: ComputeManager, fs: FileSystem):
         self.cm: ComputeManager = cm
         self._fs: FileSystem = fs
-        self._array_grids: Tuple[str, ArrayGrid] = {}
+        self._array_grids: Dict[str, ArrayGrid] = {}
         self.random = self.random_state()
 
         self.one_half = self.scalar(0.5)
