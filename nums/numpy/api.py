@@ -655,7 +655,7 @@ def top_k(
         indices: Indices of the top k elements, ordered by their corresponding values.
     """
     if sorted:
-        # Idea: convert to np.array, use np.sort and np.argsort, convert back to BlockArray
+        # The result can be sorted when sorting is implemented.
         raise NotImplementedError("'sorted' is currently not supported.")
     return _instance().top_k(a, k, largest=largest)
 
