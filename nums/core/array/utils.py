@@ -133,6 +133,15 @@ def broadcastable(a_shape, b_shape, a_block_shape, b_block_shape):
     result_shape = broadcast_shape(a_shape, b_shape)
     if result_shape is None:
         return False
+    # Checks if tensor is a scalar
+    if (
+        a_shape == a_block_shape == ()
+        or b_shape == b_block_shape == ()
+        or a_shape == a_block_shape == (1,)
+        or b_shape == b_block_shape == (1,)
+    ):
+        return True
+    # Checks if tensor is a vector
     if (
         len(a_shape) == len(b_shape)
         and not is_1d(a_shape)
@@ -141,13 +150,7 @@ def broadcastable(a_shape, b_shape, a_block_shape, b_block_shape):
         and 1 not in b_shape
     ):
         return a_block_shape == b_block_shape
-    if (
-        a_shape == a_block_shape == ()
-        or b_shape == b_block_shape == ()
-        or a_shape == a_block_shape == (1,)
-        or b_shape == b_block_shape == (1,)
-    ):
-        return True
+    # Checks if vector can be broadcasted to tensor
     if is_1d(a_shape) and b_shape == b_block_shape:
         _a_shape = [i for i in a_shape if i != 1][0]
         return _a_shape in b_shape and a_shape == a_block_shape
@@ -159,6 +162,7 @@ def broadcastable(a_shape, b_shape, a_block_shape, b_block_shape):
     # block shape level broadcasting
     a_block_shape, b_block_shape = list(a_block_shape), list(b_block_shape)
 
+    # Fill in 1s to make block shapes same length
     if len(a_block_shape) > len(b_block_shape):
         while len(a_block_shape) > len(b_block_shape):
             b_block_shape.append(1)
@@ -167,6 +171,7 @@ def broadcastable(a_shape, b_shape, a_block_shape, b_block_shape):
         while len(a_block_shape) < len(b_block_shape):
             a_block_shape.append(1)
 
+    # Sort, then iterate through block shapes to check if not broadcastable
     min_bs, max_bs = sorted([a_block_shape, b_block_shape], key=len)
     for i in range(-1, -len(max_bs) - 1, -1):
         if -len(min_bs) - 1 < i:
