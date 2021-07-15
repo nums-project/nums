@@ -884,8 +884,8 @@ class Reshape(object):
         return tuple(filter(lambda x: x != 1, shape))
 
     def _check_positions_ones(self, shape, block_shape):
-        # We check if there is a 1 in any of the shape positions, then we check
-        # that corresponding position in the block_shape should also be 1.
+        # If a position in the shape is 1, then the corresponding
+        # position in block_shape should also be 1.
         for i in range(len(shape)):
             if shape[i] == 1:
                 if shape[i] != block_shape[i]:
@@ -895,8 +895,7 @@ class Reshape(object):
     def _is_simple_reshape(self, arr: BlockArray, shape, block_shape):
         # Is the reshape a difference of factors of 1?
         # Strip out 1s and compare.
-        # The simple_reshape is stricter as it not only mandates equal shapes
-        # and block_shapes, but also if a position is 1 in the shape, then the corresponding
+        # If a position in the shape is 1, then the corresponding
         # position in block_shape should also be 1.
 
         # If source shape and dest shape are the same or source block_shape and dest block_shape
