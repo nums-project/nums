@@ -136,3 +136,6 @@ condaforge
 
 # Emacs
 .dir-locals.el
+
+# Pyright settings
+pyrightconfig.json
