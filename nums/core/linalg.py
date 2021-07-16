@@ -25,7 +25,9 @@ def qr(app: ArrayApplication, X: BlockArray):
     return indirect_tsqr(app, X)
 
 
-def _qr_tree_reduce(self, oid_list, result_grid_entry, result_grid_shape):
+def _qr_tree_reduce(
+    app: ArrayApplication, oid_list, result_grid_entry, result_grid_shape
+):
     if len(oid_list) == 1:
         return oid_list[0][0]
     q = oid_list
@@ -33,7 +35,7 @@ def _qr_tree_reduce(self, oid_list, result_grid_entry, result_grid_shape):
         a_oid, a_ge, a_gs = q.pop(0)
         b_oid, _, _ = q.pop(0)
         ge, gs = (result_grid_entry, result_grid_shape) if len(q) == 0 else (a_ge, a_gs)
-        c_oid = self.cm.qr(
+        c_oid = app.cm.qr(
             a_oid,
             b_oid,
             mode="r",
@@ -51,7 +53,7 @@ def _qr_tree_reduce(self, oid_list, result_grid_entry, result_grid_shape):
     return r_oid
 
 
-def indirect_tsr(self, X: BlockArray, reshape_output=True):
+def indirect_tsr(app: ArrayApplication, X: BlockArray, reshape_output=True):
     assert len(X.shape) == 2
     # TODO (hme): This assertion is temporary and ensures returned
     #  shape of qr of block is correct.
@@ -69,7 +71,7 @@ def indirect_tsr(self, X: BlockArray, reshape_output=True):
         for j in range(grid_shape[1]):
             row.append(X.blocks[i, j].oid)
         ge, gs = (i, 0), (grid_shape[0], 1)
-        oid = self.cm.qr(
+        oid = app.cm.qr(
             *row,
             mode="r",
             axis=1,
@@ -86,9 +88,9 @@ def indirect_tsr(self, X: BlockArray, reshape_output=True):
     R_shape = (shape[1], shape[1])
     R_block_shape = (block_shape[1], block_shape[1])
     tsR = BlockArray(
-        ArrayGrid(shape=R_shape, block_shape=R_shape, dtype=X.dtype.__name__), self.cm
+        ArrayGrid(shape=R_shape, block_shape=R_shape, dtype=X.dtype.__name__), app.cm
     )
-    tsR.blocks[0, 0].oid = self._qr_tree_reduce(R_oids, (0, 0), (1, 1))
+    tsR.blocks[0, 0].oid = _qr_tree_reduce(app, R_oids, (0, 0), (1, 1))
 
     # If blocking is "tall-skinny," then we're done.
     if R_shape != R_block_shape:
