@@ -631,37 +631,29 @@ class BlockArray(BlockArrayBase):
             )
         return BlockArray(self.grid.copy(), self.cm, blocks=blocks)
 
-    def __add__(self, other):
+    def __elementwise__(self, op_name, other):
         other = self.check_or_convert_other(other)
         if self.shape == other.shape:
-            return self._fast_element_wise("add", other)
+            return self._fast_element_wise(op_name, other)
+        np_op = np.__getattribute__(op_name)
         return BlockArray.from_blocks(
-            self.blocks + other.blocks, result_shape=None, cm=self.cm
+            np_op(self.blocks, other.blocks), result_shape=None, cm=self.cm
         )
+
+    def __add__(self, other):
+        return self.__elementwise__("add", other)
 
     def __sub__(self, other):
-        other = self.check_or_convert_other(other)
-        return BlockArray.from_blocks(
-            self.blocks - other.blocks, result_shape=None, cm=self.cm
-        )
+        return self.__elementwise__("sub", other)
 
     def __mul__(self, other):
-        other = self.check_or_convert_other(other)
-        return BlockArray.from_blocks(
-            self.blocks * other.blocks, result_shape=None, cm=self.cm
-        )
+        return self.__elementwise__("mul", other)
 
     def __truediv__(self, other):
-        other = self.check_or_convert_other(other)
-        return BlockArray.from_blocks(
-            self.blocks / other.blocks, result_shape=None, cm=self.cm
-        )
+        return self.__elementwise__("truediv", other)
 
     def __pow__(self, other):
-        other = self.check_or_convert_other(other)
-        return BlockArray.from_blocks(
-            self.blocks ** other.blocks, result_shape=None, cm=self.cm
-        )
+        return self.__elementwise__("pow", other)
 
     def __invert__(self):
         return self.ufunc("invert")
