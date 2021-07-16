@@ -638,7 +638,7 @@ class BlockArray(BlockArrayBase):
 
     def __elementwise__(self, op_name, other):
         other = self.check_or_convert_other(other)
-        if self.shape == other.shape:
+        if self.shape == other.shape and self.block_shape == other.block_shape:
             return self._fast_element_wise(op_name, other)
         blocks_op = self.blocks.__getattribute__("__%s__" % op_name)
         return BlockArray.from_blocks(
