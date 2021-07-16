@@ -107,6 +107,13 @@ def test_reshape_ones(app_inst: ArrayApplication):
                 assert np.allclose(arr_np, new_arr.get().reshape(shape))
 
 
+def test_reshape_with_one_in_block_shape(app_inst):
+    arr = app_inst.random_state(1337).random((2, 2), block_shape=(2, 2))
+    arr_np = arr.get()
+    arr = arr.reshape(block_shape=(2, 1))
+    assert np.allclose(arr_np, arr.get())
+
+
 def test_reshape_blocks_only(app_inst):
     shape, block_shape = (3, 5, 10), (3, 2, 5)
     arr = app_inst.random_state(1337).random(shape, block_shape)
@@ -123,4 +130,5 @@ if __name__ == "__main__":
     app_inst = conftest.get_app("serial")
     test_reshape_basic(app_inst)
     test_reshape_ones(app_inst)
+    test_reshape_with_one_in_block_shape(app_inst)
     test_reshape_blocks_only(app_inst)

@@ -137,5 +137,9 @@ condaforge
 # Emacs
 .dir-locals.el
 
-# Other
+# Pyright settings
+pyrightconfig.json
+
+# Directories
 notebooks
+

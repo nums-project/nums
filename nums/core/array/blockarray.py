@@ -883,12 +883,36 @@ class Reshape(object):
     def _strip_ones(self, shape):
         return tuple(filter(lambda x: x != 1, shape))
 
+    def _check_positions_ones(self, shape, block_shape):
+        # If a position in the shape is 1, then the corresponding
+        # position in block_shape should also be 1.
+        for i in range(len(shape)):
+            if shape[i] == 1:
+                if shape[i] != block_shape[i]:
+                    return False
+        return True
+
     def _is_simple_reshape(self, arr: BlockArray, shape, block_shape):
         # Is the reshape a difference of factors of 1?
         # Strip out 1s and compare.
-        return self._strip_ones(shape) == self._strip_ones(
-            arr.shape
-        ) and self._strip_ones(block_shape) == self._strip_ones(arr.block_shape)
+        # If a position in the shape is 1, then the corresponding
+        # position in block_shape should also be 1.
+
+        # If source shape and dest shape are the same or source block_shape and dest block_shape
+        # are same, this is not a simple reshape.
+        if shape == arr.shape or block_shape == arr.block_shape:
+            return False
+
+        # Checks if source shape and dest shape are same & source block_shape and dest
+        # block_shape are same after stripping ones.
+        if not (
+            self._strip_ones(shape) == self._strip_ones(arr.shape)
+            and self._strip_ones(block_shape) == self._strip_ones(arr.block_shape)
+        ):
+            return False
+        if not self._check_positions_ones(shape, block_shape):
+            return False
+        return True
 
     def _simple_reshape(self, arr, shape, block_shape):
         # Reshape the array of blocks only.
