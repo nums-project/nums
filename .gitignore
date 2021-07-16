@@ -139,3 +139,7 @@ condaforge
 
 # Pyright settings
 pyrightconfig.json
+
+# Directories
+notebooks
+
