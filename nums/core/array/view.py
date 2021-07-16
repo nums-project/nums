@@ -293,9 +293,14 @@ class ArrayView(object):
                         np.array(src_grid_entry_inflated, dtype=np.int) + src_offset
                     ).tolist()
                 )
-                self._source.blocks[dst_grid_entry] = value._source.blocks[
-                    src_grid_entry
-                ].copy()
+                # This is a reference assignment, and the grid properties between the
+                # two blocks may differ, so retain those properties in the copy.
+                dst_block: Block = self._source.blocks[dst_grid_entry]
+                src_block_copy: Block = value._source.blocks[src_grid_entry].copy()
+                src_block_copy.grid_entry = dst_block.grid_entry
+                src_block_copy.grid_shape = dst_block.grid_shape
+                src_block_copy.rect = dst_block.rect
+                self._source.blocks[dst_grid_entry] = src_block_copy
         elif isinstance(value, BlockArrayBase):
             # The value has already been created, so just leverage value's existing grid iterator.
             if value.shape != dst_sel.get_output_shape():
@@ -320,9 +325,14 @@ class ArrayView(object):
                         np.array(src_grid_entry_inflated, dtype=np.int) + dst_offset
                     ).tolist()
                 )
-                self._source.blocks[dst_grid_entry] = src_ba.blocks[
-                    src_grid_entry
-                ].copy()
+                # This is a reference assignment, and the grid properties between the
+                # two blocks may differ, so retain those properties in the copy.
+                dst_block: Block = self._source.blocks[dst_grid_entry]
+                src_block_copy: Block = src_ba.blocks[src_grid_entry].copy()
+                src_block_copy.grid_entry = dst_block.grid_entry
+                src_block_copy.grid_shape = dst_block.grid_shape
+                src_block_copy.rect = dst_block.rect
+                self._source.blocks[dst_grid_entry] = src_block_copy
 
     def basic_assign_single_step(self, dst_sel: BasicSelection, value):
         assert isinstance(value, (ArrayView, BlockArrayBase))
