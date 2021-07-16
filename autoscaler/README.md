@@ -1,17 +1,24 @@
-This readme contains the instructions on how you can setup a NumS cluster on AWS. They supplement the well commented ```autoscaler-aws.yaml``` file.
+These instructions explain how to setup a Ray cluster with NumS on AWS. 
+They supplement the well commented ```autoscaler-aws.yaml``` file.
 Refer to the [ray autoscaler](https://docs.ray.io/en/master/cluster/cloud.html) page for additional details. 
 
-Note, prior to using this autoscaler, nums and boto3 must be installed on your local machine ```pip install nums boto3``` with your AWS credentials configured, as described in the [boto docs](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html). If you use conda, make sure to activate the correct conda environment.
+Prior to using this autoscaler, nums and boto3 must be installed on your local machine (```pip install nums boto3```) with your AWS credentials configured, as described in the [boto docs](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html). If you use conda, make sure to activate the correct conda environment.
 
 ## Configuration
 
-* Modify the ```max_workers``` key to enforce the global max workers that could launch in addition to the head node, or leave it commented.
+* Modify the ```max_workers``` key to enforce the global max workers that may launch in addition to the head node, or leave it commented.
 
-* Modify the keys in ```provider``` field for your aws specific configurations regarding regions and availability zones. 
+* Modify the keys in the ```provider``` field for your aws specific configurations regarding regions and availability zones. 
 
-* In the ```available_node_types``` field, edit the ```node_config``` field for ```nums.head.default```. This will configure the head node. You can choose the ec2 instance type, disk and AMI for head node here. Similarly, for the ```nums.worker.default``` field, edit the ```min_workers``` key to set the number of NumS workers. Edit the node configurations here as well under ```node_config``` field. (Make sure to use the correct AMI as per your region and availability zones).
+* In the ```available_node_types``` field, edit the ```node_config``` field for ```nums.head.default```. 
+This will configure the head node. 
+You can choose the ec2 instance type, disk and AMI for the head node here. 
+Similarly, for the ```nums.worker.default``` field, edit the ```min_workers``` key 
+to set the number of NumS workers. 
+Edit worker node configurations here under ```node_config``` field. 
+Make sure to use the correct AMI as per your region and availability zones.
 
-* Then modify the ```file_mounts``` field to indicate any directories or files to copy from the local machine to the every node on the cluster. Leave commented otherwise.
+* Modify the ```file_mounts``` field to indicate any directories or files to copy from the local machine to the every node on the cluster, or leave it commented.
 
 ## Running
 
