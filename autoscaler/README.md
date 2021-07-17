@@ -11,12 +11,12 @@ To launch a NumS cluster on AWS, follow these steps in specified order.
 In the ```autoscaler-aws.yaml``` file: 
 1. Modify the parameters in the ```provider``` field for your aws specific configurations regarding regions and availability zones. 
 2. In the ```available_node_types``` field, edit the ```node_config``` field for ```nums.head.default```. 
-This will configure the head node. \ 
-You can choose the ec2 instance type, disk and AMI for the head node here. \
+This will configure the head node. 
+You can choose the ec2 instance type, disk and AMI for the head node here. 
 Similarly, for the ```nums.worker.default``` field, edit the ```min_workers``` key 
 to set the number of NumS workers. 
-Edit worker node configurations here under ```node_config``` field. \
-Make sure to use the correct AMI as per your region and availability zones. \
+Edit worker node configurations here under ```node_config``` field. 
+Make sure to use the correct AMI as per your region and availability zones. 
 3. Modify the ```file_mounts``` field to indicate any directories or files to copy from the local machine to the every node on the cluster, or leave it commented.
 
 ## B. Running the configuration file
@@ -25,7 +25,7 @@ Make sure to use the correct AMI as per your region and availability zones. \
 ```
 ray up autoscaler-aws.yaml
 ```
-5. This will launch a ray cluster with NumS. 
+* This will launch a ray cluster with NumS. 
 
 ## C. Example
 After you launch the cluster using the steps above, you can refer to [this example](https://github.com/nums-project/nums/blob/main/autoscaler/example.py).
@@ -35,7 +35,7 @@ After you launch the cluster using the steps above, you can refer to [this examp
   * We then perform a sum operation on the two nums arrays.
   * Then we do a ```SUM.get()``` which waits and fetches final values of ```X+Y```.
 
-6. To run this example:
+5. To run this example:
   * First run the following commands from your local machine to copy the example.py file to head node of the cluster \
   ```cd <local_path_to_this_repo>/autoscaler``` \
   ```ray rsync-up autoscaler-aws.yaml 'example.py' '/home/ubuntu'```.
@@ -44,8 +44,8 @@ After you launch the cluster using the steps above, you can refer to [this examp
 
 
 ## D. Destroying the cluster
-7. To destroy the cluster, run
+6. To destroy the cluster, run
 ```
 ray down autoscaler-aws.yaml
 ```
-* Tip: In ```autoscler-aws.yaml``` file, set ```cache_stopped_nodes``` key  to ```False``` in the ```provider``` field to terminate the nodes and disable reuse, instead of shutting them down upon running step 7.
+* Tip: In ```autoscler-aws.yaml``` file, set ```cache_stopped_nodes``` key  to ```False``` in the ```provider``` field to terminate the nodes and disable reuse, instead of shutting them down upon running step 6.
