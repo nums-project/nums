@@ -15,8 +15,8 @@
 
 
 import boto3
-from moto import mock_s3
 import numpy as np
+from moto import mock_s3
 
 from nums.core.array.blockarray import BlockArray
 
@@ -28,6 +28,7 @@ def test_rwd():
     import nums
     from nums.core import application_manager
     from nums.core import settings
+
     settings.system_name = "serial"
     nps_app_inst = application_manager.instance()
 
@@ -51,12 +52,13 @@ def test_rwd_s3():
     import nums
     from nums.core import application_manager
     from nums.core import settings
+
     settings.system_name = "serial"
     nps_app_inst = application_manager.instance()
 
-    conn = boto3.resource('s3', region_name='us-east-1')
-    assert conn.Bucket('darrays') not in conn.buckets.all()
-    conn.create_bucket(Bucket='darrays')
+    conn = boto3.resource("s3", region_name="us-east-1")
+    assert conn.Bucket("darrays") not in conn.buckets.all()
+    conn.create_bucket(Bucket="darrays")
 
     array: np.ndarray = np.random.random(35).reshape(7, 5)
     ba: BlockArray = nps_app_inst.array(array, block_shape=(3, 4))
@@ -76,9 +78,12 @@ def test_rwd_s3():
 def test_read_csv():
     import nums
     from nums.core import settings
+
     settings.system_name = "serial"
 
-    filename = settings.pj(settings.project_root, "tests", "core", "storage", "test.csv")
+    filename = settings.pj(
+        settings.project_root, "tests", "core", "storage", "test.csv"
+    )
     ba = nums.read_csv(filename, has_header=True)
     assert np.allclose(ba[0].get(), [123, 4, 5])
     assert np.allclose(ba[-1].get(), [1.2, 3.4, 5.6])
@@ -88,6 +93,7 @@ if __name__ == "__main__":
     # pylint: disable=import-error
     from nums.core import application_manager
     from nums.core import settings
+
     settings.system_name = "serial"
     nps_app_inst = application_manager.instance()
     # test_rwd()

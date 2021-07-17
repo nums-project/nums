@@ -22,7 +22,6 @@ from nums.core.array.blockarray import BlockArray
 
 
 class RandomState(object):
-
     def __init__(self, seed=None):
         self._seed = seed
         self._rs = None
@@ -71,7 +70,7 @@ class RandomState(object):
     def permutation(self, x):
         app = _instance()
         if _array_utils.is_int(x):
-            shape = (x, )
+            shape = (x,)
             block_shape = app.compute_block_shape(shape=shape, dtype=_np.int64)
             return self.rs().permutation(shape[0], block_shape[0])
         else:
@@ -83,10 +82,30 @@ class RandomState(object):
 
 
 # Default imp.
-_default_random = RandomState()
-seed = _default_random.seed
-random_sample = _default_random.random_sample
-rand = _default_random.rand
-randn = _default_random.randn
-randint = _default_random.randint
-permutation = _default_random.permutation
+def reset():
+    # pylint: disable = global-statement
+    global _default_random
+    global seed
+    global random_sample
+    global rand
+    global randn
+    global randint
+    global permutation
+
+    _default_random = RandomState()
+    seed = _default_random.seed
+    random_sample = _default_random.random_sample
+    rand = _default_random.rand
+    randn = _default_random.randn
+    randint = _default_random.randint
+    permutation = _default_random.permutation
+
+
+_default_random = None
+seed = None
+random_sample = None
+rand = None
+randn = None
+randint = None
+permutation = None
+reset()

@@ -16,26 +16,30 @@
 
 import itertools
 
-import tqdm
 import numpy as np
 import pytest
+import tqdm
 
-from nums.core.array import utils as array_utils
 import nums.core.array.selection as sel_module
-from nums.core.array.selection import BasicSelection, \
-    AxisSelection, \
-    AxisArray, \
-    AxisSlice, \
-    AxisIndex, \
-    AxisEmpty, \
-    is_advanced_selection
+from nums.core.array import utils as array_utils
+from nums.core.array.selection import (
+    BasicSelection,
+    AxisSelection,
+    AxisArray,
+    AxisSlice,
+    AxisIndex,
+    AxisEmpty,
+    is_advanced_selection,
+)
 
 
 # pylint: disable=protected-access, cell-var-from-loop
 
 
 def get_slices(size, index_multiplier=1, limit=None):
-    index_multiplier = [None] + list(range(-size * index_multiplier, size * index_multiplier + 1))
+    index_multiplier = [None] + list(
+        range(-size * index_multiplier, size * index_multiplier + 1)
+    )
     items = list()
     for start, stop, step in itertools.product(index_multiplier, repeat=3):
         if step == 0:
@@ -66,7 +70,9 @@ def get_arrays(size, limit=None):
 
 def subsample(items, max_items, seed=1337):
     rs = np.random.RandomState(seed)
-    return np.array(items)[rs.choice(np.arange(len(items), dtype=int), max_items)].tolist()
+    return np.array(items)[
+        rs.choice(np.arange(len(items), dtype=int), max_items)
+    ].tolist()
 
 
 def alt_compute_intersection(sel_a, sel_b, shape):
@@ -85,10 +91,12 @@ def alt_compute_intersection(sel_a, sel_b, shape):
                 axis_a, axis_b = axis_b, axis_a
             # Required check, because otherwise we expect an array.
             if isinstance(axis_b, slice):
-                if (axis_b.step is None or axis_b.step == 1) \
-                        and (axis_a.step is None or axis_a.step == 1):
-                    axis_c = slice(max(axis_a.start, axis_b.start),
-                                   min(axis_a.stop, axis_b.stop))
+                if (axis_b.step is None or axis_b.step == 1) and (
+                    axis_a.step is None or axis_a.step == 1
+                ):
+                    axis_c = slice(
+                        max(axis_a.start, axis_b.start), min(axis_a.stop, axis_b.stop)
+                    )
                 else:
                     a_range = sel_module.slice_to_range(axis_a, shape[i])
                     b_range = sel_module.slice_to_range(axis_b, shape[i])
@@ -127,7 +135,7 @@ def test_basic_slice_selection():
     # Test basic ops with selections of AxisSlice.
     arr: np.ndarray = np.arange(3)
     size = arr.shape[0]
-    index_range = [None] + list(range(-size*3, size*3 + 1))
+    index_range = [None] + list(range(-size * 3, size * 3 + 1))
     slice_params = list(itertools.product(index_range, repeat=2))
     pbar = tqdm.tqdm(total=len(slice_params))
     for start, stop in slice_params:
@@ -170,7 +178,7 @@ def test_stepped_slice_selection():
 def test_index_selection():
     arr: np.ndarray = np.arange(3)
     size = arr.shape[0]
-    index_range = list(range(-size*3, size*3 + 1))
+    index_range = list(range(-size * 3, size * 3 + 1))
     pbar = tqdm.tqdm(total=len(index_range))
     for index in index_range:
         pbar.update(1)
@@ -201,7 +209,7 @@ def test_slice_intersection():
         (slice(40, 50), slice(35, 35), slice(40, 35)),
         # Test different variant of empty slice => empty slice.
         (slice(40, 50), slice(60, 30), slice(60, 30)),
-        (slice(70, 40), slice(60, 30), slice(70, 30))
+        (slice(70, 40), slice(60, 30), slice(70, 30)),
     ]
     for a_slice, b_slice, c_slice in test_parameters:
         size = shape[0]
@@ -210,33 +218,39 @@ def test_slice_intersection():
         c = a & b
         assert isinstance(c[0], AxisSlice)
         assert c[0].to_slice() == c_slice, (a_slice, b_slice, c_slice)
-        assert np.allclose(sel_module.slice_to_range(c[0].to_slice(), size),
-                           sel_module.slice_to_range(c_slice, size))
+        assert np.allclose(
+            sel_module.slice_to_range(c[0].to_slice(), size),
+            sel_module.slice_to_range(c_slice, size),
+        )
 
 
 @pytest.mark.skip
 def test_stepped_slice_intersection():
     size = 4
-    shape = size,
+    shape = (size,)
     num_axes = len(shape)
     # arr = np.random.random_sample(np.product(shape)).reshape(shape)
     arr = np.arange(np.product(shape)).reshape(shape)
     ss = BasicSelection.from_subscript
 
-    num_axes_pairs = list(itertools.product(np.arange(1, num_axes+1), repeat=2))
+    num_axes_pairs = list(itertools.product(np.arange(1, num_axes + 1), repeat=2))
     for num_axes_idx, (num_axes_a, num_axes_b) in enumerate(num_axes_pairs):
         # Index multiplier of 1 is okay,
         # since we test larger index ranges in the slice selection test.
         # TODO (hme): Update this to catch error in block slice intersection test.
         all_axis_selections = list(get_slices(size, index_multiplier=1))
-        test_selections_a = list(itertools.product(all_axis_selections, repeat=num_axes_a))
-        test_selections_b = list(itertools.product(all_axis_selections, repeat=num_axes_b))
+        test_selections_a = list(
+            itertools.product(all_axis_selections, repeat=num_axes_a)
+        )
+        test_selections_b = list(
+            itertools.product(all_axis_selections, repeat=num_axes_b)
+        )
         test_selections = list(itertools.product(test_selections_a, test_selections_b))
-        pbar = tqdm.tqdm(total=len(all_axis_selections)**(num_axes_a + num_axes_b))
+        pbar = tqdm.tqdm(total=len(all_axis_selections) ** (num_axes_a + num_axes_b))
         for ss_a, ss_b in test_selections:
-            pbar.set_description(str(("%.3f" % ((num_axes_idx+1)/len(num_axes_pairs)),
-                                      ss_a,
-                                      ss_b)))
+            pbar.set_description(
+                str(("%.3f" % ((num_axes_idx + 1) / len(num_axes_pairs)), ss_a, ss_b))
+            )
             pbar.update(1)
             sel_a: BasicSelection = ss(arr.shape, ss_a)
             true_arr_sel_a = arr[ss_a]
@@ -273,12 +287,14 @@ def test_stepped_slice_intersection():
                 # For our purposes, this is undefined.
                 ab_intersection = np.array([], dtype=np.intp)
             else:
-                ab_intersection = np.sort(np.array(list(set(min_array) & set(max_array)),
-                                                   dtype=np.intp))[::np.sign(step_a)]
+                ab_intersection = np.sort(
+                    np.array(list(set(min_array) & set(max_array)), dtype=np.intp)
+                )[:: np.sign(step_a)]
 
             # Quickly test array intersection here as well.
-            assert np.allclose(sel_a._np_array_and_array(a_range, b_range),
-                               ab_intersection)
+            assert np.allclose(
+                sel_a._np_array_and_array(a_range, b_range), ab_intersection
+            )
 
             true_arr_sel_c = arr[ab_intersection]
             test_arr_sel_c = arr[sel_c.selector()]
@@ -311,11 +327,12 @@ def test_array_intersection():
     sizes = list(itertools.product(np.arange(1, size), repeat=2))
     for sizes_idx, (size_a, size_b) in enumerate(sizes):
         arr: np.ndarray = np.arange(size).reshape((size,))
-        test_selections = list(itertools.product(get_arrays(size_a),
-                                                 get_arrays(size_b)))
+        test_selections = list(
+            itertools.product(get_arrays(size_a), get_arrays(size_b))
+        )
         pbar = tqdm.tqdm(total=len(test_selections))
         for ss_a, ss_b in test_selections:
-            pbar.set_description(str((sizes_idx/len(sizes), ss_a, ss_b)))
+            pbar.set_description(str((sizes_idx / len(sizes), ss_a, ss_b)))
             ss_a = (ss_a,)
             ss_b = (ss_b,)
             pbar.update(1)
@@ -344,8 +361,9 @@ def test_array_intersection():
             if a_order != b_order:
                 ss_c = np.array([], dtype=np.intp)
             else:
-                ss_c = np.sort(np.array(list(set(ss_a[0]) & set(ss_b[0])),
-                                        dtype=np.intp))[::a_order]
+                ss_c = np.sort(
+                    np.array(list(set(ss_a[0]) & set(ss_b[0])), dtype=np.intp)
+                )[::a_order]
             assert np.allclose(sel_c[0].array, ss_c)
             true_arr_sel_c = arr[ss_c]
             test_arr_sel_c = arr[sel_c.selector()]
@@ -386,19 +404,21 @@ def test_multiselect_intersection():
     num_axes = 2
     limit = 4
     ss = BasicSelection.from_subscript
-    arr: np.ndarray = np.arange(size**num_axes).reshape((size,)*num_axes)
+    arr: np.ndarray = np.arange(size ** num_axes).reshape((size,) * num_axes)
 
-    num_axes_pairs = list(itertools.product(np.arange(1, num_axes+1), repeat=2))
+    num_axes_pairs = list(itertools.product(np.arange(1, num_axes + 1), repeat=2))
     for num_axes_idx, (num_axes_a, num_axes_b) in enumerate(num_axes_pairs):
-        all_axis_selections = get_slices(size, limit=limit) + \
-                              get_indices(size, limit=limit) + \
-                              get_arrays(size, limit=limit)
+        all_axis_selections = (
+            get_slices(size, limit=limit)
+            + get_indices(size, limit=limit)
+            + get_arrays(size, limit=limit)
+        )
         test_selections_a = itertools.product(all_axis_selections, repeat=num_axes_a)
         test_selections_b = itertools.product(all_axis_selections, repeat=num_axes_b)
         test_selections = itertools.product(test_selections_a, test_selections_b)
-        pbar = tqdm.tqdm(total=len(all_axis_selections)**(num_axes_a+num_axes_b))
+        pbar = tqdm.tqdm(total=len(all_axis_selections) ** (num_axes_a + num_axes_b))
         for ss_a, ss_b in test_selections:
-            pbar.set_description("%.3f" % ((num_axes_idx+1)/len(num_axes_pairs)))
+            pbar.set_description("%.3f" % ((num_axes_idx + 1) / len(num_axes_pairs)))
             # pbar.set_description(str((num_axes_idx/len(num_axes_pairs), ss_a, ss_b)))
             pbar.update(1)
             # We only support intersection on operands of the same type.
@@ -441,7 +461,7 @@ def test_ellipsis():
         (slice(0, 2),),
         (slice(0, 2), slice(1, 4)),
         (slice(0, 2), slice(1, 4), slice(2, 6)),
-        (slice(0, 2), slice(1, 4), slice(2, 6), slice(3, 8))
+        (slice(0, 2), slice(1, 4), slice(2, 6), slice(3, 8)),
     ]
     for true_sel in test_params:
         sel = BasicSelection.from_subscript(shape, true_sel)
@@ -459,7 +479,7 @@ def test_advanced_indexing_broadcasting():
     x = np.random.random_sample(np.product(shape)).reshape(shape)
     aidx_1 = []
     for axis, dim in enumerate(shape):
-        bshape = [1]*num_axes
+        bshape = [1] * num_axes
         bshape[axis] = dim
         bshape = tuple(bshape)
         aidx_1.append(np.arange(dim).reshape(bshape))
@@ -487,12 +507,24 @@ def test_signed_batch_slicing():
         for batch_size in range(1, size):
             for order in (-1, 1):
                 if order == 1:
-                    res = np.concatenate(list(map(lambda x: arr[x],
-                                                  array_utils.get_slices(size, batch_size, order))))
+                    res = np.concatenate(
+                        list(
+                            map(
+                                lambda x: arr[x],
+                                array_utils.get_slices(size, batch_size, order),
+                            )
+                        )
+                    )
                     assert np.allclose(arr, res)
                 else:
-                    res = np.concatenate(list(map(lambda x: arr[x],
-                                                  array_utils.get_slices(size, batch_size, order))))
+                    res = np.concatenate(
+                        list(
+                            map(
+                                lambda x: arr[x],
+                                array_utils.get_slices(size, batch_size, order),
+                            )
+                        )
+                    )
                     assert np.allclose(arr[::-1], res)
 
 
@@ -506,9 +538,9 @@ def test_batch_slice_intersection():
     arr: np.ndarray = np.random.random_sample(size).reshape(shape)
 
     # Test to ensure selections cover basic array.
-    grid: array_utils.OrderedGrid = array_utils.OrderedGrid(shape=shape,
-                                                            block_shape=block_shape,
-                                                            order=(1, 1, 1))
+    grid: array_utils.OrderedGrid = array_utils.OrderedGrid(
+        shape=shape, block_shape=block_shape, order=(1, 1, 1)
+    )
     asgn_test: np.ndarray = np.random.random_sample(size).reshape(shape)
     for index in grid.index_iterator():
         selection = tuple(grid.slices[index])
@@ -520,33 +552,41 @@ def test_batch_slice_intersection():
     arr: np.ndarray = np.arange(size).reshape(shape)
     slices_set = []
     for dim in shape:
-        dim_steps = list(filter(lambda i: i != 0, range(-dim*2, dim*2)))
+        dim_steps = list(filter(lambda i: i != 0, range(-dim * 2, dim * 2)))
         dim_slices = list(
-            map(lambda step: slice(0, dim, step) if step > 0 else slice(-1, -dim - 1, step),
-                dim_steps)
+            map(
+                lambda step: slice(0, dim, step)
+                if step > 0
+                else slice(-1, -dim - 1, step),
+                dim_steps,
+            )
         )
         slices_set.append(dim_slices)
     slices_set = list(itertools.product(*slices_set))
-    pbar = tqdm.tqdm(total=len(slices_set)*np.product(grid.grid_shape))
+    pbar = tqdm.tqdm(total=len(slices_set) * np.product(grid.grid_shape))
     for slices in slices_set:
         big_sliced_arr: np.ndarray = arr[tuple(slices)]
         big_bs: BasicSelection = BasicSelection.from_subscript(shape, tuple(slices))
         assert np.allclose(big_sliced_arr, arr[big_bs.selector()])
-        grid: array_utils.OrderedGrid = array_utils.OrderedGrid(shape=shape,
-                                                                block_shape=block_shape,
-                                                                order=big_bs.order())
+        grid: array_utils.OrderedGrid = array_utils.OrderedGrid(
+            shape=shape, block_shape=block_shape, order=big_bs.order()
+        )
         small_sliced_arr: np.ndarray = np.empty(grid.grid_shape, dtype=np.ndarray)
         for index in grid.index_iterator():
             small_slices = tuple(grid.slices[index])
-            small_bs: BasicSelection = BasicSelection.from_subscript(shape, small_slices)
+            small_bs: BasicSelection = BasicSelection.from_subscript(
+                shape, small_slices
+            )
             res_bs = big_bs & small_bs
             assert arr[res_bs.selector()].shape == res_bs.get_output_shape()
             small_arr = arr[res_bs.selector()]
             small_sliced_arr[tuple(index)] = small_arr
             pbar.update(1)
         stitched_arr = np.block(small_sliced_arr.tolist())
-        assert stitched_arr.shape == big_sliced_arr.shape, (stitched_arr.shape,
-                                                            big_sliced_arr.shape)
+        assert stitched_arr.shape == big_sliced_arr.shape, (
+            stitched_arr.shape,
+            big_sliced_arr.shape,
+        )
         assert np.allclose(big_sliced_arr, stitched_arr)
 
 

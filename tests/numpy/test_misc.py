@@ -34,6 +34,7 @@ def test_explicit_init():
 
 def test_array_copy(nps_app_inst):
     import nums.numpy as nps
+
     assert nps_app_inst is not None
 
     ba = nps.arange(10)
@@ -43,12 +44,15 @@ def test_array_copy(nps_app_inst):
 
 def test_loadtxt(nps_app_inst):
     import nums.numpy as nps
+
     assert nps_app_inst is not None
 
     seed = 1337
     rs = np.random.RandomState(seed)
 
     fname = "test_text.out"
+    # TODO (hme): There's a reshape issue that causes this method to currently fallback to numpy.
+    #  Using a nice shape for now.
     data = rs.random_sample(99).reshape(33, 3)
 
     np.savetxt(fname=fname, X=data)
@@ -64,12 +68,7 @@ def test_where(nps_app_inst):
 
     assert nps_app_inst is not None
 
-    shapes = [
-        (),
-        (10 ** 6,),
-        (10 ** 6, 1),
-        (10 ** 5, 10)
-    ]
+    shapes = [(), (10 ** 6,), (10 ** 6, 1), (10 ** 5, 10)]
     for shape in shapes:
         arr: BlockArray = nps.random.rand(*shape)
         x: BlockArray = nps.random.rand(*shape)
@@ -105,14 +104,17 @@ def test_where(nps_app_inst):
 
 def test_reshape(nps_app_inst):
     import nums.numpy as nps
+
     assert nps_app_inst is not None
     ba = nps.arange(2 * 3 * 4).reshape((2, 3, 4), block_shape=(2, 3, 4))
-    assert nps.allclose(ba.reshape((6, 4), block_shape=(6, 4)),
-                        nps.reshape(ba, shape=(6, 4)))
+    assert nps.allclose(
+        ba.reshape((6, 4), block_shape=(6, 4)), nps.reshape(ba, shape=(6, 4))
+    )
 
 
 def test_all_alltrue_any(nps_app_inst):
     import nums.numpy as nps
+
     assert nps_app_inst is not None
 
     true_int = np.array([[1, 2, 3], [1, 2, 3]])
@@ -147,6 +149,7 @@ def test_all_alltrue_any(nps_app_inst):
 
 def test_array_eq(nps_app_inst):
     import nums.numpy as nps
+
     assert nps_app_inst is not None
 
     int_array_1 = np.array([[1, 2, 3], [4, 5, 6]])
@@ -156,46 +159,74 @@ def test_array_eq(nps_app_inst):
     float_array_1 = np.array([[1e10, 1e-8, 1e-8], [1e10, 1e-8, 1e-8]])
     float_array_2 = np.array([[1.00001e10, 1e-9, 1e-9], [1.00001e10, 1e-9, 1e-9]])
 
-    checks = [(int_array_1, int_array_2),
-              (bool_array_1, bool_array_2),
-              (float_array_1, float_array_2)]
+    checks = [
+        (int_array_1, int_array_2),
+        (bool_array_1, bool_array_2),
+        (float_array_1, float_array_2),
+    ]
 
     for check in checks:
         nps_array_1 = nps.array(check[0]).reshape(block_shape=(2, 2))
         nps_array_2 = nps.array(check[1]).reshape(block_shape=(2, 2))
-        assert nps.array_equal(nps_array_1, nps_array_1).get() == np.array_equal(check[0], check[0])
-        assert nps.array_equal(nps_array_1, nps_array_2).get() == np.array_equal(check[0], check[1])
-        assert nps.array_equiv(nps_array_1, nps_array_1).get() == np.array_equiv(check[0], check[0])
-        assert nps.array_equiv(nps_array_1, nps_array_2).get() == np.array_equiv(check[0], check[1])
-        assert nps.allclose(nps_array_1, nps_array_1).get() == np.allclose(check[0], check[0])
-        assert nps.allclose(nps_array_1, nps_array_2).get() == np.allclose(check[0], check[1])
+        assert nps.array_equal(nps_array_1, nps_array_1).get() == np.array_equal(
+            check[0], check[0]
+        )
+        assert nps.array_equal(nps_array_1, nps_array_2).get() == np.array_equal(
+            check[0], check[1]
+        )
+        assert nps.array_equiv(nps_array_1, nps_array_1).get() == np.array_equiv(
+            check[0], check[0]
+        )
+        assert nps.array_equiv(nps_array_1, nps_array_2).get() == np.array_equiv(
+            check[0], check[1]
+        )
+        assert nps.allclose(nps_array_1, nps_array_1).get() == np.allclose(
+            check[0], check[0]
+        )
+        assert nps.allclose(nps_array_1, nps_array_2).get() == np.allclose(
+            check[0], check[1]
+        )
 
         assert nps.array_equal(nps_array_1, nps_array_2).dtype is bool
         assert nps.array_equiv(nps_array_1, nps_array_2).dtype is bool
         assert nps.allclose(nps_array_1, nps_array_2).dtype is bool
 
     # False interaction test
-    checks_1 = [np.array([False]), np.array([False]),
-                np.array([0]), np.array([0]),
-                np.array([0.0]), np.array([0.0])]
-    checks_2 = [np.array([0]), np.array([0.0]),
-                np.array([False]), np.array([0.0]),
-                np.array([False]), np.array([0])]
+    checks_1 = [
+        np.array([False]),
+        np.array([False]),
+        np.array([0]),
+        np.array([0]),
+        np.array([0.0]),
+        np.array([0.0]),
+    ]
+    checks_2 = [
+        np.array([0]),
+        np.array([0.0]),
+        np.array([False]),
+        np.array([0.0]),
+        np.array([False]),
+        np.array([0]),
+    ]
     for check_1, check_2 in zip(checks_1, checks_2):
         nps_check_1 = nps.array(check_1)
         nps_check_2 = nps.array(check_2)
-        assert nps.array_equal(nps_check_1, nps_check_2) == \
-               np.array_equal(check_1, check_2)
-        assert nps.array_equiv(nps_check_1, nps_check_2) == \
-               np.array_equiv(check_1, check_2)
+        assert nps.array_equal(nps_check_1, nps_check_2) == np.array_equal(
+            check_1, check_2
+        )
+        assert nps.array_equiv(nps_check_1, nps_check_2) == np.array_equiv(
+            check_1, check_2
+        )
 
     # Infinity interaction test
-    assert nps.array_equal(nps.array([nps.inf, nps.NINF]), nps.array([nps.NINF, nps.inf])) == \
-           np.array_equal(np.array([np.inf, np.NINF]), np.array([np.NINF, np.inf]))
+    assert nps.array_equal(
+        nps.array([nps.inf, nps.NINF]), nps.array([nps.NINF, nps.inf])
+    ) == np.array_equal(np.array([np.inf, np.NINF]), np.array([np.NINF, np.inf]))
 
 
 def test_properties(nps_app_inst):
     import nums.numpy as nps
+
     assert nps_app_inst is not None
     A: BlockArray = nps.random.randn(10, 20, 1)
     assert A.shape == nps.shape(A)
@@ -207,15 +238,30 @@ def test_properties(nps_app_inst):
     assert A_copy is not A
 
 
+def test_arange(nps_app_inst):
+    import nums.numpy as nps
+
+    assert nps_app_inst is not None
+
+    start_indices = [3.1, 3, 3.1]
+    stop_indices = [5.1, 5.1, 5]
+
+    for start, stop in zip(start_indices, stop_indices):
+        a = nps.arange(start, stop).get()
+        b = np.arange(start, stop)
+        assert np.allclose(a, b)
+
+
 if __name__ == "__main__":
     from nums.core import application_manager
     from nums.core import settings
 
-    settings.system_name = "serial"
+    settings.system_name = "ray-task"
     nps_app_inst = application_manager.instance()
-    # test_where(nps_app_inst)
+    test_where(nps_app_inst)
     # test_loadtxt(nps_app_inst)
     # test_reshape(nps_app_inst)
     # test_all_alltrue_any(nps_app_inst)
     # test_array_eq(nps_app_inst)
-    test_properties(nps_app_inst)
+    # test_properties(nps_app_inst)
+    # test_arange(nps_app_inst)

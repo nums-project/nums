@@ -16,11 +16,11 @@
 
 import time
 
-import pytest
 import numpy as np
+import pytest
 
-from nums.core.storage.storage import BimodalGaussian
 from nums.core.array.application import ArrayApplication
+from nums.core.storage.storage import BimodalGaussian
 from nums.models.glms import LogisticRegression, LinearRegression, PoissonRegression
 
 
@@ -37,7 +37,7 @@ def test_logistic(nps_app_inst: ArrayApplication):
         {"solver": "sgd", "lr": 1e-6, "tol": 1e-8, "max_iter": 10},
         {"solver": "block_sgd", "lr": 1e-6, "tol": 1e-8, "max_iter": 10},
         {"solver": "newton", "tol": 1e-8, "max_iter": 10},
-        {"solver": "irls", "tol": 1e-8, "max_iter": 10}
+        {"solver": "irls", "tol": 1e-8, "max_iter": 10},
     ]
     for kwargs in param_set:
         runtime = time.time()
@@ -46,12 +46,14 @@ def test_logistic(nps_app_inst: ArrayApplication):
         runtime = time.time() - runtime
         y_pred = lr_model.predict(X).get()
         y_pred_proba = lr_model.predict_proba(X).get()
-        np.allclose(np.ones(shape=(y.shape[0],)), y_pred_proba[:, 0] + y_pred_proba[:, 1])
+        np.allclose(
+            np.ones(shape=(y.shape[0],)), y_pred_proba[:, 0] + y_pred_proba[:, 1]
+        )
         print("opt", kwargs["solver"])
         print("runtime", runtime)
         print("norm", lr_model.grad_norm_sq(X, y).get())
         print("objective", lr_model.objective(X, y).get())
-        print("accuracy", np.sum(y.get() == y_pred)/num_samples)
+        print("accuracy", np.sum(y.get() == y_pred) / num_samples)
 
 
 def test_logistic_cv(nps_app_inst: ArrayApplication):
@@ -61,11 +63,15 @@ def test_logistic_cv(nps_app_inst: ArrayApplication):
     folds = num_samples // block_shape[0]
     rs = np.random.RandomState(1337)
 
-    real_X, real_y = BimodalGaussian.get_dataset(num_samples-num_bad, num_features, p=0.5)
+    real_X, real_y = BimodalGaussian.get_dataset(
+        num_samples - num_bad, num_features, p=0.5
+    )
     extra_X, extra_y = BimodalGaussian.get_dataset(num_bad, num_features, p=0.5)
 
     # Perturb some examples.
-    extra_X = extra_X * rs.random_sample(np.product(extra_X.shape)).reshape(extra_X.shape)
+    extra_X = extra_X * rs.random_sample(np.product(extra_X.shape)).reshape(
+        extra_X.shape
+    )
     extra_y = rs.randint(0, 2, extra_y.shape).reshape(extra_y.shape)
     perm = rs.permutation(np.arange(num_samples))
     real_X = np.concatenate([real_X, extra_X], axis=0)[perm]
@@ -76,21 +82,48 @@ def test_logistic_cv(nps_app_inst: ArrayApplication):
     y = nps_app_inst.array(real_y, block_shape=(block_shape[0],))
     param_set = [
         {"solver": "newton", "tol": 1e-8, "max_iter": 10},
-        {"solver": "newton", "penalty": "l2", "C": 1.0/0.1, "tol": 1e-8, "max_iter": 10},
-        {"solver": "newton", "penalty": "l2", "C": 1.0/0.2, "tol": 1e-8, "max_iter": 10},
-        {"solver": "newton", "penalty": "l2", "C": 1.0/0.4, "tol": 1e-8, "max_iter": 10},
-        {"solver": "newton", "penalty": "l2", "C": 1.0/0.8, "tol": 1e-8, "max_iter": 10},
+        {
+            "solver": "newton",
+            "penalty": "l2",
+            "C": 1.0 / 0.1,
+            "tol": 1e-8,
+            "max_iter": 10,
+        },
+        {
+            "solver": "newton",
+            "penalty": "l2",
+            "C": 1.0 / 0.2,
+            "tol": 1e-8,
+            "max_iter": 10,
+        },
+        {
+            "solver": "newton",
+            "penalty": "l2",
+            "C": 1.0 / 0.4,
+            "tol": 1e-8,
+            "max_iter": 10,
+        },
+        {
+            "solver": "newton",
+            "penalty": "l2",
+            "C": 1.0 / 0.8,
+            "tol": 1e-8,
+            "max_iter": 10,
+        },
     ]
-    X_train = nps_app_inst.empty((num_samples - X.block_shape[0], num_features), X.block_shape,
-                                 X.dtype)
-    y_train = nps_app_inst.empty((num_samples - y.block_shape[0],), y.block_shape, y.dtype)
+    X_train = nps_app_inst.empty(
+        (num_samples - X.block_shape[0], num_features), X.block_shape, X.dtype
+    )
+    y_train = nps_app_inst.empty(
+        (num_samples - y.block_shape[0],), y.block_shape, y.dtype
+    )
     num_hps = len(param_set)
     mean_accuracies = nps_app_inst.empty((num_hps,), (num_hps,))
     for i, kwargs in enumerate(param_set):
         accuracies = nps_app_inst.empty((folds,), (folds,))
         for fold in range(folds):
             print(i, fold)
-            pos = X.block_shape[0]*fold
+            pos = X.block_shape[0] * fold
             block_size, _ = X.grid.get_block_shape((fold, 0))
             start = pos
             stop = pos + block_size
@@ -116,7 +149,7 @@ def test_lr(nps_app_inst: ArrayApplication):
     y = nps_app_inst.array(real_y, block_shape=(100,))
     param_set = [
         {"solver": "gd", "lr": 1e-6, "tol": 1e-8, "max_iter": 100},
-        {"solver": "newton", "tol": 1e-8, "max_iter": 10}
+        {"solver": "newton", "tol": 1e-8, "max_iter": 10},
     ]
     for kwargs in param_set:
         runtime = time.time()
@@ -129,7 +162,7 @@ def test_lr(nps_app_inst: ArrayApplication):
         print("runtime", runtime)
         print("norm", model.grad_norm_sq(X, y).get())
         print("objective", model.objective(X, y).get())
-        print("error", np.sum((y.get() - y_pred)**2)/num_samples)
+        print("error", np.sum((y.get() - y_pred) ** 2) / num_samples)
         print("D^2", model.deviance_sqr(X, y).get())
 
 
@@ -139,17 +172,19 @@ def test_poisson_basic(nps_app_inst: ArrayApplication):
     y_real = np.exp(np.dot(X_real, coef[0]) + coef[1]).reshape(-1)
     X = nps_app_inst.array(X_real, block_shape=X_real.shape)
     y = nps_app_inst.array(y_real, block_shape=y_real.shape)
-    model: PoissonRegression = PoissonRegression(**{"solver": "newton",
-                                                    "tol": 1e-8,
-                                                    "max_iter": 10})
+    model: PoissonRegression = PoissonRegression(
+        **{"solver": "newton", "tol": 1e-8, "max_iter": 10}
+    )
     model.fit(X, y)
     print("norm", model.grad_norm_sq(X, y).get())
     print("objective", model.objective(X, y).get())
     print("D^2", model.deviance_sqr(X, y).get())
-    assert nps_app_inst.allclose(model._beta,
-                                 nps_app_inst.array(coef[:-1], block_shape=(1,)), rtol=1e-4).get()
-    assert nps_app_inst.allclose(model._beta0,
-                                 nps_app_inst.scalar(coef[-1]), rtol=1e-4).get()
+    assert nps_app_inst.allclose(
+        model._beta, nps_app_inst.array(coef[:-1], block_shape=(1,)), rtol=1e-4
+    ).get()
+    assert nps_app_inst.allclose(
+        model._beta0, nps_app_inst.scalar(coef[-1]), rtol=1e-4
+    ).get()
 
 
 def test_poisson(nps_app_inst: ArrayApplication):
@@ -163,9 +198,7 @@ def test_poisson(nps_app_inst: ArrayApplication):
     real_X = rs.random_sample(size=(num_samples, num_features))
     X = nps_app_inst.array(real_X, block_shape=(100, 3))
     y = real_model.predict(X)
-    param_set = [
-        {"solver": "newton", "tol": 1e-8, "max_iter": 10}
-    ]
+    param_set = [{"solver": "newton", "tol": 1e-8, "max_iter": 10}]
     for kwargs in param_set:
         runtime = time.time()
         model: PoissonRegression = PoissonRegression(**kwargs)
@@ -207,6 +240,7 @@ def test_sklearn_linear_regression(nps_app_inst: ArrayApplication):
 @pytest.mark.skip
 def test_sklearn_logistic_regression(nps_app_inst: ArrayApplication):
     from sklearn.linear_model import LogisticRegression as SKLogisticRegression
+
     num_samples, num_features = 1000, 10
     real_X, real_y = BimodalGaussian.get_dataset(num_samples, num_features)
     X = nps_app_inst.array(real_X, block_shape=(100, 3))
@@ -221,13 +255,17 @@ def test_sklearn_logistic_regression(nps_app_inst: ArrayApplication):
         runtime = time.time() - runtime
         y_pred = lr_model.predict(X).get()
         y_pred_proba = lr_model.predict_proba(X).get()
-        np.allclose(np.ones(shape=(y.shape[0],)), y_pred_proba[:, 0] + y_pred_proba[:, 1])
+        np.allclose(
+            np.ones(shape=(y.shape[0],)), y_pred_proba[:, 0] + y_pred_proba[:, 1]
+        )
 
         sk_lr_model = SKLogisticRegression(**kwargs)
         sk_lr_model.fit(real_X, real_y)
         sk_y_pred = sk_lr_model.predict(real_X)
         sk_y_pred_proba = sk_lr_model.predict_proba(real_X)
-        np.allclose(np.ones(shape=(y.shape[0],)), sk_y_pred_proba[:, 0] + sk_y_pred_proba[:, 1])
+        np.allclose(
+            np.ones(shape=(y.shape[0],)), sk_y_pred_proba[:, 0] + sk_y_pred_proba[:, 1]
+        )
         np.allclose(sk_y_pred, y_pred)
 
 
@@ -240,6 +278,7 @@ def test_sklearn_poisson_regression(nps_app_inst: ArrayApplication):
         return 1 - dev / dev_null
 
     from sklearn.linear_model import PoissonRegressor as SKPoissonRegressor
+
     coef = np.array([0.2, -0.1])
     real_X = np.array([[0, 1, 2, 3, 4]]).T
     real_y = np.exp(np.dot(real_X, coef[0]) + coef[1]).reshape(-1)
@@ -263,6 +302,7 @@ def test_sklearn_poisson_regression(nps_app_inst: ArrayApplication):
 if __name__ == "__main__":
     # pylint: disable=import-error
     from nums.core import application_manager
+
     nps_app_inst = application_manager.instance()
     # test_logistic(nps_app_inst)
     # test_logistic_cv(nps_app_inst)

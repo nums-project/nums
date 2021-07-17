@@ -14,76 +14,16 @@
 # limitations under the License.
 
 
-import os
 import itertools
-import pickle
 import logging
-from typing import Tuple, List, Any, Iterator
+import os
+import pickle
+from typing import Tuple, Any
 
-import numpy as np
 import boto3
+import numpy as np
 
-from nums.core.storage.utils import Batch
-
-
-class ArrayGrid(object):
-    # TODO (hme): Move to array module.
-
-    @classmethod
-    def from_meta(cls, d: dict):
-        return cls(**d)
-
-    def __init__(self, shape: Tuple, block_shape: Tuple, dtype: str):
-        self.shape = tuple(shape)
-        self.block_shape = tuple(np.min([shape, block_shape], axis=0))
-        self.dtype = dict if dtype == "dict" else getattr(np, dtype)
-        self.grid_shape = []
-        self.grid_slices = []
-        for i in range(len(self.shape)):
-            dim = self.shape[i]
-            block_dim = block_shape[i]
-            if dim == 0:
-                # Special case of empty array.
-                axis_slices = []
-            else:
-                axis_slices = Batch(dim, block_dim).batches
-            self.grid_slices.append(axis_slices)
-            self.grid_shape.append(len(axis_slices))
-        self.grid_shape = tuple(self.grid_shape)
-
-    def to_meta(self) -> dict:
-        return {
-            "shape": self.shape,
-            "block_shape": self.block_shape,
-            "dtype": self.dtype.__name__
-        }
-
-    def copy(self):
-        return self.from_meta(self.to_meta())
-
-    def get_entry_iterator(self) -> Iterator[Tuple]:
-        if 0 in self.shape:
-            return []
-        return itertools.product(*map(range, self.grid_shape))
-
-    def get_slice(self, grid_entry):
-        slices = []
-        for axis, slice_index in enumerate(grid_entry):
-            slices.append(slice(*self.grid_slices[axis][slice_index]))
-        return tuple(slices)
-
-    def get_slice_tuples(self, grid_entry: Tuple) -> List[Tuple[slice]]:
-        slice_tuples = []
-        for axis, slice_index in enumerate(grid_entry):
-            slice_tuples.append(tuple(self.grid_slices[axis][slice_index]))
-        return slice_tuples
-
-    def get_block_shape(self, grid_entry: Tuple):
-        slice_tuples = self.get_slice_tuples(grid_entry)
-        block_shape = []
-        for slice_tuple in slice_tuples:
-            block_shape.append(slice_tuple[1] - slice_tuple[0])
-        return tuple(block_shape)
+from nums.core.grid.grid import ArrayGrid
 
 
 class StoredArray(object):
@@ -147,9 +87,8 @@ class StoredArray(object):
 
 
 class StoredArrayS3(StoredArray):
-
     def __init__(self, filename: str, grid: ArrayGrid = None):
-        self.client = boto3.client('s3')
+        self.client = boto3.client("s3")
         super(StoredArrayS3, self).__init__(filename, grid)
         if self.filename[0] == "/":
             raise Exception("Leading / in s3 filename: %s" % filename)
@@ -173,19 +112,23 @@ class StoredArrayS3(StoredArray):
                 Key=self.get_key(grid_entry),
             )
         except Exception as e:
-            logging.getLogger().error("[Error] StoredArrayS3: Failed to get %s %s",
-                                      self.container_name,
-                                      self.get_key(grid_entry))
+            logging.getLogger(__name__).error(
+                "[Error] StoredArrayS3: Failed to get %s %s",
+                self.container_name,
+                self.get_key(grid_entry),
+            )
             raise e
-        block_bytes = response['Body'].read()
+        block_bytes = response["Body"].read()
         dtype = self.grid.dtype
         shape = self.grid.get_block_shape(grid_entry)
         try:
             block = np.frombuffer(block_bytes, dtype=dtype).reshape(shape)
         except Exception as e:
-            logging.getLogger().error("[Error] StoredArrayS3: Failed to read from buffer %s %s",
-                                      self.container_name,
-                                      self.get_key(grid_entry))
+            logging.getLogger(__name__).error(
+                "[Error] StoredArrayS3: " "Failed to read from buffer %s %s",
+                self.container_name,
+                self.get_key(grid_entry),
+            )
             raise e
         return block
 
@@ -194,7 +137,7 @@ class StoredArrayS3(StoredArray):
         response = self.client.delete_objects(
             Bucket=self.container_name,
             Delete={
-                'Objects': objects,
+                "Objects": objects,
             },
         )
         return response
@@ -204,7 +147,7 @@ class StoredArrayS3(StoredArray):
         response = self.client.delete_objects(
             Bucket=self.container_name,
             Delete={
-                'Objects': objects,
+                "Objects": objects,
             },
         )
         return response
@@ -221,9 +164,10 @@ class StoredArrayS3(StoredArray):
 
     def get_grid(self) -> ArrayGrid:
         try:
-            response = self.client.get_object(Bucket=self.container_name,
-                                              Key=self.get_meta_key())
-            meta_dict = pickle.loads(response['Body'].read())
+            response = self.client.get_object(
+                Bucket=self.container_name, Key=self.get_meta_key()
+            )
+            meta_dict = pickle.loads(response["Body"].read())
             return ArrayGrid.from_meta(meta_dict)
         except Exception as _:
             return None
@@ -236,17 +180,18 @@ class StoredArrayS3(StoredArray):
         response = self.client.delete_objects(
             Bucket=self.container_name,
             Delete={
-                'Objects': objects,
+                "Objects": objects,
             },
         )
         return response
 
 
 class BimodalGaussian(object):
-
     @classmethod
     def get_dataset(cls, n, d, p=0.9, seed=1, dtype=np.float64, theta=None):
-        return cls(10, 2, 30, 4, dim=d, seed=seed, dtype=dtype).sample(n, p=p, theta=theta)
+        return cls(10, 2, 30, 4, dim=d, seed=seed, dtype=dtype).sample(
+            n, p=p, theta=theta
+        )
 
     def __init__(self, mu1, sigma1, mu2, sigma2, dim=2, seed=1337, dtype=np.float64):
         self.dtype = dtype

@@ -5,6 +5,9 @@
 [![PyPI version](https://badge.fury.io/py/nums.svg)](https://badge.fury.io/py/nums)
 [![Build Status](https://travis-ci.com/nums-project/nums.svg?branch=master)](https://travis-ci.com/nums-project/nums)
 [![codecov](https://codecov.io/gh/nums-project/nums/branch/master/graph/badge.svg)](https://codecov.io/gh/nums-project/nums)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/nums-project/nums-binder-env/master?urlpath=git-pull%3Frepo%3Dhttps%253A%252F%252Fgithub.com%252Fnums-project%252Fnums%26urlpath%3Dtree%252Fnums%252Fexamples%252Fnotebooks%26branch%3Dmaster)
+
+[//]: # (See this link to generate binder links https://jupyterhub.github.io/nbgitpuller/link?tab=binder)
 
 # What is NumS?
 
@@ -89,7 +92,6 @@ dataset = nums.read_csv("path/to/csv", has_header=True)
 ```
 
 ##  Logistic Regression
-
 In this example, we'll run logistic regression on a 
 bimodal Gaussian. We'll begin by importing the necessary modules.
 
@@ -135,6 +137,7 @@ tree-based optimizer to minimize memory and network load across distributed memo
 For tall-skinny design matrices, NumS will automatically perform data-parallel
 distributed training, a near optimal solution to our optimizer's objective.
 
+
 #### Evaluation
 
 We evaluate our dataset by computing the accuracy on a sampled test set.
@@ -150,6 +153,8 @@ print("test accuracy", (nps.sum(y_test == model.predict(X_test)) / X_test.shape[
 
 We perform the `get` operation to transmit 
 the computed accuracy from distributed memory to "driver" (the locally running process) memory.
+
+You can run this example in your browser [here](https://mybinder.org/v2/gh/nums-project/nums-binder-env/master?urlpath=git-pull%3Frepo%3Dhttps%253A%252F%252Fgithub.com%252Fnums-project%252Fnums%26urlpath%3Dtree%252Fnums%252Fexamples%252Fnotebooks%252Flogistic_regression.ipynb%26branch%3Dmaster).
 
 #### Training on HIGGS
 
@@ -171,8 +176,9 @@ print("accuracy", (nps.sum(y == y_pred) / X.shape[0]).get())
 ```
 
 # Installation
-NumS is currently supported on Linux-based systems running Python 3.6, 3.7, and 3.8.
-Currently, only CPU-based workloads are supported; we are working on providing GPU support.
+NumS releases are tested on Linux-based systems running Python 3.6, 3.7, and 3.8.
+
+NumS runs on Windows, but not all features are tested. We recommend using Anaconda on Windows. Download and install Anaconda for Windows [here](https://docs.anaconda.com/anaconda/install/windows/). Make sure to add Anaconda to your PATH environment variable during installation.
 
 #### pip installation
 To install NumS on Ray with CPU support, simply run the following command.
@@ -204,7 +210,7 @@ using the following set of commands:
 ```sh
 cd nums
 conda create --name nums python=3.7 -y
-source activate nums
+conda activate nums
 pip install -e ".[testing]"
 ```
 
@@ -213,7 +219,7 @@ pip install -e ".[testing]"
 To make basic contributions to the NumPy API, follow these steps:
 
 1. Replicate the function signature in `nums.numpy.api`. If it's a `np.ndarray` method,
-    add the function signature to `nums.core.array.blockarray.BlockArray`.
+add the function signature to `nums.core.array.blockarray.BlockArray`.
 2. If possible,  implement the function using existing methods 
 in `nums.core.array.application.ArrayApplication` 
 or `nums.core.array.blockarray.BlockArray`.
@@ -222,8 +228,8 @@ if it's not possible to implement using existing methods,
 or the implementation's execution speed can be 
 improved beyond what is achievable using existing methods.
 4. Add kernel interfaces to `nums.core.systems.interfaces.ComputeInterface`, and implement
-    the interface methods for all existing compute implementations.
-    Currently, the only compute interface is `nums.core.systems.numpy_compute`.
+the interface methods for all existing compute implementations.
+Currently, the only compute interface is `nums.core.systems.numpy_compute`.
 5. Write tests covering all branches of your implementation in the corresponding test module
 in the project's `tests/` directory.
 6. Do your best to implement the API in its entirety. It's generally better to have a partial

@@ -131,9 +131,11 @@ dmypy.json
 build
 .idea
 scratch
-notebooks
 data
 condaforge
 
 # Emacs
 .dir-locals.el
+
+# Pyright settings
+pyrightconfig.json

@@ -14,15 +14,17 @@
 # limitations under the License.
 
 
+import operator
 import random
+
 import numpy as np
-from numpy.random import PCG64
-from numpy.random import Generator
 import scipy.linalg
 import scipy.special
+from numpy.random import Generator
+from numpy.random import PCG64
 
-from nums.core.storage.storage import ArrayGrid
-from nums.core.systems.interfaces import ComputeImp, RNGInterface
+from nums.core.compute.compute_interface import ComputeImp, RNGInterface
+from nums.core.grid.grid import ArrayGrid
 from nums.core.settings import np_ufunc_map
 
 
@@ -168,8 +170,8 @@ class ComputeCls(ComputeImp):
             result[tuple(dst_sel)] = src_arr[tuple(src_sel)]
         return result
 
-    def diag(self, arr):
-        return np.diag(arr)
+    def diag(self, arr, offset):
+        return np.diag(arr, k=offset)
 
     def arange(self, start, stop, step, dtype):
         return np.arange(start, stop, step, dtype)
@@ -209,9 +211,6 @@ class ComputeCls(ComputeImp):
         dtype = getattr(np, dtype_str)
         return arr.astype(dtype)
 
-    def sum_reduce(self, *arrs):
-        return np.add.reduce(arrs)
-
     def transpose(self, arr):
         return arr.T
 
@@ -223,15 +222,52 @@ class ComputeCls(ComputeImp):
             arr = arr.T
         return np.split(arr, indices_or_sections, axis)
 
-    def bop(self, op, a1, a2, a1_shape, a2_shape, a1_T, a2_T, axes):
+    def size(self, arr):
+        return arr.size
+
+    def select_median(self, arr):
+        """Find value in `arr` closest to median as part of quickselect algorithm."""
+        assert arr.ndim == 1, "Only 1D 'arr' is supported."
+        if arr.size == 0:
+            return 0  # Dummy value that has no effect on weighted median.
+        index = arr.size // 2
+        return np.partition(arr, index)[index]
+
+    def weighted_median(self, *arr_and_weights):
+        """Find the weighted median of an array."""
+        mid = len(arr_and_weights) // 2
+        arr, weights = arr_and_weights[:mid], arr_and_weights[mid:]
+        argsorted_arr = np.argsort(arr)
+        sorted_weights_sum = np.cumsum(np.take(weights, argsorted_arr))
+        half = sorted_weights_sum[-1] / 2
+        return arr[argsorted_arr[np.searchsorted(sorted_weights_sum, half)]]
+
+    def pivot_partition(
+        self,
+        arr,
+        pivot: int,
+        op: str,
+    ):
+        """Return all elements in `arr` for which the comparsion to `pivot` is True."""
+        if arr.size == 0:
+            return 0, arr
+        ops = {
+            "gt": operator.gt,
+            "lt": operator.lt,
+            "ge": operator.ge,
+            "le": operator.le,
+            "eq": operator.eq,
+            "ne": operator.ne,
+        }
+        assert op in ops, "'op' must be a valid comparison operator."
+        comp = arr[ops[op](arr, pivot)]
+        return comp.size, comp
+
+    def bop(self, op, a1, a2, a1_T, a2_T, axes):
         if a1_T:
             a1 = a1.T
         if a2_T:
             a2 = a2.T
-        if a1.shape != a1_shape:
-            a1 = a1.reshape(a1_shape)
-        if a2.shape != a2_shape:
-            a2 = a2.reshape(a2_shape)
 
         if op == "tensordot":
             return np.tensordot(a1, a2, axes=axes)
@@ -272,7 +308,7 @@ class ComputeCls(ComputeImp):
 
     def svd(self, arr):
         u, sigma, vT = np.linalg.svd(arr)
-        u = u[:sigma.shape[0]]
+        u = u[: sigma.shape[0]]
         return u, sigma, vT
 
     def inv(self, arr):
@@ -296,7 +332,9 @@ class ComputeCls(ComputeImp):
     def logical_and(self, *bool_list):
         return np.all(bool_list)
 
-    def arg_op(self, op_name, arr, block_slice, other_argoptima=None, other_optima=None):
+    def arg_op(
+        self, op_name, arr, block_slice, other_argoptima=None, other_optima=None
+    ):
         if op_name == "argmin":
             arr_argmin = np.argmin(arr)
             arr_min = arr[arr_argmin]

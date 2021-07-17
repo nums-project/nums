@@ -15,6 +15,7 @@
 
 
 import numpy as np
+import pytest
 
 from nums.numpy import BlockArray
 
@@ -77,6 +78,72 @@ def test_diag(nps_app_inst):
     ba = nps.diag(ba)
     np_arr = np.diag(np_arr)
     assert np.allclose(ba.get(), np_arr)
+    # Tests all combinations of sizes and block sizes in the range 1 to 4
+    for i in range(1, 4):
+        for j in range(1, 4):
+            for k in range(1, i + 1):
+                for l in range(1, j + 1):
+                    ba: BlockArray = nps.array(np.full((i, j), 1))
+                    ba = ba.reshape(block_shape=(k, l))
+                    np_arr = ba.get()
+                    ba = nps.diag(ba)
+                    np_arr = np.diag(np_arr)
+                    assert np.allclose(ba.get(), np_arr)
+
+
+def test_trace(nps_app_inst):
+    import nums.numpy as nps
+
+    assert nps_app_inst is not None
+
+    a: BlockArray = nps.array([1.0, 2.0, 3.0, 4.0])
+
+    # Construct diagonal matrix with nums and numpy.
+    a_diag = nps.diag(a)
+    a_diag_np = np.diag(a.get())
+
+    # Apply trace to diagonal matrices.
+    a_diag_trace = nps.trace(a_diag).get()
+    a_diag_np_trace = np.trace(a_diag_np)
+
+    assert np.allclose(a_diag_trace, a_diag_np_trace)
+
+    # Test pre-defined diagonal matrices.
+    b: BlockArray = nps.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
+
+    b_diag_trace = nps.trace(b).get()
+    b_diag_np_trace = np.trace(b.get())
+
+    assert np.allclose(b_diag_trace, b_diag_np_trace)
+
+    # Test that trace raises on arrays with 3+ axes.
+    mat: BlockArray = nps.zeros((2, 3, 2))
+    with pytest.raises(ValueError):
+        nps.trace(mat)
+
+    # Test that trace raises when called with non-zero offset.
+    mat: BlockArray = nps.array([1.0, 2.0, 3.0, 4.0])
+    mat_diag = nps.diag(mat)
+    with pytest.raises(NotImplementedError):
+        nps.trace(mat_diag, offset=2)
+
+    # Test data type of trace.
+    mat_diag = nps.diag(nps.array([1.01, 2.02, 3.03, 4.04]))
+    mat_diag_np = np.diag(np.array([1.01, 2.02, 3.03, 4.04]))
+    mat_diag_trace = nps.trace(mat_diag, dtype=int).get()
+    mat_diag_np_trace = np.trace(mat_diag_np, dtype=int)
+
+    assert np.allclose(mat_diag_trace, mat_diag_np_trace)
+    assert mat_diag_trace.dtype == int
+
+    # Test trace on non-square matrices
+    ba: BlockArray = nps.array(np.full((10, 12), 1))
+    ba = ba.reshape(block_shape=(3, 4))
+    np_arr = ba.get()
+    ba = nps.trace(ba)
+    np_arr = np.trace(np_arr)
+
+    assert np.allclose(ba.get(), np_arr)
 
 
 def test_arange(nps_app_inst):
@@ -126,6 +193,7 @@ def test_func_space(nps_app_inst):
     np_arr = np.logspace(12.3, 45.6, 23)
     assert np.allclose(ba.get(), np_arr)
 
+
 def test_shape(nps_app_inst):
     from nums import numpy as nps
     from nums.core import application_manager
@@ -137,10 +205,10 @@ def test_shape(nps_app_inst):
     ns_ins = application_manager.instance()
 
     def check_expand_and_squeeze(_np_a, axes):
-        np_expand_dims = np.__getattribute__('expand_dims')
-        ns_expand_dims = nps.__getattribute__('expand_dims')
-        np_squeeze = np.__getattribute__('squeeze')
-        ns_squeeze = nps.__getattribute__('squeeze')
+        np_expand_dims = np.__getattribute__("expand_dims")
+        ns_expand_dims = nps.__getattribute__("expand_dims")
+        np_squeeze = np.__getattribute__("squeeze")
+        ns_squeeze = nps.__getattribute__("squeeze")
 
         _ns_a = nps.array(_np_a)
         _ns_ins_a = ns_ins.array(_np_a, block_shape=block_shape)
@@ -162,13 +230,13 @@ def test_shape(nps_app_inst):
         check_dim(_np_result, _ns_ins_result)
 
     def check_dim(_np_a, _ns_a):
-        np_ndim = np.__getattribute__('ndim')
+        np_ndim = np.__getattribute__("ndim")
         assert np_ndim(_np_a) == np_ndim(_ns_a)
 
     def check_swapaxes(_np_a, axis1, axis2):
         ns_ins = application_manager.instance()
-        np_swapaxes = np.__getattribute__('swapaxes')
-        ns_swapaxes = nps.__getattribute__('swapaxes')
+        np_swapaxes = np.__getattribute__("swapaxes")
+        ns_swapaxes = nps.__getattribute__("swapaxes")
 
         _ns_a = nps.array(_np_a)
         _ns_ins_a = ns_ins.array(_np_a, block_shape=block_shape)
@@ -192,8 +260,10 @@ def test_shape(nps_app_inst):
         for a2 in range(4):
             check_swapaxes(np_A, axis1=a1, axis2=a2)
 
+
 if __name__ == "__main__":
     from nums.core import application_manager
+
     nps_app_inst = application_manager.instance()
     test_basic_creation(nps_app_inst)
     test_eye(nps_app_inst)
@@ -202,4 +272,5 @@ if __name__ == "__main__":
     test_concatenate(nps_app_inst)
     test_split(nps_app_inst)
     test_func_space(nps_app_inst)
+    test_trace(nps_app_inst)
     test_shape(nps_app_inst)

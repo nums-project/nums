@@ -1,19 +1,35 @@
-import uuid
-import time
+# coding=utf-8
+# Copyright (C) 2020 NumS Development Team.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 import logging
+import time
+import uuid
 from threading import Thread
 from typing import Dict
 
 import numpy as np
 import xgboost as xgb
 
-from nums.core.systems import utils as systems_utils
-from nums.core.array.blockarray import BlockArray, Block
+import nums.numpy as nps
 from nums.core.application_manager import instance as _instance
 from nums.core.array.application import ArrayApplication
-from nums.core.systems.systems import System
-from nums.core.storage.storage import ArrayGrid
-import nums.numpy as nps
+from nums.core.array.blockarray import BlockArray, Block
+from nums.core.compute.compute_manager import ComputeManager
+from nums.core.grid.grid import ArrayGrid
+from nums.core.systems import utils as systems_utils
 
 
 def _start_rabit_tracker(num_workers: int):
@@ -56,7 +72,7 @@ def xgb_train_remote(X, y, rabit_args, params, args, kwargs, *evals_flat):
     dtrain = xgb.DMatrix(X, y)
     evals = []
     for i in range(0, len(evals_flat), 3):
-        eval_X, eval_y, eval_method = evals_flat[i:i+3]
+        eval_X, eval_y, eval_method = evals_flat[i : i + 3]
         evals.append((xgb.DMatrix(eval_X, eval_y), eval_method))
     evals_result = dict()
 
@@ -70,7 +86,7 @@ def xgb_train_remote(X, y, rabit_args, params, args, kwargs, *evals_flat):
             evals_result=evals_result,
             **kwargs
         )
-        logging.getLogger().info("Local Train: {}".format(time.time() - s))
+        logging.getLogger(__name__).info("Local Train: {}".format(time.time() - s))
         return np.array({"bst": bst, "evals_result": evals_result}, dtype=dict)
 
 
@@ -81,7 +97,6 @@ def xgb_predict_remote(result, X):
 
 
 class NumsDMatrix(xgb.DMatrix):
-
     def __init__(self, X, y):
         super().__init__(None)
         self.X: BlockArray = X
@@ -92,11 +107,7 @@ class NumsDMatrix(xgb.DMatrix):
         yield self.y
 
 
-def train(params: Dict,
-          data: NumsDMatrix,
-          *args,
-          evals=(),
-          **kwargs):
+def train(params: Dict, data: NumsDMatrix, *args, evals=(), **kwargs):
     X: BlockArray = data.X
     y: BlockArray = data.y
     assert len(X.shape) == 2
@@ -104,8 +115,8 @@ def train(params: Dict,
     assert len(y.shape) == 1 or (len(y.shape) == 2 and y.shape[1] == 1)
 
     app: ArrayApplication = _instance()
-    sys: System = app.system
-    sys.register("xgb_train", xgb_train_remote, {})
+    cm: ComputeManager = app.cm
+    cm.register("xgb_train", xgb_train_remote, {})
 
     # Start tracker
     num_workers = X.grid.grid_shape[0]
@@ -123,9 +134,9 @@ def train(params: Dict,
         evals_flat += [eval_X_oid, eval_y_oid, eval_method]
 
     X: BlockArray = X.reshape(block_shape=(X.block_shape[0], X.shape[1]))
-    result: BlockArray = BlockArray(ArrayGrid(shape=(X.grid.grid_shape[0],),
-                                              block_shape=(1,),
-                                              dtype="dict"), sys)
+    result: BlockArray = BlockArray(
+        ArrayGrid(shape=(X.grid.grid_shape[0],), block_shape=(1,), dtype="dict"), cm
+    )
     for grid_entry in X.grid.get_entry_iterator():
         X_block: Block = X.blocks[grid_entry]
         i = grid_entry[0]
@@ -134,27 +145,30 @@ def train(params: Dict,
         else:
             y_block: Block = y.blocks[i, 0]
         syskwargs = {"grid_entry": grid_entry, "grid_shape": X.grid.grid_shape}
-        result.blocks[i].oid = sys.call("xgb_train",
-                                        X_block.oid,
-                                        y_block.oid,
-                                        rabit_args,
-                                        params,
-                                        args,
-                                        kwargs,
-                                        *evals_flat,
-                                        syskwargs=syskwargs)
+        result.blocks[i].oid = cm.call(
+            "xgb_train",
+            X_block.oid,
+            y_block.oid,
+            rabit_args,
+            params,
+            args,
+            kwargs,
+            *evals_flat,
+            syskwargs=syskwargs
+        )
     return result
 
 
 class XGBClassifier(object):
-
-    def __init__(self,
-                 n_estimators=100,
-                 max_depth=6,
-                 learning_rate=0.3,
-                 tree_method="approx",
-                 objective="binary:logistic",
-                 booster="gbtree"):
+    def __init__(
+        self,
+        n_estimators=100,
+        max_depth=6,
+        learning_rate=0.3,
+        tree_method="approx",
+        objective="binary:logistic",
+        booster="gbtree",
+    ):
         self.n_estimators = n_estimators
         self.max_depth = max_depth
         self.learning_rate = learning_rate
@@ -165,38 +179,50 @@ class XGBClassifier(object):
 
     def fit(self, X: BlockArray, y: BlockArray):
         dtrain = NumsDMatrix(X, y)
-        self.model = train({'max_depth': self.max_depth,
-                            'eta': self.learning_rate,
-                            'tree_method': self.tree_method,
-                            'booster': self.booster,
-                            'objective': self.objective}, dtrain, self.n_estimators)
+        self.model = train(
+            {
+                "max_depth": self.max_depth,
+                "eta": self.learning_rate,
+                "tree_method": self.tree_method,
+                "booster": self.booster,
+                "objective": self.objective,
+            },
+            dtrain,
+            self.n_estimators,
+        )
         return self
 
     def predict(self, X: BlockArray):
         app: ArrayApplication = _instance()
-        sys: System = app.system
-        sys.register("xgb_predict", xgb_predict_remote, {})
+        cm: ComputeManager = app.cm
+        cm.register("xgb_predict", xgb_predict_remote, {})
         model_block: Block = self.model.blocks[0]
-        result: BlockArray = BlockArray(ArrayGrid(shape=(X.shape[0],),
-                                                  block_shape=(X.block_shape[0],),
-                                                  dtype=nps.int.__name__),
-                                        sys)
+        result: BlockArray = BlockArray(
+            ArrayGrid(
+                shape=(X.shape[0],),
+                block_shape=(X.block_shape[0],),
+                dtype=nps.int.__name__,
+            ),
+            cm,
+        )
         for grid_entry in X.grid.get_entry_iterator():
             i = grid_entry[0]
             X_block: Block = X.blocks[grid_entry]
             r_block: Block = result.blocks[i]
             syskwargs = {"grid_entry": grid_entry, "grid_shape": X.grid.grid_shape}
-            r_block.oid = sys.call("xgb_predict",
-                                   model_block.oid,
-                                   X_block.oid,
-                                   syskwargs=syskwargs)
+            r_block.oid = cm.call(
+                "xgb_predict", model_block.oid, X_block.oid, syskwargs=syskwargs
+            )
         return result
 
 
 if __name__ == "__main__":
     from nums.core import settings
     import nums
-    filename = settings.pj(settings.project_root, "tests", "core", "storage", "test.csv")
+
+    filename = settings.pj(
+        settings.project_root, "tests", "core", "storage", "test.csv"
+    )
     X: BlockArray = nums.read_csv(filename, has_header=True)
     y: BlockArray = nps.random.random_sample(X.shape[0])
     model = XGBClassifier()

@@ -20,9 +20,9 @@ import time
 import numpy as np
 import pytest
 
+from nums.core import settings
 from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray
-from nums.core import settings
 
 
 def test_loadtxt(app_inst: ArrayApplication):
@@ -33,27 +33,47 @@ def test_loadtxt(app_inst: ArrayApplication):
     header = ["field1", "field2", "field3"]
     data = rs.random_sample(99).reshape(33, 3)
 
-    np.savetxt(fname=fname,
-               X=data,
-               fmt='%.18e',
-               delimiter=',',
-               newline='\n',
-               header=",".join(header),
-               footer='',
-               comments='# ',
-               encoding=None)
+    np.savetxt(
+        fname=fname,
+        X=data,
+        fmt="%.18e",
+        delimiter=",",
+        newline="\n",
+        header=",".join(header),
+        footer="",
+        comments="# ",
+        encoding=None,
+    )
 
     np_loaded_data = np.loadtxt(
-        fname, dtype=float, comments='# ', delimiter=',',
-        converters=None, skiprows=0, usecols=None, unpack=False,
-        ndmin=0, encoding='bytes', max_rows=None)
+        fname,
+        dtype=float,
+        comments="# ",
+        delimiter=",",
+        converters=None,
+        skiprows=0,
+        usecols=None,
+        unpack=False,
+        ndmin=0,
+        encoding="bytes",
+        max_rows=None,
+    )
 
     assert np.allclose(data, np_loaded_data)
 
     nums_array = app_inst.loadtxt(
-        fname, dtype=float, comments='# ', delimiter=',',
-        converters=None, skiprows=0, usecols=None, unpack=False,
-        ndmin=0, encoding='bytes', max_rows=None)
+        fname,
+        dtype=float,
+        comments="# ",
+        delimiter=",",
+        converters=None,
+        skiprows=0,
+        usecols=None,
+        unpack=False,
+        ndmin=0,
+        encoding="bytes",
+        max_rows=None,
+    )
 
     np.allclose(data, nums_array.get())
 
@@ -119,10 +139,10 @@ def test_higgs(app_inst: ArrayApplication):
 
 if __name__ == "__main__":
     # pylint: disable=import-error
-    from tests import conftest
+    import conftest
 
-    app_inst = conftest.get_app("ray-cyclic")
+    app_inst = conftest.get_app("serial")
     # test_loadtxt(app_inst)
-    # test_rwd(app_inst)
-    test_read_csv(app_inst)
+    test_rwd(app_inst)
+    # test_read_csv(app_inst)
     # test_higgs(app_inst)

@@ -18,9 +18,9 @@ import time
 
 import numpy as np
 
+from nums.core.array import utils as array_utils
 from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray, Block
-from nums.core.array import utils as array_utils
 
 
 def test_reshape_basic(app_inst):
@@ -29,7 +29,9 @@ def test_reshape_basic(app_inst):
         for dst_grid_entry in dst_arr.grid.get_entry_iterator():
             dst_slice_selection = dst_arr.grid.get_slice(dst_grid_entry)
             dst_index_list = array_utils.slice_sel_to_index_list(dst_slice_selection)
-            src_index_list = array_utils.translate_index_list(dst_index_list, shape, arr.shape)
+            src_index_list = array_utils.translate_index_list(
+                dst_index_list, shape, arr.shape
+            )
             for i in range(len(dst_index_list)):
                 dst_index = dst_index_list[i]
                 src_index = src_index_list[i]
@@ -42,21 +44,22 @@ def test_reshape_basic(app_inst):
     true_arr = np_arr.reshape(dst_shape)
     src_arr: BlockArray = app_inst.array(np_arr, block_shape=(1, 10, 3))
     t = time.time()
-    dst_arr_blockwise: BlockArray = src_arr.reshape(dst_shape, block_shape=dst_block_shape)
+    dst_arr_blockwise: BlockArray = src_arr.reshape(
+        dst_shape, block_shape=dst_block_shape
+    )
     dst_arr_blockwise.touch()
     print("blockwise time", time.time() - t)
     assert np.allclose(dst_arr_blockwise.get(), true_arr)
     t = time.time()
-    dst_arr_entrywise: BlockArray = _reshape_by_entry(app_inst, src_arr,
-                                                      dst_shape,
-                                                      dst_block_shape)
+    dst_arr_entrywise: BlockArray = _reshape_by_entry(
+        app_inst, src_arr, dst_shape, dst_block_shape
+    )
     dst_arr_entrywise.touch()
     print("entrywise time", time.time() - t)
     assert np.allclose(dst_arr_entrywise.get(), true_arr)
 
 
 def test_reshape_ones(app_inst: ArrayApplication):
-
     def _strip_ones(shape, block_shape):
         indexes = np.where(np.array(shape) != 1)
         return tuple(np.array(shape)[indexes]), tuple(np.array(block_shape)[indexes])
@@ -90,8 +93,8 @@ def test_reshape_ones(app_inst: ArrayApplication):
 
         # Try adding ones.
         for nones in num_ones:
-            for pos in range(len(shape)+1):
-                ones = [1]*nones
+            for pos in range(len(shape) + 1):
+                ones = [1] * nones
                 new_shape = list(shape)
                 new_shape = new_shape[:pos] + ones + new_shape[pos:]
                 new_block_shape = list(block_shape)
@@ -102,6 +105,13 @@ def test_reshape_ones(app_inst: ArrayApplication):
                     new_block_np = new_block.get()
                     assert new_block.shape == new_block_np.shape
                 assert np.allclose(arr_np, new_arr.get().reshape(shape))
+
+
+def test_reshape_with_one_in_block_shape(app_inst):
+    arr = app_inst.random_state(1337).random((2, 2), block_shape=(2, 2))
+    arr_np = arr.get()
+    arr = arr.reshape(block_shape=(2, 1))
+    assert np.allclose(arr_np, arr.get())
 
 
 def test_reshape_blocks_only(app_inst):
@@ -120,4 +130,5 @@ if __name__ == "__main__":
     app_inst = conftest.get_app("serial")
     test_reshape_basic(app_inst)
     test_reshape_ones(app_inst)
+    test_reshape_with_one_in_block_shape(app_inst)
     test_reshape_blocks_only(app_inst)

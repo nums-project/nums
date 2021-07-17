@@ -16,28 +16,25 @@
 
 import numpy as np
 
-from nums.core.systems.systems import RaySystem
 from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray, Block
+from nums.core.systems.systems import RaySystem
 
 
 # pylint: disable=protected-access
 
 
-def test_options(app_inst):
-    result = app_inst.system.get_options(cluster_entry=(0, 0), cluster_shape=(1, 1))
-    assert len(result) > 0
-
-
-def test_warmup(app_inst):
-    sys = app_inst.system
+def test_warmup(app_inst_all: ArrayApplication):
+    sys = app_inst_all.cm.system
     if isinstance(sys, RaySystem):
         sys.warmup(10)
     assert True
 
 
-def test_block_grid_entry(app_inst: ArrayApplication):
-    ba: BlockArray = app_inst.array(np.array([[1, 2, 3], [4, 5, 6]]), block_shape=(1, 3))
+def test_block_grid_entry(app_inst_all: ArrayApplication):
+    ba: BlockArray = app_inst_all.array(
+        np.array([[1, 2, 3], [4, 5, 6]]), block_shape=(1, 3)
+    )
     block1: Block = ba.T.blocks[0, 1]
     assert block1.size() == 3
     assert block1.transposed
@@ -49,9 +46,8 @@ def test_block_grid_entry(app_inst: ArrayApplication):
 
 if __name__ == "__main__":
     # pylint: disable=import-error
-    from tests import conftest
+    import conftest
 
-    app_inst = conftest.get_app("serial")
-    test_options(app_inst)
+    app_inst = conftest.get_app("ray-none")
     test_warmup(app_inst)
     test_block_grid_entry(app_inst)

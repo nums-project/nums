@@ -14,19 +14,17 @@
 # limitations under the License.
 
 import itertools
+
 import numpy as np
 
+
 # pylint: disable=import-outside-toplevel
+
 
 def try_multiple_nd(np_atleast_nd, nps_atleast_nd):
     import nums.numpy as nps
 
-    python_types = [
-        1,
-        [1, 2],
-        [[1, 2]],
-        [[[1, 2]]]
-    ]
+    python_types = [1, [1, 2], [[1, 2]], [[[1, 2]]]]
     all_types = python_types + list(map(np.array, python_types))
     test_cases = list(itertools.product(all_types, repeat=3))
     nps_types = list(map(nps.array, python_types))
@@ -49,6 +47,7 @@ def try_multiple_nd(np_atleast_nd, nps_atleast_nd):
 
 def test_atleast_1d(nps_app_inst):
     import nums.numpy as nps
+
     assert nps_app_inst is not None
 
     x = 1.0
@@ -66,6 +65,7 @@ def test_atleast_1d(nps_app_inst):
 
 def test_atleast_2d(nps_app_inst):
     import nums.numpy as nps
+
     assert nps_app_inst is not None
 
     x = 1.0
@@ -79,6 +79,7 @@ def test_atleast_2d(nps_app_inst):
 
 def test_atleast_3d(nps_app_inst):
     import nums.numpy as nps
+
     assert nps_app_inst is not None
 
     x = 1.0
@@ -88,6 +89,27 @@ def test_atleast_3d(nps_app_inst):
     assert np.allclose(nps.atleast_1d(x).get(), np.atleast_1d(x))
 
     try_multiple_nd(np.atleast_3d, nps.atleast_3d)
+
+
+def test_stack(nps_app_inst):
+    import nums.numpy as nps
+
+    assert nps_app_inst is not None
+
+    for fname in ["hstack", "vstack", "dstack", "row_stack", "column_stack"]:
+        nps_func = nps.__getattribute__(fname)
+        np_func = np.__getattribute__(fname)
+        a = nps.array((1, 2, 3))
+        b = nps.array((2, 3, 4))
+        np_a, np_b = a.get(), b.get()
+        assert np.allclose(nps_func((a, b)).get(), np_func((np_a, np_b)))
+        a = nps.array([[1], [2], [3]])
+        b = nps.array([[2], [3], [4]])
+        np_a, np_b = a.get(), b.get()
+        assert np.allclose(nps_func((a, b)).get(), np_func((np_a, np_b)))
+
+    # TODO (hme): Add equivalence tests for vstack and row_stack.
+
 
 if __name__ == "__main__":
     # pylint: disable=import-error
@@ -99,3 +121,4 @@ if __name__ == "__main__":
     test_atleast_1d(nps_app_inst)
     test_atleast_2d(nps_app_inst)
     test_atleast_3d(nps_app_inst)
+    test_stack(nps_app_inst)
