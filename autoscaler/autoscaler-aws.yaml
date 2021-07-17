@@ -3,7 +3,7 @@ cluster_name: NumS
 
 # The maximum number of workers nodes to launch in addition to the head
 # node.
-max_workers: 100
+#max_workers: 100
 
 # The autoscaler will scale up the cluster faster with higher upscaling speed.
 # E.g., if the task requires adding more nodes then autoscaler will gradually
