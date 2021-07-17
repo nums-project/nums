@@ -139,9 +139,16 @@ def test_broadcast(nps_app_inst):
 
     _ops = ["add", "subtract", "divide"]
 
-    def check_basic_broadcast_correctness(_np_a, _np_b):
+    def check_basic_broadcast_correctness(
+        _np_a, _np_b, _a_blockshape=None, _b_blockshape=None
+    ):
         ns_a = nps.array(_np_a)
         ns_b = nps.array(_np_b)
+
+        if _a_blockshape:
+            ns_a = ns_a.reshape(block_shape=_a_blockshape)
+        if _b_blockshape:
+            ns_b = ns_b.reshape(block_shape=_b_blockshape)
 
         for _op in _ops:
             np_op = np.__getattribute__(_op)
@@ -220,6 +227,12 @@ def test_broadcast(nps_app_inst):
     np_b = np.random.randn(10, 10, 1)
     check_basic_broadcast_correctness(np_a, np_b)
 
+    np_a = np.random.randn(3, 20, 20)
+    np_b = np.random.randn(20, 20)
+    check_basic_broadcast_correctness(
+        np_a, np_b, _a_blockshape=(3, 10, 10), _b_blockshape=(10, 10)
+    )
+
 
 def test_broadcast_block(nps_app_inst):
     assert nps_app_inst is not None
@@ -273,10 +286,6 @@ def test_broadcast_block_shape_error(nps_app_inst):
     nps_A = nps.random.randn(20, 20, 20)
     nps_B = nps.random.randn(20, 20, 20)
     check_value_error(nps_A, nps_B, _a_blockshape=(10, 10, 10), _b_blockshape=(2, 2, 2))
-
-    nps_A = nps.random.randn(3, 20, 20)
-    nps_B = nps.random.randn(20, 20)
-    check_value_error(nps_A, nps_B, _a_blockshape=(3, 10, 10), _b_blockshape=(10, 10))
 
     nps_A = nps.random.randn(1, 1, 3, 100, 100)
     nps_B = nps.random.randn(10, 10)
