@@ -603,6 +603,7 @@ class BlockArray(BlockArrayBase):
         """
         Implements fast scheduling for basic element-wise operations.
         """
+        dtype = array_utils.get_bop_output_type(op_name, self.dtype, other.dtype)
         # Schedule the op first.
         blocks = np.empty(shape=self.grid.grid_shape, dtype=Block)
         for grid_entry in self.grid.get_entry_iterator():
@@ -613,7 +614,7 @@ class BlockArray(BlockArrayBase):
                 grid_shape=self_block.grid_shape,
                 rect=self_block.rect,
                 shape=self_block.shape,
-                dtype=self_block.dtype,
+                dtype=dtype,
                 transposed=False,
                 cm=self.cm,
             )
@@ -629,39 +630,35 @@ class BlockArray(BlockArrayBase):
                     "grid_shape": self.grid.grid_shape,
                 },
             )
-        return BlockArray(self.grid.copy(), self.cm, blocks=blocks)
+        return BlockArray(
+            ArrayGrid(self.shape, self.block_shape, dtype.__name__),
+            self.cm,
+            blocks=blocks,
+        )
+
+    def __elementwise__(self, op_name, other):
+        other = self.check_or_convert_other(other)
+        if self.shape == other.shape and self.block_shape == other.block_shape:
+            return self._fast_element_wise(op_name, other)
+        blocks_op = self.blocks.__getattribute__("__%s__" % op_name)
+        return BlockArray.from_blocks(
+            blocks_op(other.blocks), result_shape=None, cm=self.cm
+        )
 
     def __add__(self, other):
-        other = self.check_or_convert_other(other)
-        if self.shape == other.shape:
-            return self._fast_element_wise("add", other)
-        return BlockArray.from_blocks(
-            self.blocks + other.blocks, result_shape=None, cm=self.cm
-        )
+        return self.__elementwise__("add", other)
 
     def __sub__(self, other):
-        other = self.check_or_convert_other(other)
-        return BlockArray.from_blocks(
-            self.blocks - other.blocks, result_shape=None, cm=self.cm
-        )
+        return self.__elementwise__("sub", other)
 
     def __mul__(self, other):
-        other = self.check_or_convert_other(other)
-        return BlockArray.from_blocks(
-            self.blocks * other.blocks, result_shape=None, cm=self.cm
-        )
+        return self.__elementwise__("mul", other)
 
     def __truediv__(self, other):
-        other = self.check_or_convert_other(other)
-        return BlockArray.from_blocks(
-            self.blocks / other.blocks, result_shape=None, cm=self.cm
-        )
+        return self.__elementwise__("truediv", other)
 
     def __pow__(self, other):
-        other = self.check_or_convert_other(other)
-        return BlockArray.from_blocks(
-            self.blocks ** other.blocks, result_shape=None, cm=self.cm
-        )
+        return self.__elementwise__("pow", other)
 
     def __invert__(self):
         return self.ufunc("invert")
