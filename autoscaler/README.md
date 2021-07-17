@@ -27,7 +27,7 @@ ray up autoscaler-aws.yaml
 ```
 5. This will launch a ray cluster with NumS. 
 
-## Example
+## C. Example
 After you launch the cluster using the steps above, you can refer to [this example](https://github.com/nums-project/nums/blob/main/autoscaler/example.py).
 * In this example:
   * We first inititialize ray and set the nums cluster shape.
