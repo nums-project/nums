@@ -3,6 +3,9 @@ name: test
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - main
 
 jobs:
   pytest:
@@ -26,3 +29,6 @@ jobs:
           coverage xml
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2
+
+
+        
