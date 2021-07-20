@@ -21,6 +21,29 @@ jobs:
         run: |
           pylint nums
           pylint tests
+  mypy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: Install NumS
+        run: |
+          python3 -m pip install --upgrade pip
+          pip3 install .[testing]
+      - name: Run mypy
+        run: |
+          files=$(git diff origin/master HEAD --name-only | grep .py)
+          if [ -z "$files" ]
+          then
+            echo "No Python files to type check."
+          else
+            mypy --follow-imports=skip --ignore-missing-imports $files
+          fi
   black:
     runs-on: ubuntu-latest
     steps:
