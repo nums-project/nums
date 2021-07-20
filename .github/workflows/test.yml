@@ -10,12 +10,18 @@ on:
 jobs:
   pytest:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+    env:
+      OS: 'ubuntu'
+      PYTHON: ${{ matrix.python-version }}
     steps:
       - uses: actions/checkout@v2
-      - name: Set up Python
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
-          python-version: 3.7
+          python-version: ${{ matrix.python-version }}
       - name: Install NumS
         run: |
           python3 -m pip install --upgrade pip
@@ -29,6 +35,9 @@ jobs:
           coverage xml
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2
+        with:
+          env_vars: OS,PYTHON
+
 
 
         
