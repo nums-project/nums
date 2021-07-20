@@ -42,10 +42,11 @@ After you launch the cluster using the steps above, you can refer to [this examp
   ```ray rsync-up autoscaler-aws.yaml 'example.py' '/home/ubuntu'```.
   * Then ssh on the head node of the cluster ```ray attach autoscaler-aws.yaml```.
   * Then on the head node, run ```python example.py``` to run this example on the cluster.
+  * Then ```exit``` to terminate the ssh connection to the head node. 
 
 
 ## D. Destroying the cluster
-7. To destroy the cluster, run
+7. To destroy the cluster, run the following from your local machine.
 ```
 ray down autoscaler-aws.yaml
 ```
