@@ -39,8 +39,8 @@ def get_bop_output_type(op_name, dtype_a, dtype_b):
     try:
         dtype = np.__getattribute__(op_name)(a, b).dtype
         return np.__getattribute__(str(dtype))
-    except TypeError:
-        raise
+    except TypeError as err:
+        raise TypeError(err.args[0]) from None
     except Exception as _:
         dtype = scipy.special.__getattribute__(op_name)(a, b).dtype
         return np.__getattribute__(str(dtype))

@@ -878,10 +878,7 @@ class ArrayApplication(object):
         ):
             raise ValueError("Operands cannot be broadcasted.")
         if op_name.startswith("bitwise"):
-            try:
-                array_utils.get_bop_output_type(op_name, arr_1.dtype, arr_2.dtype)
-            except TypeError:
-                raise
+            array_utils.get_bop_output_type(op_name, arr_1.dtype, arr_2.dtype)
         try:
             ufunc = np.__getattribute__(op_name)
             if (
