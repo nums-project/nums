@@ -78,6 +78,48 @@ def test_ufunc(nps_app_inst):
                 check_bop(name, np_a, np_b)
 
 
+def test_bitwise_error(nps_app_inst):
+    assert nps_app_inst is not None
+
+    def check_bitwise_error(_name, error):
+        np_ufunc = np.__getattribute__(_name)
+        ns_ufunc = nps.__getattribute__(_name)
+
+        _np_a = np.random.randn(2, 2)
+        _np_b = np.random.randn(2, 2)
+
+        _ns_a = nps.array(_np_a)
+        _ns_b = nps.array(_np_b)
+        message = ""
+        try:
+            _np_result = np_ufunc(_np_a, _np_b)
+        except TypeError as err:
+            message = err.args[0]
+
+        assert message
+
+        with pytest.raises(error, match=message):
+            _ns_result = ns_ufunc(_ns_a, _ns_b)
+            _ns_result.touch()
+
+    bitwise_ops = [
+        "bitwise_and",
+        "bitwise_or",
+        "bitwise_xor",
+        "invert",
+        "left_shift",
+        "right_shift",
+    ]
+
+    bit_ops = ["packbits", "unpackbits"]
+
+    for bitwise_op in bitwise_ops:
+        check_bitwise_error(bitwise_op, TypeError)
+
+    for bit_op in bit_ops:
+        check_bitwise_error(bit_op, TypeError)
+
+
 def test_matmul_tensordot(nps_app_inst):
     assert nps_app_inst is not None
 
