@@ -13,8 +13,8 @@ settings.cluster_shape = (len(ray.nodes())-1, 1)
 def main():
     X = nps.random.rand(10**4)
     Y = nps.random.rand(10**4)
-    SUM = nps.add(X,Y)
-    print("X + Y = ",SUM.get())
+    Z = nps.add(X,Y)
+    print("X + Y = ",Z.get())
 
 
 if __name__ == "__main__":
