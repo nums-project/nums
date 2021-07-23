@@ -101,9 +101,9 @@ head_node_type: nums.head.default
 
 # Files or directories to copy to the head and worker nodes. The format is a
 # dictionary from REMOTE_PATH: LOCAL_PATH, e.g.
-#file_mounts: {
+file_mounts: {
 #    "/path2/on/remote/machine": "/path2/on/local/machine",
-#}
+}
 
 # Files or directories to copy from the head node to the worker nodes. The format is a
 # list of paths. The same path on the head node will be copied to the worker node.
