@@ -63,9 +63,9 @@ Edit worker node configurations here under ```node_config``` field in a similar 
 Make sure to use the correct AMI as per your region and availability zones.
 4. Modify the ```file_mounts``` field to indicate any directories or files to copy from the local machine to every node on the cluster, or leave it commented.
 ```
-#file_mounts: {
+file_mounts: {
 #    "/path2/on/remote/machine": "/path2/on/local/machine",
-#}
+}
 ```
 
 ## B. Running the configuration file
