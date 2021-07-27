@@ -14,7 +14,7 @@
 # limitations under the License.
 
 
-from typing import List, Union
+from typing import List, Tuple, Dict, Union
 
 import numpy as np
 
@@ -34,7 +34,7 @@ class ArrayApplication(object):
     def __init__(self, cm: ComputeManager, fs: FileSystem):
         self.cm: ComputeManager = cm
         self._fs: FileSystem = fs
-        self._array_grids: (str, ArrayGrid) = {}
+        self._array_grids: Dict[str, ArrayGrid] = {}
         self.random = self.random_state()
 
         self.one_half = self.scalar(0.5)
@@ -652,6 +652,141 @@ class ArrayApplication(object):
                 result_arrays.append(axis_result)
             return tuple(result_arrays)
 
+    def quickselect(self, arr_oids: List[object], kth: int):
+        """Find the `kth` largest element in a 1D BlockArray in O(n) time.
+        Used as a subprocedure in `median` and `top_k`.
+
+        Args:
+            arr_oids: Flattened list of oids for array objects.
+            kth: Index of the element (in ascending order) to select.
+
+        Returns:
+            Value of the `kth` largest element.
+        """
+        num_arrs = len(arr_oids)
+
+        # Compute weighted median of medians (wmm).
+        m_oids, s_oids = [], []
+        for i, arr_oid in enumerate(arr_oids):
+            syskwargs = {
+                "grid_entry": (i,),
+                "grid_shape": (num_arrs,),
+                "options": {"num_returns": 1},
+            }
+            m_oids.append(self.cm.select_median(arr_oid, syskwargs=syskwargs))
+            s_oids.append(self.cm.size(arr_oid, syskwargs=syskwargs))
+        ms_oids = m_oids + s_oids
+        device_0 = self.cm.devices()[0]
+        wmm_oid = self.cm.system.call("weighted_median", ms_oids, {}, device_0, {})
+        total_size = sum(self.cm.get(s) for s in s_oids)
+        if kth < 0:
+            kth += total_size
+        if kth < 0 or total_size <= kth:
+            raise IndexError("'kth' must be a valid index for 'arr'.")
+
+        # Compute "greater than" partition using wmm as pivot, recurse if kth is in range.
+        gr_size_oids, gr_oids = [], []
+        for i, arr_oid in enumerate(arr_oids):
+            gr_size_oid, gr_oid = self.cm.pivot_partition(
+                arr_oid,
+                wmm_oid,
+                "gt",
+                syskwargs={
+                    "grid_entry": (i,),
+                    "grid_shape": (num_arrs,),
+                    "options": {"num_returns": 2},
+                },
+            )
+            gr_size_oids.append(gr_size_oid)
+            gr_oids.append(gr_oid)
+        gr_size = sum(self.cm.get(s) for s in gr_size_oids)
+        if kth < gr_size:
+            del arr_oids
+            return self.quickselect(gr_oids, kth)
+
+        # Compute "less than" partition using wmm as pivot, recurse if kth is in range.
+        ls_size_oids, ls_oids = [], []
+        for i, arr_oid in enumerate(arr_oids):
+            ls_size_oid, ls_oid = self.cm.pivot_partition(
+                arr_oid,
+                wmm_oid,
+                "lt",
+                syskwargs={
+                    "grid_entry": (i,),
+                    "grid_shape": (num_arrs,),
+                    "options": {"num_returns": 2},
+                },
+            )
+            ls_size_oids.append(ls_size_oid)
+            ls_oids.append(ls_oid)
+        ls_size = sum(self.cm.get(s) for s in ls_size_oids)
+        if kth >= total_size - ls_size:
+            del arr_oids
+            return self.quickselect(ls_oids, kth - (total_size - ls_size))
+
+        # The kth value is wmm.
+        return wmm_oid
+
+    def median(self, arr: BlockArray) -> BlockArray:
+        """Compute the median of a BlockArray.
+
+        Args:
+            a: A BlockArray.
+
+        Returns:
+            The median value.
+        """
+        if arr.ndim != 1:
+            raise NotImplementedError("Only 1D 'arr' is currently supported.")
+
+        a_oids = arr.flattened_oids()
+        if arr.size % 2 == 1:
+            m_oid = self.quickselect(a_oids, arr.size // 2)
+            return BlockArray.from_oid(m_oid, (1,), arr.dtype, self.cm)
+        else:
+            m0_oid = self.quickselect(a_oids, arr.size // 2 - 1)
+            m0 = BlockArray.from_oid(m0_oid, (1,), arr.dtype, self.cm)
+            m1_oid = self.quickselect(a_oids, arr.size // 2)
+            m1 = BlockArray.from_oid(m1_oid, (1,), arr.dtype, self.cm)
+            return (m0 + m1) / 2
+
+    def top_k(
+        self, arr: BlockArray, k: int, largest=True
+    ) -> Tuple[BlockArray, BlockArray]:
+        """Find the `k` largest or smallest elements of a BlockArray.
+
+        If there are multiple kth elements that are equal in value, then no guarantees are made as
+        to which ones are included in the top k.
+
+        Args:
+            arr: A BlockArray.
+            k: Number of top elements to return.
+            largest: Whether to return largest or smallest elements.
+
+        Returns:
+            A tuple containing two BlockArrays, (`values`, `indices`).
+            values: Values of the top k elements, unsorted.
+            indices: Indices of the top k elements, ordered by their corresponding values.
+        """
+        if arr.ndim != 1:
+            raise NotImplementedError("Only 1D 'arr' is currently supported.")
+        if k <= 0 or arr.size < k:
+            raise IndexError("'k' must be at least 1 and at most the size of 'arr'.")
+        arr_oids = arr.flattened_oids()
+        if largest:
+            k_oid = self.quickselect(arr_oids, k - 1)
+            k_val = BlockArray.from_oid(k_oid, (1,), arr.dtype, self.cm)
+            ie_indices = self.where(arr > k_val[0])[0]
+        else:
+            k_oid = self.quickselect(arr_oids, -k)
+            k_val = BlockArray.from_oid(k_oid, (1,), arr.dtype, self.cm)
+            ie_indices = self.where(arr < k_val[0])[0]
+        eq_indices = self.where(arr == k_val[0])[0]
+        eq_indices_pad = eq_indices[: k - ie_indices.size]
+        axis_block_size = self.compute_block_shape((k,), int)[0]
+        indices = self.concatenate([ie_indices, eq_indices_pad], 0, axis_block_size)
+        return arr[indices], indices
+
     def map_uop(
         self,
         op_name: str,
@@ -737,6 +872,11 @@ class ArrayApplication(object):
             raise NotImplementedError("'args' is not yet supported.")
         if not (kwargs is None or len(kwargs) == 0):
             raise NotImplementedError("'kwargs' is not yet supported.")
+
+        if not array_utils.broadcastable(
+            arr_1.shape, arr_2.shape, arr_1.block_shape, arr_2.block_shape
+        ):
+            raise ValueError("Operands cannot be broadcasted.")
 
         try:
             ufunc = np.__getattribute__(op_name)
