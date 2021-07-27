@@ -86,9 +86,9 @@ if __name__ == "__main__":
     import conftest
 
     app_inst = conftest.get_app("serial")
-    test_stats(app_inst)
-    test_uops(app_inst)
+    # test_stats(app_inst)
+    # test_uops(app_inst)
     test_bops(app_inst)
-    test_bools(app_inst)
-    test_bool_reduction(app_inst)
-    test_isnan(app_inst)
+    # test_bools(app_inst)
+    # test_bool_reduction(app_inst)
+    # test_isnan(app_inst)

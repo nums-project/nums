@@ -25,6 +25,34 @@ def qr(app: ArrayApplication, X: BlockArray):
     return indirect_tsqr(app, X)
 
 
+def _qr_tree_reduce(
+    app: ArrayApplication, oid_list, result_grid_entry, result_grid_shape
+):
+    if len(oid_list) == 1:
+        return oid_list[0][0]
+    q = oid_list
+    while len(q) > 1:
+        a_oid, a_ge, a_gs = q.pop(0)
+        b_oid, _, _ = q.pop(0)
+        ge, gs = (result_grid_entry, result_grid_shape) if len(q) == 0 else (a_ge, a_gs)
+        c_oid = app.cm.qr(
+            a_oid,
+            b_oid,
+            mode="r",
+            axis=0,
+            syskwargs={
+                "grid_entry": ge,
+                "grid_shape": gs,
+                "options": {"num_returns": 1},
+            },
+        )
+        q.append((c_oid, ge, gs))
+    r_oid, r_ge, r_gs = q.pop(0)
+    assert r_ge == result_grid_entry
+    assert r_gs == result_grid_shape
+    return r_oid
+
+
 def indirect_tsr(app: ArrayApplication, X: BlockArray, reshape_output=True):
     assert len(X.shape) == 2
     # TODO (hme): This assertion is temporary and ensures returned
@@ -42,18 +70,18 @@ def indirect_tsr(app: ArrayApplication, X: BlockArray, reshape_output=True):
         row = []
         for j in range(grid_shape[1]):
             row.append(X.blocks[i, j].oid)
-        R_oids.append(
-            app.cm.qr(
-                *row,
-                mode="r",
-                axis=1,
-                syskwargs={
-                    "grid_entry": (i, 0),
-                    "grid_shape": (grid_shape[0], 1),
-                    "options": {"num_returns": 1},
-                }
-            )
+        ge, gs = (i, 0), (grid_shape[0], 1)
+        oid = app.cm.qr(
+            *row,
+            mode="r",
+            axis=1,
+            syskwargs={
+                "grid_entry": ge,
+                "grid_shape": gs,
+                "options": {"num_returns": 1},
+            }
         )
+        R_oids.append((oid, ge, gs))
 
     # Construct R by summing over R blocks.
     # TODO (hme): Communication may be inefficient due to redundancy of data.
@@ -62,16 +90,8 @@ def indirect_tsr(app: ArrayApplication, X: BlockArray, reshape_output=True):
     tsR = BlockArray(
         ArrayGrid(shape=R_shape, block_shape=R_shape, dtype=X.dtype.__name__), app.cm
     )
-    tsR.blocks[0, 0].oid = app.cm.qr(
-        *R_oids,
-        mode="r",
-        axis=0,
-        syskwargs={
-            "grid_entry": (0, 0),
-            "grid_shape": (1, 1),
-            "options": {"num_returns": 1},
-        }
-    )
+    tsR.blocks[0, 0].oid = _qr_tree_reduce(app, R_oids, (0, 0), (1, 1))
+
     # If blocking is "tall-skinny," then we're done.
     if R_shape != R_block_shape:
         if reshape_output:
