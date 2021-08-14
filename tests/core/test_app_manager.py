@@ -25,7 +25,7 @@ from nums.core.array.application import ArrayApplication
 
 @pytest.mark.parametrize("compute_name", ["numpy"])
 @pytest.mark.parametrize("system_name", ["serial", "ray"])
-@pytest.mark.parametrize("device_grid_name", ["cyclic", "packged"])
+@pytest.mark.parametrize("device_grid_name", ["cyclic", "packed"])
 def test_app_manager(compute_name, system_name, device_grid_name):
     settings.use_head = True
     settings.compute_name = compute_name
