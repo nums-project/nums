@@ -43,7 +43,3 @@ def test_app_manager(compute_name, system_name, device_grid_name):
     settings.compute_name = "numpy"
     settings.system_name = "ray"
     settings.device_grid_name = "cyclic"
-
-
-if __name__ == "__main__":
-    test_app_manager()
