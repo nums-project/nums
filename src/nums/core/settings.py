@@ -20,7 +20,8 @@ from pathlib import Path
 pj = lambda *paths: os.path.abspath(os.path.expanduser(os.path.join(*paths)))
 core_root = os.path.abspath(os.path.dirname(__file__))
 package_root = pj(core_root, "../")
-project_root = pj(package_root, "../")
+src_root = pj(package_root, "../")
+project_root = pj(src_root, "../")
 data_dir = pj(project_root, "data")
 Path(data_dir).mkdir(parents=True, exist_ok=True)
 
