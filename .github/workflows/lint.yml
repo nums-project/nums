@@ -13,14 +13,16 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.7
+      - name: Install Poetry
+        run: |
+          python3 -m pip install poetry
       - name: Install NumS
         run: |
-          python3 -m pip install --upgrade pip
-          pip3 install .[testing]
+          poetry install
       - name: Run pylint
         run: |
-          pylint nums
-          pylint tests
+          poetry run pylint nums
+          poetry run pylint tests
   mypy:
     runs-on: ubuntu-latest
     steps:
@@ -31,10 +33,12 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.7
+      - name: Install Poetry
+        run: |
+          python3 -m pip install poetry
       - name: Install NumS
         run: |
-          python3 -m pip install --upgrade pip
-          pip3 install .[testing]
+          poetry install
       - name: Run mypy
         run: |
           files=$(git diff origin/master HEAD --name-only | grep .py)
@@ -42,7 +46,7 @@ jobs:
           then
             echo "No Python files to type check."
           else
-            mypy --follow-imports=skip --ignore-missing-imports $files
+            poetry run mypy --follow-imports=skip --ignore-missing-imports $files
           fi
   black:
     runs-on: ubuntu-latest
@@ -52,10 +56,12 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.7
+      - name: Install Poetry
+        run: |
+          python3 -m pip install poetry
       - name: Install NumS
         run: |
-          python3 -m pip install --upgrade pip
-          pip3 install .[testing]
+          poetry install
       - name: Run black
         run: |
-          black --check .
+          poetry run black --check .
