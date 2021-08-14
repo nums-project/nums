@@ -38,7 +38,7 @@ def test_app_manager(compute_name, system_name, device_grid_name):
     application_manager.destroy()
     assert not application_manager.is_initialized()
     time.sleep(1)
-    
+
     # Revert for other tests.
     settings.compute_name = "numpy"
     settings.system_name = "ray"
