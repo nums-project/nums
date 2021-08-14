@@ -40,7 +40,7 @@ test_requirements = [
 __version__ = None
 
 
-with open("nums/core/version.py") as f:
+with open("src/nums/core/version.py") as f:
     # pylint: disable=exec-used
     exec(f.read(), globals())
 
@@ -58,7 +58,8 @@ def main():
         long_description=long_description,
         long_description_content_type="text/markdown",
         url="https://github.com/nums-project/nums",
-        packages=find_packages(),
+        packages=find_packages("src"),
+        package_dir={"": "src"},
         classifiers=[
             "Programming Language :: Python :: 3",
             "License :: OSI Approved :: MIT License",
