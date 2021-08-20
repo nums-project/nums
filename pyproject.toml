@@ -2,7 +2,7 @@
 name = "nums"
 version = "0.2.3"
 description = "A numerical computing library for Python that scales."
-authors = ["Melih Elibol <elibol@cs.berkeley.edu>"]
+authors = ["NumS Development Team <elibol@cs.berkeley.edu>"]
 license = "Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/nums-project/nums"
