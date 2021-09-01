@@ -27,7 +27,7 @@ requirements = [
 
 test_requirements = [
     "pytest==6.1.1",
-    "pytest-pylint==0.17.0",
+    "pylint==2.10.2",
     "moto==1.3.16",
     "coverage==5.3",
     "codecov==2.1.9",
