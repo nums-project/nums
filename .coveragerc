@@ -1,10 +1,10 @@
 [run]
 include =
-    src/nums/*
+    nums/*
 omit =
   tests/**/*
-  src/nums/core/settings.py
-  src/nums/experimental
+  nums/core/settings.py
+  nums/experimental
 
 [report]
 exclude_lines =
