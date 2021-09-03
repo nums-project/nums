@@ -98,7 +98,7 @@ def test_rwd(app_inst: ArrayApplication):
 
 
 def _read_serially(filename, has_header):
-    with open(filename) as fh:
+    with open(filename, encoding="utf-8") as fh:
         rows = []
         header_read = False
         for line in fh:
