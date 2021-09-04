@@ -65,7 +65,7 @@ class Batch(object):
 def reverse_readline(filename, buf_size=8192):
     # https://stackoverflow.com/questions/2301789/how-to-read-a-file-in-reverse-order
     """A generator that returns the lines of a file in reverse order"""
-    with open(filename) as fh:
+    with open(filename, encoding="utf-8") as fh:
         segment = None
         offset = 0
         file_size = remaining_size = fh.seek(0, os.SEEK_END)
@@ -96,13 +96,13 @@ def reverse_readline(filename, buf_size=8192):
 
 
 def get_file_size(fname):
-    with open(fname, "rt") as fh:
+    with open(fname, "rt", encoding="utf-8") as fh:
         return fh.seek(0, os.SEEK_END)
 
 
 def get_char_encoding(fname):
     # Compute the number of bytes used to encode a character for given file.
-    fh = open(fname, "rt")
+    fh = open(fname, "rt", encoding="utf-8")
     enc: str = fh.encoding
     fh.close()
     if enc.lower().startswith("utf"):
@@ -120,7 +120,7 @@ def get_np_txt_info(fname, comments: str, delimiter: str):
     bytes_per_char = get_char_encoding(fname)
 
     # Test encoding and extract various other details.
-    fh = open(fname, "rt")
+    fh = open(fname, "rt", encoding="utf-8")
 
     num_test_rows = 3
     rows_a: List[str] = []
@@ -166,7 +166,7 @@ def get_np_txt_info(fname, comments: str, delimiter: str):
 
 
 def get_np_comments(fname, comments):
-    fh = open(fname, "rt")
+    fh = open(fname, "rt", encoding="utf-8")
     comment_lines = []
     trailing_newlines = 0
     for row in fh:

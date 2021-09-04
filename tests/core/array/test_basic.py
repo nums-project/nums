@@ -81,6 +81,7 @@ def test_concatenate(app_inst: ArrayApplication):
     X_concated = app_inst.concatenate(
         [X, ones], axis=axis, axis_block_size=X.block_shape[axis]
     )
+    common.check_block_integrity(X_concated)
     real_X_concated = np.concatenate([real_X, real_ones], axis=axis)
     assert np.allclose(X_concated.get(), real_X_concated)
 
@@ -89,8 +90,14 @@ def test_concatenate(app_inst: ArrayApplication):
     X_concated = app_inst.concatenate(
         [X, ones, X2], axis=axis, axis_block_size=X.block_shape[axis]
     )
+    common.check_block_integrity(X_concated)
     real_X_concated = np.concatenate([real_X, real_ones, real_X2], axis=axis)
     assert np.allclose(X_concated.get(), real_X_concated)
+
+    y1 = app_inst.zeros(shape=(50,), block_shape=(10,), dtype=int)
+    y2 = app_inst.ones(shape=(50,), block_shape=(10,), dtype=int)
+    y = app_inst.concatenate([y1, y2], axis=0)
+    common.check_block_integrity(y)
 
 
 def test_split(app_inst: ArrayApplication):
