@@ -256,6 +256,101 @@ def inv(app: ArrayApplication, X: BlockArray):
     return result
 
 
+def tril(app: ArrayApplication, X: BlockArray):
+    grid: ArrayGrid = X.grid.copy()
+    ret: BlockArray = BlockArray(grid, app.cm)
+    grid_meta = grid.to_meta()
+    for grid_entry in grid.get_entry_iterator():
+        syskwargs = {"grid_entry": grid_entry, "grid_shape": grid.grid_shape}
+        if grid_entry[0] == grid_entry[1]:
+            # On the diagonal...
+            ret.blocks[grid_entry].oid = app.cm.tril(X.blocks[grid_entry].copy().oid, syskwargs=syskwargs)
+        elif grid_entry[0] > grid_entry[1]:
+            ret.blocks[grid_entry].oid = X.blocks[grid_entry].copy().oid
+        else:
+            ret.blocks[grid_entry].oid = app.cm.new_block("zeros",
+                grid_entry,
+                grid_meta,
+                syskwargs=syskwargs)
+    return ret
+
+
+def lu_block_decompose(app: ArrayApplication, X: BlockArray):
+    grid = X.grid.copy()
+
+    P: BlockArray = BlockArray(grid, app.cm)
+    L: BlockArray = BlockArray(grid, app.cm)
+    U: BlockArray = BlockArray(grid, app.cm)
+    if len(X.blocks) == 1:
+        # Only one block, perform single-block lu decomp
+        X_block: Block = X.blocks[0, 0]
+        P.blocks[0, 0].oid, L.blocks[0, 0].oid, U.blocks[0, 0].oid = app.cm.lu_inv(X.blocks[0, 0].oid,
+            syskwargs={"grid_entry": X_block.grid_entry, "grid_shape": X_block.grid_shape})
+    else:
+        # Must do blocked LU decomp
+        size = X.blocks.shape[0]//2
+        # sanity check to ensure nice even recursion
+        assert size * 2 == X.blocks.shape[0]
+        subshape = (X.shape[0]//2, X.shape[1]//2)
+        M1 = BlockArray.from_blocks(X.blocks[:size, :size], subshape, app.cm)
+        M2 = BlockArray.from_blocks(X.blocks[:size, size:], subshape, app.cm)
+        M3 = BlockArray.from_blocks(X.blocks[size:, :size], subshape, app.cm)
+        M4 = BlockArray.from_blocks(X.blocks[size:, size:], subshape, app.cm)
+
+        P1, L1, U1 = self.lu_block_decompose(M1)
+        T = U1 @ L1
+        Shat = M3 @ T
+        Mhat = M4 - Shat @ (P1 @ M2)
+        P2, L3, U3 = self.lu_block_decompose(Mhat)
+        S = P2 @ Shat
+
+        L.blocks[:size, :size] = L1.blocks
+        L.blocks[size:, :size] = (-L3 @ S).blocks
+        L.blocks[size:, size:] = L3.blocks
+        for block_row in L.blocks[:size, size:]:
+            for block in block_row:
+                syskwargs = {"grid_entry": block.grid_entry, "grid_shape": grid.grid_shape}
+                block.oid = app.cm.new_block("zeros",
+                    block.grid_entry,
+                    grid.to_meta(),
+                    syskwargs=syskwargs)
+
+        U.blocks[:size, :size] = U1.blocks
+        U.blocks[:size, size:] = (-T @ (P1 @ M2) @ U3).blocks
+        U.blocks[size:, size:] = U3.blocks
+        for block_row in U.blocks[size:, :size]:
+            for block in block_row:
+                syskwargs = {"grid_entry": block.grid_entry, "grid_shape": grid.grid_shape}
+                block.oid = app.cm.new_block("zeros",
+                    block.grid_entry,
+                    grid.to_meta(),
+                    syskwargs=syskwargs)
+
+        P.blocks[:size, :size] = P1.blocks
+        P.blocks[size:, size:] = P2.blocks
+        for block_row in P.blocks[:size, size:]:
+            for block in block_row:
+                syskwargs = {"grid_entry": block.grid_entry, "grid_shape": grid.grid_shape}
+                block.oid = app.cm.new_block("zeros",
+                    block.grid_entry,
+                    grid.to_meta(),
+                    syskwargs=syskwargs)
+        for block_row in P.blocks[size:, :size]:
+            for block in block_row:
+                syskwargs = {"grid_entry": block.grid_entry, "grid_shape": grid.grid_shape}
+                block.oid = app.cm.new_block("zeros",
+                    block.grid_entry,
+                    grid.to_meta(),
+                    syskwargs=syskwargs)
+    return P, L, U
+
+
+def lu_inv(app: ArrayApplication, X: BlockArray):
+    assert (X.shape[0] == X.shape[1])   
+    P, L, U = app.lu_block_decompose(X)
+    return U @ L @ P
+
+
 def cholesky(app: ArrayApplication, X: BlockArray):
     # TODO (hme): Implement scalable version.
     # Note:

@@ -96,6 +96,10 @@ class ComputeInterface(object):
     def inv(self, arr, syskwargs: Dict):
         raise NotImplementedError()
 
+    @method_meta(num_returns=3)
+    def lu_inv(self, arr, syskwargs: Dict):
+        raise NotImplementedError()
+
     def array_compare(self, func_name, a, b, args, syskwargs: Dict):
         raise NotImplementedError()
 

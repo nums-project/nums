@@ -314,6 +314,13 @@ class ComputeCls(ComputeImp):
     def inv(self, arr):
         return np.linalg.inv(arr)
 
+    def lu_inv(self, arr):
+        p, l, u = scipy.linalg.lu(arr)
+        return p.T, np.linalg.inv(l), np.linalg.inv(u)
+
+    def tril(self, arr):
+        return np.tril(arr)
+
     # Boolean
 
     def array_compare(self, func_name: str, a: np.ndarray, b: np.ndarray, args):
