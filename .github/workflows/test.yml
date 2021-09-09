@@ -24,15 +24,16 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install NumS
         run: |
-          python3 -m pip install --upgrade pip
-          pip3 install .[testing]
+          python -m pip install --upgrade pip
+          pip install poetry
+          poetry install
       - name: Run tests
         run: |
-          coverage run -m pytest
+          poetry run coverage run -m pytest
       - name: Generate coverage report
         run: |
-          coverage report
-          coverage xml
+          poetry run coverage report
+          poetry run coverage xml
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2
         with:
