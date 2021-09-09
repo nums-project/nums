@@ -203,15 +203,20 @@ configure credentials for access by following instructions here:
 https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html
 
 # Contributing
-To contribute to NumS on Ray, 
-we recommend cloning the repository and installing the project in developer mode 
-using the following set of commands:
+To contribute to NumS on Ray, we recommend cloning the repository and 
+installing the project in developer mode using the following set of commands:
 
 ```sh
+git clone https://github.com/nums-project/nums
 cd nums
-conda create --name nums python=3.7 -y
-conda activate nums
-pip install -e ".[testing]"
+pip install poetry
+poetry install
+```
+
+Then, activate a virtual enivornment with the NumS dependencies using:
+
+```sh
+poetry shell
 ```
 
 #### Contributing NumPy Functionality
