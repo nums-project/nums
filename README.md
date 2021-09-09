@@ -213,7 +213,7 @@ pip install poetry
 poetry install
 ```
 
-Then, activate a virtual enivornment with the NumS dependencies using:
+Then, activate a virtual enivornment containing the NumS dependencies using:
 
 ```sh
 poetry shell
