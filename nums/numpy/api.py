@@ -16,7 +16,7 @@
 
 import warnings
 
-from typing import List, Optional, Union
+from typing import Tuple, Optional, Union
 
 import numpy as np
 import scipy.stats
@@ -575,15 +575,27 @@ def any(a: BlockArray, axis=None, out=None, keepdims=False):
 
 def average(
     a: BlockArray,
-    axis: Union[None, int, List[int]] = None,
+    axis: Union[None, int] = None,
     weights: Optional[BlockArray] = None,
     returned: bool = False,
-):
+) -> Union[BlockArray, Tuple[BlockArray, BlockArray]]:
+    """Compute the weighted average along the specified axis.
+
+    Args:
+        a: BlockArray to be averaged.
+        axis: Axis along which to average `a`.
+        weights: BlockArray of weights associated with `a`.
+        returned: Whether to return the sum of the weights.
+
+    Returns:
+        The average along the specified axis. If `returned` is True, return a tuple with the
+        average as the first element and the sum of the weights as the second element.
+    """
     if axis and not isinstance(axis, int):
         raise NotImplementedError("Only single 'axis' is currently supported.")
 
     if weights is None:
-        avg = mean(a, axis)
+        avg = mean(a, axis=axis)
         if not returned:
             return avg
         weights_sum = BlockArray.from_scalar(a.size / avg.size, a.cm)
@@ -604,6 +616,48 @@ def average(
     if avg.shape != weights_sum.shape:
         weights_sum = weights_sum.broadcast_to(avg.shape)
     return avg, weights_sum
+
+
+def median(a: BlockArray, axis=None, out=None, keepdims=False) -> BlockArray:
+    """Compute the median of a BlockArray.
+
+    Args:
+        a: A BlockArray.
+
+    Returns:
+        The median value.
+    """
+    if axis is not None:
+        raise NotImplementedError("'axis' is currently not supported.")
+    if out is not None:
+        raise NotImplementedError("'out' is currently not supported.")
+    if keepdims:
+        raise NotImplementedError("'keepdims' is currently not supported.")
+    return _instance().median(a)
+
+
+def top_k(
+    a: BlockArray, k: int, largest=True, sorted=False
+) -> Tuple[BlockArray, BlockArray]:
+    """Find the `k` largest or smallest elements of a BlockArray.
+
+    If there are multiple kth elements that are equal in value, then no guarantees are made as
+    to which ones are included in the top k.
+
+    Args:
+        a: A BlockArray.
+        k: Number of top elements to return.
+        largest: Whether to return largest or smallest elements.
+
+    Returns:
+        A tuple containing two BlockArrays, (`values`, `indices`).
+        values: Values of the top k elements, unsorted.
+        indices: Indices of the top k elements, ordered by their corresponding values.
+    """
+    if sorted:
+        # The result can be sorted when sorting is implemented.
+        raise NotImplementedError("'sorted' is currently not supported.")
+    return _instance().top_k(a, k, largest=largest)
 
 
 ############################################

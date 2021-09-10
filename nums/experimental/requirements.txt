@@ -1,2 +1,2 @@
-xgboost
-modin[ray]==0.8.1
+xgboost>=1.4.0,<=1.4.2
+modin[ray]>=0.10.0

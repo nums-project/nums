@@ -85,7 +85,10 @@ def get_module_functions(module):
         if key in ("__getattr__", "__dir__"):
             continue
         attr = getattr(module, key)
-        if isinstance(attr, (types.BuiltinFunctionType, types.FunctionType, np.ufunc)):
+        # NOTE: I suspect that pylint is falsely labeling some of these types
+        # as instances. See https://github.com/PyCQA/pylint/issues/3507.
+        function_types = (types.BuiltinFunctionType, types.FunctionType, np.ufunc)
+        if isinstance(attr, function_types):  # pylint: disable=W1116
             module_fns[key] = attr
     return module_fns
 
