@@ -287,7 +287,10 @@ def inv_uppertri(app: ArrayApplication, X: BlockArray):
     # Continue while R_tl.shape != R.shape
     while R_tl_shape[0] != full_shape[0] and R_tl_shape[1] != full_shape[1]:
         # Calculate R11
-        R11_block = (int(np.ceil(R_tl_shape[0] // block_shape[0])), int(np.ceil(R_tl_shape[1] // block_shape[1])))
+        R11_block = (
+            int(np.ceil(R_tl_shape[0] // block_shape[0])),
+            int(np.ceil(R_tl_shape[1] // block_shape[1]))
+            )
         R11_oid = R.blocks[R11_block].oid
         R11_shape = R.blocks[R11_block].shape
 
@@ -319,9 +322,7 @@ def inv_uppertri(app: ArrayApplication, X: BlockArray):
 
             for col_block in range(R01_num_blocks):
 
-                # Get data for R01 and R00
-                R01_block_oid = R01_oids[col_block]
-
+                # Get data for R00
                 R00_oid = R.blocks[(row_block, col_block)].oid
                 Z_oid = Zs.blocks[(row_block, col_block)].oid
 
@@ -409,19 +410,17 @@ def cholesky(app: ArrayApplication, X: BlockArray):
 
 
 def cholesky_blocked(app: ArrayApplication, X: BlockArray):
-    assert X.shape[0] == X.shape[1], "This function only accepts square matrices"
-    assert X.block_shape[0] == X.block_shape[1], "This function only accepts square blocks"
-    assert X.shape[0] % X.block_shape[0] == 0, "This function only accepts blocks divisible by size of matrix"
+    assert_string = "This function only accepts "
+    assert X.shape[0] == X.shape[1], assert_string + "square matrices"
+    assert X.block_shape[0] == X.block_shape[1], assert_string + "square blocks"
+    assert X.shape[0] % X.block_shape[0] == 0, assert_string + "blocks divisible by size of matrix"
     single_block = X.shape[0] == X.block_shape[0] and X.shape[1] == X.block_shape[1]
 
     # Setup metadata
     full_shape = X.shape
-    grid_shape = X.grid.grid_shape
     block_shape = X.block_shape
 
-    n,b = full_shape[0], block_shape[0]
-    num_blocks = grid_shape[0]
-    grid = X.grid.copy()
+    n, b = full_shape[0], block_shape[0]
     if single_block:
         # only one block means we do regular cholesky
         A_TL = app.cholesky(X)
@@ -456,10 +455,18 @@ def cholesky_blocked(app: ArrayApplication, X: BlockArray):
                 A_TL.blocks[A_TL_size//b,A_TL_size//b].oid = A_11.blocks[0,0].oid
             else:
                 A_01 = BlockArray.from_blocks(A_TR.blocks[:, :1], (A_TL_size,b), cm=app.cm)
-                A_02 = BlockArray.from_blocks(A_TR.blocks[:, 1:], (A_TL_size,n-A_TL_size-b), cm=app.cm)
+                A_02 = BlockArray.from_blocks(
+                    A_TR.blocks[:, 1:],
+                    (A_TL_size,n-A_TL_size-b),
+                    cm=app.cm
+                    )
                 A_11 = BlockArray.from_blocks(A_BR.blocks[:1, :1], (b,b), cm=app.cm)
                 A_12 = BlockArray.from_blocks(A_BR.blocks[:1, 1:], (b,n-A_TL_size-b), cm=app.cm)
-                A_22 = BlockArray.from_blocks(A_BR.blocks[1:, 1:], (n-A_TL_size-b,n-A_TL_size-b), cm=app.cm)
+                A_22 = BlockArray.from_blocks(
+                    A_BR.blocks[1:, 1:],
+                    (n-A_TL_size-b,n-A_TL_size-b),
+                    cm=app.cm
+                )
 
                 A_11 = app.cholesky(A_11)
 
