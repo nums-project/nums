@@ -63,7 +63,7 @@ def from_modin(df):
     dtype = np.__getattribute__(str(dtype))
 
     # Convert from Pandas to NumPy.
-    pd_parts = frame._frame_mgr_cls.map_partitions(
+    pd_parts = frame._partition_mgr_cls.map_partitions(
         frame._partitions, lambda df: np.array(df)
     )
     grid_shape = len(frame._row_lengths), len(frame._column_widths)
@@ -100,5 +100,11 @@ if __name__ == "__main__":
         settings.project_root, "tests", "core", "storage", "test.csv"
     )
     df = mpd.read_csv(filename)
+    ba: BlockArray = from_modin(df)
+    print(ba.get())
+
+    df = mpd.read_csv(
+        "https://archive.ics.uci.edu/ml/machine-learning-databases/00280/HIGGS.csv.gz"
+    )
     ba: BlockArray = from_modin(df)
     print(ba.get())
