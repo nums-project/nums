@@ -264,7 +264,9 @@ def tril(app: ArrayApplication, X: BlockArray):
         syskwargs = {"grid_entry": grid_entry, "grid_shape": grid.grid_shape}
         if grid_entry[0] == grid_entry[1]:
             # On the diagonal...
-            ret.blocks[grid_entry].oid = app.cm.tril(X.blocks[grid_entry].copy().oid, syskwargs=syskwargs)
+            ret.blocks[grid_entry].oid = app.cm.tril(
+                X.blocks[grid_entry].copy().oid,
+                syskwargs=syskwargs)
         elif grid_entry[0] > grid_entry[1]:
             ret.blocks[grid_entry].oid = X.blocks[grid_entry].copy().oid
         else:
@@ -283,9 +285,13 @@ def lu_block_decompose(app: ArrayApplication, X: BlockArray):
     U: BlockArray = BlockArray(grid, app.cm)
     if len(X.blocks) == 1:
         # Only one block, perform single-block lu decomp
-        X_block: Block = X.blocks[0, 0]
-        P.blocks[0, 0].oid, L.blocks[0, 0].oid, U.blocks[0, 0].oid = app.cm.lu_inv(X.blocks[0, 0].oid,
-            syskwargs={"grid_entry": X_block.grid_entry, "grid_shape": X_block.grid_shape})
+        X_block = X.blocks[0, 0]
+        P.blocks[0, 0].oid, L.blocks[0, 0].oid, U.blocks[0, 0].oid = app.cm.lu_inv(
+            X.blocks[0, 0].oid,
+            syskwargs={
+                "grid_entry": X_block.grid_entry,
+                "grid_shape": X_block.grid_shape
+            })
     else:
         # Must do blocked LU decomp
         size = X.blocks.shape[0]//2
@@ -297,11 +303,11 @@ def lu_block_decompose(app: ArrayApplication, X: BlockArray):
         M3 = BlockArray.from_blocks(X.blocks[size:, :size], subshape, app.cm)
         M4 = BlockArray.from_blocks(X.blocks[size:, size:], subshape, app.cm)
 
-        P1, L1, U1 = self.lu_block_decompose(M1)
+        P1, L1, U1 = lu_block_decompose(app, M1)
         T = U1 @ L1
         Shat = M3 @ T
         Mhat = M4 - Shat @ (P1 @ M2)
-        P2, L3, U3 = self.lu_block_decompose(Mhat)
+        P2, L3, U3 = lu_block_decompose(app, Mhat)
         S = P2 @ Shat
 
         L.blocks[:size, :size] = L1.blocks
@@ -346,7 +352,7 @@ def lu_block_decompose(app: ArrayApplication, X: BlockArray):
 
 
 def lu_inv(app: ArrayApplication, X: BlockArray):
-    assert (X.shape[0] == X.shape[1])   
+    assert X.shape[0] == X.shape[1]
     P, L, U = app.lu_block_decompose(X)
     return U @ L @ P
 
