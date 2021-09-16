@@ -211,7 +211,7 @@ def read_csv_block(filename, file_start, file_end, dtype, delimiter, has_header)
 
     lines = []
     converter = _getconv(dtype)
-    with open(filename, "r") as fh:
+    with open(filename, "r", encoding="utf-8") as fh:
         try:
             fh.seek(file_start)
             if file_start != 0:
