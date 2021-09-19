@@ -24,6 +24,7 @@ import scipy.stats
 from nums.core.application_manager import instance as _instance
 from nums.core.array.blockarray import BlockArray
 from nums.numpy import numpy_utils
+from nums.core.utils import *
 
 
 # pylint: disable = redefined-builtin, too-many-lines
@@ -286,7 +287,7 @@ def eye(N, M=None, k=0, dtype=float):
     block_shape = app.get_block_shape(shape, dtype)
     return app.eye(shape, block_shape, dtype)
 
-
+@derived_from(np)
 def diag(v: BlockArray, k=0) -> BlockArray:
     app = _instance()
     if k != 0:
