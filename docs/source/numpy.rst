@@ -1,5 +1,5 @@
 nums.numpy.api
-========
+==============
 
 Functions in the ``nums.numpy.api`` module.
 
