@@ -294,7 +294,7 @@ def diag(v: BlockArray, k=0) -> BlockArray:
         raise NotImplementedError("Only k==0 is currently supported.")
     return app.diag(v)
 
-
+@derived_from(np)
 def trace(a: BlockArray, offset=0, axis1=0, axis2=1, dtype=None, out=None):
     if offset != 0:
         raise NotImplementedError("offset != 0 is currently not supported.")
