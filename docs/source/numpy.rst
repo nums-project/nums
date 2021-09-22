@@ -5,8 +5,8 @@ Functions in the ``nums.numpy`` module.
 
 .. currentmodule:: nums.numpy
 
-Top level functions
-~~~~~~~~~~~~~~~~~~~
+NumS Supported API
+~~~~~~~~~~~~~~~~~~
 
 .. autosummary::
    :toctree: generated/
@@ -14,3 +14,11 @@ Top level functions
    diag
    trace
    top_k
+
+NumS Fallback API
+~~~~~~~~~~~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+
+   nan_to_num
