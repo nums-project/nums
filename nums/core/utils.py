@@ -144,6 +144,11 @@ def _derived_from(cls, method, ua_args=[], extra="", skipblocks=0):
     doc = skip_doctest(doc)
     doc = extra_titles(doc)
 
+    # TODO: make regex handle edge cases
+    #doc = re.sub("np.", "nps.", doc)
+    #doc = re.sub("ndarray", "BlockArray", doc)
+    #doc = re.sub(" array", " BlockArray", doc)
+    #doc = re.sub("array_like", "BlockArray", doc)
     return doc
 
 

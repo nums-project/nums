@@ -1,7 +1,16 @@
-nums.numpy.api
-==============
+nums.numpy
+==========
 
-Functions in the ``nums.numpy.api`` module.
+Functions in the ``nums.numpy`` module.
 
-.. automodule:: nums.numpy.api
-   :members:
+.. currentmodule:: nums.numpy
+
+Top level functions
+~~~~~~~~~~~~~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+
+   diag
+   trace
+   top_k

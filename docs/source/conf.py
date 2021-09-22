@@ -36,6 +36,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx_autodoc_typehints",
     "sphinx_rtd_theme",
+    'sphinx.ext.autosummary',
     "m2r2",
 ]
 
