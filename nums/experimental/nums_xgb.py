@@ -201,7 +201,7 @@ class XGBClassifier(object):
             ArrayGrid(
                 shape=(X.shape[0],),
                 block_shape=(X.block_shape[0],),
-                dtype=nps.int.__name__,
+                dtype=int.__name__,
             ),
             cm,
         )
