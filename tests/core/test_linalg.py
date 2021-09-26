@@ -130,10 +130,10 @@ def test_inv_uppertri(app_inst: ArrayApplication):
     R_np = np.arange(1, shape[0]**2 + 1, 1).reshape(*shape).astype(float)
     R_np = np.triu(R_np)
 
-    R: BlockArray = app_inst.array(R_np, block_shape=block_shape)
+    R = app_inst.array(R_np, block_shape=block_shape)
 
-    R_inv_naive: BlockArray = linalg.inv(app_inst, R).get()
-    R_inv: BlockArray = linalg.inv_uppertri(app_inst, R).get()
+    R_inv_naive = linalg.inv(app_inst, R).get()
+    R_inv = linalg.inv_uppertri(app_inst, R).get()
 
     assert np.allclose(R_inv_naive, R_inv)
 

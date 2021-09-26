@@ -326,17 +326,15 @@ def inv_uppertri(app: ArrayApplication, X: BlockArray):
                 R00_oid = R.blocks[(row_block, col_block)].oid
                 Z_oid = Zs.blocks[(row_block, col_block)].oid
 
-                R00_bs = R.blocks[(row_block, col_block)].shape
-
                 # Calculate -R00 = 0 - R00
-                neg_R00_oid = app.cm.bop("subtract", Z_oid, R00_oid, R00_bs, R00_bs,
+                neg_R00_oid = app.cm.bop("subtract", Z_oid, R00_oid,
                                                 False, False, axes=1, syskwargs={
                                                     "grid_entry": (row_block, col_block),
                                                     "grid_shape": grid_shape
                                                 })
                 # Calculate -R00 @ R01
                 sub_oids.append(app.cm.bop("tensordot", neg_R00_oid, R01_oids[col_block],
-                                    R00_bs, R01_shapes[col_block], False, False, axes=1, syskwargs={
+                                    False, False, axes=1, syskwargs={
                                         "grid_entry": R01_grid_entries[col_block],
                                         "grid_shape": grid_shape
                                     }
@@ -352,7 +350,7 @@ def inv_uppertri(app: ArrayApplication, X: BlockArray):
         R01_2_oids = []
         for row_block in range(R01_num_blocks):
             R01_2_oids.append(app.cm.bop("tensordot", R01_1_oids[row_block], R11_inv_oid,
-                                R01_shapes[row_block], R11_shape, False, False, axes=1, syskwargs={
+                                False, False, axes=1, syskwargs={
                                     "grid_entry": R01_grid_entries[row_block],
                                     "grid_shape": grid_shape
                                 }
