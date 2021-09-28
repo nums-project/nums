@@ -117,20 +117,20 @@ def test_quantile_percentile(app_inst: ArrayApplication):
     for q, method, interpolation in itertools.product(qs, methods, interpolations):
         assert app_inst.quantile(
             ba_x, q / 100, method=method, interpolation=interpolation
-        ) == np.quantile(np_x, q / 100)
+        ).get() == np.quantile(np_x, q / 100)
         assert app_inst.percentile(
             ba_x, q, method=method, interpolation=interpolation
-        ) == np.percentile(np_x, q)
+        ).get() == np.percentile(np_x, q)
 
     np_x = np.array([0, 0, 5, 5, 5, 5, 20, 20])
     ba_x = app_inst.array(np_x, block_shape=(3,))
     for q, method, interpolation in itertools.product(qs, methods, interpolations):
         assert app_inst.quantile(
             ba_x, q / 100, method=method, interpolation=interpolation
-        ) == np.quantile(np_x, q / 100)
+        ).get() == np.quantile(np_x, q / 100)
         assert app_inst.percentile(
             ba_x, q, method=method, interpolation=interpolation
-        ) == np.percentile(np_x, q)
+        ).get() == np.percentile(np_x, q)
 
 
 if __name__ == "__main__":
