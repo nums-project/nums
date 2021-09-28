@@ -225,6 +225,19 @@ class ComputeCls(ComputeImp):
     def size(self, arr):
         return arr.size
 
+    def tdigest_chunk(self, arr):
+        from crick import TDigest
+        t = TDigest()
+        t.update(arr)
+        return t
+
+    def percentiles_from_tdigest(self, *q_digests):
+        from crick import TDigest
+        q, digests = q_digests[0], q_digests[1:]
+        t = TDigest()
+        t.merge(*digests)
+        return np.array(t.quantile(q))
+
     def select_median(self, arr):
         """Find value in `arr` closest to median as part of quickselect algorithm."""
         assert arr.ndim == 1, "Only 1D 'arr' is supported."
