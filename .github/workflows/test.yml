@@ -26,6 +26,8 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           pip3 install .[testing]
+          pip install cython
+          pip install crick
       - name: Run tests
         run: |
           coverage run -m pytest

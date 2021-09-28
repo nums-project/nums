@@ -64,6 +64,7 @@ def main():
             "License :: OSI Approved :: MIT License",
             "Operating System :: Unix",
         ],
+
         python_requires=">=3.6,<3.9",
         install_requires=requirements,
         extras_require={"testing": test_requirements},
