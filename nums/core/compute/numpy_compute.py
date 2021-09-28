@@ -22,6 +22,7 @@ import scipy.linalg
 import scipy.special
 from numpy.random import Generator
 from numpy.random import PCG64
+from crick import TDigest
 
 from nums.core.compute.compute_interface import ComputeImp, RNGInterface
 from nums.core.grid.grid import ArrayGrid
@@ -226,13 +227,11 @@ class ComputeCls(ComputeImp):
         return arr.size
 
     def tdigest_chunk(self, arr):
-        from crick import TDigest
         t = TDigest()
         t.update(arr)
         return t
 
     def percentiles_from_tdigest(self, *q_digests):
-        from crick import TDigest
         q, digests = q_digests[0], q_digests[1:]
         t = TDigest()
         t.merge(*digests)
