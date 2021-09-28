@@ -127,7 +127,7 @@ def test_inv(app_inst: ArrayApplication):
 
 def test_inv_uppertri(app_inst: ArrayApplication):
     block_shape, shape = (3, 3), (20, 20)
-    R_np = np.arange(1, shape[0]**2 + 1, 1).reshape(*shape).astype(float)
+    R_np = np.arange(1, shape[0] ** 2 + 1, 1).reshape(*shape).astype(float)
     R_np = np.triu(R_np)
 
     R = app_inst.array(R_np, block_shape=block_shape)
