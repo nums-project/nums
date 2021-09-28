@@ -105,11 +105,33 @@ def test_top_k(app_inst: ArrayApplication):
             assert np_x[i] == v
 
 
-if __name__ == "__main__":
-    # pylint: disable=import-error
-    from tests import conftest
+def test_quantile_percentile(app_inst: ArrayApplication):
+    # see https://github.com/dask/dask/blob/main/dask/array/tests/test_percentiles.py
+    qs = [0, 50, 100]
+    methods = ['tdigest']
+    interpolations = ['linear']
 
-    app_inst: ArrayApplication = conftest.get_app("serial")
+    np_x = np.ones((10,))
+    ba_x = app_inst.ones(shape=(10,), block_shape=(2,))
+    for q, method, interpolation in itertools.product(qs, methods, interpolations):
+        assert app_inst.quantile(ba_x, q/100, method=method, interpolation=interpolation) == np.quantile(np_x, q/100)
+        assert app_inst.percentile(ba_x, q, method=method, interpolation=interpolation) == np.percentile(np_x, q)
+
+    np_x = np.array([0, 0, 5, 5, 5, 5, 20, 20])
+    ba_x = app_inst.array(np_x, block_shape=(3,))
+    for q, method, interpolation in itertools.product(qs, methods, interpolations):
+        assert app_inst.quantile(ba_x, q/100, method=method, interpolation=interpolation) == np.quantile(np_x, q/100)
+        assert app_inst.percentile(ba_x, q, method=method, interpolation=interpolation) == np.percentile(np_x, q)
+
+
+if __name__ == "__main__":
+    from nums.core import application_manager
+    from nums.core import settings
+
+    settings.system_name = "serial"
+    app_inst = application_manager.instance()
+
     test_quickselect(app_inst)
     test_median(app_inst)
     test_top_k(app_inst)
+    test_quantile_percentile(app_inst)
