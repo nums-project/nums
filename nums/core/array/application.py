@@ -712,7 +712,7 @@ class ArrayApplication(object):
         assert method == "tdigest"
         arr_oids = arr.flattened_oids()
         p_oid = self._quantile(arr_oids, q, interpolation, method=method)
-        return BlockArray.from_oid(p_oid, (1,), p_oid.dtype.type, self.cm)
+        return BlockArray.from_oid(p_oid, (1,), np.float64, self.cm)
 
     def percentile(
         self,
