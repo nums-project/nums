@@ -4,7 +4,7 @@ import nums.numpy as nps
 from nums.core import settings
 
 
-# Initialize ray and connect it to the cluster
+# Initialize ray and connect it to the cluster.
 ray.init(address="auto")
 # Set the cluster shape for nums. Here we set it to use all the nodes in the ray cluster. 
 settings.cluster_shape = (len(ray.nodes())-1, 1)
