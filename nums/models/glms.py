@@ -111,6 +111,8 @@ class GLM(object):
         # by referencing X's existing blocks.
         # TODO: Option to do concat.
         # TODO: Provide support for batching.
+        if np.issubdtype(X.dtype, np.integer):
+            X = X.astype(float)
         X = self._app.concatenate(
             [
                 X,
