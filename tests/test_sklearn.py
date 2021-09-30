@@ -2,6 +2,7 @@ import time
 
 from nums.core.array.blockarray import BlockArray
 import nums.numpy as nps
+from nums.core.array.application import ArrayApplication
 
 
 def exec(
@@ -79,18 +80,23 @@ def exec_serial(size, features):
     )
 
 
-def test_parallel_sklearn():
+def test_parallel_sklearn(nps_app_inst: ArrayApplication):
+    from nums.core.systems.systems import RaySystem
+
+    if not isinstance(nps_app_inst.cm.system, RaySystem):
+        return
     size, feats = 10000, 10
     exec_parallel(size, feats)
 
-    t = time.time()
-    exec_parallel(size, feats)
-    print("parallel time", time.time() - t)
-
-    t = time.time()
-    exec_serial(size, feats)
-    print("serial time", time.time() - t)
+    # t = time.time()
+    # exec_parallel(size, feats)
+    # print("parallel time", time.time() - t)
+    #
+    # t = time.time()
+    # exec_serial(size, feats)
+    # print("serial time", time.time() - t)
 
 
 if __name__ == "__main__":
-    test_parallel_sklearn()
+    pass
+    # test_parallel_sklearn()
