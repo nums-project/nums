@@ -9,8 +9,7 @@ def tag(c):
     """Tag the current version of NumS and push the tag upstream."""
     result = c.run("git tag", hide=True)
     versions = result.stdout.splitlines()
-
-    current_version = "va" + __version__
+    current_version = "v" + __version__
     if current_version in versions:
         if not accepts(f"{current_version} is already tagged. Force update?"):
             return
