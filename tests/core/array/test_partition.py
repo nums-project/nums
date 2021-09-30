@@ -22,14 +22,13 @@ from nums.core.array.application import ArrayApplication
 
 
 def test_quickselect(app_inst: ArrayApplication):
-    # pylint: disable=protected-access
     # Simple tests
     np_x = np.array([3, 7, 2, 4, 5, 1, 5, 6])
     ba_x = app_inst.array(np_x, block_shape=(3,))
     ba_oids = ba_x.flattened_oids()
     correct = [7, 6, 5, 5, 4, 3, 2, 1]
     for i in range(-8, 8):
-        value_oid = app_inst._quickselect(ba_oids, i)
+        value_oid = app_inst.quickselect(ba_oids, i)
         value = app_inst.cm.get(value_oid)
         assert value == correct[i]
 
@@ -40,7 +39,7 @@ def test_quickselect(app_inst: ArrayApplication):
     for shape, block_shape, k in itertools.product(shapes, block_shapes, kth):
         ba_x = app_inst.random.random(shape=shape, block_shape=block_shape)
         ba_oids = ba_x.flattened_oids()
-        value_oid = app_inst._quickselect(ba_oids, k)
+        value_oid = app_inst.quickselect(ba_oids, k)
         value = app_inst.cm.get(value_oid)
         assert value == np.partition(ba_x.get(), -k - 1)[-k - 1]
 

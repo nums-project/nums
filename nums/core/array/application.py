@@ -741,7 +741,7 @@ class ArrayApplication(object):
         assert method == "tdigest"
         return self.quantile(arr, q, interpolation=interpolation, method=method)
 
-    def _quickselect(self, arr_oids: List[object], kth: int):
+    def quickselect(self, arr_oids: List[object], kth: int):
         """Find the `kth` largest element in a 1D BlockArray in O(n) time.
         Used as a subprocedure in `median` and `top_k`.
 
@@ -791,7 +791,7 @@ class ArrayApplication(object):
         gr_size = sum(self.cm.get(s) for s in gr_size_oids)
         if kth < gr_size:
             del arr_oids
-            return self._quickselect(gr_oids, kth)
+            return self.quickselect(gr_oids, kth)
 
         # Compute "less than" partition using wmm as pivot, recurse if kth is in range.
         ls_size_oids, ls_oids = [], []
@@ -811,7 +811,7 @@ class ArrayApplication(object):
         ls_size = sum(self.cm.get(s) for s in ls_size_oids)
         if kth >= total_size - ls_size:
             del arr_oids
-            return self._quickselect(ls_oids, kth - (total_size - ls_size))
+            return self.quickselect(ls_oids, kth - (total_size - ls_size))
 
         # The kth value is wmm.
         return wmm_oid
@@ -830,12 +830,12 @@ class ArrayApplication(object):
 
         a_oids = arr.flattened_oids()
         if arr.size % 2 == 1:
-            m_oid = self._quickselect(a_oids, arr.size // 2)
+            m_oid = self.quickselect(a_oids, arr.size // 2)
             return BlockArray.from_oid(m_oid, (1,), arr.dtype, self.cm)
         else:
-            m0_oid = self._quickselect(a_oids, arr.size // 2 - 1)
+            m0_oid = self.quickselect(a_oids, arr.size // 2 - 1)
             m0 = BlockArray.from_oid(m0_oid, (1,), arr.dtype, self.cm)
-            m1_oid = self._quickselect(a_oids, arr.size // 2)
+            m1_oid = self.quickselect(a_oids, arr.size // 2)
             m1 = BlockArray.from_oid(m1_oid, (1,), arr.dtype, self.cm)
             return (m0 + m1) / 2
 
@@ -863,11 +863,11 @@ class ArrayApplication(object):
             raise IndexError("'k' must be at least 1 and at most the size of 'arr'.")
         arr_oids = arr.flattened_oids()
         if largest:
-            k_oid = self._quickselect(arr_oids, k - 1)
+            k_oid = self.quickselect(arr_oids, k - 1)
             k_val = BlockArray.from_oid(k_oid, (1,), arr.dtype, self.cm)
             ie_indices = self.where(arr > k_val[0])[0]
         else:
-            k_oid = self._quickselect(arr_oids, -k)
+            k_oid = self.quickselect(arr_oids, -k)
             k_val = BlockArray.from_oid(k_oid, (1,), arr.dtype, self.cm)
             ie_indices = self.where(arr < k_val[0])[0]
         eq_indices = self.where(arr == k_val[0])[0]
