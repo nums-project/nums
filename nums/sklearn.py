@@ -2,6 +2,8 @@ from nums.core.array.blockarray import BlockArray
 from nums.core.application_manager import instance, RaySystem
 import nums.numpy as nps
 
+# pylint: disable = import-outside-toplevel
+
 
 def _register_train_test_split():
     from sklearn import model_selection
