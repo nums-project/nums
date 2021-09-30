@@ -222,6 +222,9 @@ class ComputeCls(ComputeImp):
             arr = arr.T
         return np.split(arr, indices_or_sections, axis)
 
+    def shape_dtype(self, arr):
+        return arr.shape, arr.dtype
+
     def size(self, arr):
         return arr.size
 

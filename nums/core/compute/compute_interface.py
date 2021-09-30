@@ -70,6 +70,9 @@ class ComputeInterface(object):
     def split(self, arr, indices_or_sections, axis, transposed, syskwargs: Dict):
         raise NotImplementedError()
 
+    def shape_dtype(self, arr, syskwargs: Dict):
+        raise NotImplementedError()
+
     def size(self, arr, syskwargs: Dict):
         raise NotImplementedError()
 

@@ -73,6 +73,8 @@ class RaySystem(SystemInterface):
         self._num_nodes = num_nodes
         self._manage_ray = True
         self._remote_functions = {}
+        self._actors = {}
+        self._actor_node_index = 0
         self._available_nodes = []
         self._head_node = None
         self._worker_nodes = []
@@ -196,6 +198,21 @@ class RaySystem(SystemInterface):
             map(lambda n: n["Resources"]["CPU"], self._device_to_node.values())
         )
         return int(num_cores)
+
+    # TODO: Need interface and CM support for this.
+    def register_actor(self, name: str, cls: type):
+        assert name not in self._actors
+        self._actors[name] = ray.remote(cls)
+
+    def make_actor(self, name: str, *args, **kwargs):
+        # Distribute actors round-robin over devices.
+        device_id = self._devices[self._actor_node_index]
+        self._actor_node_index = (self._actor_node_index + 1) % len(self._devices)
+        actor = self._actors[name]
+        node = self._device_to_node[device_id]
+        node_key = self._node_key(node)
+        options = {"resources": {node_key: 1.0 / 10 ** 4}}
+        return actor.options(**options).remote(*args, **kwargs)
 
 
 class RaySystemStockScheduler(RaySystem):
