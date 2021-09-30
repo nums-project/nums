@@ -54,40 +54,6 @@ def test_reductions(nps_app_inst):
         # assert np.allclose(ba_result.get(), np_result)
 
 
-def test_reductions_1d(nps_app_inst):
-    from nums import numpy as nps
-    from nums.numpy import BlockArray
-
-    assert nps_app_inst is not None
-
-    ba: BlockArray = nps.array([5, -2, 4, 8, 3, 6, 1, 7])
-    block_shapes = [(1,), (2,), (4,), (8,)]
-    qs = [0, 50, 100]
-    for block_shape in block_shapes:
-        ba = ba.reshape(block_shape=block_shape)
-        np_arr = ba.get()
-        op_params = ["median", "percentile", "quantile"]
-        axis_params = [None]
-        keepdims_params = [False]
-
-        for op, q, axis, keepdims in itertools.product(
-            op_params, qs, axis_params, keepdims_params
-        ):
-            ns_op = nps.__getattribute__(op)
-            np_op = np.__getattribute__(op)
-            if op in ["median"]:
-                np_result = np_op(np_arr, axis=axis, keepdims=keepdims)
-                ba_result: BlockArray = ns_op(ba, axis=axis, keepdims=keepdims)
-            else:
-                if op in ["quantile"]:
-                    q = q / 100
-                np_result = np_op(np_arr, q, axis=axis, keepdims=keepdims)
-                ba_result: BlockArray = ns_op(ba, q, axis=axis, keepdims=keepdims)
-            assert ba_result.grid.grid_shape == ba_result.blocks.shape
-            assert ba_result.size == np_result.size
-            assert np.allclose(ba_result.get(), np_result)
-
-
 def test_argops(nps_app_inst):
     from nums import numpy as nps
     from nums.numpy import BlockArray
@@ -218,6 +184,5 @@ if __name__ == "__main__":
     nums.core.settings.system_name = "serial"
     nps_app_inst = application_manager.instance()
     test_reductions(nps_app_inst)
-    test_reductions_1d(nps_app_inst)
     test_argops(nps_app_inst)
     test_average(nps_app_inst)
