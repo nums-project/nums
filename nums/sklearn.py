@@ -165,6 +165,7 @@ _place_on_node_0 = (StandardScaler, RobustScaler)
 
 def expose_sklearn_objects():
     from sklearn.gaussian_process.kernels import RBF
+
     return (RBF,)
 
 
