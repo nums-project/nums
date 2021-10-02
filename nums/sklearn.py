@@ -1,8 +1,8 @@
 from nums.core.array.blockarray import BlockArray
 from nums.core.application_manager import instance, RaySystem
-import nums.numpy as nps
 
-from sklearn.gaussian_process.kernels import RBF
+
+# pylint: disable = import-outside-toplevel
 
 
 def _register_train_test_split():
@@ -161,6 +161,14 @@ def build_preprocessors():
 
 (StandardScaler, RobustScaler) = build_preprocessors()
 _place_on_node_0 = (StandardScaler, RobustScaler)
+
+
+def expose_sklearn_objects():
+    from sklearn.gaussian_process.kernels import RBF
+    return (RBF,)
+
+
+(RBF,) = expose_sklearn_objects()
 
 
 if __name__ == "__main__":
