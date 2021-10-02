@@ -1,12 +1,11 @@
+import time
+
 from nums.core.array.blockarray import BlockArray
 import nums.numpy as nps
 from nums.core.array.application import ArrayApplication
 
 
-# pylint: disable = import-outside-toplevel
-
-
-def execute_pipelines(
+def exec(
     X, y, train_test_split, StandardScaler, RobustScaler, KNeighborsClassifier, SVC
 ):
 
@@ -56,7 +55,7 @@ def exec_parallel(size, features):
 
     X: BlockArray = nps.random.rand(size, features)
     y: BlockArray = nps.random.randint(2, size=size)
-    return execute_pipelines(
+    return exec(
         X, y, train_test_split, StandardScaler, RobustScaler, KNeighborsClassifier, SVC
     )
 
@@ -70,7 +69,7 @@ def exec_serial(size, features):
 
     X = np.random.rand(size, features)
     y = np.random.randint(2, size=size)
-    return execute_pipelines(
+    return exec(
         X,
         y,
         model_selection.train_test_split,

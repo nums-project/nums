@@ -2,7 +2,7 @@ from nums.core.array.blockarray import BlockArray
 from nums.core.application_manager import instance, RaySystem
 import nums.numpy as nps
 
-# pylint: disable = import-outside-toplevel
+from sklearn.gaussian_process.kernels import RBF
 
 
 def _register_train_test_split():
@@ -50,10 +50,10 @@ def register_actor(name: str, cls: type):
     sys.register_actor(name, cls)
 
 
-def make_actor(name: str, *args, **kwargs):
+def make_actor(name: str, *args, device_id, **kwargs):
     assert isinstance(instance().cm.system, RaySystem)
     sys: RaySystem = instance().cm.system
-    return sys.make_actor(name, *args, **kwargs)
+    return sys.make_actor(name, *args, device_id=device_id, **kwargs)
 
 
 def build_sklearn_actor(cls: type):
@@ -77,7 +77,10 @@ def build_sklearn_actor(cls: type):
 
     class NumsModel(object):
         def __init__(self, *args, **kwargs):
-            self.actor = make_actor(name, *args, **kwargs)
+            device_id = None
+            if self.__class__ in _place_on_node_0:
+                device_id = instance().cm.devices()[0]
+            self.actor = make_actor(name, *args, device_id=device_id, **kwargs)
 
         def fit(self, X: BlockArray, y: BlockArray):
             self.actor.fit.remote(X.flattened_oids()[0], y.flattened_oids()[0])
@@ -116,7 +119,6 @@ def build_classifier_actors():
     from sklearn.neighbors import KNeighborsClassifier
     from sklearn.svm import SVC
     from sklearn.gaussian_process import GaussianProcessClassifier
-    from sklearn.gaussian_process.kernels import RBF
     from sklearn.tree import DecisionTreeClassifier
     from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
     from sklearn.naive_bayes import GaussianNB
@@ -128,7 +130,6 @@ def build_classifier_actors():
         KNeighborsClassifier,
         SVC,
         GaussianProcessClassifier,
-        RBF,
         DecisionTreeClassifier,
         RandomForestClassifier,
         AdaBoostClassifier,
@@ -143,7 +144,6 @@ def build_classifier_actors():
     KNeighborsClassifier,
     SVC,
     GaussianProcessClassifier,
-    RBF,
     DecisionTreeClassifier,
     RandomForestClassifier,
     AdaBoostClassifier,
@@ -160,31 +160,7 @@ def build_preprocessors():
 
 
 (StandardScaler, RobustScaler) = build_preprocessors()
-
-
-def exec_parallel(size, features):
-    X: BlockArray = nps.random.rand(size, features)
-    y: BlockArray = nps.random.randint(2, size=size)
-
-    models = []
-    scores = []
-    for preprocessor in [StandardScaler]:
-        p_inst = preprocessor()
-        pX = p_inst.fit_transform(X)
-        for kernel in ["linear", "poly", "rbf", "sigmoid"]:
-            m: SVC = SVC(kernel=kernel)
-            m.fit(pX, y)
-            models.append(m)
-            scores.append(m.score(pX, y))
-
-        for n_neighbors in [3, 4, 5]:
-            m: KNeighborsClassifier = KNeighborsClassifier(n_neighbors=n_neighbors)
-            m.fit(pX, y)
-            models.append(m)
-            scores.append(m.score(pX, y))
-
-    for score in scores:
-        print(score.get())
+_place_on_node_0 = (StandardScaler, RobustScaler)
 
 
 if __name__ == "__main__":

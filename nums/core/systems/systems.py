@@ -204,10 +204,11 @@ class RaySystem(SystemInterface):
         assert name not in self._actors
         self._actors[name] = ray.remote(cls)
 
-    def make_actor(self, name: str, *args, **kwargs):
+    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
         # Distribute actors round-robin over devices.
-        device_id = self._devices[self._actor_node_index]
-        self._actor_node_index = (self._actor_node_index + 1) % len(self._devices)
+        if device_id is None:
+            device_id = self._devices[self._actor_node_index]
+            self._actor_node_index = (self._actor_node_index + 1) % len(self._devices)
         actor = self._actors[name]
         node = self._device_to_node[device_id]
         node_key = self._node_key(node)
