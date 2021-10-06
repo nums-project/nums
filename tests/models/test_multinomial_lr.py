@@ -48,7 +48,7 @@ def test_multinomial_logistic(nps_app_inst: ArrayApplication):
         {"solver": "sgd", "lr": 1e-6, "tol": 1e-8, "max_iter": 10},
         {"solver": "block_sgd", "lr": 1e-6, "tol": 1e-8, "max_iter": 10},
         {"solver": "newton", "tol": 1e-8, "max_iter": 10},
-        {"solver": "lbfgs", "tol": 1e-8, "max_iter": 10, "m": 3}
+        {"solver": "lbfgs", "tol": 1e-8, "max_iter": 10, "m": 3},
     ]
     for kwargs in param_set:
         runtime = time.time()
