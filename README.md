@@ -202,6 +202,10 @@ To run NumS with S3,
 configure credentials for access by following instructions here: 
 https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html
 
+#### Cluster Setup
+NumS programs can run on a single machine, and can also seamlessly scale to large clusters. \
+Read more about [launching clusters](https://github.com/nums-project/nums/tree/master/autoscaler).
+
 # Contributing
 To contribute to NumS on Ray, 
 we recommend cloning the repository and installing the project in developer mode 
