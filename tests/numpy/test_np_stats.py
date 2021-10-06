@@ -22,7 +22,7 @@ import numpy as np
 # pylint: disable=import-outside-toplevel, no-member
 
 
-def test_reductions_1d(nps_app_inst):
+def test_stats_1d(nps_app_inst):
     from nums import numpy as nps
     from nums.numpy import BlockArray
 
@@ -62,4 +62,4 @@ if __name__ == "__main__":
 
     nums.core.settings.system_name = "serial"
     nps_app_inst = application_manager.instance()
-    test_reductions_1d(nps_app_inst)
+    test_stats_1d(nps_app_inst)
