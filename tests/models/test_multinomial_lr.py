@@ -44,11 +44,10 @@ def test_multinomial_logistic(nps_app_inst: ArrayApplication):
         real_y, block_shape=(100, 3)
     )  # TODO block shape? iris is 3 classes, and we seem to crash when using less than 3 here.
     param_set = [
-        # {"solver": "gd", "lr": 1e-6, "tol": 1e-8, "max_iter": 10},
-        # {"solver": "sgd", "lr": 1e-6, "tol": 1e-8, "max_iter": 10},
-        # {"solver": "block_sgd", "lr": 1e-6, "tol": 1e-8, "max_iter": 10},
-        # {"solver": "newton", "tol": 1e-8, "max_iter": 10},
-        # TODO: This is not working.
+        {"solver": "gd", "lr": 1e-6, "tol": 1e-8, "max_iter": 10},
+        {"solver": "sgd", "lr": 1e-6, "tol": 1e-8, "max_iter": 10},
+        {"solver": "block_sgd", "lr": 1e-6, "tol": 1e-8, "max_iter": 10},
+        {"solver": "newton", "tol": 1e-8, "max_iter": 10},
         {"solver": "lbfgs", "tol": 1e-8, "max_iter": 10, "m": 3}
     ]
     for kwargs in param_set:

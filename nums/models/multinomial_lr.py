@@ -1,17 +1,13 @@
 import numpy as np
-import random
 
 from nums.core.array.blockarray import BlockArray
 from nums.core.array.application import ArrayApplication
-
 from nums.core.application_manager import instance as _instance
 from nums.core.array import utils as array_utils
 from nums.core.array.random import NumsRandomState
-from collections import defaultdict
-from nums import numpy as nps
+from nums.core.linalg import inv
 
 from nums.models.lbfgs import LBFGS
-from nums.core.linalg import inv
 from nums.models.glms import Model
 
 
@@ -60,6 +56,12 @@ class MultinomialLogisticRegression(Model):
         self._m = m
         self._beta = None
         self._beta0 = None
+
+        self._num_class = None
+        self.feature_dim = None
+        self.feature_block_dim = None
+        self.use_lbfgs_forward = False
+        self._lambda_id = None
 
     def fit(self, X: BlockArray, y: BlockArray):
         # Note, it's critically important from a performance point-of-view
@@ -127,7 +129,6 @@ class MultinomialLogisticRegression(Model):
                 thresh=self._tol,
                 dtype=X.dtype,
             )
-            self.beta = beta
             beta = lbfgs_optimizer.execute(X, y, beta)
         else:
             raise Exception("Unsupported optimizer specified %s." % self._opt)
@@ -196,6 +197,7 @@ class MultinomialLogisticRegression(Model):
         mu: BlockArray = None,
         learning_ends_for_class=None,
     ):
+        # pylint: disable=arguments-differ
         class_count = mu.shape[1]
         if mu is None:
             mu = self.forward(X)
