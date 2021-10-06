@@ -17,12 +17,10 @@
 import time
 
 import numpy as np
-import pytest
 
 from sklearn.datasets import load_iris
 
 from nums.core.array.application import ArrayApplication
-from nums.core.storage.storage import BimodalGaussian
 from nums.models.multinomial_lr import MultinomialLogisticRegression
 
 # pylint: disable = protected-access, import-outside-toplevel, import-error
@@ -32,7 +30,7 @@ def test_multinomial_logistic(nps_app_inst: ArrayApplication):
     data = load_iris()
     real_X = data["data"]
     real_y_indices = data["target"]
-    num_samples, num_features, num_classes = (
+    num_samples, _, num_classes = (
         real_X.shape[0],
         real_X.shape[1],
         real_y_indices.max() + 1,
@@ -60,12 +58,16 @@ def test_multinomial_logistic(nps_app_inst: ArrayApplication):
         y_pred = lr_model.predict(
             X
         )  # .get() TODO we should return a nums object not np
-        # y_pred_proba = lr_model.predict_proba(X).get() # TODO this isn't implemented atm. does it make sense to implement?
-        # np.allclose(np.ones(shape=(y.shape[0],)), y_pred_proba[:, 0] + y_pred_proba[:, 1]) # TODO not sure if we need this line
+        # TODO this isn't implemented atm. does it make sense to implement?
+        # y_pred_proba = lr_model.predict_proba(X).get()
+        # TODO not sure if we need this line
+        # np.allclose(np.ones(shape=(y.shape[0],)), y_pred_proba[:, 0] + y_pred_proba[:, 1])
         print("opt", kwargs["solver"])
         print("runtime", runtime)
-        # print("norm", lr_model.grad_norm_sq(X, y).get()) # TODO does this matter?
-        # print("objective", lr_model.objective(X, y).get()) # TODO we don't have this function implemented
+        # TODO does this matter?
+        # print("norm", lr_model.grad_norm_sq(X, y).get())
+        # TODO we don't have this function implemented
+        # print("objective", lr_model.objective(X, y).get())
         print("accuracy", np.sum(y.get().argmax(axis=1) == y_pred) / num_samples)
 
 
