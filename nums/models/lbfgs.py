@@ -19,18 +19,18 @@ from typing import List, Union
 import numpy as np
 from nums.core.array.application import ArrayApplication
 from nums.core.application_manager import instance as _instance
-from nums.models.glms import GLM
+from nums.models.glms import Model
 
 
 # Based on Nocedal and Wright, chapters 2, 3, 6 and 7.
 
 
 class BackTrackingLineSearch(object):
-    def __init__(self, model: GLM):
+    def __init__(self, model: Model):
         self.app = _instance()
         self.model = model
 
-    def f(self, theta_prime, X, y):
+    def f(self, X, y, theta_prime):
         return self.model.objective(
             X, y, theta_prime, self.model.forward(X, theta_prime)
         )
@@ -42,7 +42,9 @@ class BackTrackingLineSearch(object):
         alpha = init_alpha
         f_val = self.f(X, y, theta)
         f_next = self.f(X, y, theta + alpha * p)
-        while self.app.isnan(f_next) or f_next > f_val + c * alpha * grad.T @ p:
+        while self.app.isnan(f_next) or f_next > f_val + c * alpha * self.app.sum(
+            grad * p
+        ):
             alpha *= rho
             if alpha < min_alpha:
                 return min_alpha
@@ -56,15 +58,16 @@ class LBFGSMemory(object):
         self.k = k
         self.s = s
         self.y = y
-        ys_inner = s.T @ y
+        app = _instance()
+        ys_inner = app.sum(s * y)
         self.rho = 1.0 / (ys_inner + 1e-30)
-        self.gamma = ys_inner / (y.T @ y + 1e-30)
+        self.gamma = ys_inner / (app.sum(y * y) + 1e-30)
 
 
 class LBFGS(object):
-    def __init__(self, model: GLM, m=3, max_iter=100, thresh=1e-5, dtype=np.float64):
+    def __init__(self, model: Model, m=3, max_iter=100, thresh=1e-5, dtype=np.float64):
         self.app: ArrayApplication = _instance()
-        self.model: GLM = model
+        self.model: Model = model
         self.m = m
         self.max_iter = max_iter
         self.thresh = thresh
@@ -89,12 +92,12 @@ class LBFGS(object):
             mem_i: LBFGSMemory = self.memory[i]
             if mem_i is None:
                 break
-            alpha = mem_i.rho * mem_i.s.T @ q
+            alpha = mem_i.rho * self.app.sum(mem_i.s * q)
             q -= alpha * mem_i.y
             forward_vars.insert(0, (alpha, mem_i))
         r = H @ q
         for alpha, mem_i in forward_vars:
-            beta = mem_i.rho * mem_i.y.T @ r
+            beta = mem_i.rho * self.app.sum(mem_i.y * r)
             r += mem_i.s * (alpha - beta)
         return r
 
@@ -127,7 +130,7 @@ class LBFGS(object):
                 c=1e-4,
                 min_alpha=1e-30,
             )
-            print("alpha", alpha)
+            # print("alpha", alpha)
             # print("alpha", alpha,
             #       "objective", f(theta).get(),
             #       "grad_norm", self.app.sqrt(g.T @ g).get())
@@ -156,7 +159,8 @@ class LBFGS(object):
         return theta
 
     def converged(self, g):
-        return self.app.sqrt(g.T @ g) < self.thresh
+        # return self.app.max(self.app.abs(g)) < self.thresh
+        return self.app.sqrt(self.app.sum(g * g)) < self.thresh
 
 
 if __name__ == "__main__":
