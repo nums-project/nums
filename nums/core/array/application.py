@@ -652,25 +652,30 @@ class ArrayApplication(object):
                 result_arrays.append(axis_result)
             return tuple(result_arrays)
 
-    def _quantile(
-        self, arr_oids: List[object], q: float, interpolation="linear", method="tdigest"
-    ):
-        """Used by `quantile`.
-
+    def quantile(
+        self, arr: BlockArray, q: float, interpolation="linear", method="tdigest"
+    ) -> BlockArray:
+        """Compute the q-th quantile of the array elements.
         Args:
-            arr_oids: Flattened list of oids for array objects.
+            arr: BlockArray.
             q: quantile to compute, which must be between 0 and 1 inclusive.
             interpolation: interpolation method to use when the desired quantile lies between two
             data points i < j.
             also see https://numpy.org/doc/1.20/reference/generated/numpy.quantile.html.
             also see https://docs.dask.org/en/latest/_modules/dask/array/percentile.html.
 
-        Returns:
-            Oid of the q-th quantile of the array elements.
-        """
-        assert method == "tdigest"
-        assert interpolation == "linear"
 
+        Returns:
+            Returns the q-th quantile of the array elements.
+        """
+        if arr.ndim != 1:
+            raise NotImplementedError("Only 1D 'arr' is currently supported.")
+        if q < 0.0 or q > 1.0:
+            raise ValueError("Quantiles must be in the range [0, 1]")
+        assert interpolation == "linear"
+        assert method == "tdigest"
+
+        arr_oids = arr.flattened_oids()
         num_arrs = len(arr_oids)
         q = [q]
         t_oids = []
@@ -688,30 +693,6 @@ class ArrayApplication(object):
         p_oid = self.cm.system.call(
             "percentiles_from_tdigest", q_t_oids, {}, device_0, {}
         )
-        return p_oid
-
-    def quantile(
-        self, arr: BlockArray, q: float, interpolation="linear", method="tdigest"
-    ) -> BlockArray:
-        """Compute the q-th quantile of the array elements.
-        Args:
-            arr: BlockArray.
-            q: quantile to compute, which must be between 0 and 1 inclusive.
-            interpolation: interpolation method to use when the desired quantile lies between two
-            data points i < j.
-            also see https://numpy.org/doc/1.20/reference/generated/numpy.quantile.html.
-
-        Returns:
-            Returns the q-th quantile of the array elements.
-        """
-        if arr.ndim != 1:
-            raise NotImplementedError("Only 1D 'arr' is currently supported.")
-        if q < 0.0 or q > 1.0:
-            raise ValueError("Quantiles must be in the range [0, 1]")
-        assert interpolation == "linear"
-        assert method == "tdigest"
-        arr_oids = arr.flattened_oids()
-        p_oid = self._quantile(arr_oids, q, interpolation, method=method)
         return BlockArray.from_oid(p_oid, (1,), np.float64, self.cm)
 
     def percentile(
