@@ -715,11 +715,9 @@ class ArrayApplication(object):
         """
         if arr.ndim != 1:
             raise NotImplementedError("Only 1D 'arr' is currently supported.")
-        q = q / 100
-        if q < 0.0 or q > 1.0:
+        if q < 0 or q > 100:
             raise ValueError("Percentiles must be in the range [0, 100]")
-        assert interpolation == "linear"
-        assert method == "tdigest"
+        q = q / 100
         return self.quantile(arr, q, interpolation=interpolation, method=method)
 
     def _quickselect(self, arr_oids: List[object], kth: int):
