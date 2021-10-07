@@ -46,6 +46,7 @@ x = nps.random.rand(10**4, 10**4)
 y = nps.random.rand(10**4)
 print((x @ y).shape)
 print((x.T @ x).shape)
+print(x.touch())
 
 # NumS also provides a speedup on basic array operations,
 # such array search.
