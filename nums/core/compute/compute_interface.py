@@ -76,7 +76,7 @@ class ComputeInterface(object):
     def tdigest_chunk(self, arr, syskwargs: Dict):
         raise NotImplementedError()
 
-    def percentiles_from_tdigest(self, *q_digests, syskwargs: Dict):
+    def percentiles_from_tdigest(self, q, *digests, syskwargs: Dict):
         raise NotImplementedError()
 
     def select_median(self, arr, syskwargs: Dict):

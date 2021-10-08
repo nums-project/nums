@@ -688,11 +688,7 @@ class ArrayApplication(object):
             }
             t_oids.append(self.cm.tdigest_chunk(arr_oid, syskwargs=syskwargs))
 
-        device_0 = self.cm.devices()[0]
-        q_t_oids = q + t_oids
-        p_oid = self.cm.system.call(
-            "percentiles_from_tdigest", q_t_oids, {}, device_0, {}
-        )
+        p_oid = self.cm.percentiles_from_tdigest(q, *t_oids, syskwargs=syskwargs)
         return BlockArray.from_oid(p_oid, (1,), np.float64, self.cm)
 
     def percentile(

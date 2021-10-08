@@ -231,8 +231,7 @@ class ComputeCls(ComputeImp):
         t.update(arr)
         return t
 
-    def percentiles_from_tdigest(self, *q_digests):
-        q, digests = q_digests[0], q_digests[1:]
+    def percentiles_from_tdigest(self, q, *digests):
         t = TDigest()
         t.merge(*digests)
         return np.array(t.quantile(q))
