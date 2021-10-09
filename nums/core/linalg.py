@@ -259,6 +259,7 @@ def inv(app: ArrayApplication, X: BlockArray):
 def inv_uppertri(app: ArrayApplication, X: BlockArray):
     # Inversion of an Upper Triangular Matrix
     # Use the method described in https://www.cs.utexas.edu/users/flame/pubs/siam_spd.pdf
+    assert len(X.shape) == 2
     assert X.shape[0] == X.shape[1], "This function only accepts square matrices"
     single_block = X.shape[0] == X.block_shape[0] and X.shape[1] == X.block_shape[1]
     nonsquare_block = X.block_shape[0] != X.block_shape[1]
@@ -396,20 +397,6 @@ def inv_uppertri(app: ArrayApplication, X: BlockArray):
     return R
 
 
-def inv_cholesky(app: ArrayApplication, X: BlockArray):
-    # Matrix Inversion for X where X is a square positive definite matrix
-    # Particularly useful for least-squares regression on a large data corpus
-
-    # Step 1: Calculate the U using Cholesky, where X = U^TU
-    U = app.cholesky_blocked(X)
-
-    # Step 2: Compute U^-1
-    U_inv = app.inv_uppertri(U)
-
-    # Step 3: Compute inv(X) by U_inv @ U_inv.T
-    return U_inv @ U_inv.T
-
-
 def cholesky(app: ArrayApplication, X: BlockArray):
     # TODO (hme): Implement scalable version.
     # Note:
@@ -431,100 +418,6 @@ def cholesky(app: ArrayApplication, X: BlockArray):
     if not single_block:
         result = result.reshape(block_shape=block_shape)
     return result
-
-
-def cholesky_blocked(app: ArrayApplication, X: BlockArray):
-    assert_string = "This function only accepts "
-    assert X.shape[0] == X.shape[1], assert_string + "square matrices"
-    assert X.block_shape[0] == X.block_shape[1], assert_string + "square blocks"
-    assert X.shape[0] % X.block_shape[0] == 0, (
-        assert_string + "blocks divisible by size of matrix"
-    )
-    single_block = X.shape[0] == X.block_shape[0] and X.shape[1] == X.block_shape[1]
-
-    # Setup metadata
-    full_shape = X.shape
-    block_shape = X.block_shape
-
-    n, b = full_shape[0], block_shape[0]
-    if single_block:
-        # only one block means we do regular cholesky
-        A_TL = app.cholesky(X)
-    else:
-        # Must do blocked cholesky
-
-        # cholesky on A_TL
-        A_TL = BlockArray.from_blocks(X.blocks[:1, :1], (b, b), cm=app.cm)
-        A_TL = app.cholesky(A_TL)
-
-        # A_TR = inv(A_TL).T @ A_TR
-        A_TR = BlockArray.from_blocks(X.blocks[:1, 1:], (b, n - b), cm=app.cm)
-        A_TL_inv_T = app.inv(A_TL).T
-        A_TR = A_TL_inv_T @ A_TR
-
-        # A_BR = A_BR - A_TR.T @ A_TR
-        A_BR = BlockArray.from_blocks(X.blocks[1:, 1:], (n - b, n - b), cm=app.cm)
-        A_BR = A_BR - (A_TR.T @ A_TR)
-        while A_TL.shape[0] < n:
-            A_TL_size = A_TL.shape[0]
-            A_00 = A_TL
-            if A_TL.shape[0] == n - b:
-                A_01 = A_TR
-                A_11 = app.cholesky(A_BR)
-                A_TL = app.zeros((A_TL_size + b, A_TL_size + b), block_shape)
-                for i in range(A_TL_size // b):
-                    for j in range(A_TL_size // b):
-                        A_TL.blocks[i, j].oid = A_00.blocks[i, j].oid
-
-                for i in range(A_TL_size // b):
-                    A_TL.blocks[i, A_TL_size // b].oid = A_01.blocks[i, 0].oid
-                A_TL.blocks[A_TL_size // b, A_TL_size // b].oid = A_11.blocks[0, 0].oid
-            else:
-                A_01 = BlockArray.from_blocks(
-                    A_TR.blocks[:, :1], (A_TL_size, b), cm=app.cm
-                )
-                A_02 = BlockArray.from_blocks(
-                    A_TR.blocks[:, 1:], (A_TL_size, n - A_TL_size - b), cm=app.cm
-                )
-                A_11 = BlockArray.from_blocks(A_BR.blocks[:1, :1], (b, b), cm=app.cm)
-                A_12 = BlockArray.from_blocks(
-                    A_BR.blocks[:1, 1:], (b, n - A_TL_size - b), cm=app.cm
-                )
-                A_22 = BlockArray.from_blocks(
-                    A_BR.blocks[1:, 1:],
-                    (n - A_TL_size - b, n - A_TL_size - b),
-                    cm=app.cm,
-                )
-
-                A_11 = app.cholesky(A_11)
-
-                A_11_inv_T = app.inv(A_11).T
-                A_12 = A_11_inv_T @ A_12
-
-                A_22 = A_22 - A_12.T @ A_12
-
-                # Get new A_TL, A_TR, A_BR
-                A_TL = app.zeros((A_TL_size + b, A_TL_size + b), block_shape)
-                A_TR = app.zeros((A_TL_size + b, n - A_TL_size - b), block_shape)
-
-                for i in range(A_TL_size // b):
-                    for j in range(A_TL_size // b):
-                        A_TL.blocks[i, j].oid = A_00.blocks[i, j].oid
-
-                for i in range(A_TL_size // b):
-                    A_TL.blocks[i, A_TL_size // b].oid = A_01.blocks[i, 0].oid
-
-                A_TL.blocks[A_TL_size // b, A_TL_size // b].oid = A_11.blocks[0, 0].oid
-
-                for i in range(A_TL_size // b):
-                    for j in range((n - A_TL_size - b) // b):
-                        A_TR.blocks[i, j].oid = A_02.blocks[i, j].oid
-
-                for j in range((n - A_TL_size - b) // b):
-                    A_TR.blocks[A_TL_size // b, j].oid = A_12.blocks[0, j].oid
-
-                A_BR = A_22
-    return A_TL
 
 
 def fast_linear_regression(app: ArrayApplication, X: BlockArray, y: BlockArray):

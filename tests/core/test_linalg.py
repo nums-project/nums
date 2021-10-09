@@ -132,7 +132,7 @@ def test_inv_uppertri(app_inst: ArrayApplication):
 
     R = app_inst.array(R_np, block_shape=block_shape)
 
-    R_inv_naive = linalg.inv(app_inst, R).get()
+    R_inv_naive = np.linalg.inv(R_np)
     R_inv = linalg.inv_uppertri(app_inst, R).get()
 
     assert np.allclose(R_inv_naive, R_inv)
