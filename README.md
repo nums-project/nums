@@ -176,7 +176,7 @@ print("accuracy", (nps.sum(y == y_pred) / X.shape[0]).get())
 ```
 
 # Installation
-NumS releases are tested on Linux-based systems running Python 3.6, 3.7, and 3.8.
+NumS releases are tested on Linux-based systems running Python 3.7, 3.8, and 3.9.
 
 NumS runs on Windows, but not all features are tested. We recommend using Anaconda on Windows. Download and install Anaconda for Windows [here](https://docs.anaconda.com/anaconda/install/windows/). Make sure to add Anaconda to your PATH environment variable during installation.
 
@@ -201,6 +201,10 @@ conda install -fy numpy scipy
 To run NumS with S3, 
 configure credentials for access by following instructions here: 
 https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html
+
+#### Cluster Setup
+NumS programs can run on a single machine, and can also seamlessly scale to large clusters. \
+Read more about [launching clusters](https://github.com/nums-project/nums/tree/master/autoscaler).
 
 # Contributing
 To contribute to NumS on Ray, 
