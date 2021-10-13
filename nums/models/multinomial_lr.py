@@ -14,7 +14,7 @@ from nums.models.glms import Model
 class MultinomialLogisticRegression(Model):
     def __init__(
         self,
-        penalty="none",
+        penalty="l2",
         C=1.0,
         tol=0.0001,
         max_iter=100,
