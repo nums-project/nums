@@ -145,10 +145,9 @@ def _derived_from(cls, method, ua_args=[], extra="", skipblocks=0):
     doc = extra_titles(doc)
 
     # TODO: make regex handle edge cases
-    #doc = re.sub("np.", "nps.", doc)
-    #doc = re.sub("ndarray", "BlockArray", doc)
-    #doc = re.sub(" array", " BlockArray", doc)
-    #doc = re.sub("array_like", "BlockArray", doc)
+    doc = re.sub(r"np\.", "nps.", doc)
+    doc = re.sub(": ndarray", ": BlockArray", doc)
+    doc = re.sub(": array_like", ": BlockArray", doc)
     return doc
 
 
@@ -204,4 +203,4 @@ if __name__ == "__main__":
     # TODO: Test doc for debugging, delete once finished
     from nums import numpy as nps
 
-    print(nps.diag.__doc__)
+    print(nps.zeros.__doc__)
