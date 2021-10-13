@@ -111,7 +111,6 @@ class MultinomialLogisticRegression(Model):
             else:
                 beta = block_sgd(self, beta, X, y, tol, max_iter, lr)
         elif self._opt == "newton" or self._opt == "newton-cg":
-            beta = newton(self._app, self, beta, X, y, tol, max_iter)
             if self._penalty == "l2":
                 self._lambda_id = (
                     self._app.eye(
@@ -120,6 +119,7 @@ class MultinomialLogisticRegression(Model):
                     )
                     * self._lambda
                 )
+            beta = newton(self._app, self, beta, X, y, tol, max_iter)
         elif self._opt == "lbfgs":
             self.use_lbfgs_forward = True
             lbfgs_optimizer = LBFGS(
