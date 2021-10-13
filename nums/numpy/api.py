@@ -163,6 +163,7 @@ def loadtxt(
         return app.array(np_arr, block_shape=block_shape)
 
 
+@derived_from(np)
 def array(object, dtype=None, copy=True, order="K", ndmin=0, subok=False) -> BlockArray:
     if order is not None and order != "K":
         raise NotImplementedError("Only order='K' is supported.")
@@ -187,6 +188,7 @@ def array(object, dtype=None, copy=True, order="K", ndmin=0, subok=False) -> Blo
     return app.array(result, block_shape)
 
 
+@derived_from(np)
 def empty(shape, dtype=float):
     app = _instance()
     if isinstance(shape, int):
@@ -195,6 +197,7 @@ def empty(shape, dtype=float):
     return app.empty(shape=shape, block_shape=block_shape, dtype=dtype)
 
 
+@derived_from(np)
 def zeros(shape, dtype=float):
     app = _instance()
     if isinstance(shape, int):

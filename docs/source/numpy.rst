@@ -11,6 +11,9 @@ NumS Supported API
 .. autosummary::
    :toctree: generated/
 
+   array
+   empty
+   zeroes
    diag
    trace
    top_k
