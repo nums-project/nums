@@ -112,7 +112,7 @@ class LBFGS(object):
             dtype=self.dtype,
         )
 
-        g = self.model.gradient(X, y, self.model.forward(X, theta))
+        g = self.model.gradient(X, y, self.model.forward(X, theta), theta)
         next_g = None
         next_theta = None
         while self.k < self.max_iter:
@@ -139,7 +139,9 @@ class LBFGS(object):
                 # Terminate immediately if this is the last iteration.
                 theta = next_theta
                 break
-            next_g = self.model.gradient(X, y, self.model.forward(X, next_theta))
+            next_g = self.model.gradient(
+                X, y, self.model.forward(X, next_theta), next_theta
+            )
             theta_diff = next_theta - theta
             grad_diff = next_g - g
             mem: LBFGSMemory = LBFGSMemory(k=self.k, s=theta_diff, y=grad_diff)
