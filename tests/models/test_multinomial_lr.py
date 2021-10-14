@@ -43,10 +43,10 @@ def test_multinomial_logistic(nps_app_inst: ArrayApplication):
         {"solver": "sgd", "lr": 1e-6, "tol": 1e-8, "max_iter": 10},
         {"solver": "block_sgd", "lr": 1e-6, "tol": 1e-8, "max_iter": 10},
         {"solver": "newton", "tol": 1e-8, "max_iter": 10},
-        {"solver": "newton-cg", "tol": 1e-8, "max_iter": 10},
-        {"solver": "lbfgs", "tol": 1e-8, "max_iter": 10},
-        {"solver": "newton-cg", "tol": 1e-8, "max_iter": 10, "penalty": "none"},
-        {"solver": "lbfgs", "tol": 1e-8, "max_iter": 10, "penalty": "none"},
+        {"solver": "newton-cg", "tol": 1e-8, "max_iter": 1000},
+        {"solver": "lbfgs", "tol": 1e-8, "max_iter": 1000},
+        {"solver": "newton-cg", "tol": 1e-8, "max_iter": 1000, "penalty": "none"},
+        {"solver": "lbfgs", "tol": 1e-8, "max_iter": 1000, "penalty": "none"},
     ]
 
     for kwargs in param_set:
