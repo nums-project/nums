@@ -31,7 +31,7 @@ from nums.core import linalg
 #
 # The link function is expressed as follows.
 # E(Y | X) = mu
-# Define the linear predictor eta = X.T @ beta
+# Define the linear predictor eta = X @ beta
 # Define g as the link function, so that g(mu) = eta
 # E(Y | X) = g^{-1}(eta)
 #
