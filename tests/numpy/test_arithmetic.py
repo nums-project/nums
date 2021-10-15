@@ -105,7 +105,6 @@ def test_bitwise_error(nps_app_inst):
 
         with pytest.raises(error, match=message):
             _np_result = np_ufunc(_np_a, _np_b)
-            _np_result
 
     bitwise_ops = [
         "bitwise_and",
