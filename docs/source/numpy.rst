@@ -15,6 +15,8 @@ NumS Supported API
    empty
    zeroes
    diag
+   ones
+   empty_like
    trace
    top_k
 

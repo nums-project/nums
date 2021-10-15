@@ -19,6 +19,7 @@ import inspect
 # From project Dask: https://github.com/dask/dask/blob/main/dask/utils.py
 
 
+# TODO (bcp): decorator maybe causing issues with parsing: https://stackoverflow.com/questions/51248994/python-3-6-inspect-signature-doesnt-show-arguments
 def get_named_args(func):
     """Get all non ``*args/**kwargs`` arguments for a function"""
     s = inspect.signature(func)
@@ -106,6 +107,21 @@ def ignore_warning(doc, cls, name, extra="", skipblocks=0):
     return doc
 
 
+def unsupported_arguments(doc, args):
+    """Mark unsupported arguments with a disclaimer"""
+    lines = doc.split("\n")
+    for arg in args:
+        subset = [
+            (i, line)
+            for i, line in enumerate(lines)
+            if re.match(r"^\s*" + arg + " ?:", line)
+        ]
+        if len(subset) == 1:
+            [(i, line)] = subset
+            lines[i] = line + "  (Not supported in NumS)"
+    return "\n".join(lines)
+
+
 def _derived_from(cls, method, ua_args=[], extra="", skipblocks=0):
     """Helper function for derived_from to ease testing"""
     # do not use wraps here, as it hides keyword arguments displayed
@@ -148,7 +164,21 @@ def _derived_from(cls, method, ua_args=[], extra="", skipblocks=0):
     doc = re.sub(r"np\.", "nps.", doc)
     doc = re.sub(": ndarray", ": BlockArray", doc)
     doc = re.sub(": array_like", ": BlockArray", doc)
+    fns = find_nums_functions(doc)
+    for fn in fns:
+        doc = doc.replace(fn, fn + ".get()")
+
     return doc
+
+
+def find_nums_functions(doc):
+    """
+    Returns a list of string that includes all the instances of nums function
+    in the form of nps.<function>()
+    This is done, so we can easily append .get() in docstring tests
+    """
+    # TODO: Polish the format of this docstring
+    return re.findall(r"nps\..+\(.+\)", doc)
 
 
 def derived_from(original_klass, version=None, ua_args=[], skipblocks=0):
@@ -203,4 +233,4 @@ if __name__ == "__main__":
     # TODO: Test doc for debugging, delete once finished
     from nums import numpy as nps
 
-    print(nps.zeros.__doc__)
+    print(nps.empty_like.__doc__)
