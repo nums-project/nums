@@ -206,6 +206,7 @@ def zeros(shape, dtype=float):
     return app.zeros(shape=shape, block_shape=block_shape, dtype=dtype)
 
 
+@derived_from(np)
 def ones(shape, dtype=float):
     app = _instance()
     if isinstance(shape, int):
@@ -213,7 +214,7 @@ def ones(shape, dtype=float):
     block_shape = app.get_block_shape(shape, dtype)
     return app.ones(shape=shape, block_shape=block_shape, dtype=dtype)
 
-
+@derived_from(np)
 def empty_like(prototype: BlockArray, dtype=None, order="K", shape=None):
     if shape is None:
         shape = prototype.shape

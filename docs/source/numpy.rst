@@ -22,6 +22,8 @@ NumS Supported API
    identity
    eye
    diag
+   ones
+   empty_like
    trace
    atleast_1d
    atleast_2d
