@@ -88,8 +88,8 @@ def test_bitwise_error(nps_app_inst):
         _np_a = np.random.randn(2, 2)
         _np_b = np.random.randn(2, 2)
 
-        _ns_a = nps.array(_np_a)
-        _ns_b = nps.array(_np_b)
+        _ns_a = nps.array(_np_a).touch()
+        _ns_b = nps.array(_np_b).touch()
         message = ""
 
         try:
@@ -101,7 +101,6 @@ def test_bitwise_error(nps_app_inst):
 
         with pytest.raises(error, match=message):
             _ns_result = ns_ufunc(_ns_a, _ns_b)
-            _ns_result.touch()
 
         with pytest.raises(error, match=message):
             _np_result = np_ufunc(_np_a, _np_b)
