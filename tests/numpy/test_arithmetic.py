@@ -92,6 +92,7 @@ def test_bitwise_error(nps_app_inst):
         _ns_b = nps.array(_np_b).touch()
         message = ""
 
+        # Catching expected error message to ensure same error message is raised below.
         try:
             _np_result = np_ufunc(_np_a, _np_b)
         except TypeError as err:
@@ -101,9 +102,6 @@ def test_bitwise_error(nps_app_inst):
 
         with pytest.raises(error, match=message):
             _ns_result = ns_ufunc(_ns_a, _ns_b)
-
-        with pytest.raises(error, match=message):
-            _np_result = np_ufunc(_np_a, _np_b)
 
     bitwise_ops = [
         "bitwise_and",
