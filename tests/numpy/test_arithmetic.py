@@ -81,9 +81,6 @@ def test_ufunc(nps_app_inst):
 def test_bitwise_error(nps_app_inst):
     assert nps_app_inst is not None
 
-    uops, bops = numpy_utils.ufunc_op_signatures()
-    uops_names, bops_names = [_op[0] for _op in uops], [_op[0] for _op in bops]
-
     def check_bitwise_error(_name, error):
         np_ufunc = np.__getattribute__(_name)
         ns_ufunc = nps.__getattribute__(_name)
@@ -96,10 +93,7 @@ def test_bitwise_error(nps_app_inst):
         message = ""
 
         try:
-            if _name in uops_names:
-                _np_result = np_ufunc(_np_a)
-            elif _name in bops_names:
-                _np_result = np_ufunc(_np_a, _np_b)
+            _np_result = np_ufunc(_np_a, _np_b)
         except TypeError as err:
             message = err.args[0]
 
@@ -108,6 +102,10 @@ def test_bitwise_error(nps_app_inst):
         with pytest.raises(error, match=message):
             _ns_result = ns_ufunc(_ns_a, _ns_b)
             _ns_result.touch()
+
+        with pytest.raises(error, match=message):
+            _np_result = np_ufunc(_np_a, _np_b)
+            _np_result
 
     bitwise_ops = [
         "bitwise_and",
