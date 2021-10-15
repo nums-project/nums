@@ -35,5 +35,4 @@ jobs:
           pip3 install .[testing]
       - name: Run black
         run: |
-          black --check nums
-          black --check tests
+          black --check .
