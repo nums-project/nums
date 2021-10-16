@@ -127,15 +127,23 @@ def test_inv(app_inst: ArrayApplication):
 
 def test_inv_uppertri(app_inst: ArrayApplication):
     block_shape, shape = (3, 3), (20, 20)
+    R_matrices = []
+
+    # Create test inputs
     R_np = np.arange(1, shape[0] ** 2 + 1, 1).reshape(*shape).astype(float)
-    R_np = np.triu(R_np)
+    R_matrices.append(np.triu(R_np))
 
-    R = app_inst.array(R_np, block_shape=block_shape)
+    _, R_np = np.linalg.qr(np.random.rand(*shape))
+    R_matrices.append(R_np)
 
-    R_inv_naive = np.linalg.inv(R_np)
-    R_inv = linalg.inv_uppertri(app_inst, R).get()
+    for R_np in R_matrices:
+        R = app_inst.array(R_np, block_shape=block_shape)
 
-    assert np.allclose(R_inv_naive, R_inv)
+        R_inv_naive = np.linalg.inv(R_np)
+        R_inv = linalg.inv_uppertri(app_inst, R)
+
+        assert np.allclose(R_inv_naive, R_inv.get())
+        assert R_inv.block_shape == R.block_shape
 
 
 def test_qr(app_inst: ArrayApplication):

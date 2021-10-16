@@ -266,7 +266,7 @@ def inv_uppertri(app: ArrayApplication, X: BlockArray):
 
     # If X is single block or block size is non-square, then reshape BS to row_size // 4
     if single_block or nonsquare_block:
-        X = X.reshape(block_shape=(X.shape[0] // 4, X.shape[0] // 4))
+        return inv(app, X)
 
     # Setup metadata
     full_shape = X.shape
@@ -288,8 +288,8 @@ def inv_uppertri(app: ArrayApplication, X: BlockArray):
     while R_tl_shape[0] != full_shape[0] and R_tl_shape[1] != full_shape[1]:
         # Calculate R11
         R11_block = (
-            int(np.ceil(R_tl_shape[0] // block_shape[0])),
-            int(np.ceil(R_tl_shape[1] // block_shape[1])),
+            R_tl_shape[0] // block_shape[0],
+            R_tl_shape[1] // block_shape[1],
         )
         R11_oid = R.blocks[R11_block].oid
         R11_shape = R.blocks[R11_block].shape
@@ -394,7 +394,7 @@ def inv_uppertri(app: ArrayApplication, X: BlockArray):
         R_tl_shape = (old_r + r11_r, old_c + r11_c)
 
     # By the time we finish, R = R_inv
-    return R
+    return R.reshape(block_shape=block_shape)
 
 
 def cholesky(app: ArrayApplication, X: BlockArray):
