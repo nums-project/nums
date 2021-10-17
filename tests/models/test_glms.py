@@ -165,6 +165,17 @@ def test_lr(nps_app_inst: ArrayApplication):
         print("error", np.sum((y.get() - y_pred) ** 2) / num_samples)
         print("D^2", model.deviance_sqr(X, y).get())
 
+    # Test if integer array arguments will converge properly.
+    X = nps_app_inst.array([[1, 2], [3, 5], [1, 5]], block_shape=(2, 2))
+    y = nps_app_inst.array([1, 2, 3], block_shape=(2,))
+    model: LinearRegression = LinearRegression()
+    model.fit(X, y)
+    try:
+        pred = model.predict([1, 2]).get()
+        assert 0.9 < pred < 1.1
+    except OverflowError:
+        assert False, "LinearRegression overflows with integer array arguments."
+
 
 def test_poisson_basic(nps_app_inst: ArrayApplication):
     coef = np.array([0.2, -0.1])
