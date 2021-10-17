@@ -420,7 +420,7 @@ class ArrayApplication(object):
             output_block_array.blocks.shape[0],
             output_block_array.blocks.shape[1],
         )
-        block_row_index, source_block_rows = 0, X.blocks.shape[0]
+        block_row_index = 0
         for i in range(max_block_rows):
             block_row_index = 0
             for j in range(max_block_cols):
