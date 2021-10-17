@@ -27,6 +27,12 @@ class ComputeInterface(object):
     def permutation(self, rng_params, size, syskwargs: Dict):
         raise NotImplementedError()
 
+    def triu_copy(self, arr, syskwargs: Dict):
+        raise NotImplementedError()
+
+    def triu(self, arr, offset, zero_out, total_elements, syskwargs: Dict):
+        raise NotImplementedError()
+
     def diag(self, arr, syskwargs: Dict):
         raise NotImplementedError()
 

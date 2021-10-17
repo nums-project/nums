@@ -63,6 +63,71 @@ def test_eye(nps_app_inst):
         assert np.allclose(ba.get(), np_arr)
 
 
+def test_triu(nps_app_inst):
+    import nums.numpy as nps
+
+    assert nps_app_inst is not None
+
+    a: BlockArray = nps.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+
+    # Check 1D array case with no block_shape change.
+    a_triu = nps.triu(a).get()
+    a_triu_np = np.triu(a.get())
+    assert np.allclose(a_triu, a_triu_np)
+
+    # Check 1D array with block_shape change
+    a = a.reshape(block_shape=(2,))
+    a_triu = nps.triu(a).get()
+    a_triu_np = np.triu(a.get())
+    assert np.allclose(a_triu, a_triu_np)
+
+    # Check 1D array with block_shape change
+    a = a.reshape(block_shape=(4,))
+    a_triu = nps.triu(a).get()
+    a_triu_np = np.triu(a.get())
+    assert np.allclose(a_triu, a_triu_np)
+
+    # Check 2D array
+    a: BlockArray = nps.array(
+        [[1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [7.0, 8.0, 9.0, 10.0, 11.0, 12.0]]
+    )
+    a_triu = nps.triu(a).get()
+    a_triu_np = np.triu(a.get())
+    assert np.allclose(a_triu, a_triu_np)
+
+    # Check Tall 2D array
+    a: BlockArray = nps.array(
+        [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0], [10.0, 11.0, 12.0]]
+    )
+    a_triu = nps.triu(a).get()
+    a_triu_np = np.triu(a.get())
+    assert np.allclose(a_triu, a_triu_np)
+
+    # Check Square
+    a: BlockArray = nps.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
+    a_triu = nps.triu(a).get()
+    a_triu_np = np.triu(a.get())
+    assert np.allclose(a_triu, a_triu_np)
+
+    # Check 2D array with block_shape change
+    a: BlockArray = nps.array(
+        [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0], [10.0, 11.0, 12.0]]
+    )
+    a = a.reshape(block_shape=(2, 1))
+    a_triu = nps.triu(a).get()
+    a_triu_np = np.triu(a.get())
+    assert np.allclose(a_triu, a_triu_np)
+
+    # Check 2D fat array with block_shape change
+    a: BlockArray = nps.array(
+        [[1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [7.0, 8.0, 9.0, 10.0, 11.0, 12.0]]
+    )
+    a = a.reshape(block_shape=(1, 2))
+    a_triu = nps.triu(a).get()
+    a_triu_np = np.triu(a.get())
+    assert np.allclose(a_triu, a_triu_np)
+
+
 def test_diag(nps_app_inst):
     import nums.numpy as nps
 

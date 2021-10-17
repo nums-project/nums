@@ -170,6 +170,25 @@ class ComputeCls(ComputeImp):
             result[tuple(dst_sel)] = src_arr[tuple(src_sel)]
         return result
 
+    def triu_copy(self, arr, rows, cols):
+        result = np.zeros((rows, cols))
+        result[:, :] = arr
+        return result
+
+    def triu(self, arr, offset, zero_out, total_elements):
+        if not zero_out:
+            return np.triu(arr, k=offset)
+        else:
+            copy_arr = np.copy(arr)
+            if offset < 0:
+                copy_arr[:, :total_elements] = np.zeros((arr.shape[0], total_elements))
+            elif offset >= 0:
+                count = 0
+                while count < total_elements:
+                    copy_arr[:, offset + count] = 0
+                    count += 1
+            return copy_arr
+
     def diag(self, arr, offset):
         return np.diag(arr, k=offset)
 
