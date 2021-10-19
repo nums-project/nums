@@ -23,7 +23,6 @@ from nums.core.array.blockarray import BlockArray, Block
 from nums.core.array.random import NumsRandomState
 from nums.core.compute.compute_manager import ComputeManager
 from nums.core.grid.grid import ArrayGrid
-from nums.core.grid.grid import DeviceID
 from nums.core.storage.storage import StoredArray, StoredArrayS3
 from nums.core.systems.filesystem import FileSystem
 
