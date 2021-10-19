@@ -19,7 +19,6 @@ import warnings
 import pathlib
 import pickle
 from typing import Any, AnyStr, Tuple, Dict, Union
-import heapq
 
 import numpy as np
 from numpy.compat import asbytes, asstr, asunicode
@@ -518,15 +517,9 @@ class FileSystem(object):
             + "To fix this, rewrite this block array to disk."
         )
         ba: BlockArray = BlockArray(grid, self.cm)
-        # Distribute load of read operations given above constraints.
-        # Maintain a heap ordered by number of reads issued to each node.
-        deviceq = []
-        for device_id in device_set:
-            heapq.heappush(deviceq, (0, device_id))
-        for grid_entry in grid.get_entry_iterator():
-            # Update the heap.
-            priority, device_id = heapq.heappop(deviceq)
-            heapq.heappush(deviceq, (priority + 1, device_id))
+        for grid_entry in grid_entry_to_devices:
+            # Distribute load of read operations randomly over available nodes.
+            device_id = np.random.choice(grid_entry_to_devices[grid_entry])
             # Schedule the load operation.
             ba.blocks[grid_entry].oid = self.read_block_fs(
                 filename,
