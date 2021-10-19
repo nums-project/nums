@@ -28,7 +28,7 @@ import numpy as np
 def get_num_cores(reserved_for_os=2):
     assert reserved_for_os % 2 == 0, "Cores reserved for the OS must be a multiple of 2."
     all_cores = psutil.cpu_count(logical=False)
-    cores = all_cores % 2
+    cores = int(all_cores // 2 * 2)
     if cores != all_cores:
         warnings.warn("Detected odd number of cores (%s), using %s instead." % (all_cores, cores))
     if cores <= reserved_for_os:

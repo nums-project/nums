@@ -14,6 +14,8 @@
 # limitations under the License.
 
 
+import psutil
+
 from nums.core.compute import numpy_compute
 from nums.core.systems import utils as systems_utils
 
@@ -25,6 +27,15 @@ def test_utils():
     assert len(r) > 0
 
 
+def test_num_cpus():
+    all_cores = psutil.cpu_count(logical=False)
+    returned_cores = systems_utils.get_num_cores(reserved_for_os=0)
+    assert all_cores == returned_cores
+    returned_cores = systems_utils.get_num_cores(reserved_for_os=2)
+    assert all_cores - 2 == returned_cores
+
+
 if __name__ == "__main__":
     # pylint: disable=import-error
     test_utils()
+    test_num_cpus()
