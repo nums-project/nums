@@ -156,12 +156,14 @@ worker_setup_commands: []
 # ulimit error (non blocker) ray issue #11369
 head_start_ray_commands:
     - ray stop
+    # Ray by default would use all the cpus. We restrict ray to use only as many cpus as the physical cores on the machine.
     - num_cores="$(grep ^cpu\\scores /proc/cpuinfo | uniq |  awk '{print $4}')";
       ulimit -n 65536; ray start --head --num-cpus $num_cores --port=6379 --object-manager-port=8076 --autoscaling-config=~/ray_bootstrap_config.yaml
 
 # Command to start ray on worker nodes. You don't need to change this.
 worker_start_ray_commands:
     - ray stop
+    # Ray by default would use all the cpus. We restrict ray to use only as many cpus as the physical cores on the machine.
     - num_cores="$(grep ^cpu\\scores /proc/cpuinfo | uniq |  awk '{print $4}')";
       ulimit -n 65536; ray start --num-cpus $num_cores --address=$RAY_HEAD_IP:6379 --object-manager-port=8076
 
