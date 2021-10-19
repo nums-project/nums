@@ -4,10 +4,10 @@ import nums.numpy as nps
 
 
 def test_permutation_subscript():
-    samples, features = 10**6, 30
+    samples, features = 10 ** 6, 30
     X = nps.random.rand(samples, features)
     idx = nps.random.permutation(X.shape[0]).astype(int)
-    num_train = int(X.shape[0] * .8)
+    num_train = int(X.shape[0] * 0.8)
     num_test = X.shape[0] - num_train
 
     t = time.time()
