@@ -14,8 +14,21 @@
 # limitations under the License.
 
 
+from typing import Optional
+
 from nums.core.application_manager import instance as _instance
 from nums.core.array.blockarray import BlockArray
+
+
+def init(num_cpus: Optional[int] = None, cluster_shape: Optional[tuple] = None):
+    # pylint: disable = import-outside-toplevel
+    import nums.core.settings as settings
+
+    if cluster_shape is not None:
+        settings.cluster_shape = cluster_shape
+        settings.num_cpus = num_cpus
+    _instance()
+    return None
 
 
 def read(filename: str) -> BlockArray:
