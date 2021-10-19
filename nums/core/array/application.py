@@ -70,17 +70,7 @@ class ArrayApplication(object):
         return res
 
     def read_fs(self, filename: str):
-        meta = self._fs.read_meta_fs(filename)
-        addresses = meta["addresses"]
-        grid_meta = meta["grid_meta"]
-        grid = ArrayGrid.from_meta(grid_meta)
-        ba: BlockArray = BlockArray(grid, self.cm)
-        for grid_entry in addresses:
-            device_id: DeviceID = DeviceID.from_str(addresses[grid_entry])
-            ba.blocks[grid_entry].oid = self._fs.read_block_fs(
-                filename, grid_entry, grid_meta, syskwargs={"device_id": device_id}
-            )
-        return ba
+        return self._fs.read_array_fs(filename)
 
     def delete_fs(self, filename: str):
         meta = self._fs.read_meta_fs(filename)

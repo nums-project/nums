@@ -15,8 +15,11 @@
 
 
 import os
+import warnings
+import pathlib
 import pickle
-from typing import Any, AnyStr, Tuple, Dict
+from typing import Any, AnyStr, Tuple, Dict, Union
+import heapq
 
 import numpy as np
 from numpy.compat import asbytes, asstr, asunicode
@@ -67,6 +70,27 @@ def delete_block_s3(filename: AnyStr, grid_entry: Tuple, grid_meta: Dict):
 ###################
 
 ARRAY_FILETYPE = "pkl"
+
+
+def get_parts_fs(filename: AnyStr, grid_meta: Dict):
+    base: pathlib.Path = pathlib.Path(filename)
+    if not base.is_dir():
+        return None
+    results = []
+    grid: ArrayGrid = ArrayGrid.from_meta(grid_meta)
+    # This is a multi-dimensional array of blocks, so entries should be relatively small.
+    assert np.all(np.array(grid.block_shape) < 2 ** 32)
+    contains_all = True
+    for grid_entry in grid.get_entry_iterator():
+        entry_filename = "_".join(list(map(str, grid_entry))) + "." + ARRAY_FILETYPE
+        if pathlib.Path(entry_filename).is_file():
+            results.append(grid_entry)
+        else:
+            contains_all = False
+    if contains_all:
+        return "all"
+    else:
+        return np.array(results, dtype=np.uint32)
 
 
 def write_meta_fs(meta: Dict, filename: AnyStr):
@@ -252,6 +276,7 @@ class FileSystem(object):
             write_block_s3,
             read_block_s3,
             delete_block_s3,
+            get_parts_fs,
             write_meta_fs,
             read_meta_fs,
             delete_meta_fs,
@@ -365,17 +390,8 @@ class FileSystem(object):
     ##################################################
 
     def write_meta_fs(self, ba: BlockArray, filename: str):
-        addresses: dict = {}
-        for grid_entry in ba.grid.get_entry_iterator():
-            device_id: DeviceID = self.cm.device_grid.get_device_id(
-                grid_entry, ba.grid.grid_shape
-            )
-            addresses[grid_entry] = str(device_id)
-        meta = {
-            "filename": filename,
-            "grid_meta": ba.grid.to_meta(),
-            "addresses": addresses,
-        }
+        # Currently, no need for anything more than the array grid.
+        meta = {"grid": ba.grid.to_meta()}
         oids = []
         for grid_entry in ba.grid.get_entry_iterator():
             device_id: DeviceID = self.cm.device_grid.get_device_id(
@@ -413,6 +429,117 @@ class FileSystem(object):
         In order to delete, need old "grid_meta," which we can read from dfs.
         """
         raise NotImplementedError()
+
+    def read_array_fs(self, filename: AnyStr):
+        file_meta: dict = self.read_meta_fs(filename)
+        # Currently, file_meta contains only ArrayGrid.
+        grid: ArrayGrid = ArrayGrid.from_meta(file_meta["grid"])
+        # First, let's identify which nodes actually contain the data we need.
+        result_oids = []
+        for device_id in self.cm.devices():
+            oid = self.cm.call(
+                "get_parts_fs",
+                filename,
+                file_meta["grid"],
+                syskwargs={"device_id": device_id},
+            )
+            result_oids.append(oid)
+        file_results = self.cm.system.get(result_oids)
+
+        # Check if all the nodes have all the data.
+        all_has_all = True
+        for result in file_results:
+            if result != "all":
+                all_has_all = False
+                break
+        if all_has_all:
+            # This is likely a single machine or virtual FS.
+            # Load via device grid ordering.
+            ba: BlockArray = BlockArray(grid, self.cm)
+            for grid_entry in grid.get_entry_iterator():
+                device_id: DeviceID = self.cm.device_grid.get_device_id(
+                    grid_entry, grid.grid_shape
+                )
+                ba.blocks[grid_entry].oid = self.read_block_fs(
+                    filename,
+                    grid_entry,
+                    file_meta["grid"],
+                    syskwargs={"device_id": device_id},
+                )
+            return ba
+
+        # Organize data for reads.
+        device_set = set()
+        grid_entry_sets = {}
+        for i in range(len(file_results)):
+            node_grid_entries: Union[None, np.ndarray] = file_results[i]
+            if node_grid_entries is None:
+                continue
+            device_id = self.cm.devices()[i]
+            grid_entry_sets[device_id] = set(map(tuple, node_grid_entries.tolist()))
+
+        # The data may be partitioned according to the grid layout for this cluster.
+        # Test this and load accordingly if it is.
+        aligned = True
+        for grid_entry in grid.get_entry_iterator():
+            device_id = self.cm.device_grid.get_device_id(grid_entry, grid.grid_shape)
+            if grid_entry not in grid_entry_sets[device_id]:
+                aligned = False
+                break
+        if aligned:
+            # If data is partitioning aligned, then just load it using device grid ordering.
+            ba: BlockArray = BlockArray(grid, self.cm)
+            for grid_entry in grid.get_entry_iterator():
+                device_id: DeviceID = self.cm.device_grid.get_device_id(
+                    grid_entry, grid.grid_shape
+                )
+                ba.blocks[grid_entry].oid = self.read_block_fs(
+                    filename,
+                    grid_entry,
+                    file_meta["grid"],
+                    syskwargs={"device_id": device_id},
+                )
+            return ba
+
+        # This is the worst-case scenario. Make sure we have all blocks.
+        grid_entry_to_devices = {}
+        for grid_entry in grid.get_entry_iterator():
+            grid_entry_to_devices[grid_entry] = []
+            for device_id in grid_entry_sets:
+                if grid_entry in grid_entry_sets[device_id]:
+                    grid_entry_to_devices[grid_entry].append(device_id)
+                    device_set.add(device_id)
+            if len(grid_entry_to_devices[grid_entry]) == 0:
+                raise Exception("Unable to find all blocks for %s." % filename)
+
+        warnings.warn(
+            ("Loading %s with no data layout guarantee. " % filename)
+            + "This may negatively impact performance. "
+            + "To fix this, rewrite this block array to disk."
+        )
+        ba: BlockArray = BlockArray(grid, self.cm)
+        # Distribute load of read operations given above constraints.
+        # Maintain a heap ordered by number of reads issued to each node.
+        deviceq = []
+        for device_id in device_set:
+            heapq.heappush(deviceq, (0, device_id))
+        for grid_entry in grid.get_entry_iterator():
+            # Update the heap.
+            priority, device_id = heapq.heappop(deviceq)
+            heapq.heappush(deviceq, (priority + 1, device_id))
+            # Schedule the load operation.
+            ba.blocks[grid_entry].oid = self.read_block_fs(
+                filename,
+                grid_entry,
+                file_meta["grid"],
+                syskwargs={"device_id": device_id},
+            )
+        # The blocks are likely not distributed properly,
+        # but any operations performed on this block array
+        # will force the appropriate placement.
+        # We could alternatively invoke touch() on the array,
+        # but this would block until the data is loaded.
+        return ba
 
     def loadtxt(
         self,
