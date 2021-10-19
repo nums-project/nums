@@ -14,7 +14,7 @@
 # limitations under the License.
 
 
-# pylint: disable = import-outside-toplevel
+# pylint: disable = wrong-import-position
 
 # Set numpy to single thread.
 import os

@@ -311,7 +311,7 @@ class BlockArrayBase(object):
         self.dtype = self.grid.dtype
         try:
             self.nbytes = self.grid.nbytes()
-        except ValueError as e:
+        except ValueError as _:
             self.nbytes = None
         self.blocks = blocks
         if self.blocks is None:

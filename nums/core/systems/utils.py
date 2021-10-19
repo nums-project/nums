@@ -16,12 +16,12 @@
 
 import errno
 import inspect
-import psutil
 import socket
 import types
 from functools import wraps
 import warnings
 
+import psutil
 import numpy as np
 
 
