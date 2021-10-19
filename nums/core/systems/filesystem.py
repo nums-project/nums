@@ -89,7 +89,10 @@ def get_parts_fs(filename: AnyStr, grid_meta: Dict):
     if contains_all:
         return "all"
     else:
-        return np.array(results, dtype=np.uint32)
+        if len(results) == 0:
+            return None
+        else:
+            return np.array(results, dtype=np.uint32)
 
 
 def write_meta_fs(meta: Dict, filename: AnyStr):
