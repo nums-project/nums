@@ -71,30 +71,6 @@ def delete_block_s3(filename: AnyStr, grid_entry: Tuple, grid_meta: Dict):
 ARRAY_FILETYPE = "pkl"
 
 
-def get_parts_fs(filename: AnyStr, grid_meta: Dict):
-    base: pathlib.Path = pathlib.Path(filename)
-    if not base.is_dir():
-        return None
-    results = []
-    grid: ArrayGrid = ArrayGrid.from_meta(grid_meta)
-    # This is a multi-dimensional array of blocks, so entries should be relatively small.
-    assert np.all(np.array(grid.block_shape) < 2 ** 32)
-    contains_all = True
-    for grid_entry in grid.get_entry_iterator():
-        entry_filename = "_".join(list(map(str, grid_entry))) + "." + ARRAY_FILETYPE
-        if pathlib.Path(entry_filename).is_file():
-            results.append(grid_entry)
-        else:
-            contains_all = False
-    if contains_all:
-        return "all"
-    else:
-        if len(results) == 0:
-            return None
-        else:
-            return np.array(results, dtype=np.uint32)
-
-
 def write_meta_fs(meta: Dict, filename: AnyStr):
     """
     Write meta data to disk.
@@ -138,6 +114,31 @@ def load(filepath):
     elif filepath.split(".")[-1] == "pkl":
         with open(filepath, "rb") as fh:
             return pickle.load(fh)
+
+
+def get_parts_fs(filename: AnyStr, grid_meta: Dict):
+    base: pathlib.Path = pathlib.Path(filename)
+    if not base.is_dir():
+        return None
+    results = []
+    grid: ArrayGrid = ArrayGrid.from_meta(grid_meta)
+    # This is a multi-dimensional array of blocks, so entries should be relatively small.
+    assert np.all(np.array(grid.block_shape) < 2 ** 32)
+    contains_all = True
+    for grid_entry in grid.get_entry_iterator():
+        entry_name = "_".join(list(map(str, grid_entry))) + "." + ARRAY_FILETYPE
+        entry_filename = settings.pj(filename, entry_name)
+        if pathlib.Path(entry_filename).is_file():
+            results.append(grid_entry)
+        else:
+            contains_all = False
+    if contains_all:
+        return "all"
+    else:
+        if len(results) == 0:
+            return None
+        else:
+            return np.array(results, dtype=np.uint32)
 
 
 def write_block_fs(block: Any, filename: AnyStr, grid_entry: Tuple):
@@ -484,7 +485,7 @@ class FileSystem(object):
         aligned = True
         for grid_entry in grid.get_entry_iterator():
             device_id = self.cm.device_grid.get_device_id(grid_entry, grid.grid_shape)
-            if grid_entry not in grid_entry_sets[device_id]:
+            if not (device_id in grid_entry_sets and grid_entry in grid_entry_sets[device_id]):
                 aligned = False
                 break
         if aligned:
