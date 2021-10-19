@@ -877,7 +877,6 @@ class ArrayApplication(object):
             arr_1.shape, arr_2.shape, arr_1.block_shape, arr_2.block_shape
         ):
             raise ValueError("Operands cannot be broadcasted.")
-
         try:
             ufunc = np.__getattribute__(op_name)
             if (
