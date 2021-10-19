@@ -168,7 +168,7 @@ import nums.numpy as nps
 from nums.models.glms import LogisticRegression
 
 higgs_dataset = nums.read_csv("HIGGS.csv")
-y, X = higgs_dataset[:, 0].astype(nps.int), higgs_dataset[:, 1:]
+y, X = higgs_dataset[:, 0].astype(int), higgs_dataset[:, 1:]
 model = LogisticRegression(solver="newton-cg")
 model.fit(X, y)
 y_pred = model.predict(X)
