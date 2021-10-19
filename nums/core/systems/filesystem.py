@@ -468,7 +468,6 @@ class FileSystem(object):
             return ba
 
         # Organize data for reads.
-        device_set = set()
         grid_entry_sets = {}
         for i in range(len(file_results)):
             node_grid_entries: Union[None, np.ndarray] = file_results[i]
@@ -507,7 +506,6 @@ class FileSystem(object):
             for device_id in grid_entry_sets:
                 if grid_entry in grid_entry_sets[device_id]:
                     grid_entry_to_devices[grid_entry].append(device_id)
-                    device_set.add(device_id)
             if len(grid_entry_to_devices[grid_entry]) == 0:
                 raise Exception("Unable to find all blocks for %s." % filename)
 
