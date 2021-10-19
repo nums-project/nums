@@ -64,35 +64,27 @@ class ArrayApplication(object):
     # Filesystem API
     ######################################
 
-    def write_fs(self, ba: BlockArray, filename: str):
+    def write_fs(self, ba: BlockArray, filename: str) -> BlockArray:
         res = self._write(ba, filename, self._fs.write_block_fs)
         self._fs.write_meta_fs(ba, filename)
         return res
 
-    def read_fs(self, filename: str):
+    def read_fs(self, filename: str) -> BlockArray:
         return self._fs.read_array_fs(filename)
 
-    def delete_fs(self, filename: str):
-        meta = self._fs.read_meta_fs(filename)
-        addresses = meta["addresses"]
-        grid_meta = meta["grid_meta"]
-        grid = ArrayGrid.from_meta(grid_meta)
-        result_grid = ArrayGrid(
-            grid.grid_shape,
-            tuple(np.ones_like(grid.shape, dtype=np.int)),
-            dtype=dict.__name__,
-        )
-        rarr = BlockArray(result_grid, self.cm)
-        for grid_entry in addresses:
-            device_id: DeviceID = DeviceID.from_str(addresses[grid_entry])
-            rarr.blocks[grid_entry].oid = self._fs.delete_block_fs(
-                filename, grid_entry, grid_meta, syskwargs={"device_id": device_id}
+    def delete_fs(self, filename: str) -> bool:
+        results = []
+        for device_id in self.cm.devices():
+            result = self._fs.delete_file_fs(
+                filename, syskwargs={"device_id": device_id}
             )
-        self._fs.delete_meta_fs(filename)
-        return rarr
+            results.append(result)
+        results = self.cm.get(results)
+        # Were files deleted anywhere?
+        return np.any(results)
 
     def write_s3(self, ba: BlockArray, filename: str):
-        grid_entry = tuple(np.zeros_like(ba.shape, dtype=np.int))
+        grid_entry = tuple(np.zeros_like(ba.shape, dtype=int))
         result = self._fs.write_meta_s3(
             filename,
             grid_meta=ba.grid.to_meta(),
@@ -134,7 +126,7 @@ class ArrayApplication(object):
             )
         return rarr
 
-    def delete_s3(self, filename: str):
+    def delete_s3(self, filename: str) -> bool:
         grid = self._get_array_grid(filename, StoredArrayS3)
         grid_entry = tuple(np.zeros_like(grid.shape, dtype=np.int))
         result = self._fs.delete_meta_s3(
@@ -146,7 +138,16 @@ class ArrayApplication(object):
         results: BlockArray = self._delete(
             filename, StoredArrayS3, self._fs.delete_block_s3
         )
-        return results
+
+        # Test whether data has been deleted from S3.
+        data_deleted = True
+        delete_result_arr = self.get(results)
+        stored_array = StoredArrayS3(filename, results.grid)
+        for grid_entry in results.grid.get_entry_iterator():
+            deleted_key = delete_result_arr[grid_entry]["Deleted"][0]["Key"]
+            entry_deleted = (deleted_key == stored_array.get_key(grid_entry))
+            data_deleted = data_deleted and entry_deleted
+        return data_deleted
 
     def _delete(self, filename, store_cls, remote_func):
         grid = self._get_array_grid(filename, store_cls)

@@ -14,7 +14,7 @@
 # limitations under the License.
 
 
-import os
+import shutil
 import warnings
 import pathlib
 import pickle
@@ -85,19 +85,9 @@ def read_meta_fs(filename: AnyStr):
     """
     Read meta data from disk.
     """
-    settings.Path(filename).mkdir(parents=True, exist_ok=True)
     filepath = settings.pj(filename, "meta.pkl")
     with open(filepath, "rb") as fh:
         return pickle.load(fh)
-
-
-def delete_meta_fs(filename: AnyStr):
-    """
-    Delete meta data from disk.
-    """
-    settings.Path(filename).mkdir(parents=True, exist_ok=True)
-    filepath = settings.pj(filename, "meta.pkl")
-    return np.array(os.remove(filepath), dtype=object)
 
 
 def save(block, filepath):
@@ -155,20 +145,22 @@ def read_block_fs(filename, grid_entry: Tuple):
     """
     Read block from disk.
     """
-    settings.Path(filename).mkdir(parents=True, exist_ok=True)
     entry_name = "_".join(list(map(str, grid_entry))) + "." + ARRAY_FILETYPE
     filepath = settings.pj(filename, entry_name)
     return load(filepath)
 
 
-def delete_block_fs(filename, grid_entry: Tuple):
+def delete_file_fs(filename: AnyStr):
     """
-    Delete block from disk.
+    Delete dir corresponding to file from disk.
     """
-    settings.Path(filename).mkdir(parents=True, exist_ok=True)
-    entry_name = "_".join(list(map(str, grid_entry))) + "." + ARRAY_FILETYPE
-    filepath = settings.pj(filename, entry_name)
-    return np.array(os.remove(filepath), dtype=object)
+    filepath = settings.pj(filename, "meta.pkl")
+    if not pathlib.Path(filepath).is_file():
+        return False
+    # If the meta data file exists, the dir is a NumS file.
+    # Delete it.
+    shutil.rmtree(filename)
+    return True
 
 
 ##############
@@ -282,10 +274,9 @@ class FileSystem(object):
             get_parts_fs,
             write_meta_fs,
             read_meta_fs,
-            delete_meta_fs,
             write_block_fs,
             read_block_fs,
-            delete_block_fs,
+            delete_file_fs,
             loadtxt_block,
             read_csv_block,
         ]:
@@ -381,12 +372,8 @@ class FileSystem(object):
     ):
         return self.cm.call("read_block_fs", filename, grid_entry, syskwargs=syskwargs)
 
-    def delete_block_fs(
-        self, filename: AnyStr, grid_entry: Tuple, grid_meta: Dict, syskwargs: Dict
-    ):
-        return self.cm.call(
-            "delete_block_fs", filename, grid_entry, syskwargs=syskwargs
-        )
+    def delete_file_fs(self, filename: AnyStr, syskwargs: Dict):
+        return self.cm.call("delete_file_fs", filename, syskwargs=syskwargs)
 
     ##################################################
     # Array-level operations
@@ -415,15 +402,6 @@ class FileSystem(object):
             if result is not None:
                 return result
         raise Exception("failed to load metadata.")
-
-    def delete_meta_fs(self, filename: str):
-        oids = []
-        for device_id in self.cm.devices():
-            oid = self.cm.call(
-                "delete_meta_fs", filename, syskwargs={"device_id": device_id}
-            )
-            oids.append(oid)
-        return oids
 
     def repartition(self, filename: AnyStr, grid_meta: Dict, syskwargs):
         """
@@ -485,7 +463,10 @@ class FileSystem(object):
         aligned = True
         for grid_entry in grid.get_entry_iterator():
             device_id = self.cm.device_grid.get_device_id(grid_entry, grid.grid_shape)
-            if not (device_id in grid_entry_sets and grid_entry in grid_entry_sets[device_id]):
+            if not (
+                device_id in grid_entry_sets
+                and grid_entry in grid_entry_sets[device_id]
+            ):
                 aligned = False
                 break
         if aligned:
