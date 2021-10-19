@@ -145,7 +145,7 @@ class ArrayApplication(object):
         stored_array = StoredArrayS3(filename, results.grid)
         for grid_entry in results.grid.get_entry_iterator():
             deleted_key = delete_result_arr[grid_entry]["Deleted"][0]["Key"]
-            entry_deleted = (deleted_key == stored_array.get_key(grid_entry))
+            entry_deleted = deleted_key == stored_array.get_key(grid_entry)
             data_deleted = data_deleted and entry_deleted
         return data_deleted
 
