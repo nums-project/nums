@@ -14,15 +14,14 @@
 # limitations under the License.
 
 
-from nums.api import read, write, delete, read_csv
+# pylint: disable = import-outside-toplevel
+
+# Set numpy to single thread.
+import os
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+
+from nums.api import init, read, write, delete, read_csv
 from nums.core.version import __version__
 
-__all__ = ["numpy", "read", "write", "delete", "read_csv"]
-
-
-def init():
-    # pylint: disable = import-outside-toplevel
-    # Explicitly initialize application instance.
-    from nums.core.application_manager import instance
-
-    return instance()
+__all__ = ["numpy", "init", "read", "write", "delete", "read_csv"]

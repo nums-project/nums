@@ -309,6 +309,10 @@ class BlockArrayBase(object):
         self.size = np.product(self.shape)
         self.ndim = len(self.shape)
         self.dtype = self.grid.dtype
+        try:
+            self.nbytes = self.grid.nbytes()
+        except ValueError as e:
+            self.nbytes = None
         self.blocks = blocks
         if self.blocks is None:
             # TODO (hme): Subclass np.ndarray for self.blocks instances,

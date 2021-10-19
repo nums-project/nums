@@ -27,7 +27,8 @@ from nums.core import settings
 
 
 class SerialSystem(SystemInterface):
-    def __init__(self):
+    def __init__(self, num_cpus=None):
+        self.num_cpus = int(get_num_cores()) if num_cpus is None else num_cpus
         self._remote_functions: dict = {}
 
     def init(self):
@@ -59,7 +60,7 @@ class SerialSystem(SystemInterface):
         return self._remote_functions[name](*args, **kwargs)
 
     def num_cores_total(self):
-        return int(get_num_cores())
+        return self.num_cpus
 
 
 class RaySystem(SystemInterface):
@@ -68,9 +69,10 @@ class RaySystem(SystemInterface):
     Implements SystemInterface for Ray.
     """
 
-    def __init__(self, use_head=False, num_nodes=None):
+    def __init__(self, use_head=False, num_nodes=None, num_cpus=None):
         self._use_head = use_head
         self._num_nodes = num_nodes
+        self.num_cpus = int(get_num_cores()) if num_cpus is None else num_cpus
         self._manage_ray = True
         self._remote_functions = {}
         self._available_nodes = []
@@ -83,7 +85,7 @@ class RaySystem(SystemInterface):
         if ray.is_initialized():
             self._manage_ray = False
         if self._manage_ray:
-            ray.init()
+            ray.init(num_cpus=self.num_cpus)
         # Compute available nodes, based on CPU resource.
         if settings.head_ip is None:
             # TODO (hme): Have this be a class argument vs. using what's set in settings directly.

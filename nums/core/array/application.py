@@ -65,6 +65,7 @@ class ArrayApplication(object):
     ######################################
 
     def write_fs(self, ba: BlockArray, filename: str):
+        self._fs
         res = self._write(ba, filename, self._fs.write_block_fs)
         self._fs.write_meta_fs(ba, filename)
         return res

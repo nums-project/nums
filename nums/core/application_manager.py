@@ -57,11 +57,12 @@ def create():
     # Initialize compute interface and system.
     system_name = settings.system_name
     if system_name == "serial":
-        system: SystemInterface = SerialSystem()
+        system: SystemInterface = SerialSystem(settings.num_cpus)
     elif system_name == "ray":
         use_head = settings.use_head
         num_nodes = int(np.product(settings.cluster_shape))
-        system: SystemInterface = RaySystem(use_head=use_head, num_nodes=num_nodes)
+        system: SystemInterface = RaySystem(use_head=use_head, num_nodes=num_nodes,
+                                            num_cpus=settings.num_cpus)
     else:
         raise Exception("Unexpected system name %s" % settings.system_name)
     system.init()
