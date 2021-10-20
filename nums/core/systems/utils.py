@@ -16,16 +16,33 @@
 
 import errno
 import inspect
-import multiprocessing
 import socket
 import types
 from functools import wraps
+import warnings
 
+import psutil
 import numpy as np
 
 
-def get_num_cores():
-    return multiprocessing.cpu_count()
+def get_num_cores(reserved_for_os=2):
+    assert (
+        reserved_for_os % 2 == 0
+    ), "Cores reserved for the OS must be a multiple of 2."
+    all_cores = psutil.cpu_count(logical=False)
+    cores = int(all_cores // 2 * 2)
+    if cores != all_cores:
+        warnings.warn(
+            "Detected odd number of cores (%s), using %s instead." % (all_cores, cores)
+        )
+    if cores <= reserved_for_os:
+        # If cores == reserved_for_os, then we'll have no cores left for NumS.
+        return cores
+    # At this point, we know that after removing cores reserved for the OS,
+    # we will have at least 2 cores left.
+    cores -= reserved_for_os
+    assert cores >= 2
+    return cores
 
 
 def method_meta(num_returns=1):
