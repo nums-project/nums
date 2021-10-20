@@ -108,11 +108,11 @@ class DeviceID(object):
         device_type, device_id = b.split(":")
         return DeviceID(int(node_id), node_addr, device_type, int(device_id))
 
-    def __init__(self, node_id, node_addr, device_type, device_id):
-        self.node_id = node_id
-        self.node_addr = node_addr
-        self.device_type = device_type
-        self.device_id = device_id
+    def __init__(self, node_id: int, node_addr: str, device_type: str, device_id: int):
+        self.node_id: int = node_id
+        self.node_addr: str = node_addr
+        self.device_type: str = device_type
+        self.device_id: int = device_id
 
     def __str__(self):
         return self.__repr__()
