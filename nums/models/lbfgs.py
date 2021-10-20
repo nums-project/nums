@@ -46,7 +46,6 @@ class BackTrackingLineSearch(object):
             alpha *= rho
             if alpha < min_alpha:
                 return min_alpha
-            # print("btls step alpha=%s" % alpha)
             f_next = self.f(X, y, theta + alpha * p)
         return max(alpha, min_alpha)
 
@@ -127,10 +126,6 @@ class LBFGS(object):
                 c=1e-4,
                 min_alpha=1e-30,
             )
-            print("alpha", alpha)
-            # print("alpha", alpha,
-            #       "objective", f(theta).get(),
-            #       "grad_norm", self.app.sqrt(g.T @ g).get())
             next_theta = theta + alpha * p
             if self.k + 1 >= self.max_iter:
                 # Terminate immediately if this is the last iteration.
