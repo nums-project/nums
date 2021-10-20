@@ -110,6 +110,7 @@ complex128 = np.complex128
 ############################################
 
 
+@derived_from(np, doctest=False)
 def loadtxt(
     fname,
     dtype=float,
@@ -214,6 +215,7 @@ def ones(shape, dtype=float):
     block_shape = app.get_block_shape(shape, dtype)
     return app.ones(shape=shape, block_shape=block_shape, dtype=dtype)
 
+
 @derived_from(np)
 def empty_like(prototype: BlockArray, dtype=None, order="K", shape=None):
     if shape is None:
@@ -225,6 +227,7 @@ def empty_like(prototype: BlockArray, dtype=None, order="K", shape=None):
     return empty(shape, dtype)
 
 
+@derived_from(np)
 def zeros_like(prototype, dtype=None, order="K", shape=None):
     if shape is None:
         shape = prototype.shape
@@ -235,6 +238,7 @@ def zeros_like(prototype, dtype=None, order="K", shape=None):
     return zeros(shape, dtype)
 
 
+@derived_from(np)
 def ones_like(prototype, dtype=None, order="K", shape=None):
     if shape is None:
         shape = prototype.shape
@@ -245,6 +249,7 @@ def ones_like(prototype, dtype=None, order="K", shape=None):
     return ones(shape, dtype)
 
 
+@derived_from(np)
 def concatenate(arrays, axis=0, out=None):
     if out is not None:
         raise NotImplementedError("out is currently not supported for concatenate.")
@@ -255,6 +260,7 @@ def concatenate(arrays, axis=0, out=None):
     return _instance().concatenate(arrays, axis=axis, axis_block_size=axis_block_size)
 
 
+@derived_from(np)
 def split(ary: BlockArray, indices_or_sections, axis=0):
     if not isinstance(indices_or_sections, int):
         raise NotImplementedError("Split currently supports integers only.")
@@ -277,10 +283,12 @@ def split(ary: BlockArray, indices_or_sections, axis=0):
     return tuple(results)
 
 
+@derived_from(np)
 def identity(n: int, dtype=float) -> BlockArray:
     return eye(n, n, dtype=dtype)
 
 
+@derived_from(np)
 def eye(N, M=None, k=0, dtype=float):
     app = _instance()
     if k != 0:
@@ -291,12 +299,14 @@ def eye(N, M=None, k=0, dtype=float):
     block_shape = app.get_block_shape(shape, dtype)
     return app.eye(shape, block_shape, dtype)
 
+
 @derived_from(np)
 def diag(v: BlockArray, k=0) -> BlockArray:
     app = _instance()
     if k != 0:
         raise NotImplementedError("Only k==0 is currently supported.")
     return app.diag(v)
+
 
 @derived_from(np)
 def trace(a: BlockArray, offset=0, axis1=0, axis2=1, dtype=None, out=None):
@@ -311,34 +321,42 @@ def trace(a: BlockArray, offset=0, axis1=0, axis2=1, dtype=None, out=None):
     return sum(diag(a, offset), dtype=dtype, out=out)
 
 
+@derived_from(np)
 def atleast_1d(*arys):
     return _instance().atleast_1d(*arys)
 
 
+@derived_from(np)
 def atleast_2d(*arys):
     return _instance().atleast_2d(*arys)
 
 
+@derived_from(np)
 def atleast_3d(*arys):
     return _instance().atleast_3d(*arys)
 
 
+@derived_from(np)
 def hstack(tup):
     return _instance().hstack(tup)
 
 
+@derived_from(np)
 def vstack(tup):
     return _instance().vstack(tup)
 
 
+@derived_from(np)
 def dstack(tup):
     return _instance().dstack(tup)
 
 
+@derived_from(np)
 def row_stack(tup):
     return _instance().row_stack(tup)
 
 
+@derived_from(np)
 def column_stack(tup):
     return _instance().column_stack(tup)
 
@@ -348,6 +366,7 @@ def column_stack(tup):
 ############################################
 
 
+@derived_from(np)
 def arange(start=None, stop=None, step=1, dtype=None) -> BlockArray:
     if start is None:
         raise TypeError("Missing required argument start")
@@ -364,6 +383,7 @@ def arange(start=None, stop=None, step=1, dtype=None) -> BlockArray:
     return app.arange(start, shape, block_shape, step, dtype)
 
 
+@derived_from(np)
 def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None, axis=0):
     shape = (num,)
     dtype = np.float64 if dtype is None else dtype
@@ -372,6 +392,7 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None, axis
     return app.linspace(start, stop, shape, block_shape, endpoint, retstep, dtype, axis)
 
 
+@derived_from(np)
 def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None, axis=0):
     app = _instance()
     ba: BlockArray = linspace(start, stop, num, endpoint, dtype=None, axis=axis)
@@ -386,24 +407,29 @@ def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None, axis=0):
 ############################################
 
 
+@derived_from(np)
 def tensordot(x1: BlockArray, x2: BlockArray, axes=2) -> BlockArray:
     return _instance().tensordot(arr_1=x1, arr_2=x2, axes=axes)
 
 
+@derived_from(np)
 def matmul(x1: BlockArray, x2: BlockArray) -> BlockArray:
     return _instance().matmul(arr_1=x1, arr_2=x2)
 
 
+@derived_from(np)
 def inner(a: BlockArray, b: BlockArray):
     assert len(a.shape) == len(b.shape) == 1, "Only single-axis inputs supported."
     return a.T @ b
 
 
+@derived_from(np)
 def outer(a: BlockArray, b: BlockArray):
     assert len(a.shape) == len(b.shape) == 1, "Only single-axis inputs supported."
     return a.reshape((a.shape[0], 1)) @ b.reshape((1, b.shape[0]))
 
 
+@derived_from(np)
 def dot(a: BlockArray, b: BlockArray, out=None) -> BlockArray:
     assert out is None, "Specifying an output array is not supported."
     a_len, b_len = len(a.shape), len(b.shape)
@@ -424,36 +450,44 @@ def dot(a: BlockArray, b: BlockArray, out=None) -> BlockArray:
 ############################################
 
 
+@derived_from(np)
 def shape(a: BlockArray):
     return a.shape
 
 
+@derived_from(np)
 def size(a: BlockArray):
     return a.size
 
 
+@derived_from(np)
 def ndim(a: BlockArray):
     return a.ndim
 
 
+@derived_from(np)
 def reshape(a: BlockArray, shape):
     block_shape = _instance().compute_block_shape(shape, a.dtype)
     return a.reshape(shape, block_shape=block_shape)
 
 
+@derived_from(np)
 def expand_dims(a: BlockArray, axis):
     return a.expand_dims(axis)
 
 
+@derived_from(np)
 def squeeze(a: BlockArray, axis=None):
     assert axis is None, "axis not supported."
     return a.squeeze()
 
 
+@derived_from(np)
 def swapaxes(a: BlockArray, axis1: int, axis2: int):
     return a.swapaxes(axis1, axis2)
 
 
+@derived_from(np)
 def transpose(a: BlockArray, axes=None):
     assert axes is None, "axes not supported."
     return a.T
@@ -464,6 +498,7 @@ def transpose(a: BlockArray, axes=None):
 ############################################
 
 
+@derived_from(np)
 def copy(a: BlockArray, order="K", subok=False):
     assert order == "K" and not subok, "Only default args supported."
     return a.copy()
@@ -474,6 +509,7 @@ def copy(a: BlockArray, order="K", subok=False):
 ############################################
 
 
+@derived_from(np)
 def min(
     a: BlockArray, axis=None, out=None, keepdims=False, initial=None, where=None
 ) -> BlockArray:
@@ -489,6 +525,7 @@ def min(
 amin = min
 
 
+@derived_from(np)
 def max(
     a: BlockArray, axis=None, out=None, keepdims=False, initial=None, where=None
 ) -> BlockArray:
@@ -504,12 +541,14 @@ def max(
 amax = max
 
 
+@derived_from(np)
 def argmin(a: BlockArray, axis=None, out=None):
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().argop("argmin", a, axis=axis)
 
 
+@derived_from(np)
 def argmax(a: BlockArray, axis=None, out=None):
     if len(a.shape) > 1:
         raise NotImplementedError(
@@ -520,6 +559,7 @@ def argmax(a: BlockArray, axis=None, out=None):
     return _instance().argop("argmax", a, axis=axis)
 
 
+@derived_from(np)
 def sum(
     a: BlockArray,
     axis=None,
@@ -538,46 +578,54 @@ def sum(
     return _instance().sum(a, axis=axis, keepdims=keepdims, dtype=dtype)
 
 
+@derived_from(np)
 def mean(a: BlockArray, axis=None, dtype=None, out=None, keepdims=False):
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().mean(a, axis=axis, keepdims=keepdims, dtype=dtype)
 
 
+@derived_from(np)
 def var(a: BlockArray, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().var(a, axis=axis, ddof=ddof, keepdims=keepdims, dtype=dtype)
 
 
+@derived_from(np)
 def std(a: BlockArray, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().std(a, axis=axis, ddof=ddof, keepdims=keepdims, dtype=dtype)
 
 
+@derived_from(np)
 def where(condition: BlockArray, x: BlockArray = None, y: BlockArray = None):
     return _instance().where(condition, x, y)
 
 
+@derived_from(np)
 def all(a: BlockArray, axis=None, out=None, keepdims=False):
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().reduce("all", a, axis=axis, keepdims=keepdims)
 
 
+@derived_from(np)
 def alltrue(a: BlockArray, axis=None, out=None, dtype=None, keepdims=False):
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().reduce("alltrue", a, axis=axis, keepdims=keepdims, dtype=dtype)
 
 
+@derived_from(np)
 def any(a: BlockArray, axis=None, out=None, keepdims=False):
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().reduce("any", a, axis=axis, keepdims=keepdims)
 
 
+@derived_from(np)
 def average(
     a: BlockArray,
     axis: Union[None, int] = None,
@@ -623,6 +671,7 @@ def average(
     return avg, weights_sum
 
 
+@derived_from(np)
 def median(a: BlockArray, axis=None, out=None, keepdims=False) -> BlockArray:
     """Compute the median of a BlockArray.
 
@@ -670,36 +719,42 @@ def top_k(
 ############################################
 
 
+@derived_from(np)
 def nanmax(a: BlockArray, axis=None, out=None, keepdims=False):
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().reduce("nanmax", a, axis=axis, keepdims=keepdims)
 
 
+@derived_from(np)
 def nanmin(a: BlockArray, axis=None, out=None, keepdims=False):
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().reduce("nanmin", a, axis=axis, keepdims=keepdims)
 
 
+@derived_from(np)
 def nansum(a: BlockArray, axis=None, dtype=None, out=None, keepdims=False):
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().reduce("nansum", a, axis=axis, dtype=dtype, keepdims=keepdims)
 
 
+@derived_from(np)
 def nanmean(a: BlockArray, axis=None, dtype=None, out=None, keepdims=False):
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().nanmean(a, axis=axis, dtype=dtype, keepdims=keepdims)
 
 
+@derived_from(np)
 def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().nanvar(a, axis=axis, dtype=dtype, ddof=ddof, keepdims=keepdims)
 
 
+@derived_from(np)
 def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
@@ -711,16 +766,19 @@ def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
 ############################################
 
 
+@derived_from(np)
 def array_equal(a: BlockArray, b: BlockArray, equal_nan=False) -> BlockArray:
     if equal_nan is not False:
         raise NotImplementedError("equal_nan=True not supported.")
     return _instance().array_equal(a, b)
 
 
+@derived_from(np)
 def array_equiv(a: BlockArray, b: BlockArray) -> BlockArray:
     return _instance().array_equiv(a, b)
 
 
+@derived_from(np)
 def allclose(
     a: BlockArray, b: BlockArray, rtol=1.0e-5, atol=1.0e-8, equal_nan=False
 ) -> BlockArray:
@@ -734,6 +792,7 @@ def allclose(
 ############################################
 
 
+@derived_from(np)
 def abs(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="abs",
@@ -744,6 +803,7 @@ def abs(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArr
     )
 
 
+@derived_from(np)
 def absolute(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="absolute",
@@ -754,6 +814,7 @@ def absolute(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Blo
     )
 
 
+@derived_from(np)
 def arccos(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="arccos",
@@ -764,6 +825,7 @@ def arccos(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Block
     )
 
 
+@derived_from(np)
 def arccosh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="arccosh",
@@ -774,6 +836,7 @@ def arccosh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Bloc
     )
 
 
+@derived_from(np)
 def arcsin(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="arcsin",
@@ -784,6 +847,7 @@ def arcsin(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Block
     )
 
 
+@derived_from(np)
 def arcsinh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="arcsinh",
@@ -794,6 +858,7 @@ def arcsinh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Bloc
     )
 
 
+@derived_from(np)
 def arctan(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="arctan",
@@ -804,6 +869,7 @@ def arctan(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Block
     )
 
 
+@derived_from(np)
 def arctanh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="arctanh",
@@ -814,6 +880,7 @@ def arctanh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Bloc
     )
 
 
+@derived_from(np)
 def bitwise_not(
     x: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -826,6 +893,7 @@ def bitwise_not(
     )
 
 
+@derived_from(np)
 def cbrt(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="cbrt",
@@ -836,6 +904,7 @@ def cbrt(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockAr
     )
 
 
+@derived_from(np)
 def ceil(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="ceil",
@@ -846,6 +915,7 @@ def ceil(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockAr
     )
 
 
+@derived_from(np)
 def conj(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="conj",
@@ -856,6 +926,7 @@ def conj(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockAr
     )
 
 
+@derived_from(np)
 def conjugate(
     x: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -868,6 +939,7 @@ def conjugate(
     )
 
 
+@derived_from(np)
 def cos(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="cos",
@@ -878,6 +950,7 @@ def cos(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArr
     )
 
 
+@derived_from(np)
 def cosh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="cosh",
@@ -888,6 +961,7 @@ def cosh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockAr
     )
 
 
+@derived_from(np)
 def deg2rad(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="deg2rad",
@@ -898,6 +972,7 @@ def deg2rad(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Bloc
     )
 
 
+@derived_from(np)
 def degrees(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="degrees",
@@ -908,6 +983,7 @@ def degrees(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Bloc
     )
 
 
+@derived_from(np)
 def exp(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="exp",
@@ -918,6 +994,7 @@ def exp(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArr
     )
 
 
+@derived_from(np)
 def exp2(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="exp2",
@@ -928,6 +1005,7 @@ def exp2(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockAr
     )
 
 
+@derived_from(np)
 def expm1(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="expm1",
@@ -938,6 +1016,7 @@ def expm1(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockA
     )
 
 
+@derived_from(np)
 def fabs(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="fabs",

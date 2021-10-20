@@ -122,7 +122,7 @@ def unsupported_arguments(doc, args):
     return "\n".join(lines)
 
 
-def _derived_from(cls, method, ua_args=[], extra="", skipblocks=0):
+def _derived_from(cls, method, ua_args=[], extra="", skipblocks=0, doctest=True):
     """Helper function for derived_from to ease testing"""
     # do not use wraps here, as it hides keyword arguments displayed
     # in the doc
@@ -160,13 +160,18 @@ def _derived_from(cls, method, ua_args=[], extra="", skipblocks=0):
     doc = skip_doctest(doc)
     doc = extra_titles(doc)
 
-    # TODO: make regex handle edge cases
+    # TODO: Make regex handle edge cases.
     doc = re.sub(r"np\.", "nps.", doc)
     doc = re.sub(": ndarray", ": BlockArray", doc)
     doc = re.sub(": array_like", ": BlockArray", doc)
-    fns = find_nums_functions(doc)
-    for fn in fns:
-        doc = doc.replace(fn, fn + ".get()")
+
+    # TODO: Buggy implementation with multiple lines, or assignment to
+    # two or more variables.
+    # Append a get() to each numpy function.
+    if doctest:
+        fns = find_nums_functions(doc)
+        for fn in fns:
+            doc = doc.replace(fn, fn + ".get()")
 
     return doc
 
@@ -181,7 +186,7 @@ def find_nums_functions(doc):
     return re.findall(r"nps\..+\(.+\)", doc)
 
 
-def derived_from(original_klass, version=None, ua_args=[], skipblocks=0):
+def derived_from(original_klass, version=None, ua_args=[], skipblocks=0, doctest=True):
     """Decorator to attach original class's docstring to the wrapped method.
     The output structure will be: top line of docstring, disclaimer about this
     being auto-derived, any extra text associated with the method being patched,
@@ -210,6 +215,7 @@ def derived_from(original_klass, version=None, ua_args=[], skipblocks=0):
                 ua_args=ua_args,
                 extra=extra,
                 skipblocks=skipblocks,
+                doctest=doctest,
             )
             return method
 
@@ -233,4 +239,4 @@ if __name__ == "__main__":
     # TODO: Test doc for debugging, delete once finished
     from nums import numpy as nps
 
-    print(nps.empty_like.__doc__)
+    print(nps.loadtxt.__doc__)
