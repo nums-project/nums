@@ -104,6 +104,14 @@ def ignore_warning(doc, cls, name, extra="", skipblocks=0):
         bits = [head, indent, l1, indent, l2, "\n\n"] + more + [tail]
         doc = "".join(bits)
 
+    i = doc.find("Examples\n")
+    if i != -1:
+        docstring_warning = "The doctests shown below are copied from NumPy. They won’t show the correct result until you operate ``.get()``."
+        head = doc[:i + 22]
+        tail = doc[i + 22:]
+        bits = [head, indent, docstring_warning , "\n\n"] + [tail]
+        doc = "".join(bits)
+
     return doc
 
 
@@ -167,7 +175,7 @@ def _derived_from(cls, method, ua_args=[], extra="", skipblocks=0, doctest=True)
 
     # TODO: Buggy implementation with multiple lines, or assignment to
     # two or more variables.
-    # Append a get() to each numpy function.
+    # Appends a get() to each numpy function.
     if doctest:
         fns = find_nums_functions(doc)
         for fn in fns:
@@ -186,7 +194,7 @@ def find_nums_functions(doc):
     return re.findall(r"nps\..+\(.+\)", doc)
 
 
-def derived_from(original_klass, version=None, ua_args=[], skipblocks=0, doctest=True):
+def derived_from(original_klass, version="1.20.0", ua_args=[], skipblocks=0, doctest=True):
     """Decorator to attach original class's docstring to the wrapped method.
     The output structure will be: top line of docstring, disclaimer about this
     being auto-derived, any extra text associated with the method being patched,
