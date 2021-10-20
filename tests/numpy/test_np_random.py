@@ -142,6 +142,7 @@ if __name__ == "__main__":
 
     nums.core.settings.system_name = "serial"
     from nums.core import application_manager
+
     nps_app_inst = application_manager.instance()
 
     # test_basic(nps_app_inst)

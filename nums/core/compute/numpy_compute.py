@@ -157,29 +157,48 @@ class ComputeCls(ComputeImp):
     def update_block_along_axis(
         self, dst_arr_or_args, src_arr, ss, axis, dst_coord, src_coord
     ):
-        # This could be optimized using sparse arrays.
-        def test_i(i, arr, coord):
-            return coord[axis] <= i < coord[axis] + arr.shape[axis]
+        # Can this be optimized using sparse arrays?
+
+        # We don't want to create or copy the destination array
+        # unless we're performing an operation on it.
+        # We just need the destination array's shape
+        # to determine whether we need to modify it.
+        if isinstance(dst_arr_or_args, np.ndarray):
+            dst_arr_shape = dst_arr_or_args.shape
+        else:
+            dst_arr_shape, _ = dst_arr_or_args
+
+        # Compute the set of indices that need to be updated.
+        # This could be optimized, but in its current state, it's simple and not a bottleneck.
+        dst_vec = np.arange(len(ss))
+        dst_mask = (dst_coord[axis] <= dst_vec) & (
+            dst_vec < dst_coord[axis] + dst_arr_shape[axis]
+        )
+        src_vec = np.array(ss)
+        src_mask = (src_coord[axis] <= src_vec) & (
+            src_vec < src_coord[axis] + src_arr.shape[axis]
+        )
+        mask = dst_mask & src_mask
+
+        dst_vec = dst_vec[mask] - dst_coord[axis]
+        src_vec = src_vec[mask] - src_coord[axis]
+        if dst_vec.shape[0] == 0:
+            # Nothing to do for this array.
+            # Return input args.
+            # We do this to save on copy operations,
+            # which dominate the execution time of this function.
+            return dst_arr_or_args
 
         if isinstance(dst_arr_or_args, np.ndarray):
-            # For now, just assume dst_arr is always updated.
+            # We need to update the array.
             dst_arr = dst_arr_or_args.copy()
         else:
-            # For initial update, we don't need to allocate zeros.
-            # We can write the BlockArray method so all ops are initial,
-            # avoiding initial allocation altogether.
-            dst_arr = np.zeros(*dst_arr_or_args)
-        dst_sel = [slice(None, None)] * len(dst_arr.shape)
+            # We allocate an array of zeros on initial update.
+            dst_arr = np.zeros(shape=dst_arr_or_args[0], dtype=dst_arr_or_args[1])
+
+        # Create and apply the subscript argument.
+        dst_sel = [slice(None, None)] * len(dst_arr_shape)
         src_sel = [slice(None, None)] * len(src_arr.shape)
-        dst_vec = []
-        src_vec = []
-        for dst_i, src_i in enumerate(ss):
-            if not (
-                test_i(dst_i, dst_arr, dst_coord) and test_i(src_i, src_arr, src_coord)
-            ):
-                continue
-            dst_vec.append(dst_i - dst_coord[axis])
-            src_vec.append(src_i - src_coord[axis])
         dst_sel[axis] = dst_vec
         src_sel[axis] = src_vec
         dst_arr[tuple(dst_sel)] = src_arr[tuple(src_sel)]
