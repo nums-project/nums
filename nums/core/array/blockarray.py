@@ -234,9 +234,9 @@ class BlockArray(BlockArrayBase):
             # Check if all entries are full slices except the last entry.
             for entry in ss[:-1]:
                 is_handled_advanced = is_handled_advanced and (
-                    isinstance(entry, slice)
-                    and entry.start is None
-                    and entry.stop is None
+                        isinstance(entry, slice)
+                        and entry.start is None
+                        and entry.stop is None
                 )
         if is_handled_advanced and array_utils.is_array_like(ss[-1]):
             # Treat this as a shuffle.
@@ -248,10 +248,91 @@ class BlockArray(BlockArrayBase):
         # TODO (hme): We don't have to create, but do so for now until we need to optimize.
         return av[item].create(BlockArray)
 
+    # def _advanced_single_array_subscript(self, sel: tuple, block_size=None, axis=0):
+    #     # Create output array along the axis of the selection operation.
+    #     # We don't allocate zeros for output array. Instead, we let the update kernel
+    #     # create the zeros to save some memory.
+    #     array = sel[0]
+    #     assert len(array.shape) == 1
+    #     assert np.all(0 <= array) and np.all(array < self.shape[axis])
+    #     if block_size is None:
+    #         block_size = self.block_shape[axis]
+    #     axis_dim = len(array)
+    #     shape = tuple(
+    #         list(self.shape[:axis]) + [axis_dim] + list(self.shape[axis + 1 :])
+    #     )
+    #     block_shape = tuple(
+    #         list(self.block_shape[:axis])
+    #         + [block_size]
+    #         + list(self.block_shape[axis + 1 :])
+    #     )
+    #     dst_arr = BlockArray(
+    #         ArrayGrid(shape=shape, block_shape=block_shape, dtype=self.dtype.__name__),
+    #         cm=self.cm,
+    #     )
+    #     # Along axis, we don't know which destination blocks depend on which source blocks.
+    #     # For every destination block,
+    #     # apply sel to every source block.
+    #     # If the destination block depends on the source block, apply the changes and return a
+    #     # new array, otherwise return the unchanged array.
+    #     # For k blocks along axis, this has worst case complexity of generating k^2 copies of
+    #     # the destination block.
+    #     # With careful referencing, we can ensure the intermediate blocks are free for GC.
+    #     # Once all copies per destination block are scheduled, schedule a reduction across
+    #     # all the blocks.
+    #     src_arr = self
+    #     dst_grid_shape = dst_arr.grid.grid_shape
+    #     src_grid_shape = src_arr.grid.grid_shape
+    #     ss = self.cm.put(array)
+    #     for i in range(dst_grid_shape[axis]):
+    #         for dst_grid_entry in dst_arr.grid.get_entry_iterator():
+    #             if dst_grid_entry[axis] != i:
+    #                 # Compute the value of dest_arr for each block along axis.
+    #                 # e.g. for a 2 dim array, we fix the row and compute the column blocks.
+    #                 continue
+    #             dst_block: Block = dst_arr.blocks[dst_grid_entry]
+    #             dst_coord: tuple = dst_arr.grid.get_entry_coordinates(dst_grid_entry)
+    #             partial_oids: list = []
+    #             for j in range(src_grid_shape[axis]):
+    #                 # Apply sel from each block along axis of src_arr.
+    #                 # e.g. for 2 dim array, we fix the column blocks
+    #                 # given by dst_grid_entry, and iterate over the rows.
+    #                 src_grid_entry = tuple(
+    #                     list(dst_grid_entry[:axis])
+    #                     + [j]
+    #                     + list(dst_grid_entry[axis + 1 :])
+    #                 )
+    #                 src_block: Block = src_arr.blocks[src_grid_entry]
+    #                 src_coord: tuple = src_arr.grid.get_entry_coordinates(
+    #                     src_grid_entry
+    #                 )
+    #                 oid = self.cm.update_block_along_axis(
+    #                     # We don't allocate memory for dst_arr.
+    #                     # This way, the partial updates avoid data movement.
+    #                     (dst_block.shape, dst_block.dtype),
+    #                     src_block.oid,
+    #                     ss,
+    #                     axis,
+    #                     dst_coord,
+    #                     src_coord,
+    #                     syskwargs={
+    #                         "grid_entry": src_grid_entry,
+    #                         "grid_shape": src_arr.grid.grid_shape,
+    #                     },
+    #                 )
+    #                 partial_oids.append(
+    #                     (oid, src_grid_entry, src_arr.grid.grid_shape, False)
+    #                 )
+    #             dst_block.oid = self._tree_reduce(
+    #                 "sum", partial_oids, dst_grid_entry, dst_arr.grid.grid_shape
+    #             )
+    #             del partial_oids
+    #     return dst_arr
+
     def _advanced_single_array_subscript(self, sel: tuple, block_size=None, axis=0):
         # Create output array along the axis of the selection operation.
         # We don't allocate zeros for output array. Instead, we let the update kernel
-        # create the zeros to save some memory.
+        # create the initial set of zeros to save some memory.
         array = sel[0]
         assert len(array.shape) == 1
         assert np.all(0 <= array) and np.all(array < self.shape[axis])
@@ -270,7 +351,6 @@ class BlockArray(BlockArrayBase):
             ArrayGrid(shape=shape, block_shape=block_shape, dtype=self.dtype.__name__),
             cm=self.cm,
         )
-
         # Along axis, we don't know which destination blocks depend on which source blocks.
         # For every destination block,
         # apply sel to every source block.
@@ -293,7 +373,6 @@ class BlockArray(BlockArrayBase):
                     continue
                 dst_block: Block = dst_arr.blocks[dst_grid_entry]
                 dst_coord: tuple = dst_arr.grid.get_entry_coordinates(dst_grid_entry)
-                partial_oids: list = []
                 for j in range(src_grid_shape[axis]):
                     # Apply sel from each block along axis of src_arr.
                     # e.g. for 2 dim array, we fix the column blocks
@@ -307,10 +386,12 @@ class BlockArray(BlockArrayBase):
                     src_coord: tuple = src_arr.grid.get_entry_coordinates(
                         src_grid_entry
                     )
-                    oid = self.cm.update_block_along_axis(
-                        # We don't allocate memory for dst_arr.
-                        # This way, the partial updates avoid data movement.
-                        (dst_block.shape, dst_block.dtype),
+                    if dst_block.oid is None:
+                        dst_arg = (dst_block.shape, dst_block.dtype)
+                    else:
+                        dst_arg = dst_block.oid
+                    dst_block.oid = self.cm.update_block_along_axis(
+                        dst_arg,
                         src_block.oid,
                         ss,
                         axis,
@@ -321,12 +402,6 @@ class BlockArray(BlockArrayBase):
                             "grid_shape": src_arr.grid.grid_shape,
                         },
                     )
-                    partial_oids.append(
-                        (oid, src_grid_entry, src_arr.grid.grid_shape, False)
-                    )
-                dst_block.oid = self._tree_reduce(
-                    "sum", partial_oids, dst_grid_entry, dst_arr.grid.grid_shape
-                )
         return dst_arr
 
     def __setitem__(self, key, value):
@@ -360,7 +435,7 @@ class BlockArray(BlockArrayBase):
         return result
 
     def _tree_reduce(
-        self, op_name, blocks_or_oids, result_grid_entry, result_grid_shape
+            self, op_name, blocks_or_oids, result_grid_entry, result_grid_shape
     ):
         """
         Basic tree reduce imp.
@@ -515,7 +590,7 @@ class BlockArray(BlockArrayBase):
             raise TypeError(f"Unexpected axes type '{type(axes).__name__}'")
 
         if array_utils.np_tensordot_param_test(
-            self.shape, self.ndim, other.shape, other.ndim, axes
+                self.shape, self.ndim, other.shape, other.ndim, axes
         ):
             raise ValueError("shape-mismatch for sum")
 
@@ -656,7 +731,7 @@ class BlockArray(BlockArrayBase):
     def __inequality__(self, op, other):
         other = self.check_or_convert_other(other)
         assert (
-            other.shape == () or other.shape == self.shape
+                other.shape == () or other.shape == self.shape
         ), "Currently supports comparison with scalars only."
         shape = array_utils.broadcast(self.shape, other.shape).shape
         block_shape = array_utils.broadcast_block_shape(
@@ -763,7 +838,7 @@ class Reshape(object):
         return new_shape
 
     def _group_index_lists_by_block(
-        self, dst_slice_tuples, src_grid: ArrayGrid, dst_index_list, src_index_list
+            self, dst_slice_tuples, src_grid: ArrayGrid, dst_index_list, src_index_list
     ):
         # TODO(hme): Keep this function here until it's needed for greater support of
         #  selection/assignment operations.
@@ -784,7 +859,7 @@ class Reshape(object):
         index_type = None
         for bound, curr_index_type in index_types:
             if np.all(np.array(src_grid.block_shape) < bound) and np.all(
-                dst_slice_np[1] < bound
+                    dst_slice_np[1] < bound
             ):
                 index_type = curr_index_type
                 break
@@ -797,7 +872,7 @@ class Reshape(object):
                 src_index = src_index_arr[i]
                 dst_index = dst_index_arr[i]
                 if np.all(
-                    (src_slice_np[0] <= src_index) & (src_index < src_slice_np[1])
+                        (src_slice_np[0] <= src_index) & (src_index < src_slice_np[1])
                 ):
                     index_pair = (
                         (dst_index - dst_slice_np[0]).astype(index_type),
@@ -875,8 +950,8 @@ class Reshape(object):
         # Checks if source shape and dest shape are same & source block_shape and dest
         # block_shape are same after stripping ones.
         if not (
-            self._strip_ones(shape) == self._strip_ones(arr.shape)
-            and self._strip_ones(block_shape) == self._strip_ones(arr.block_shape)
+                self._strip_ones(shape) == self._strip_ones(arr.shape)
+                and self._strip_ones(block_shape) == self._strip_ones(arr.block_shape)
         ):
             return False
         if not self._check_positions_ones(shape, block_shape):

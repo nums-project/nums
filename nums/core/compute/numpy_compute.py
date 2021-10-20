@@ -171,14 +171,18 @@ class ComputeCls(ComputeImp):
             dst_arr = np.zeros(*dst_arr_or_args)
         dst_sel = [slice(None, None)] * len(dst_arr.shape)
         src_sel = [slice(None, None)] * len(src_arr.shape)
+        dst_vec = []
+        src_vec = []
         for dst_i, src_i in enumerate(ss):
             if not (
                 test_i(dst_i, dst_arr, dst_coord) and test_i(src_i, src_arr, src_coord)
             ):
                 continue
-            dst_sel[axis] = dst_i - dst_coord[axis]
-            src_sel[axis] = src_i - src_coord[axis]
-            dst_arr[tuple(dst_sel)] = src_arr[tuple(src_sel)]
+            dst_vec.append(dst_i - dst_coord[axis])
+            src_vec.append(src_i - src_coord[axis])
+        dst_sel[axis] = dst_vec
+        src_sel[axis] = src_vec
+        dst_arr[tuple(dst_sel)] = src_arr[tuple(src_sel)]
         return dst_arr
 
     def diag(self, arr, offset):
