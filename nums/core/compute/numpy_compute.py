@@ -170,6 +170,28 @@ class ComputeCls(ComputeImp):
             result[tuple(dst_sel)] = src_arr[tuple(src_sel)]
         return result
 
+    def update_block_along_axis2(
+        self, dst_arr, src_arr, ss, axis, dst_coord, src_coord
+    ):
+        # This could be optimized using sparse arrays.
+        def test_i(i, arr, coord):
+            # Inclusive?
+            return coord[axis] <= i <= coord[axis] + arr.shape[axis]
+
+        # For now, just assume dst_arr is always updated.
+        dst_arr = dst_arr.copy()
+        dst_sel = [slice(None, None)] * len(dst_arr.shape)
+        src_sel = [slice(None, None)] * len(src_arr.shape)
+        for dst_i, src_i in enumerate(ss):
+            if not (
+                test_i(dst_i, dst_arr, dst_coord) and test_i(src_i, src_arr, src_coord)
+            ):
+                continue
+            dst_sel[axis] = dst_i - dst_coord[axis]
+            src_sel[axis] = src_i - src_coord[axis]
+            dst_arr[tuple(dst_sel)] = src_arr[tuple(src_sel)]
+        return dst_arr
+
     def diag(self, arr, offset):
         return np.diag(arr, k=offset)
 

@@ -74,6 +74,12 @@ class ArrayGrid(object):
             slice_tuples.append(tuple(self.grid_slices[axis][slice_index]))
         return slice_tuples
 
+    def get_entry_coordinates(self, grid_entry) -> Tuple[int]:
+        coordinates = []
+        for axis, slice_index in enumerate(grid_entry):
+            coordinates.append(self.grid_slices[axis][slice_index][0])
+        return tuple(coordinates)
+
     def get_block_shape(self, grid_entry: Tuple):
         slice_tuples = self.get_slice_tuples(grid_entry)
         block_shape = []

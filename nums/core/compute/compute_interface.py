@@ -61,6 +61,11 @@ class ComputeInterface(object):
     ):
         raise NotImplementedError()
 
+    def update_block_along_axis2(
+        self, dst_arr, src_arr, ss, axis, dst_coord, src_coord, syskwargs: Dict
+    ):
+        raise NotImplementedError()
+
     def bop(self, op, a1, a2, a1_T, a2_T, axes, syskwargs: Dict):
         raise NotImplementedError()
 

@@ -29,11 +29,16 @@ from nums.core.compute.compute_manager import ComputeManager
 class BlockArray(BlockArrayBase):
     @classmethod
     def empty(cls, shape, block_shape, dtype, cm: ComputeManager):
+        return BlockArray.create("empty", shape, block_shape, dtype, cm)
+
+    @classmethod
+    def create(cls, create_op_name, shape, block_shape, dtype, cm: ComputeManager):
         grid = ArrayGrid(shape=shape, block_shape=block_shape, dtype=dtype.__name__)
         grid_meta = grid.to_meta()
         arr = BlockArray(grid, cm)
         for grid_entry in grid.get_entry_iterator():
-            arr.blocks[grid_entry].oid = cm.empty(
+            arr.blocks[grid_entry].oid = cm.call(
+                create_op_name,
                 grid_entry,
                 grid_meta,
                 syskwargs={"grid_entry": grid_entry, "grid_shape": grid.grid_shape},
@@ -245,6 +250,82 @@ class BlockArray(BlockArrayBase):
         return av[item].create(BlockArray)
 
     def _advanced_single_array_subscript(self, sel: tuple, block_size=None, axis=0):
+        # Allocate zeros for output array along the axis of the selection operation.
+        array = sel[0]
+        assert len(array.shape) == 1
+        assert np.all(0 <= array) and np.all(array < self.shape[axis])
+        if block_size is None:
+            block_size = self.block_shape[axis]
+        axis_dim = len(array)
+        shape = tuple(
+            list(self.shape[:axis]) + [axis_dim] + list(self.shape[axis + 1 :])
+        )
+        block_shape = tuple(
+            list(self.block_shape[:axis])
+            + [block_size]
+            + list(self.block_shape[axis + 1 :])
+        )
+        dst_arr = BlockArray.create(
+            "zeros", shape=shape, block_shape=block_shape, dtype=self.dtype, cm=self.cm
+        )
+
+        # Along axis, we don't know which destination blocks depend on which source blocks.
+        # For every destination block,
+        # apply sel to every source block.
+        # If the destination block depends on the source block, apply the changes and return a
+        # new array, otherwise return the unchanged array.
+        # For k blocks along axis, this has worst case complexity of generating k^2 copies of
+        # the destination block.
+        # With careful referencing, we can ensure the intermediate blocks are free for GC.
+        # Once all copies per destination block are scheduled, schedule a reduction across
+        # all the blocks.
+        src_arr = self
+        dst_grid_shape = dst_arr.grid.grid_shape
+        src_grid_shape = src_arr.grid.grid_shape
+        ss = self.cm.put(array)
+        for i in range(dst_grid_shape[axis]):
+            for dst_grid_entry in dst_arr.grid.get_entry_iterator():
+                if dst_grid_entry[axis] != i:
+                    # Compute the value of dest_arr for each block along axis.
+                    # e.g. for a 2 dim array, we fix the row and compute the column blocks.
+                    continue
+                dst_block: Block = dst_arr.blocks[dst_grid_entry]
+                dst_coord: tuple = dst_arr.grid.get_entry_coordinates(dst_grid_entry)
+                partial_oids: list = []
+                for j in range(src_grid_shape[axis]):
+                    # Apply sel from each block along axis of src_arr.
+                    # e.g. for 2 dim array, we fix the column blocks
+                    # given by dst_grid_entry, and iterate over the rows.
+                    src_grid_entry = tuple(
+                        list(dst_grid_entry[:axis])
+                        + [j]
+                        + list(dst_grid_entry[axis + 1 :])
+                    )
+                    src_block: Block = src_arr.blocks[src_grid_entry]
+                    src_coord: tuple = src_arr.grid.get_entry_coordinates(
+                        src_grid_entry
+                    )
+                    oid = self.cm.update_block_along_axis2(
+                        dst_block.oid,
+                        src_block.oid,
+                        ss,
+                        axis,
+                        dst_coord,
+                        src_coord,
+                        syskwargs={
+                            "grid_entry": src_grid_entry,
+                            "grid_shape": src_arr.grid.grid_shape,
+                        },
+                    )
+                    partial_oids.append(
+                        (oid, src_grid_entry, src_arr.grid.grid_shape, False)
+                    )
+                dst_block.oid = self._tree_reduce(
+                    "sum", partial_oids, dst_grid_entry, dst_arr.grid.grid_shape
+                )
+        return dst_arr
+
+    def _advanced_single_array_subscript_old(self, sel: tuple, block_size=None, axis=0):
         def group_by_block(
             dst_grid_entry,
             dst_slice_tuples,
