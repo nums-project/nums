@@ -90,11 +90,6 @@ class ComputeCls(ComputeImp):
     def touch(self, arr):
         return isinstance(arr, np.ndarray)
 
-    def empty(self, grid_entry, grid_meta):
-        grid = ArrayGrid.from_meta(grid_meta)
-        block_shape = grid.get_block_shape(grid_entry)
-        return np.empty(block_shape, dtype=grid.dtype)
-
     def new_block(self, op_name, grid_entry, grid_meta):
         op_func = np.__getattribute__(op_name)
         grid = ArrayGrid.from_meta(grid_meta)
@@ -159,27 +154,21 @@ class ComputeCls(ComputeImp):
             result[tuple(dst_index)] = src_arr[tuple(src_index)]
         return result
 
-    def update_block_along_axis(self, dst_arr, src_arr, index_pairs, axis):
-        # Assume shape along axes != axis are of equal dim.
-        result = dst_arr.copy()
-        dst_sel = [slice(None, None)] * len(dst_arr.shape)
-        src_sel = [slice(None, None)] * len(src_arr.shape)
-        for dst_index, src_index in index_pairs:
-            dst_sel[axis] = dst_index
-            src_sel[axis] = src_index
-            result[tuple(dst_sel)] = src_arr[tuple(src_sel)]
-        return result
-
-    def update_block_along_axis2(
-        self, dst_arr, src_arr, ss, axis, dst_coord, src_coord
+    def update_block_along_axis(
+        self, dst_arr_or_args, src_arr, ss, axis, dst_coord, src_coord
     ):
         # This could be optimized using sparse arrays.
         def test_i(i, arr, coord):
-            # Inclusive?
-            return coord[axis] <= i <= coord[axis] + arr.shape[axis]
+            return coord[axis] <= i < coord[axis] + arr.shape[axis]
 
-        # For now, just assume dst_arr is always updated.
-        dst_arr = dst_arr.copy()
+        if isinstance(dst_arr_or_args, np.ndarray):
+            # For now, just assume dst_arr is always updated.
+            dst_arr = dst_arr_or_args.copy()
+        else:
+            # For initial update, we don't need to allocate zeros.
+            # We can write the BlockArray method so all ops are initial,
+            # avoiding initial allocation altogether.
+            dst_arr = np.zeros(*dst_arr_or_args)
         dst_sel = [slice(None, None)] * len(dst_arr.shape)
         src_sel = [slice(None, None)] * len(src_arr.shape)
         for dst_i, src_i in enumerate(ss):
