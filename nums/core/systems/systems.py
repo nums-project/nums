@@ -16,7 +16,7 @@
 
 import logging
 from types import FunctionType
-from typing import Any, Union, List, Dict
+from typing import Any, Union, List, Dict, Optional
 
 import ray
 
@@ -27,7 +27,8 @@ from nums.core import settings
 
 
 class SerialSystem(SystemInterface):
-    def __init__(self):
+    def __init__(self, num_cpus: Optional[int] = None):
+        self.num_cpus = int(get_num_cores()) if num_cpus is None else num_cpus
         self._remote_functions: dict = {}
 
     def init(self):
@@ -58,8 +59,8 @@ class SerialSystem(SystemInterface):
     def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
         return self._remote_functions[name](*args, **kwargs)
 
-    def num_cores_total(self):
-        return int(get_num_cores())
+    def num_cores_total(self) -> int:
+        return self.num_cpus
 
 
 class RaySystem(SystemInterface):
@@ -68,9 +69,15 @@ class RaySystem(SystemInterface):
     Implements SystemInterface for Ray.
     """
 
-    def __init__(self, use_head=False, num_nodes=None):
+    def __init__(
+        self,
+        use_head: bool = False,
+        num_nodes: Optional[int] = None,
+        num_cpus: Optional[int] = None,
+    ):
         self._use_head = use_head
         self._num_nodes = num_nodes
+        self.num_cpus = int(get_num_cores()) if num_cpus is None else num_cpus
         self._manage_ray = True
         self._remote_functions = {}
         self._actors = {}
@@ -85,7 +92,7 @@ class RaySystem(SystemInterface):
         if ray.is_initialized():
             self._manage_ray = False
         if self._manage_ray:
-            ray.init()
+            ray.init(num_cpus=self.num_cpus)
         # Compute available nodes, based on CPU resource.
         if settings.head_ip is None:
             # TODO (hme): Have this be a class argument vs. using what's set in settings directly.
@@ -131,18 +138,18 @@ class RaySystem(SystemInterface):
             self._devices.append(did)
             self._device_to_node[did] = node
 
-    def _has_cpu_resources(self, node):
+    def _has_cpu_resources(self, node: dict) -> bool:
         return self._node_cpu_resources(node) > 0.0
 
-    def _node_cpu_resources(self, node):
+    def _node_cpu_resources(self, node: dict) -> float:
         return node["Resources"]["CPU"] if "CPU" in node["Resources"] else 0.0
 
-    def _node_key(self, node):
+    def _node_key(self, node: dict) -> str:
         node_key = list(filter(lambda key: "node" in key, node["Resources"].keys()))
         assert len(node_key) == 1
         return node_key[0]
 
-    def _node_ip(self, node):
+    def _node_ip(self, node: dict) -> str:
         return self._node_key(node).split(":")[1]
 
     def shutdown(self):
@@ -166,7 +173,7 @@ class RaySystem(SystemInterface):
 
             warmup_func(n)
 
-    def put(self, value):
+    def put(self, value: Any):
         return ray.put(value)
 
     def get(self, object_ids):
@@ -190,10 +197,10 @@ class RaySystem(SystemInterface):
             options["resources"] = {node_key: 1.0 / 10 ** 4}
         return self._remote_functions[name].options(**options).remote(*args, **kwargs)
 
-    def devices(self):
+    def devices(self) -> List[DeviceID]:
         return self._devices
 
-    def num_cores_total(self):
+    def num_cores_total(self) -> int:
         num_cores = sum(
             map(lambda n: n["Resources"]["CPU"], self._device_to_node.values())
         )

@@ -22,3 +22,9 @@ def qr(a, mode="reduced"):
     if mode != "reduced":
         raise NotImplementedError("Only reduced QR decomposition is supported.")
     return linalg.qr(_instance(), a)
+
+
+def svd(a, full_matrices=True, compute_uv=True, hermitian=False):
+    if not (full_matrices and compute_uv and not hermitian):
+        raise NotImplementedError("SVD currently supported on default parameters only.")
+    return linalg.svd(_instance(), a)
