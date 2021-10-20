@@ -1,8 +1,8 @@
 These instructions explain how to set up a Ray cluster with NumS on AWS. 
-They supplement the well commented ```autoscaler-aws.yaml``` file.
-Refer to the [ray autoscaler](https://docs.ray.io/en/master/cluster/cloud.html) page for additional details. 
+They supplement the well commented ```aws-cluster.yaml``` file.
+Refer to the [ray cluster setup](https://docs.ray.io/en/master/cluster/cloud.html) page for additional details. 
 
-Prior to using this autoscaler, nums and boto3 must be installed on your local machine (```pip install nums boto3```) with your AWS credentials configured, as described in the [boto docs](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html). If you use conda, make sure to activate the correct conda environment.
+Prior to using this script, nums and boto3 must be installed on your local machine (```pip install nums boto3```) with your AWS credentials configured, as described in the [boto docs](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html). If you use conda, make sure to activate the correct conda environment.
 
 # Steps for successfully launching a NumS cluster on AWS:
 This doc aims to provide a simple cluster configuration file to launch a NumS cluster on AWS.
@@ -15,13 +15,13 @@ To get started, follow these steps in order.
 
  \
 The below walkthrough provides the following:
-  * Steps to set the configuration options for the ```autoscaler-aws.yaml``` file.
+  * Steps to set the configuration options for the ```aws-cluster.yaml``` file.
   * Steps to launch the cluster using this configuration file.
   * Provide a simple example to run on the cluster.
   * Steps to destroy the cluster.
 
 ## A. Configuration
-In the ```autoscaler-aws.yaml``` file: 
+In the ```aws-cluster.yaml``` file: 
 1. Modify the ```max_workers``` key to set the global max workers that may launch in addition to the head node.
 ```
 # The maximum number of workers nodes to launch in addition to the head node.
@@ -45,21 +45,21 @@ available_node_types:
     .
     node_config:
             InstanceType: r5.16xlarge
-            ImageId: ami-08c6f8e3871c56139 # Deep Learning AMI (Ubuntu) Version 46
+            ImageId: ami-0050625d58fa27b6d # Deep Learning AMI (Ubuntu 18.04) Version 50
             BlockDeviceMappings:
                 - DeviceName: /dev/sda1
                   Ebs:
-                      VolumeSize: 100
+                      VolumeSize: 120
 ```
 Similarly, for the ```nums.worker.default``` field, edit the ```min_workers``` key 
 to set the number of NumS workers.
 Set the ```max_workers``` key to the same value.
 ```
 	nums.worker.default:
-        	min_workers: 4
-        	max_workers: 4
+        	min_workers: 3
+        	max_workers: 3
 ```
-Edit worker node configurations here under ```node_config``` field in a similar way as done before for head node above.
+Edit worker node configurations here under the ```node_config``` field in a similar way as done before for the head node above.
 Make sure to use the correct AMI as per your region and availability zones.
 
 4. Modify the ```file_mounts``` field to indicate any directories or files to copy from the local machine to every node on the cluster, or leave it commented.
@@ -73,12 +73,12 @@ file_mounts: {
 
 5. To launch a NumS cluster, run 
 ```
-ray up autoscaler-aws.yaml -y
+ray up aws-cluster.yaml -y
 ```
 * This will launch a ray cluster with NumS. 
 
 ## C. Example
-After you launch the cluster using the steps above, you can refer to [this example](https://github.com/nums-project/nums/blob/main/autoscaler/example.py).
+After you launch the cluster using the steps above, you can refer to [this example](https://github.com/nums-project/nums/blob/main/cluster-setup/example.py).
 * In this example:
   * We first initialize ray and set the nums cluster shape.
   ```
@@ -105,12 +105,12 @@ After you launch the cluster using the steps above, you can refer to [this examp
 6. To run this example:
   * First run the following commands from your local machine to copy the example.py file to head node of the cluster
   ```
-  cd <local_path_to_this_repo>/autoscaler
-  ray rsync-up autoscaler-aws.yaml 'example.py' '/home/ubuntu'
+  cd <local_path_to_this_repo>/cluster-setup
+  ray rsync-up aws-cluster.yaml 'example.py' '/home/ubuntu'
   ```
   * Then ssh on the head node of the cluster 
   ```
-  ray attach autoscaler-aws.yaml
+  ray attach aws-cluster.yaml
   ```
   * Then on the head node, run ```python example.py``` to run this example on the cluster.
   * Then ```exit``` to terminate the ssh connection to the head node. 
@@ -119,6 +119,6 @@ After you launch the cluster using the steps above, you can refer to [this examp
 ## D. Destroying the cluster
 7. To destroy the cluster, run the following from your local machine.
 ```
-ray down autoscaler-aws.yaml
+ray down aws-cluster.yaml
 ```
-* Tip: In ```autoscler-aws.yaml``` file, set ```cache_stopped_nodes``` key  to ```False``` in the ```provider``` field to terminate the nodes and disable reuse, instead of shutting them down upon running step 7.
+* Tip: In ```aws-cluster.yaml``` file, set ```cache_stopped_nodes``` key  to ```False``` in the ```provider``` field to terminate the nodes and disable reuse, instead of shutting them down upon running step 7.
