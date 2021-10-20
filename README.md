@@ -204,4 +204,4 @@ https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html
 
 #### Cluster Setup
 NumS programs can run on a single machine, and can also seamlessly scale to large clusters. \
-Read more about [launching clusters](https://github.com/nums-project/nums/tree/master/autoscaler).
+Read more about [launching clusters](https://github.com/nums-project/nums/tree/master/cluster-setup).
