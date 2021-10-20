@@ -317,8 +317,8 @@ class BlockArray(BlockArrayBase):
                         dst_coord,
                         src_coord,
                         syskwargs={
-                            "grid_entry": src_grid_entry,
-                            "grid_shape": src_arr.grid.grid_shape,
+                            "grid_entry": dst_grid_entry,
+                            "grid_shape": dst_arr.grid.grid_shape,
                         },
                     )
         return dst_arr
