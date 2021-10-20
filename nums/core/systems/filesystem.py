@@ -159,8 +159,11 @@ def delete_file_fs(filename: AnyStr):
         return False
     # If the meta data file exists, the dir is a NumS file.
     # Delete it.
-    shutil.rmtree(filename)
-    return True
+    try:
+        shutil.rmtree(filename)
+        return True
+    except Exception as _:
+        return False
 
 
 ##############
