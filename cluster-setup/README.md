@@ -78,7 +78,7 @@ ray up aws-cluster.yaml -y
 * This will launch a ray cluster with NumS. 
 
 ## C. Example
-After you launch the cluster using the steps above, you can refer to [this example](https://github.com/nums-project/nums/blob/main/cluster-setup/example.py).
+After you launch the cluster using the steps above, you can refer to [this example](https://github.com/nums-project/nums/blob/master/cluster-setup/example.py).
 * In this example:
   * We first initialize ray and set the nums cluster shape.
   ```
