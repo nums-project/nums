@@ -22,8 +22,6 @@ from sklearn.linear_model import LogisticRegression
 from nums.core.array.application import ArrayApplication
 from nums.models.multinomial_lr import MultinomialLogisticRegression
 
-# pylint: disable = protected-access, import-outside-toplevel, import-error
-
 
 def test_multinomial_logistic(nps_app_inst: ArrayApplication):
     real_X, real_y_indices = load_iris(return_X_y=True)
@@ -54,10 +52,7 @@ def test_multinomial_logistic(nps_app_inst: ArrayApplication):
             **kwargs
         )
         lr_model.fit(X, y)
-        # runtime = time.time() - runtime
-        y_pred = lr_model.predict(
-            X
-        )  # .get() TODO we should return a nums object not np
+        y_pred = lr_model.predict(X)
         score = np.sum(y.get().argmax(axis=1) == y_pred) / num_samples
         # Sklearn multiclass lr only supports 'lbfgs', 'sag', 'saga' and 'newton-cg' solvers.
         if kwargs.get("solver") in ["lbfgs", "newton-cg"]:
@@ -65,18 +60,9 @@ def test_multinomial_logistic(nps_app_inst: ArrayApplication):
             # pylint: disable=unexpected-keyword-arg
             clf = LogisticRegression(**kwargs).fit(real_X, real_y_indices)
             ref_score = clf.score(real_X, real_y_indices)
-            print("opt", kwargs["solver"])
-            print(score, ref_score)
+            # print("opt", kwargs["solver"])
+            # print(score, ref_score)
             assert np.allclose(score, ref_score, atol=0.03)
-
-        # TODO this isn't implemented atm. does it make sense to implement?
-        # y_pred_proba = lr_model.predict_proba(X).get()
-        # TODO not sure if we need this line
-        # np.allclose(np.ones(shape=(y.shape[0],)), y_pred_proba[:, 0] + y_pred_proba[:, 1])
-        # TODO does this matter?
-        # print("norm", lr_model.grad_norm_sq(X, y).get())
-        # TODO we don't have this function implemented
-        # print("objective", lr_model.objective(X, y).get())
 
 
 if __name__ == "__main__":

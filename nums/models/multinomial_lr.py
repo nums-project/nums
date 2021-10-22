@@ -54,6 +54,7 @@ class MultinomialLogisticRegression(Model):
         self._opt = solver
         self._lr = lr
         self._m = m
+        self.lbfgs_beta = None
         self._beta = None
         self._beta0 = None
 
@@ -91,8 +92,8 @@ class MultinomialLogisticRegression(Model):
         self.feature_block_dim = X.block_shape[1]
 
         beta: BlockArray = self._app.zeros(
-            (X.shape[1], self._num_class),
-            (X.block_shape[1], self._num_class),
+            (self.feature_dim, self._num_class),
+            (self.feature_block_dim, self._num_class),
             dtype=float,
         )
         tol: BlockArray = self._app.scalar(self._tol)
@@ -130,6 +131,7 @@ class MultinomialLogisticRegression(Model):
                 dtype=X.dtype,
             )
             beta = lbfgs_optimizer.execute(X, y, beta)
+            self.lbfgs_beta = beta
         else:
             raise Exception("Unsupported optimizer specified %s." % self._opt)
         self._beta0 = beta[-1]
@@ -146,7 +148,6 @@ class MultinomialLogisticRegression(Model):
         mu = unnormalized_probs / self._app.sum(unnormalized_probs, axis=1).expand_dims(
             -1
         )
-        # print('mu', mu.get()[0])
         return mu  # probabilities for each class
 
     def objective(
@@ -239,7 +240,10 @@ class MultinomialLogisticRegression(Model):
         return self._app.sum(g * g)
 
     def predict(self, X: BlockArray):
-        pred = self.forward(X).get()
+        if self.lbfgs_beta:
+            pred = self.forward(X, self.lbfgs_beta).get()
+        else:
+            pred = self.forward(X).get()
         return np.argmax(pred, axis=-1)
 
 
