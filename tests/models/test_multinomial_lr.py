@@ -15,6 +15,7 @@
 
 
 import numpy as np
+import pytest
 
 from sklearn.datasets import load_iris
 from sklearn.linear_model import LogisticRegression
@@ -23,7 +24,10 @@ from nums.core.array.application import ArrayApplication
 from nums.models.multinomial_lr import MultinomialLogisticRegression
 
 
-def test_multinomial_logistic(nps_app_inst: ArrayApplication):
+@pytest.mark.parametrize("max_iter", [10, 2000])
+def test_multinomial_logistic(nps_app_inst: ArrayApplication, max_iter):
+    if max_iter > 100:
+        pytest.skip("skipping long tests")
     real_X, real_y_indices = load_iris(return_X_y=True)
     num_samples, _, num_classes = (
         real_X.shape[0],
@@ -37,14 +41,14 @@ def test_multinomial_logistic(nps_app_inst: ArrayApplication):
         real_y, block_shape=(100, 3)
     )  # TODO block shape? iris is 3 classes, and we seem to crash when using less than 3 here.
     param_set = [
-        {"solver": "gd", "lr": 1e-6, "tol": 1e-8, "max_iter": 10},
-        {"solver": "sgd", "lr": 1e-6, "tol": 1e-8, "max_iter": 10},
-        {"solver": "block_sgd", "lr": 1e-6, "tol": 1e-8, "max_iter": 10},
-        {"solver": "newton", "tol": 1e-8, "max_iter": 10},
-        {"solver": "newton-cg", "tol": 1e-8, "max_iter": 1000},
-        {"solver": "lbfgs", "tol": 1e-8, "max_iter": 1000},
-        {"solver": "newton-cg", "tol": 1e-8, "max_iter": 1000, "penalty": "none"},
-        {"solver": "lbfgs", "tol": 1e-8, "max_iter": 1000, "penalty": "none"},
+        {"solver": "gd", "lr": 1e-6, "tol": 1e-8, "max_iter": max_iter},
+        {"solver": "sgd", "lr": 1e-6, "tol": 1e-8, "max_iter": max_iter},
+        {"solver": "block_sgd", "lr": 1e-6, "tol": 1e-8, "max_iter": max_iter},
+        {"solver": "newton", "tol": 1e-8, "max_iter": max_iter},
+        {"solver": "newton-cg", "tol": 1e-8, "max_iter": max_iter},
+        {"solver": "lbfgs", "tol": 1e-8, "max_iter": max_iter},
+        {"solver": "newton-cg", "tol": 1e-8, "max_iter": max_iter, "penalty": "none"},
+        {"solver": "lbfgs", "tol": 1e-8, "max_iter": max_iter, "penalty": "none"},
     ]
 
     for kwargs in param_set:
@@ -72,4 +76,4 @@ if __name__ == "__main__":
 
     nums.core.settings.system_name = "serial"
     nps_app_inst = application_manager.instance()
-    test_multinomial_logistic(nps_app_inst)
+    test_multinomial_logistic(nps_app_inst, 1000)
