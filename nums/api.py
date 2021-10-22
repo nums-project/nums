@@ -63,7 +63,7 @@ def write(filename: str, ba: BlockArray) -> BlockArray:
         return _instance().write_fs(ba, filename)
 
 
-def delete(filename: str) -> BlockArray:
+def delete(filename: str) -> bool:
     """
     Args:
         filename: The name of the file to delete. This must be a file previously
