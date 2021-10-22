@@ -86,8 +86,11 @@ def read_meta_fs(filename: AnyStr):
     Read meta data from disk.
     """
     filepath = settings.pj(filename, "meta.pkl")
-    with open(filepath, "rb") as fh:
-        return pickle.load(fh)
+    try:
+        with open(filepath, "rb") as fh:
+            return pickle.load(fh)
+    except FileNotFoundError as _:
+        return None
 
 
 def save(block, filepath):
@@ -404,7 +407,7 @@ class FileSystem(object):
             result = self.cm.get(oid)
             if result is not None:
                 return result
-        raise Exception("failed to load metadata.")
+        raise FileNotFoundError("Unable to load meta data for file %s" % filename)
 
     def repartition(self, filename: AnyStr, grid_meta: Dict, syskwargs):
         """
