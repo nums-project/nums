@@ -308,7 +308,7 @@ def diag(v: BlockArray, k=0) -> BlockArray:
     return app.diag(v)
 
 
-@derived_from(np)
+@derived_from(np, doctest=False)
 def trace(a: BlockArray, offset=0, axis1=0, axis2=1, dtype=None, out=None):
     if offset != 0:
         raise NotImplementedError("offset != 0 is currently not supported.")
@@ -1027,6 +1027,7 @@ def fabs(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockAr
     )
 
 
+@derived_from(np)
 def floor(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="floor",
@@ -1037,6 +1038,7 @@ def floor(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockA
     )
 
 
+@derived_from(np)
 def invert(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="invert",
@@ -1047,6 +1049,7 @@ def invert(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Block
     )
 
 
+@derived_from(np)
 def isfinite(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="isfinite",
@@ -1057,6 +1060,7 @@ def isfinite(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Blo
     )
 
 
+@derived_from(np)
 def isinf(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="isinf",
@@ -1067,6 +1071,7 @@ def isinf(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockA
     )
 
 
+@derived_from(np)
 def isnan(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="isnan",
@@ -1077,6 +1082,7 @@ def isnan(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockA
     )
 
 
+@derived_from(np)
 def log(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="log",
@@ -1087,6 +1093,7 @@ def log(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArr
     )
 
 
+@derived_from(np)
 def log10(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="log10",
@@ -1097,6 +1104,7 @@ def log10(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockA
     )
 
 
+@derived_from(np)
 def log1p(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="log1p",
@@ -1107,6 +1115,7 @@ def log1p(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockA
     )
 
 
+@derived_from(np)
 def log2(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="log2",
@@ -1117,6 +1126,7 @@ def log2(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockAr
     )
 
 
+@derived_from(np)
 def logical_not(
     x: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1129,6 +1139,7 @@ def logical_not(
     )
 
 
+@derived_from(np)
 def negative(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="negative",
@@ -1139,6 +1150,7 @@ def negative(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Blo
     )
 
 
+@derived_from(np)
 def positive(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="positive",
@@ -1149,6 +1161,7 @@ def positive(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Blo
     )
 
 
+@derived_from(np)
 def rad2deg(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="rad2deg",
@@ -1159,6 +1172,7 @@ def rad2deg(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Bloc
     )
 
 
+@derived_from(np)
 def radians(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="radians",
@@ -1169,6 +1183,7 @@ def radians(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Bloc
     )
 
 
+@derived_from(np)
 def reciprocal(
     x: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1181,6 +1196,7 @@ def reciprocal(
     )
 
 
+@derived_from(np)
 def rint(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="rint",
@@ -1191,6 +1207,7 @@ def rint(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockAr
     )
 
 
+@derived_from(np)
 def sign(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="sign",
@@ -1201,6 +1218,7 @@ def sign(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockAr
     )
 
 
+@derived_from(np)
 def signbit(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="signbit",
@@ -1211,6 +1229,7 @@ def signbit(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Bloc
     )
 
 
+@derived_from(np)
 def sin(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="sin",
@@ -1221,6 +1240,7 @@ def sin(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArr
     )
 
 
+@derived_from(np)
 def sinh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="sinh",
@@ -1231,6 +1251,7 @@ def sinh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockAr
     )
 
 
+@derived_from(np)
 def spacing(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="spacing",
@@ -1241,6 +1262,7 @@ def spacing(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Bloc
     )
 
 
+@derived_from(np)
 def sqrt(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="sqrt",
@@ -1251,6 +1273,7 @@ def sqrt(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockAr
     )
 
 
+@derived_from(np)
 def square(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="square",
@@ -1261,6 +1284,7 @@ def square(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Block
     )
 
 
+@derived_from(np)
 def tan(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="tan",
@@ -1271,6 +1295,7 @@ def tan(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArr
     )
 
 
+@derived_from(np)
 def tanh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="tanh",
@@ -1281,6 +1306,7 @@ def tanh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockAr
     )
 
 
+@derived_from(np)
 def trunc(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     return _instance().map_uop(
         op_name="trunc",
@@ -1291,6 +1317,7 @@ def trunc(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockA
     )
 
 
+@derived_from(np)
 def add(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1304,6 +1331,7 @@ def add(
     )
 
 
+@derived_from(np)
 def arctan2(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1317,6 +1345,7 @@ def arctan2(
     )
 
 
+@derived_from(np)
 def bitwise_and(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1330,6 +1359,7 @@ def bitwise_and(
     )
 
 
+@derived_from(np)
 def bitwise_or(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1343,6 +1373,7 @@ def bitwise_or(
     )
 
 
+@derived_from(np)
 def bitwise_xor(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1356,6 +1387,7 @@ def bitwise_xor(
     )
 
 
+@derived_from(np)
 def copysign(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1369,6 +1401,7 @@ def copysign(
     )
 
 
+@derived_from(np)
 def divide(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1382,6 +1415,7 @@ def divide(
     )
 
 
+@derived_from(np)
 def equal(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1395,6 +1429,7 @@ def equal(
     )
 
 
+@derived_from(np)
 def float_power(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1408,6 +1443,7 @@ def float_power(
     )
 
 
+@derived_from(np)
 def floor_divide(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1421,6 +1457,7 @@ def floor_divide(
     )
 
 
+@derived_from(np)
 def fmax(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1434,6 +1471,7 @@ def fmax(
     )
 
 
+@derived_from(np)
 def fmin(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1447,6 +1485,7 @@ def fmin(
     )
 
 
+@derived_from(np)
 def fmod(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1460,6 +1499,7 @@ def fmod(
     )
 
 
+@derived_from(np)
 def gcd(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1473,6 +1513,7 @@ def gcd(
     )
 
 
+@derived_from(np)
 def greater(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1486,6 +1527,7 @@ def greater(
     )
 
 
+@derived_from(np)
 def greater_equal(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1499,6 +1541,7 @@ def greater_equal(
     )
 
 
+@derived_from(np)
 def heaviside(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1512,6 +1555,7 @@ def heaviside(
     )
 
 
+@derived_from(np)
 def hypot(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1525,6 +1569,7 @@ def hypot(
     )
 
 
+@derived_from(np)
 def lcm(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1538,6 +1583,7 @@ def lcm(
     )
 
 
+@derived_from(np)
 def ldexp(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1551,6 +1597,7 @@ def ldexp(
     )
 
 
+@derived_from(np)
 def left_shift(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1564,6 +1611,7 @@ def left_shift(
     )
 
 
+@derived_from(np)
 def less(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1577,6 +1625,7 @@ def less(
     )
 
 
+@derived_from(np)
 def less_equal(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1590,6 +1639,7 @@ def less_equal(
     )
 
 
+@derived_from(np)
 def logaddexp(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1603,6 +1653,7 @@ def logaddexp(
     )
 
 
+@derived_from(np)
 def logaddexp2(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1616,6 +1667,7 @@ def logaddexp2(
     )
 
 
+@derived_from(np)
 def logical_and(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1629,6 +1681,7 @@ def logical_and(
     )
 
 
+@derived_from(np)
 def logical_or(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1642,6 +1695,7 @@ def logical_or(
     )
 
 
+@derived_from(np)
 def logical_xor(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1654,7 +1708,7 @@ def logical_xor(
         kwargs=numpy_utils.ufunc_kwargs(kwargs),
     )
 
-
+@derived_from(np)
 def maximum(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1668,6 +1722,7 @@ def maximum(
     )
 
 
+@derived_from(np)
 def minimum(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1681,6 +1736,7 @@ def minimum(
     )
 
 
+@derived_from(np)
 def mod(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1694,6 +1750,7 @@ def mod(
     )
 
 
+@derived_from(np)
 def multiply(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1707,6 +1764,7 @@ def multiply(
     )
 
 
+@derived_from(np)
 def nextafter(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1720,6 +1778,7 @@ def nextafter(
     )
 
 
+@derived_from(np)
 def not_equal(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1733,6 +1792,7 @@ def not_equal(
     )
 
 
+@derived_from(np)
 def power(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1746,6 +1806,7 @@ def power(
     )
 
 
+@derived_from(np)
 def remainder(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1759,6 +1820,7 @@ def remainder(
     )
 
 
+@derived_from(np)
 def right_shift(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1772,6 +1834,7 @@ def right_shift(
     )
 
 
+@derived_from(np)
 def subtract(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -1785,6 +1848,7 @@ def subtract(
     )
 
 
+@derived_from(np)
 def true_divide(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
