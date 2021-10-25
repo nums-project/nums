@@ -144,8 +144,9 @@ if __name__ == "__main__":
     from nums.core import application_manager
 
     nps_app_inst = application_manager.instance()
-    test_basic(nps_app_inst)
+
+    # test_basic(nps_app_inst)
     test_shuffle(nps_app_inst)
-    test_shuffle_subscript_ops(nps_app_inst)
-    test_default_random(nps_app_inst)
-    test_blockarray_perm(nps_app_inst)
+    # test_shuffle_subscript_ops(nps_app_inst)
+    # test_default_random(nps_app_inst)
+    # test_blockarray_perm(nps_app_inst)

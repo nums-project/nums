@@ -18,7 +18,6 @@ import itertools
 
 import numpy as np
 
-from nums.core.array import selection
 from nums.core.array import utils as array_utils
 from nums.core.array.base import BlockArrayBase, Block
 from nums.core.array.view import ArrayView
@@ -29,11 +28,16 @@ from nums.core.compute.compute_manager import ComputeManager
 class BlockArray(BlockArrayBase):
     @classmethod
     def empty(cls, shape, block_shape, dtype, cm: ComputeManager):
+        return BlockArray.create("empty", shape, block_shape, dtype, cm)
+
+    @classmethod
+    def create(cls, create_op_name, shape, block_shape, dtype, cm: ComputeManager):
         grid = ArrayGrid(shape=shape, block_shape=block_shape, dtype=dtype.__name__)
         grid_meta = grid.to_meta()
         arr = BlockArray(grid, cm)
         for grid_entry in grid.get_entry_iterator():
-            arr.blocks[grid_entry].oid = cm.empty(
+            arr.blocks[grid_entry].oid = cm.new_block(
+                create_op_name,
                 grid_entry,
                 grid_meta,
                 syskwargs={"grid_entry": grid_entry, "grid_shape": grid.grid_shape},
@@ -245,71 +249,9 @@ class BlockArray(BlockArrayBase):
         return av[item].create(BlockArray)
 
     def _advanced_single_array_subscript(self, sel: tuple, block_size=None, axis=0):
-        def group_by_block(
-            dst_grid_entry,
-            dst_slice_tuples,
-            src_grid,
-            dst_index_list,
-            src_index_list,
-            axis=0,
-        ):
-            # Block grid entries needed to write to given dst_slice_selection.
-            src_blocks = {}
-            dst_slice_np = np.array(dst_slice_tuples).T
-            dst_index_arr = np.array(dst_index_list)
-            src_index_arr = np.array(src_index_list)
-            # Pick the smallest type to represent indices.
-            # A set of these indices may be transmitted over the network,
-            # so we want to pick the smallest encoding possible.
-            index_types = [
-                (2 ** 8, np.uint8),
-                (2 ** 16, np.uint16),
-                (2 ** 32, np.uint32),
-                (2 ** 64, np.uint64),
-            ]
-            index_type = None
-            for bound, curr_index_type in index_types:
-                if np.all(np.array(src_grid.block_shape[axis]) < bound) and np.all(
-                    dst_slice_np[1][axis] < bound
-                ):
-                    index_type = curr_index_type
-                    break
-            if index_type is None:
-                raise Exception("Unable to encode block indices, blocks are too large.")
-            dst_entry_test = list(dst_grid_entry[:axis]) + list(
-                dst_grid_entry[axis + 1 :]
-            )
-            num_pairs_check = 0
-            for grid_entry in src_grid.get_entry_iterator():
-                # Must match on every entry except axis.
-                src_entry_test = list(grid_entry[:axis]) + list(grid_entry[axis + 1 :])
-                if dst_entry_test != src_entry_test:
-                    # Skip this block.
-                    continue
-                src_slice_np = np.array(src_grid.get_slice_tuples(grid_entry)).T
-                index_pairs = []
-                for i in range(src_index_arr.shape[0]):
-                    src_index = src_index_arr[i]
-                    dst_index = dst_index_arr[i]
-                    if np.all(
-                        (src_slice_np[0][axis] <= src_index)
-                        & (src_index < src_slice_np[1][axis])
-                    ):
-                        index_pair = (
-                            np.array(
-                                dst_index - dst_slice_np[0][axis], dtype=index_type
-                            ),
-                            np.array(
-                                src_index - src_slice_np[0][axis], dtype=index_type
-                            ),
-                        )
-                        index_pairs.append(index_pair)
-                        num_pairs_check += 1
-                if len(index_pairs) > 0:
-                    src_blocks[grid_entry] = index_pairs
-            assert num_pairs_check == len(dst_index_list)
-            return src_blocks
-
+        # Create output array along the axis of the selection operation.
+        # We don't allocate zeros for output array. Instead, we let the update kernel
+        # create the initial set of zeros to save some memory.
         array = sel[0]
         assert len(array.shape) == 1
         assert np.all(0 <= array) and np.all(array < self.shape[axis])
@@ -324,37 +266,61 @@ class BlockArray(BlockArrayBase):
             + [block_size]
             + list(self.block_shape[axis + 1 :])
         )
-        dst_arr = BlockArray.empty(
-            shape=shape, block_shape=block_shape, dtype=self.dtype, cm=self.cm
+        dst_arr = BlockArray(
+            ArrayGrid(shape=shape, block_shape=block_shape, dtype=self.dtype.__name__),
+            cm=self.cm,
         )
-
-        for dst_grid_entry in dst_arr.grid.get_entry_iterator():
-            dst_block: Block = dst_arr.blocks[dst_grid_entry]
-            dst_slice_selection = dst_arr.grid.get_slice(dst_grid_entry)
-            dst_index_array = selection.slice_to_range(
-                dst_slice_selection[axis], shape[axis]
-            )
-            src_index_array = array[dst_slice_selection[axis]]
-            assert len(dst_index_array) == len(src_index_array)
-            # Can this be sped up by grouping all src blocks outside of this loop?
-            src_blocks = group_by_block(
-                dst_grid_entry,
-                dst_arr.grid.get_slice_tuples(dst_grid_entry),
-                self.grid,
-                dst_index_array,
-                src_index_array,
-                axis,
-            )
-            for src_grid_entry in src_blocks:
-                src_block: Block = self.blocks[src_grid_entry]
-                index_pairs = src_blocks[src_grid_entry]
-                syskwargs = {
-                    "grid_entry": dst_grid_entry,
-                    "grid_shape": dst_arr.grid.grid_shape,
-                }
-                dst_block.oid = self.cm.update_block_along_axis(
-                    dst_block.oid, src_block.oid, index_pairs, axis, syskwargs=syskwargs
-                )
+        # Along axis, we don't know which destination blocks depend on which source blocks.
+        # For every destination block,
+        # apply sel to every source block.
+        # If the destination block depends on the source block, apply the changes and return a
+        # new array, otherwise return the unchanged array.
+        # For k blocks along axis, this has worst case complexity of generating k^2 copies of
+        # the destination block.
+        # With careful referencing, we can ensure the intermediate blocks are free for GC.
+        # Once all copies per destination block are scheduled, schedule a reduction across
+        # all the blocks.
+        src_arr = self
+        dst_grid_shape = dst_arr.grid.grid_shape
+        src_grid_shape = src_arr.grid.grid_shape
+        ss = self.cm.put(array)
+        for i in range(dst_grid_shape[axis]):
+            for dst_grid_entry in dst_arr.grid.get_entry_iterator():
+                if dst_grid_entry[axis] != i:
+                    # Compute the value of dest_arr for each block along axis.
+                    # e.g. for a 2 dim array, we fix the row and compute the column blocks.
+                    continue
+                dst_block: Block = dst_arr.blocks[dst_grid_entry]
+                dst_coord: tuple = dst_arr.grid.get_entry_coordinates(dst_grid_entry)
+                for j in range(src_grid_shape[axis]):
+                    # Apply sel from each block along axis of src_arr.
+                    # e.g. for 2 dim array, we fix the column blocks
+                    # given by dst_grid_entry, and iterate over the rows.
+                    src_grid_entry = tuple(
+                        list(dst_grid_entry[:axis])
+                        + [j]
+                        + list(dst_grid_entry[axis + 1 :])
+                    )
+                    src_block: Block = src_arr.blocks[src_grid_entry]
+                    src_coord: tuple = src_arr.grid.get_entry_coordinates(
+                        src_grid_entry
+                    )
+                    if dst_block.oid is None:
+                        dst_arg = (dst_block.shape, dst_block.dtype)
+                    else:
+                        dst_arg = dst_block.oid
+                    dst_block.oid = self.cm.update_block_along_axis(
+                        dst_arg,
+                        src_block.oid,
+                        ss,
+                        axis,
+                        dst_coord,
+                        src_coord,
+                        syskwargs={
+                            "grid_entry": dst_grid_entry,
+                            "grid_shape": dst_arr.grid.grid_shape,
+                        },
+                    )
         return dst_arr
 
     def __setitem__(self, key, value):
