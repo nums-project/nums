@@ -91,10 +91,8 @@ def test_rwd(app_inst: ArrayApplication):
         assert write_result_ba[grid_entry].get() == write_result_np[grid_entry]
     ba_read: BlockArray = app_inst.read_fs(filename)
     assert app_inst.get(app_inst.allclose(ba, ba_read))
-    delete_result_ba: BlockArray = app_inst.delete_fs(filename)
-    delete_result_np = delete_result_ba.get()
-    for grid_entry in delete_result_ba.grid.get_entry_iterator():
-        assert delete_result_ba[grid_entry].get() == delete_result_np[grid_entry]
+    del_result: bool = app_inst.delete_fs(filename)
+    assert del_result
 
 
 def _read_serially(filename, has_header):
