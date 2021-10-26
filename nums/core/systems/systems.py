@@ -26,6 +26,9 @@ from nums.core.systems.utils import get_private_ip, get_num_cores
 from nums.core import settings
 
 
+# pylint: disable = unused-argument
+
+
 class SerialSystem(SystemInterface):
     def __init__(self, num_cpus: Optional[int] = None):
         self.num_cpus = int(get_num_cores()) if num_cpus is None else num_cpus

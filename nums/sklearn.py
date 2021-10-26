@@ -2,7 +2,6 @@ from nums.core.array.blockarray import BlockArray
 from nums.core.application_manager import (
     instance,
     call_on_create,
-    RaySystem,
     ArrayApplication,
 )
 
