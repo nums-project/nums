@@ -49,7 +49,14 @@ def train_test_split(*arrays, **options):
 
 
 def build_sklearn_actor(cls: type):
+    from sklearn.base import ClassifierMixin, RegressorMixin
+
     name = cls.__name__
+    predict_dtype = None
+    if issubclass(cls, ClassifierMixin):
+        predict_dtype = int
+    elif issubclass(cls, RegressorMixin):
+        predict_dtype = float
 
     class ModelActor(object):
         def __init__(self, *args, **kwargs):
@@ -58,6 +65,8 @@ def build_sklearn_actor(cls: type):
         def fit(self, X, y):
             self.instance = self.instance.fit(X, y)
 
+        # Use TransformerMixin if it's exclusive?
+        # transform() ?
         def fit_transform(self, X, y=None):
             return self.instance.fit_transform(X, y)
 
@@ -76,6 +85,7 @@ def build_sklearn_actor(cls: type):
                 name, *args, device_id=device_id, **kwargs
             )
 
+        # (all functions) test inputs are single block, if not warn about performance
         def fit(self, X: BlockArray, y: BlockArray):
             instance().cm.call_actor_method(
                 self.actor, "fit", X.flattened_oids()[0], y.flattened_oids()[0]
@@ -91,13 +101,12 @@ def build_sklearn_actor(cls: type):
                 r_oid, shape=X.shape, dtype=float, cm=instance().cm
             )
 
-        # TODO: Note the returned dtype => This is the right interface for CLASSIFIERS only.
         def predict(self, X: BlockArray):
             r_oid = instance().cm.call_actor_method(
                 self.actor, "predict", X.flattened_oids()[0]
             )
             return BlockArray.from_oid(
-                r_oid, shape=(X.shape[0],), dtype=int, cm=instance().cm
+                r_oid, shape=(X.shape[0],), dtype=predict_dtype, cm=instance().cm
             )
 
         def score(self, X: BlockArray, y: BlockArray, sample_weight: BlockArray = None):
@@ -118,15 +127,16 @@ def build_sklearn_actor(cls: type):
     return NumsModel
 
 
-def build_classifier_actors():
+def build_supervised_actors():
     from sklearn.neural_network import MLPClassifier
     from sklearn.neighbors import KNeighborsClassifier
-    from sklearn.svm import SVC
+    from sklearn.svm import SVC, SVR
     from sklearn.gaussian_process import GaussianProcessClassifier
     from sklearn.tree import DecisionTreeClassifier
     from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
     from sklearn.naive_bayes import GaussianNB
     from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
+    from sklearn.linear_model import LogisticRegression, LinearRegression, Ridge, Lasso, ElasticNet
 
     skl_models = [
         MLPClassifier,
@@ -138,6 +148,12 @@ def build_classifier_actors():
         AdaBoostClassifier,
         GaussianNB,
         QuadraticDiscriminantAnalysis,
+        LogisticRegression,
+        LinearRegression,
+        Ridge,
+        Lasso,
+        ElasticNet,
+        SVR,
     ]
     return (build_sklearn_actor(skl_model) for skl_model in skl_models)
 
@@ -152,7 +168,13 @@ def build_classifier_actors():
     AdaBoostClassifier,
     GaussianNB,
     QuadraticDiscriminantAnalysis,
-) = build_classifier_actors()
+    LogisticRegression,
+    LinearRegression,
+    Ridge,
+    Lasso,
+    ElasticNet,
+    SVR,
+) = build_supervised_actors()
 
 
 def build_preprocessors():
