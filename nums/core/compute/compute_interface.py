@@ -11,9 +11,6 @@ class ComputeInterface(object):
         """
         raise NotImplementedError()
 
-    def empty(self, grid_entry: Tuple, grid_meta: Dict, syskwargs: Dict):
-        raise NotImplementedError()
-
     def new_block(
         self, op_name: str, grid_entry: Tuple, grid_meta: Dict, syskwargs: Dict
     ):
@@ -57,7 +54,7 @@ class ComputeInterface(object):
         raise NotImplementedError()
 
     def update_block_along_axis(
-        self, dst_arr, src_arr, index_pairs, axis, syskwargs: Dict
+        self, dst_arr, src_arr, ss, axis, dst_coord, src_coord, syskwargs: Dict
     ):
         raise NotImplementedError()
 
