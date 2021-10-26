@@ -1,7 +1,8 @@
+import pytest
+
 from nums.core.array.blockarray import BlockArray
 import nums.numpy as nps
 from nums.core.array.application import ArrayApplication
-
 
 # pylint: disable = import-outside-toplevel
 
@@ -81,11 +82,10 @@ def exec_serial(size, features):
     )
 
 
+@pytest.mark.skip
 def test_parallel_sklearn(nps_app_inst: ArrayApplication):
-    from nums.core.systems.systems import RaySystem
+    assert nps_app_inst is not None
 
-    if not isinstance(nps_app_inst.cm.system, RaySystem):
-        return
     size, feats = 10000, 10
     exec_parallel(size, feats)
 
@@ -98,6 +98,41 @@ def test_parallel_sklearn(nps_app_inst: ArrayApplication):
     # print("serial time", time.time() - t)
 
 
+def test_classifiers(nps_app_inst: ArrayApplication):
+    assert nps_app_inst is not None
+    import numpy as np
+    from sklearn import svm
+    from sklearn import preprocessing
+    from nums.sklearn import StandardScaler
+    from nums.sklearn import SVC
+
+    size, feats = 100, 10
+    X = np.random.rand(size, feats)
+    y = np.random.randint(2, size=size)
+    pX = preprocessing.StandardScaler().fit_transform(X)
+
+    nps_X = nps.array(X)
+    nps_y = nps.array(y)
+    nps_pX = StandardScaler().fit_transform(nps_X)
+    assert np.allclose(pX, nps_pX.get())
+
+    sklearn_model = svm.SVC()
+    sklearn_model.fit(pX, y)
+    y_pred = sklearn_model.predict(pX)
+
+    nps_model = SVC()
+    nps_model.fit(nps_pX, nps_y)
+    nps_y_pred = nps_model.predict(nps_pX)
+
+    assert np.allclose(y_pred, nps_y_pred.get())
+
+
 if __name__ == "__main__":
-    pass
-    # test_parallel_sklearn()
+    # pylint: disable=import-error
+    from nums.core import application_manager
+    from nums.core import settings
+
+    settings.system_name = "ray"
+    nps_app_inst = application_manager.instance()
+    # test_parallel_sklearn(nps_app_inst)
+    test_classifiers(nps_app_inst)

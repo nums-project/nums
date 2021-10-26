@@ -30,6 +30,7 @@ class SerialSystem(SystemInterface):
     def __init__(self, num_cpus: Optional[int] = None):
         self.num_cpus = int(get_num_cores()) if num_cpus is None else num_cpus
         self._remote_functions: dict = {}
+        self._actors: dict = {}
 
     def init(self):
         pass
@@ -59,6 +60,16 @@ class SerialSystem(SystemInterface):
     def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
         return self._remote_functions[name](*args, **kwargs)
 
+    def register_actor(self, name: str, cls: type):
+        assert name not in self._actors
+        self._actors[name] = cls
+
+    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+        return self._actors[name](*args, **kwargs)
+
+    def call_actor_method(self, actor, method: str, *args, **kwargs):
+        return getattr(actor, method)(*args, **kwargs)
+
     def num_cores_total(self) -> int:
         return self.num_cpus
 
@@ -80,7 +91,7 @@ class RaySystem(SystemInterface):
         self.num_cpus = int(get_num_cores()) if num_cpus is None else num_cpus
         self._manage_ray = True
         self._remote_functions = {}
-        self._actors = {}
+        self._actors: dict = {}
         self._actor_node_index = 0
         self._available_nodes = []
         self._head_node = None
@@ -206,7 +217,6 @@ class RaySystem(SystemInterface):
         )
         return int(num_cores)
 
-    # TODO: Need interface and CM support for this.
     def register_actor(self, name: str, cls: type):
         assert name not in self._actors
         self._actors[name] = ray.remote(cls)
@@ -221,6 +231,9 @@ class RaySystem(SystemInterface):
         node_key = self._node_key(node)
         options = {"resources": {node_key: 1.0 / 10 ** 4}}
         return actor.options(**options).remote(*args, **kwargs)
+
+    def call_actor_method(self, actor, method: str, *args, **kwargs):
+        return getattr(actor, method).remote(*args, **kwargs)
 
 
 class RaySystemStockScheduler(RaySystem):

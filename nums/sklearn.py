@@ -1,17 +1,22 @@
 from nums.core.array.blockarray import BlockArray
-from nums.core.application_manager import instance, RaySystem
+from nums.core.application_manager import (
+    instance,
+    call_on_create,
+    RaySystem,
+    ArrayApplication,
+)
 
 
 # pylint: disable = import-outside-toplevel
 
 
-def _register_train_test_split():
+def _register_train_test_split(app: ArrayApplication):
     from sklearn import model_selection
 
-    instance().cm.register("train_test_split", model_selection.train_test_split, {})
+    app.cm.register("train_test_split", model_selection.train_test_split, {})
 
 
-_register_train_test_split()
+call_on_create(_register_train_test_split)
 
 
 def train_test_split(*arrays, **options):
@@ -44,18 +49,6 @@ def train_test_split(*arrays, **options):
     return results
 
 
-def register_actor(name: str, cls: type):
-    assert isinstance(instance().cm.system, RaySystem)
-    sys: RaySystem = instance().cm.system
-    sys.register_actor(name, cls)
-
-
-def make_actor(name: str, *args, device_id, **kwargs):
-    assert isinstance(instance().cm.system, RaySystem)
-    sys: RaySystem = instance().cm.system
-    return sys.make_actor(name, *args, device_id=device_id, **kwargs)
-
-
 def build_sklearn_actor(cls: type):
     name = cls.__name__
 
@@ -80,22 +73,30 @@ def build_sklearn_actor(cls: type):
             device_id = None
             if self.__class__ in _place_on_node_0:
                 device_id = instance().cm.devices()[0]
-            self.actor = make_actor(name, *args, device_id=device_id, **kwargs)
+            self.actor = instance().cm.make_actor(
+                name, *args, device_id=device_id, **kwargs
+            )
 
         def fit(self, X: BlockArray, y: BlockArray):
-            self.actor.fit.remote(X.flattened_oids()[0], y.flattened_oids()[0])
+            instance().cm.call_actor_method(
+                self.actor, "fit", X.flattened_oids()[0], y.flattened_oids()[0]
+            )
 
         def fit_transform(self, X: BlockArray, y: BlockArray = None):
             if y is not None:
                 y = y.flattened_oids()[0]
-            r_oid = self.actor.fit_transform.remote(X.flattened_oids()[0], y)
+            r_oid = instance().cm.call_actor_method(
+                self.actor, "fit_transform", X.flattened_oids()[0], y
+            )
             return BlockArray.from_oid(
                 r_oid, shape=X.shape, dtype=float, cm=instance().cm
             )
 
         # TODO: Note the returned dtype => This is the right interface for CLASSIFIERS only.
         def predict(self, X: BlockArray):
-            r_oid = self.actor.predict.remote(X.flattened_oids()[0])
+            r_oid = instance().cm.call_actor_method(
+                self.actor, "predict", X.flattened_oids()[0]
+            )
             return BlockArray.from_oid(
                 r_oid, shape=(X.shape[0],), dtype=int, cm=instance().cm
             )
@@ -103,14 +104,18 @@ def build_sklearn_actor(cls: type):
         def score(self, X: BlockArray, y: BlockArray, sample_weight: BlockArray = None):
             if sample_weight is not None:
                 sample_weight = sample_weight.flattened_oids()[0]
-            r_oid = self.actor.score.remote(
-                X.flattened_oids()[0], y.flattened_oids()[0], sample_weight
+            r_oid = instance().cm.call_actor_method(
+                self.actor,
+                "score",
+                X.flattened_oids()[0],
+                y.flattened_oids()[0],
+                sample_weight,
             )
             return BlockArray.from_oid(r_oid, shape=(), dtype=float, cm=instance().cm)
 
-    ModelActor.__name__ = cls.__name__ + "Actor"
     NumsModel.__name__ = "Nums" + cls.__name__
-    register_actor(name, ModelActor)
+    ModelActor.__name__ = cls.__name__ + "Actor"
+    call_on_create(lambda app: app.cm.register_actor(name, ModelActor))
     return NumsModel
 
 
@@ -124,7 +129,6 @@ def build_classifier_actors():
     from sklearn.naive_bayes import GaussianNB
     from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 
-    assert isinstance(instance().cm.system, RaySystem)
     skl_models = [
         MLPClassifier,
         KNeighborsClassifier,

@@ -56,5 +56,33 @@ class SystemInterface(object):
             "Implement RPC as e.g. " "self.remote_functions[name](*args, **new_kwargs)"
         )
 
+    def register_actor(self, name: str, cls: type):
+        """
+        :param name: Name of the actor. This should be unique.
+        :param cls: The Python class to convert into an actor.
+        :return: None
+        """
+        raise NotImplementedError()
+
+    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+        """
+        :param name: The name of the actor.
+        :param args: args to pass to __init__.
+        :param device_id: A device id. This is captured by the system and not passed to __init__.
+        :param kwargs: kwargs to pass to __init.
+        :return: An Actor.
+        """
+        raise NotImplementedError()
+
+    def call_actor_method(self, actor, method: str, *args, **kwargs):
+        """
+        :param actor: Actor instance.
+        :param method: Method name.
+        :param args: Method args.
+        :param kwargs: Method kwargs.
+        :return: Result of calling method.
+        """
+        raise NotImplementedError()
+
     def num_cores_total(self):
         raise NotImplementedError()
