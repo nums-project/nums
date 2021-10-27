@@ -58,6 +58,15 @@ def build_sklearn_actor(cls: type):
     elif issubclass(cls, RegressorMixin):
         predict_dtype = float
 
+    # NOTE:
+    # A possibly cleaner way of building actor classes is to check all the superclasses, then
+    # procedurally add the methods inherited from those classes. Many superclasses can be found in
+    # sklearn/base.py, and some in other subpackages. For example,
+    # TransformerMixin: add fit_transform(), transform() (fit_transform calls transform)
+    # ClusterMixin: add fit_predict()
+    # LinearClassifierMixin: add decision_function()
+    # BaseEstimator: add get_params(), set_params()
+
     class ModelActor(object):
         def __init__(self, *args, **kwargs):
             self.instance = cls(*args, **kwargs)
@@ -65,8 +74,6 @@ def build_sklearn_actor(cls: type):
         def fit(self, X, y):
             self.instance = self.instance.fit(X, y)
 
-        # Use TransformerMixin if it's exclusive?
-        # transform() ?
         def fit_transform(self, X, y=None):
             return self.instance.fit_transform(X, y)
 
@@ -85,7 +92,7 @@ def build_sklearn_actor(cls: type):
                 name, *args, device_id=device_id, **kwargs
             )
 
-        # (all functions) test inputs are single block, if not warn about performance
+        # TODO: (all functions) test inputs are single block, if not warn about performance
         def fit(self, X: BlockArray, y: BlockArray):
             instance().cm.call_actor_method(
                 self.actor, "fit", X.flattened_oids()[0], y.flattened_oids()[0]
@@ -128,24 +135,49 @@ def build_sklearn_actor(cls: type):
 
 
 def build_supervised_actors():
-    from sklearn.neural_network import MLPClassifier
-    from sklearn.neighbors import KNeighborsClassifier
+    from sklearn.neural_network import MLPClassifier, MLPRegressor
+    from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
     from sklearn.svm import SVC, SVR
-    from sklearn.gaussian_process import GaussianProcessClassifier
-    from sklearn.tree import DecisionTreeClassifier
-    from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+    from sklearn.gaussian_process import (
+        GaussianProcessClassifier,
+        GaussianProcessRegressor,
+    )
+    from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+    from sklearn.ensemble import (
+        RandomForestClassifier,
+        AdaBoostClassifier,
+        GradientBoostingClassifier,
+        RandomForestRegressor,
+        AdaBoostRegressor,
+        GradientBoostingRegressor,
+    )
     from sklearn.naive_bayes import GaussianNB
     from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
-    from sklearn.linear_model import LogisticRegression, LinearRegression, Ridge, Lasso, ElasticNet
+    from sklearn.linear_model import (
+        LogisticRegression,
+        LinearRegression,
+        Ridge,
+        Lasso,
+        ElasticNet,
+    )
 
     skl_models = [
         MLPClassifier,
+        MLPRegressor,
         KNeighborsClassifier,
+        KNeighborsRegressor,
         SVC,
+        SVR,
         GaussianProcessClassifier,
+        GaussianProcessRegressor,
         DecisionTreeClassifier,
+        DecisionTreeRegressor,
         RandomForestClassifier,
+        RandomForestRegressor,
         AdaBoostClassifier,
+        AdaBoostRegressor,
+        GradientBoostingClassifier,
+        GradientBoostingRegressor,
         GaussianNB,
         QuadraticDiscriminantAnalysis,
         LogisticRegression,
@@ -153,19 +185,27 @@ def build_supervised_actors():
         Ridge,
         Lasso,
         ElasticNet,
-        SVR,
     ]
     return (build_sklearn_actor(skl_model) for skl_model in skl_models)
 
 
 (
     MLPClassifier,
+    MLPRegressor,
     KNeighborsClassifier,
+    KNeighborsRegressor,
     SVC,
+    SVR,
     GaussianProcessClassifier,
+    GaussianProcessRegressor,
     DecisionTreeClassifier,
+    DecisionTreeRegressor,
     RandomForestClassifier,
+    RandomForestRegressor,
     AdaBoostClassifier,
+    AdaBoostRegressor,
+    GradientBoostingClassifier,
+    GradientBoostingRegressor,
     GaussianNB,
     QuadraticDiscriminantAnalysis,
     LogisticRegression,
@@ -173,7 +213,6 @@ def build_supervised_actors():
     Ridge,
     Lasso,
     ElasticNet,
-    SVR,
 ) = build_supervised_actors()
 
 

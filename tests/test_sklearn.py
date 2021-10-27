@@ -47,7 +47,7 @@ def classifier_pipelines(
 
 
 def regressor_pipelines(
-        X, y, train_test_split, StandardScaler, RobustScaler, Ridge, ElasticNet
+    X, y, train_test_split, StandardScaler, RobustScaler, Ridge, ElasticNet
 ):
 
     X_train, X_test, y_train, y_test = train_test_split(X, y)
@@ -181,6 +181,46 @@ def test_classifiers(nps_app_inst: ArrayApplication):
     nps_y_pred = nps_model.predict(nps_pX)
 
     assert np.allclose(y_pred, nps_y_pred.get())
+
+
+def test_regressors(nps_app_inst: ArrayApplication):
+    assert nps_app_inst is not None
+    from nums.sklearn import (
+        MLPRegressor,
+        KNeighborsRegressor,
+        SVR,
+        GaussianProcessRegressor,
+        DecisionTreeRegressor,
+        RandomForestRegressor,
+        AdaBoostRegressor,
+        GradientBoostingRegressor,
+        LinearRegression,
+        Ridge,
+        Lasso,
+        ElasticNet,
+    )
+
+    regressors = [
+        MLPRegressor,
+        KNeighborsRegressor,
+        SVR,
+        GaussianProcessRegressor,
+        DecisionTreeRegressor,
+        RandomForestRegressor,
+        AdaBoostRegressor,
+        GradientBoostingRegressor,
+        LinearRegression,
+        Ridge,
+        Lasso,
+        ElasticNet,
+    ]
+    size, feats = 100, 10
+    X: BlockArray = nps.random.rand(size, feats)
+    y: BlockArray = nps.random.rand(size, 1)
+    for Regressor in regressors:
+        nps_model = Regressor()
+        nps_model.fit(X, y)
+        assert nps_model.predict(X).dtype is float
 
 
 if __name__ == "__main__":
