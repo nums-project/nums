@@ -61,7 +61,7 @@ class LBFGSMemory(object):
 
 
 class LBFGS(object):
-    def __init__(self, model: GLM, m=3, max_iter=100, thresh=1e-5, dtype=np.float64):
+    def __init__(self, model: GLM, m=10, max_iter=100, thresh=1e-4, dtype=np.float64):
         self.app: ArrayApplication = _instance()
         self.model: GLM = model
         self.m = m
@@ -151,7 +151,8 @@ class LBFGS(object):
         return theta
 
     def converged(self, g):
-        return self.app.sqrt(g.T @ g) < self.thresh
+        # Use this criteria (vs gradient norm) as it is standard in sklearn.
+        return self.app.max(self.app.abs(g)) <= self.thresh
 
 
 if __name__ == "__main__":
