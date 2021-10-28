@@ -64,7 +64,7 @@ class LBFGSMemory(object):
 
 
 class LBFGS(object):
-    def __init__(self, model: GLM, m=10, max_iter=100, thresh=1e-4, dtype=np.float64):
+    def __init__(self, model: Model, m=10, max_iter=100, thresh=1e-4, dtype=np.float64):
         self.app: ArrayApplication = _instance()
         self.model: Model = model
         self.m = m
