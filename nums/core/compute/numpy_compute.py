@@ -91,11 +91,6 @@ class ComputeCls(ComputeImp):
     def touch(self, arr):
         return isinstance(arr, np.ndarray)
 
-    def empty(self, grid_entry, grid_meta):
-        grid = ArrayGrid.from_meta(grid_meta)
-        block_shape = grid.get_block_shape(grid_entry)
-        return np.empty(block_shape, dtype=grid.dtype)
-
     def new_block(self, op_name, grid_entry, grid_meta):
         op_func = np.__getattribute__(op_name)
         grid = ArrayGrid.from_meta(grid_meta)
@@ -160,16 +155,55 @@ class ComputeCls(ComputeImp):
             result[tuple(dst_index)] = src_arr[tuple(src_index)]
         return result
 
-    def update_block_along_axis(self, dst_arr, src_arr, index_pairs, axis):
-        # Assume shape along axes != axis are of equal dim.
-        result = dst_arr.copy()
-        dst_sel = [slice(None, None)] * len(dst_arr.shape)
+    def update_block_along_axis(
+        self, dst_arr_or_args, src_arr, ss, axis, dst_coord, src_coord
+    ):
+        # Can this be optimized using sparse arrays?
+
+        # We don't want to create or copy the destination array
+        # unless we're performing an operation on it.
+        # We just need the destination array's shape
+        # to determine whether we need to modify it.
+        if isinstance(dst_arr_or_args, np.ndarray):
+            dst_arr_shape = dst_arr_or_args.shape
+        else:
+            dst_arr_shape, _ = dst_arr_or_args
+
+        # Compute the set of indices that need to be updated.
+        # This could be optimized, but in its current state, it's simple and not a bottleneck.
+        dst_vec = np.arange(len(ss))
+        dst_mask = (dst_coord[axis] <= dst_vec) & (
+            dst_vec < dst_coord[axis] + dst_arr_shape[axis]
+        )
+        src_vec = np.array(ss)
+        src_mask = (src_coord[axis] <= src_vec) & (
+            src_vec < src_coord[axis] + src_arr.shape[axis]
+        )
+        mask = dst_mask & src_mask
+
+        dst_vec = dst_vec[mask] - dst_coord[axis]
+        src_vec = src_vec[mask] - src_coord[axis]
+        if dst_vec.shape[0] == 0:
+            # Nothing to do for this array.
+            # Return input args.
+            # We do this to save on copy operations,
+            # which dominate the execution time of this function.
+            return dst_arr_or_args
+
+        if isinstance(dst_arr_or_args, np.ndarray):
+            # We need to update the array.
+            dst_arr = dst_arr_or_args.copy()
+        else:
+            # We allocate an array of zeros on initial update.
+            dst_arr = np.zeros(shape=dst_arr_or_args[0], dtype=dst_arr_or_args[1])
+
+        # Create and apply the subscript argument.
+        dst_sel = [slice(None, None)] * len(dst_arr_shape)
         src_sel = [slice(None, None)] * len(src_arr.shape)
-        for dst_index, src_index in index_pairs:
-            dst_sel[axis] = dst_index
-            src_sel[axis] = src_index
-            result[tuple(dst_sel)] = src_arr[tuple(src_sel)]
-        return result
+        dst_sel[axis] = dst_vec
+        src_sel[axis] = src_vec
+        dst_arr[tuple(dst_sel)] = src_arr[tuple(src_sel)]
+        return dst_arr
 
     def diag(self, arr, offset):
         return np.diag(arr, k=offset)
