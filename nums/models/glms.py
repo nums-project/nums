@@ -146,7 +146,8 @@ class GLM(object):
             else:
                 beta = block_sgd(self, beta, X, y, tol, max_iter, lr)
         elif self._opt == "newton" or self._opt == "newton-cg":
-            warnings.warn("Specified newton-cg solver, using newton instead.")
+            if self._opt == "newton-cg":
+                warnings.warn("Specified newton-cg solver, using newton instead.")
             beta = newton(self._app, self, beta, X, y, tol, max_iter)
         elif self._opt == "irls":
             # TODO (hme): Provide irls for all GLMs.
