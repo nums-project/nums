@@ -235,7 +235,7 @@ class BlockArray(BlockArrayBase):
         else:
             raise NotImplementedError(item)
 
-    def __getitem__(self, item):
+    def _preprocess_subscript(self, item):
         if not isinstance(item, tuple):
             ss = (item,)
         else:
@@ -271,16 +271,20 @@ class BlockArray(BlockArrayBase):
                     )
                 is_handled_advanced = False
                 break
+        return ss, is_handled_advanced, axis
+
+    def __getitem__(self, item):
+        ss, is_handled_advanced, axis = self._preprocess_subscript(item)
 
         if is_handled_advanced:
             # Treat this as a shuffle.
-            return self._advanced_single_array_subscript(ss[axis], axis=axis)
+            return self._advanced_single_array_select(ss[axis], axis=axis)
 
         av: ArrayView = ArrayView.from_block_array(self)
         # TODO (hme): We don't have to create, but do so for now until we need to optimize.
         return av[item].create(BlockArray)
 
-    def _advanced_single_array_subscript(
+    def _advanced_single_array_select(
         self, array: Union[list, np.ndarray], block_size: int = None, axis: int = 0
     ):
         # Create output array along the axis of the selection operation.
@@ -359,8 +363,17 @@ class BlockArray(BlockArrayBase):
         return dst_arr
 
     def __setitem__(self, key, value):
+        value: BlockArray = BlockArray.to_block_array(value, self.cm)
+        ss, is_handled_advanced, axis = self._preprocess_subscript(key)
+        if is_handled_advanced:
+            return self._advanced_single_array_assign(ss[axis], value, axis=axis)
         av: ArrayView = ArrayView.from_block_array(self)
         av[key] = value
+
+    def _advanced_single_array_assign(
+        self, array: Union[list, np.ndarray], value, block_size: int = None, axis: int = 0
+    ):
+        raise NotImplementedError()
 
     @staticmethod
     def to_block_array(obj, cm: ComputeManager, block_shape=None):
