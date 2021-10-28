@@ -14,6 +14,7 @@
 # limitations under the License.
 
 
+import warnings
 import itertools
 
 import numpy as np
@@ -197,6 +198,31 @@ class BlockArray(BlockArrayBase):
         rarr_swap = BlockArray(grid_swap, self.cm, rarr_src)
         return rarr_swap
 
+    def transpose(self, defer=False, redistribute=False):
+        """
+        Transpose this matrix. Only use defer with arithmetic operations.
+        Setting redistribute to True may significantly impact performance.
+        :param defer: When true, the transpose operation will be applied
+        with the next arithmetic operation.
+        :param redistribute: If defer is false, setting this to true will
+        redistribute the data according to the device grid (data placement policy).
+        This parameter has no effect when defer is true.
+        :return: The transposed matrix.
+        """
+        if defer and redistribute:
+            warnings.warn("defer is True, redistribute=True will be ignored.")
+        metaT = self.grid.to_meta()
+        metaT["shape"] = tuple(reversed(metaT["shape"]))
+        metaT["block_shape"] = tuple(reversed(metaT["block_shape"]))
+        gridT = ArrayGrid.from_meta(metaT)
+        rarrT = BlockArray(gridT, self.cm)
+        rarrT.blocks = np.copy(self.blocks.T)
+        for grid_entry in rarrT.grid.get_entry_iterator():
+            rarrT.blocks[grid_entry] = rarrT.blocks[grid_entry].transpose(
+                defer, redistribute
+            )
+        return rarrT
+
     def __getattr__(self, item):
         if item == "__array_priority__" or item == "__array_struct__":
             # This is triggered by a numpy array on the LHS.
@@ -204,15 +230,7 @@ class BlockArray(BlockArrayBase):
         elif item == "ndim":
             return len(self.shape)
         elif item == "T":
-            metaT = self.grid.to_meta()
-            metaT["shape"] = tuple(reversed(metaT["shape"]))
-            metaT["block_shape"] = tuple(reversed(metaT["block_shape"]))
-            gridT = ArrayGrid.from_meta(metaT)
-            rarrT = BlockArray(gridT, self.cm)
-            rarrT.blocks = np.copy(self.blocks.T)
-            for grid_entry in rarrT.grid.get_entry_iterator():
-                rarrT.blocks[grid_entry] = rarrT.blocks[grid_entry].transpose()
-            return rarrT
+            return self.transpose()
         else:
             raise NotImplementedError(item)
 

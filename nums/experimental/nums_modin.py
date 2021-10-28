@@ -19,6 +19,7 @@ import numpy as np
 from nums.core.application_manager import instance as _instance
 from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray
+from nums.core.array import utils as array_utils
 
 
 def from_modin(df):
@@ -45,21 +46,12 @@ def from_modin(df):
 
     # Make sure the partitions are numeric.
     dtype = frame.dtypes[0]
-    assert dtype in (
-        float,
-        np.float,
-        np.float32,
-        np.float64,
-        int,
-        np.int,
-        np.int32,
-        np.int64,
-    )
-    # Make sure dtypes are equal.
+    if not array_utils.is_supported(dtype, type_test=True):
+        raise TypeError("%s is not supported." % str(dtype))
     for dt in frame.dtypes:
-        if type(frame.dtypes.dtype) == np.dtype:
-            continue
-        assert dt == frame.dtypes
+        if dt != dtype:
+            raise TypeError("Mixed types are not supported (%s != %s).")
+
     dtype = np.__getattribute__(str(dtype))
 
     # Convert from Pandas to NumPy.

@@ -85,8 +85,10 @@ class Block(object):
             return tuple(reversed(self.grid_shape))
         return self.grid_shape
 
-    def transpose(self):
-        # This operation does not move or modify the remote object.
+    def transpose(self, defer=False, redistribute=False):
+        # If defer is True, this operation does not modify the remote object.
+        # If defer is True and redistribute is False,
+        # this operation does not move the remote object.
         grid_entryT = tuple(reversed(self.grid_entry))
         grid_shapeT = tuple(reversed(self.grid_shape))
         rectT = list(reversed(self.rect))
@@ -100,6 +102,16 @@ class Block(object):
             cm=self._cm,
         )
         blockT.oid = self.oid
+        if not defer:
+            blockT.transposed = False
+            if redistribute:
+                syskwargs = {"grid_entry": grid_entryT, "grid_shape": grid_shapeT}
+            else:
+                syskwargs = {
+                    "grid_entry": self.grid_entry,
+                    "grid_shape": self.grid_shape,
+                }
+            blockT.oid = self._cm.transpose(self.oid, syskwargs=syskwargs)
         return blockT
 
     def swapaxes(self, axis1, axis2):
