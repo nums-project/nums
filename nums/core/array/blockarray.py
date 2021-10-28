@@ -371,7 +371,11 @@ class BlockArray(BlockArrayBase):
         av[key] = value
 
     def _advanced_single_array_assign(
-        self, array: Union[list, np.ndarray], value, block_size: int = None, axis: int = 0
+        self,
+        array: Union[list, np.ndarray],
+        value,
+        block_size: int = None,
+        axis: int = 0,
     ):
         raise NotImplementedError()
 

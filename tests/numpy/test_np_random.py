@@ -82,6 +82,7 @@ def test_shuffle(nps_app_inst):
         assert np.all(np_arr == arr.get())
 
     import nums.numpy as nps
+
     assert nps_app_inst is not None
 
     shape = (12, 34, 56)
