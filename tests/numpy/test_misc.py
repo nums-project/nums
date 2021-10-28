@@ -261,6 +261,8 @@ def test_transpose(nps_app_inst):
     assert np.all(npX.T == X.T.get())
     assert np.all(npX.T == X.transpose().get())
     assert np.all(npX.T == X.transpose(defer=True).get())
+    assert np.all(npX.T == X.transpose(redistribute=True).get())
+    assert np.all(npX.T == X.transpose(defer=True, redistribute=True).get())
 
 
 if __name__ == "__main__":
