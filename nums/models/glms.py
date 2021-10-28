@@ -14,6 +14,8 @@
 # limitations under the License.
 
 
+import warnings
+
 import numpy as np
 
 from nums.core.application_manager import instance as _instance
@@ -95,7 +97,7 @@ class GLM(Model):
         C=1.0,
         tol=0.0001,
         max_iter=100,
-        solver="newton-cg",
+        solver="newton",
         lr=0.01,
         random_state=None,
         fit_intercept=True,
@@ -172,6 +174,7 @@ class GLM(Model):
             else:
                 beta = block_sgd(self, beta, X, y, tol, max_iter, lr)
         elif self._opt == "newton" or self._opt == "newton-cg":
+            warnings.warn("Specified newton-cg solver, using newton instead.")
             beta = newton(self._app, self, beta, X, y, tol, max_iter)
         elif self._opt == "irls":
             # TODO (hme): Provide irls for all GLMs.
