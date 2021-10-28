@@ -42,7 +42,10 @@ class BackTrackingLineSearch(object):
         alpha = init_alpha
         f_val = self.f(X, y, theta)
         f_next = self.f(X, y, theta + alpha * p)
-        while self.app.isnan(f_next) or f_next > f_val + c * alpha * grad.T @ p:
+        while (
+            self.app.isnan(f_next)
+            or f_next > f_val + c * alpha * grad.transpose(defer=True) @ p
+        ):
             alpha *= rho
             if alpha < min_alpha:
                 return min_alpha
@@ -55,9 +58,9 @@ class LBFGSMemory(object):
         self.k = k
         self.s = s
         self.y = y
-        ys_inner = s.T @ y
+        ys_inner = s.transpose(defer=True) @ y
         self.rho = 1.0 / (ys_inner + 1e-30)
-        self.gamma = ys_inner / (y.T @ y + 1e-30)
+        self.gamma = ys_inner / (y.transpose(defer=True) @ y + 1e-30)
 
 
 class LBFGS(object):
@@ -88,12 +91,12 @@ class LBFGS(object):
             mem_i: LBFGSMemory = self.memory[i]
             if mem_i is None:
                 break
-            alpha = mem_i.rho * mem_i.s.T @ q
+            alpha = mem_i.rho * mem_i.s.transpose(defer=True) @ q
             q -= alpha * mem_i.y
             forward_vars.insert(0, (alpha, mem_i))
         r = H @ q
         for alpha, mem_i in forward_vars:
-            beta = mem_i.rho * mem_i.y.T @ r
+            beta = mem_i.rho * mem_i.y.transpose(defer=True) @ r
             r += mem_i.s * (alpha - beta)
         return r
 
