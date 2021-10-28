@@ -53,8 +53,35 @@ def test_basic(nps_app_inst):
 
 
 def test_shuffle(nps_app_inst):
-    import nums.numpy as nps
+    def select(idx, np_idx, arr, np_arr):
+        if axis == 0:
+            arr_shuffle = arr[idx]
+            np_arr_shuffle = np_arr[np_idx]
+        else:
+            ss = [slice(None, None) for _ in range(3)]
+            ss[axis] = idx
+            np_ss = [slice(None, None) for _ in range(3)]
+            np_ss[axis] = np_idx
+            arr_shuffle = arr[tuple(ss)]
+            np_arr_shuffle = np_arr[tuple(np_ss)]
+        assert np.all(np_arr_shuffle == arr_shuffle.get())
 
+    def assign(idx, np_idx, arr, np_arr):
+        arr = arr.copy()
+        np_arr = np_arr.copy()
+        if axis == 0:
+            arr[idx] = -1
+            np_arr[np_idx] = -1
+        else:
+            ss = [slice(None, None) for _ in range(3)]
+            ss[axis] = idx
+            np_ss = [slice(None, None) for _ in range(3)]
+            np_ss[axis] = np_idx
+            arr[tuple(ss)] = -1
+            np_arr[tuple(np_ss)] = -1
+        assert np.all(np_arr == arr.get())
+
+    import nums.numpy as nps
     assert nps_app_inst is not None
 
     shape = (12, 34, 56)
@@ -67,18 +94,17 @@ def test_shuffle(nps_app_inst):
     for axis in range(3):
         for axis_frac in (1.0, 0.5):
             rs = nps.random.RandomState(1337)
-            idx: BlockArray = rs.permutation(int(shape[axis] * axis_frac))
+            idx = rs.permutation(int(shape[axis] * axis_frac))
             np_idx = idx.get()
-            if axis == 0:
-                arr_shuffle = arr[idx]
-                np_arr_shuffle = np_arr[np_idx]
-            else:
-                arr_shuffle = arr._advanced_single_array_subscript((np_idx,), axis=axis)
-                np_ss = [slice(None, None) for _ in range(3)]
-                np_ss[axis] = np_idx
-                np_ss = tuple(np_ss)
-                np_arr_shuffle = np_arr[np_ss]
-            assert np.all(np_arr_shuffle == arr_shuffle.get())
+            select(idx, np_idx, arr, np_arr)
+            # assign(idx, np_idx, arr, np_arr)
+            # Also test boolean mask.
+            np_mask = np.zeros(shape[axis], dtype=bool)
+            np_mask[np_idx] = True
+            mask = nps.array(np_mask)
+            assert np.allclose(mask.get(), np_mask)
+            select(mask, np_mask, arr, np_arr)
+            # assign(idx, np_idx, arr, np_arr)
 
 
 def test_shuffle_subscript_ops(nps_app_inst):
