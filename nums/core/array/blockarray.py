@@ -16,6 +16,7 @@
 
 import warnings
 import itertools
+from typing import Union
 
 import numpy as np
 
@@ -248,30 +249,46 @@ class BlockArray(BlockArrayBase):
                 tmp.append(entry)
         ss = tuple(tmp)
         is_handled_advanced = True
-        if len(ss) > 1:
-            # Check if all entries are full slices except the last entry.
-            for entry in ss[:-1]:
-                is_handled_advanced = is_handled_advanced and (
-                    isinstance(entry, slice)
-                    and entry.start is None
-                    and entry.stop is None
-                )
-        if is_handled_advanced and array_utils.is_array_like(ss[-1]):
+        array_encountered = False
+        axis = None
+
+        # Check if this is a supported advanced indexing operation.
+        for i, entry in enumerate(ss):
+            if isinstance(entry, slice) and entry.start is None and entry.stop is None:
+                continue
+            elif array_utils.is_array_like(entry):
+                if array_encountered:
+                    raise NotImplementedError(
+                        "Advanced indexing is only supported " "along a single axis."
+                    )
+                array_encountered = True
+                axis = i
+            else:
+                if array_encountered:
+                    raise NotImplementedError(
+                        "Advanced indexing is only supported "
+                        "with full slices along other axes."
+                    )
+                is_handled_advanced = False
+                break
+
+        if is_handled_advanced:
             # Treat this as a shuffle.
-            return self._advanced_single_array_subscript(
-                sel=(ss[-1],), axis=len(ss) - 1
-            )
+            return self._advanced_single_array_subscript(ss[axis], axis=axis)
 
         av: ArrayView = ArrayView.from_block_array(self)
         # TODO (hme): We don't have to create, but do so for now until we need to optimize.
         return av[item].create(BlockArray)
 
-    def _advanced_single_array_subscript(self, sel: tuple, block_size=None, axis=0):
+    def _advanced_single_array_subscript(
+        self, array: Union[list, np.ndarray], block_size: int = None, axis: int = 0
+    ):
         # Create output array along the axis of the selection operation.
         # We don't allocate zeros for output array. Instead, we let the update kernel
         # create the initial set of zeros to save some memory.
-        array = sel[0]
         assert len(array.shape) == 1
+        if array_utils.is_bool(array.dtype, type_test=True):
+            array = np.arange(len(array))[array]
         assert np.all(0 <= array) and np.all(array < self.shape[axis])
         if block_size is None:
             block_size = self.block_shape[axis]
