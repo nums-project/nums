@@ -155,7 +155,14 @@ class ComputeCls(ComputeImp):
         return result
 
     def update_block_along_axis(
-        self, dst_arr_or_args, src_arr, ss, axis, dst_coord, src_coord
+        self,
+        dst_arr_or_args,
+        src_arr,
+        ss,
+        axis,
+        dst_coord,
+        src_coord,
+        is_assignment=False,
     ):
         # Can this be optimized using sparse arrays?
 
@@ -168,20 +175,64 @@ class ComputeCls(ComputeImp):
         else:
             dst_arr_shape, _ = dst_arr_or_args
 
+        # Make sure index values in subscript are within bounds of dst_arr.
+        # We don't need to check src_arr:
+        # 1) The block shapes of dst_arr and src_arr are the same except along axis
+        #    and indices in ss. We are not concerned with axes the indices in ss correspond to,
+        #    because they are of size 1 in src_arr => we only need to check that indices
+        #    fall within bounds of dst_arr.
+        # 2) For each dst_arr, we test the values
+        #    to assign to dst_arr by traverse the src_arr along axis.
+        #    Thus, size along all other axes are equal or broadcasted.
+
+        for curr_axis in range(len(ss)):
+            if curr_axis == axis or isinstance(ss[curr_axis], slice):
+                continue
+            if not (
+                dst_coord[curr_axis]
+                <= ss[curr_axis]
+                < dst_coord[curr_axis] + dst_arr_shape[curr_axis]
+            ):
+                return dst_arr_or_args
+
         # Compute the set of indices that need to be updated.
         # This could be optimized, but in its current state, it's simple and not a bottleneck.
-        dst_vec = np.arange(len(ss))
+        array = ss[axis]
+        if is_assignment:
+            dst_vec = np.array(array)
+        else:
+            dst_vec = np.arange(len(array))
         dst_mask = (dst_coord[axis] <= dst_vec) & (
             dst_vec < dst_coord[axis] + dst_arr_shape[axis]
         )
-        src_vec = np.array(ss)
-        src_mask = (src_coord[axis] <= src_vec) & (
-            src_vec < src_coord[axis] + src_arr.shape[axis]
-        )
-        mask = dst_mask & src_mask
 
+        if len(src_arr.shape) == 0:
+            # scalar
+            mask = dst_mask
+        elif len(src_arr.shape) == 1:
+            # single-dim
+            if is_assignment:
+                src_vec = np.arange(len(array))
+            else:
+                src_vec = np.array(array)
+            src_mask = (src_coord[0] <= src_vec) & (
+                src_vec < src_coord[0] + src_arr.shape[0]
+            )
+            mask = dst_mask & src_mask
+            src_vec = src_vec[mask] - src_coord[0]
+        else:
+            # multi-dim
+            if is_assignment:
+                src_vec = np.arange(len(array))
+            else:
+                src_vec = np.array(array)
+            src_mask = (src_coord[axis] <= src_vec) & (
+                src_vec < src_coord[axis] + src_arr.shape[axis]
+            )
+            mask = dst_mask & src_mask
+            src_vec = src_vec[mask] - src_coord[axis]
         dst_vec = dst_vec[mask] - dst_coord[axis]
-        src_vec = src_vec[mask] - src_coord[axis]
+
         if dst_vec.shape[0] == 0:
             # Nothing to do for this array.
             # Return input args.
@@ -197,11 +248,26 @@ class ComputeCls(ComputeImp):
             dst_arr = np.zeros(shape=dst_arr_or_args[0], dtype=dst_arr_or_args[1])
 
         # Create and apply the subscript argument.
-        dst_sel = [slice(None, None)] * len(dst_arr_shape)
-        src_sel = [slice(None, None)] * len(src_arr.shape)
-        dst_sel[axis] = dst_vec
-        src_sel[axis] = src_vec
-        dst_arr[tuple(dst_sel)] = src_arr[tuple(src_sel)]
+        dst_sel = []
+        for i in range(len(ss)):
+            if i == axis:
+                dst_sel.append(dst_vec)
+            elif isinstance(ss[i], slice):
+                dst_sel.append(ss[i])
+            else:
+                dst_sel.append(ss[i] - dst_coord[i])
+
+        if len(src_arr.shape) == 0:
+            # scalar
+            dst_arr[tuple(dst_sel)] = src_arr
+        elif len(src_arr.shape) == 1:
+            # single-dim
+            dst_arr[tuple(dst_sel)] = src_arr[(src_vec,)]
+        else:
+            # multi-dim
+            src_sel = [slice(None, None)] * len(ss)
+            src_sel[axis] = src_vec
+            dst_arr[tuple(dst_sel)] = src_arr[tuple(src_sel)]
         return dst_arr
 
     def diag(self, arr, offset):

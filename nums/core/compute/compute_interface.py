@@ -54,7 +54,15 @@ class ComputeInterface(object):
         raise NotImplementedError()
 
     def update_block_along_axis(
-        self, dst_arr, src_arr, ss, axis, dst_coord, src_coord, syskwargs: Dict
+        self,
+        dst_arr,
+        src_arr,
+        ss,
+        axis,
+        dst_coord,
+        src_coord,
+        is_assignment,
+        syskwargs: Dict,
     ):
         raise NotImplementedError()
 

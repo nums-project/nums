@@ -14,6 +14,7 @@
 # limitations under the License.
 
 
+import pytest
 import numpy as np
 
 from nums.numpy import BlockArray
@@ -66,20 +67,50 @@ def test_shuffle(nps_app_inst):
             np_arr_shuffle = np_arr[tuple(np_ss)]
         assert np.all(np_arr_shuffle == arr_shuffle.get())
 
-    # def assign(idx, np_idx, arr, np_arr):
-    #     arr = arr.copy()
-    #     np_arr = np_arr.copy()
-    #     if axis == 0:
-    #         arr[idx] = -1
-    #         np_arr[np_idx] = -1
-    #     else:
-    #         ss = [slice(None, None) for _ in range(3)]
-    #         ss[axis] = idx
-    #         np_ss = [slice(None, None) for _ in range(3)]
-    #         np_ss[axis] = np_idx
-    #         arr[tuple(ss)] = -1
-    #         np_arr[tuple(np_ss)] = -1
-    #     assert np.all(np_arr == arr.get())
+    def assign(idx, np_idx, arr, np_arr, axis, mode, idx_axes=None, idx_vals=None):
+        arr = arr.copy()
+        np_arr = np_arr.copy()
+        if mode == "scalar":
+            np_value = np.random.randint(-np.product(shape), -1, size=1).item()
+        elif mode == "single-dim":
+            np_value = np.random.randint(-np.product(shape), -1, size=len(np_idx))
+        elif mode == "multi-dim":
+            value_shape = tuple(
+                list(np_arr.shape[:axis])
+                + [len(np_idx)]
+                + list(np_arr.shape[axis + 1 :])
+            )
+            np_value = np.random.randint(-np.product(shape), -1, size=value_shape)
+        else:
+            raise Exception()
+        value = nps.array(np_value)
+
+        ss = [slice(None, None) for _ in range(3)]
+        ss[axis] = idx
+        np_ss = [slice(None, None) for _ in range(3)]
+        np_ss[axis] = np_idx
+        if mode == "single-dim" and axis != 2:
+            if idx_axes:
+                # If idx_axes is set, then we should not expect and exception.
+                ss[idx_axes[0]], ss[idx_axes[1]] = idx_vals[0], idx_vals[1]
+                np_ss[idx_axes[0]], np_ss[idx_axes[1]] = idx_vals[0], idx_vals[1]
+                arr[tuple(ss)] = value
+                np_arr[tuple(np_ss)] = np_value
+                assert np.all(np_arr == arr.get())
+            else:
+                with pytest.raises(ValueError):
+                    np_arr[tuple(np_ss)] = np_value
+                with pytest.raises(ValueError):
+                    arr[tuple(ss)] = value
+        else:
+            if mode == "scalar":
+                # Run indexed subscripts on scalar values.
+                if idx_axes:
+                    ss[idx_axes[0]], ss[idx_axes[1]] = idx_vals[0], idx_vals[1]
+                    np_ss[idx_axes[0]], np_ss[idx_axes[1]] = idx_vals[0], idx_vals[1]
+            arr[tuple(ss)] = value
+            np_arr[tuple(np_ss)] = np_value
+            assert np.all(np_arr == arr.get())
 
     import nums.numpy as nps
 
@@ -93,19 +124,43 @@ def test_shuffle(nps_app_inst):
     np_arr = arr.get()
 
     for axis in range(3):
+        idx_axes = [(1, 2), (0, 2), None][axis]
+        idx_values = [(13, 40), (3, 55), None][axis]
         for axis_frac in (1.0, 0.5):
             rs = nps.random.RandomState(1337)
             idx = rs.permutation(int(shape[axis] * axis_frac))
             np_idx = idx.get()
             select(idx, np_idx, arr, np_arr)
-            # assign(idx, np_idx, arr, np_arr)
+            for mode in ["scalar", "single-dim", "multi-dim"]:
+                assign(idx, np_idx, arr, np_arr, axis, mode)
+                assign(
+                    idx,
+                    np_idx,
+                    arr,
+                    np_arr,
+                    axis,
+                    mode,
+                    idx_axes=idx_axes,
+                    idx_vals=idx_values,
+                )
             # Also test boolean mask.
             np_mask = np.zeros(shape[axis], dtype=bool)
             np_mask[np_idx] = True
             mask = nps.array(np_mask)
             assert np.allclose(mask.get(), np_mask)
             select(mask, np_mask, arr, np_arr)
-            # assign(idx, np_idx, arr, np_arr)
+            for mode in ["scalar", "single-dim", "multi-dim"]:
+                assign(idx, np_idx, arr, np_arr, axis, mode)
+                assign(
+                    idx,
+                    np_idx,
+                    arr,
+                    np_arr,
+                    axis,
+                    mode,
+                    idx_axes=idx_axes,
+                    idx_vals=idx_values,
+                )
 
 
 def test_shuffle_subscript_ops(nps_app_inst):

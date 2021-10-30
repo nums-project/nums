@@ -235,7 +235,7 @@ class BlockArray(BlockArrayBase):
         else:
             raise NotImplementedError(item)
 
-    def _preprocess_subscript(self, item):
+    def _preprocess_subscript(self, item, allow_indexes=False):
         if not isinstance(item, tuple):
             ss = (item,)
         else:
@@ -248,7 +248,7 @@ class BlockArray(BlockArrayBase):
             else:
                 tmp.append(entry)
         ss = tuple(tmp)
-        is_handled_advanced = True
+        is_handled_advanced = False
         array_encountered = False
         axis = None
 
@@ -256,11 +256,16 @@ class BlockArray(BlockArrayBase):
         for i, entry in enumerate(ss):
             if isinstance(entry, slice) and entry.start is None and entry.stop is None:
                 continue
+            elif allow_indexes and (
+                array_utils.is_int(entry) or array_utils.is_uint(entry)
+            ):
+                continue
             elif array_utils.is_array_like(entry):
                 if array_encountered:
                     raise NotImplementedError(
                         "Advanced indexing is only supported " "along a single axis."
                     )
+                is_handled_advanced = True
                 array_encountered = True
                 axis = i
             else:
@@ -271,6 +276,7 @@ class BlockArray(BlockArrayBase):
                     )
                 is_handled_advanced = False
                 break
+
         return ss, is_handled_advanced, axis
 
     def __getitem__(self, item):
@@ -278,22 +284,27 @@ class BlockArray(BlockArrayBase):
 
         if is_handled_advanced:
             # Treat this as a shuffle.
-            return self._advanced_single_array_select(ss[axis], axis=axis)
+            return self._advanced_single_array_select(ss, axis=axis)
 
         av: ArrayView = ArrayView.from_block_array(self)
         # TODO (hme): We don't have to create, but do so for now until we need to optimize.
         return av[item].create(BlockArray)
 
     def _advanced_single_array_select(
-        self, array: Union[list, np.ndarray], block_size: int = None, axis: int = 0
+        self, ss: tuple, block_size: int = None, axis: int = 0
     ):
         # Create output array along the axis of the selection operation.
         # We don't allocate zeros for output array. Instead, we let the update kernel
         # create the initial set of zeros to save some memory.
+        array = ss[axis]
         assert len(array.shape) == 1
         if array_utils.is_bool(array.dtype, type_test=True):
             array = np.arange(len(array))[array]
         assert np.all(0 <= array) and np.all(array < self.shape[axis])
+        ss = list(ss)
+        ss[axis] = array
+        ss = tuple(ss)
+
         if block_size is None:
             block_size = self.block_shape[axis]
         axis_dim = len(array)
@@ -316,13 +327,10 @@ class BlockArray(BlockArrayBase):
         # new array, otherwise return the unchanged array.
         # For k blocks along axis, this has worst case complexity of generating k^2 copies of
         # the destination block.
-        # With careful referencing, we can ensure the intermediate blocks are free for GC.
-        # Once all copies per destination block are scheduled, schedule a reduction across
-        # all the blocks.
         src_arr = self
         dst_grid_shape = dst_arr.grid.grid_shape
         src_grid_shape = src_arr.grid.grid_shape
-        ss = self.cm.put(array)
+        ss = self.cm.put(ss)
         for i in range(dst_grid_shape[axis]):
             for dst_grid_entry in dst_arr.grid.get_entry_iterator():
                 if dst_grid_entry[axis] != i:
@@ -364,20 +372,191 @@ class BlockArray(BlockArrayBase):
 
     def __setitem__(self, key, value):
         value: BlockArray = BlockArray.to_block_array(value, self.cm)
-        ss, is_handled_advanced, axis = self._preprocess_subscript(key)
+        ss, is_handled_advanced, axis = self._preprocess_subscript(
+            key, allow_indexes=True
+        )
         if is_handled_advanced:
-            return self._advanced_single_array_assign(ss[axis], value, axis=axis)
+            return self._advanced_single_array_assign(ss, value, axis)
         av: ArrayView = ArrayView.from_block_array(self)
         av[key] = value
 
     def _advanced_single_array_assign(
         self,
-        array: Union[list, np.ndarray],
+        ss: tuple,
         value,
-        block_size: int = None,
-        axis: int = 0,
+        axis: int,
     ):
-        raise NotImplementedError()
+        array = ss[axis]
+        assert len(array.shape) == 1
+        if array_utils.is_bool(array.dtype, type_test=True):
+            array = np.arange(len(array))[array]
+        assert np.all(0 <= array) and np.all(array < self.shape[axis])
+        ss = list(ss)
+        ss[axis] = array
+        ss = tuple(ss)
+
+        # The subscript contains a single array. We therefore know one of two things is true:
+        # 1. value is the same shape as self along axes != axis.
+        # 2. value is scalar or 1-dimensional.
+        # We currently don't support the case where value may broadcasted if it has more dims.
+        # This should be a straight-forward future task.
+        value: BlockArray = value
+        mode = None
+        if len(value.shape) == 0:
+            # subscripted value per block will broadcast to other dimensions.
+            mode = "scalar"
+        elif len(value.shape) == 1:
+            # assert len(value.shape) == len(ss)
+            mode = "single-dim"
+            # Can broadcast if trailing dim matches.
+            assert len(ss[axis]) == value.shape[0]
+
+            for i in range(len(self.shape)):
+                if i == axis:
+                    assert len(ss[i]) == value.shape[0]
+                elif i < axis:
+                    # Nothing to check here.
+                    # These entries are : or integer.
+                    pass
+                else:
+                    if i < len(ss):
+                        if not isinstance(ss[i], slice):
+                            # ss[i] is an integer.
+                            continue
+                    # If we're here, then the rest of the subscript operator
+                    # will resolve to :, which is not broadcastable.
+                    raise ValueError(
+                        "Cannot broadcast input array "
+                        "from shape %s into shape %s"
+                        % (value.shape, tuple([value.shape[0]] + list(self.shape[i:])))
+                    )
+        elif len(value.shape) == len(self.shape):
+            mode = "multi-dim"
+            new_block_shape = []
+            for i in range(len(self.shape)):
+                if i == axis:
+                    new_block_shape.append(value.block_shape[i])
+                elif i < len(ss) and (
+                    array_utils.is_int(ss[i]) or array_utils.is_uint(ss[i])
+                ):
+                    # These entries are : or integer.
+                    # assert array_utils.is_int(ss[i]) or array_utils.is_uint(ss[i])
+                    assert value.shape[i] == 1
+                    new_block_shape.append(1)
+                else:
+                    assert value.shape[i] == self.shape[i], "Shape mismatch."
+                    new_block_shape.append(self.block_shape[i])
+            if new_block_shape != value.block_shape:
+                warnings.warn(
+                    "Assigned value does not match block shape of assignee. "
+                    "Applying reshape to assigned value."
+                )
+                value = value.reshape(block_shape=new_block_shape)
+
+        # Like select, iterate over destination blocks along the axis being updated.
+        # e.g. if self is 2-dim and axis=0, then fix the row and iterate over the columns.
+        # If value has the same shape as self, then for each destination block,
+        # iterate over the blocks in value along axis.
+        # e.g. if self is 2-dim and axis=0, then for the given column, iterate over the rows
+        # of value.
+        # If value is scalar, then attempt to assign it to every destination block.
+        # If value is 1-dim, the just iterate over the dim and assign accordingly.
+
+        dst_arr = self
+        src_arr = value
+        src_grid_shape = src_arr.grid.grid_shape
+        ss = self.cm.put(ss)
+        for dst_grid_entry in dst_arr.grid.get_entry_iterator():
+            dst_block: Block = dst_arr.blocks[dst_grid_entry]
+            dst_coord: tuple = dst_arr.grid.get_entry_coordinates(dst_grid_entry)
+
+            # Make sure index values in subscript are within bounds of dst_arr.
+            # We don't need to check src_arr:
+            # 1) The block shapes of dst_arr and src_arr are the same except along axis
+            #    and indices in ss. We are not concerned with axes the indices in ss correspond to,
+            #    because they are of size 1 in src_arr => we only need to check that indices
+            #    fall within bounds of dst_arr.
+            # 2) For each dst_arr, we test the values
+            #    to assign to dst_arr by traverse the src_arr along axis.
+            #    Thus, size along all other axes are equal or broadcasted.
+            # skip = False
+            # for curr_axis in range(len(ss)):
+            #     if curr_axis == axis or isinstance(ss[curr_axis], slice):
+            #         continue
+            #     if not (
+            #             dst_coord[curr_axis]
+            #             <= ss[curr_axis]
+            #             < dst_coord[curr_axis] + dst_arr.shape[curr_axis]
+            #     ):
+            #         skip = True
+            #         break
+            # if skip:
+            #     continue
+            if mode == "scalar":
+                src_block: Block = src_arr.blocks.item()
+                src_coord: tuple = src_arr.grid.get_entry_coordinates(
+                    src_block.grid_entry
+                )
+                dst_block.oid = self.cm.update_block_along_axis(
+                    dst_block.oid,
+                    src_block.oid,
+                    ss,
+                    axis,
+                    dst_coord,
+                    src_coord,
+                    is_assignment=True,
+                    syskwargs={
+                        "grid_entry": dst_grid_entry,
+                        "grid_shape": dst_arr.grid.grid_shape,
+                    },
+                )
+            elif mode == "single-dim":
+                for src_grid_entry in src_arr.grid.get_entry_iterator():
+                    src_block: Block = src_arr.blocks[src_grid_entry]
+                    src_coord: tuple = src_arr.grid.get_entry_coordinates(
+                        src_grid_entry
+                    )
+                    dst_block.oid = self.cm.update_block_along_axis(
+                        dst_block.oid,
+                        src_block.oid,
+                        ss,
+                        axis,
+                        dst_coord,
+                        src_coord,
+                        is_assignment=True,
+                        syskwargs={
+                            "grid_entry": dst_grid_entry,
+                            "grid_shape": dst_arr.grid.grid_shape,
+                        },
+                    )
+            elif mode == "multi-dim":
+                for j in range(src_grid_shape[axis]):
+                    # Apply sel from each block along axis of src_arr.
+                    # e.g. for 2 dim array, we fix the column blocks
+                    # given by dst_grid_entry, and iterate over the rows.
+                    src_grid_entry = tuple(
+                        list(dst_grid_entry[:axis])
+                        + [j]
+                        + list(dst_grid_entry[axis + 1 :])
+                    )
+                    src_block: Block = src_arr.blocks[src_grid_entry]
+                    src_coord: tuple = src_arr.grid.get_entry_coordinates(
+                        src_grid_entry
+                    )
+                    dst_block.oid = self.cm.update_block_along_axis(
+                        dst_block.oid,
+                        src_block.oid,
+                        ss,
+                        axis,
+                        dst_coord,
+                        src_coord,
+                        is_assignment=True,
+                        syskwargs={
+                            "grid_entry": dst_grid_entry,
+                            "grid_shape": dst_arr.grid.grid_shape,
+                        },
+                    )
+        return dst_arr
 
     @staticmethod
     def to_block_array(obj, cm: ComputeManager, block_shape=None):
