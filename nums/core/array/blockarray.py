@@ -467,6 +467,7 @@ class BlockArray(BlockArrayBase):
         dst_arr = self
         src_arr = value
         src_grid_shape = src_arr.grid.grid_shape
+        np_ss = ss
         ss = self.cm.put(ss)
         for dst_grid_entry in dst_arr.grid.get_entry_iterator():
             dst_block: Block = dst_arr.blocks[dst_grid_entry]
@@ -481,19 +482,20 @@ class BlockArray(BlockArrayBase):
             # 2) For each dst_arr, we test the values
             #    to assign to dst_arr by traverse the src_arr along axis.
             #    Thus, size along all other axes are equal or broadcasted.
-            # skip = False
-            # for curr_axis in range(len(ss)):
-            #     if curr_axis == axis or isinstance(ss[curr_axis], slice):
-            #         continue
-            #     if not (
-            #             dst_coord[curr_axis]
-            #             <= ss[curr_axis]
-            #             < dst_coord[curr_axis] + dst_arr.shape[curr_axis]
-            #     ):
-            #         skip = True
-            #         break
-            # if skip:
-            #     continue
+            skip = False
+            for curr_axis in range(len(np_ss)):
+                if curr_axis == axis or isinstance(np_ss[curr_axis], slice):
+                    continue
+                if not (
+                    dst_coord[curr_axis]
+                    <= np_ss[curr_axis]
+                    < dst_coord[curr_axis] + dst_arr.shape[curr_axis]
+                ):
+                    skip = True
+                    break
+            if skip:
+                continue
+
             if mode == "scalar":
                 src_block: Block = src_arr.blocks.item()
                 src_coord: tuple = src_arr.grid.get_entry_coordinates(

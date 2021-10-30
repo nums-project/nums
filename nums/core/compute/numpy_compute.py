@@ -175,26 +175,6 @@ class ComputeCls(ComputeImp):
         else:
             dst_arr_shape, _ = dst_arr_or_args
 
-        # Make sure index values in subscript are within bounds of dst_arr.
-        # We don't need to check src_arr:
-        # 1) The block shapes of dst_arr and src_arr are the same except along axis
-        #    and indices in ss. We are not concerned with axes the indices in ss correspond to,
-        #    because they are of size 1 in src_arr => we only need to check that indices
-        #    fall within bounds of dst_arr.
-        # 2) For each dst_arr, we test the values
-        #    to assign to dst_arr by traverse the src_arr along axis.
-        #    Thus, size along all other axes are equal or broadcasted.
-
-        for curr_axis in range(len(ss)):
-            if curr_axis == axis or isinstance(ss[curr_axis], slice):
-                continue
-            if not (
-                dst_coord[curr_axis]
-                <= ss[curr_axis]
-                < dst_coord[curr_axis] + dst_arr_shape[curr_axis]
-            ):
-                return dst_arr_or_args
-
         # Compute the set of indices that need to be updated.
         # This could be optimized, but in its current state, it's simple and not a bottleneck.
         array = ss[axis]
