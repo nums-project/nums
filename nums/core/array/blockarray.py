@@ -16,7 +16,6 @@
 
 import warnings
 import itertools
-from typing import Union
 
 import numpy as np
 
@@ -25,6 +24,9 @@ from nums.core.array.base import BlockArrayBase, Block
 from nums.core.array.view import ArrayView
 from nums.core.grid.grid import ArrayGrid
 from nums.core.compute.compute_manager import ComputeManager
+
+
+# pylint: disable=too-many-lines
 
 
 class BlockArray(BlockArrayBase):
