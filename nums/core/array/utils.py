@@ -53,8 +53,16 @@ def get_bop_output_type(op_name, dtype_a, dtype_b):
 
 
 def is_scalar(val):
+    return is_supported(val)
+
+
+def is_supported(val, type_test=False):
     return (
-        is_bool(val) or is_uint(val) or is_int(val) or is_float(val) or is_complex(val)
+        is_bool(val, type_test)
+        or is_uint(val, type_test)
+        or is_int(val, type_test)
+        or is_float(val, type_test)
+        or is_complex(val, type_test)
     )
 
 
