@@ -101,6 +101,7 @@ def test_select_assign(nps_app_inst):
             idx = rs.permutation(int(shape[axis] * axis_frac))
             np_idx = idx.get()
             select(idx, np_idx, arr, np_arr)
+            select(idx, np_idx, arr, np_arr, idx_axes=idx_axes, idx_vals=idx_values)
             for mode in ["scalar", "single-dim", "multi-dim"]:
                 assign(idx, np_idx, arr, np_arr, axis, mode)
                 assign(
@@ -118,7 +119,7 @@ def test_select_assign(nps_app_inst):
             np_mask[np_idx] = True
             mask = nps.array(np_mask)
             assert np.allclose(mask.get(), np_mask)
-            select(mask, np_mask, arr, np_arr)
+            select(mask, np_mask, arr, np_arr, idx_axes=idx_axes, idx_vals=idx_values)
             for mode in ["scalar", "single-dim", "multi-dim"]:
                 assign(idx, np_idx, arr, np_arr, axis, mode)
                 assign(
@@ -152,6 +153,45 @@ def test_subscript_permutation(nps_app_inst):
     assert np.all(np_arr_shuffle == arr_shuffle.get())
 
 
+def test_subscript_edge_cases(nps_app_inst):
+    import nums.numpy as nps
+
+    assert nps_app_inst is not None
+    rs = nps.random.RandomState(1337)
+
+    testset = [
+        [(123,), (10,), rs.randint(123, size=7)],
+        [(123, 45), (10, 20), rs.randint(123, size=13)],
+    ]
+    for shape, block_shape, idx in testset:
+        arr: BlockArray = nps.arange(np.product(shape)).reshape(
+            shape, block_shape=block_shape
+        )
+        np_arr = arr.get()
+        np_idx = idx.get()
+        result = arr[idx]
+        np_result = np_arr[np_idx]
+        assert np.all(np_result == result.get())
+
+    # NumPy integer idx.
+    arr: BlockArray = nps.arange(1)
+    np_arr = arr.get()
+    idx = nps.array(0)
+    np_idx = idx.get()
+    result = arr[idx]
+    np_result = np_arr[np_idx]
+    assert np.all(np_result == result.get())
+
+    # NumPy array of length 1.
+    arr: BlockArray = nps.arange(10)
+    np_arr = arr.get()
+    idx = nps.array([2])
+    np_idx = idx.get()
+    result = arr[idx]
+    np_result = np_arr[np_idx]
+    assert np.all(np_result == result.get())
+
+
 if __name__ == "__main__":
     import nums.core.settings
 
@@ -160,5 +200,6 @@ if __name__ == "__main__":
 
     nps_app_inst = application_manager.instance()
 
-    test_select_assign(nps_app_inst)
+    # test_select_assign(nps_app_inst)
     # test_subscript_permutation(nps_app_inst)
+    # test_subscript_edge_cases(nps_app_inst)

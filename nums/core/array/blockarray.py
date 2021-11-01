@@ -246,9 +246,12 @@ class BlockArray(BlockArrayBase):
         tmp = []
         for entry in ss:
             if isinstance(entry, BlockArray):
-                tmp.append(entry.get())
+                val = entry.get()
             else:
-                tmp.append(entry)
+                val = entry
+            if isinstance(val, np.ndarray) and val.shape == ():
+                val = val.item()
+            tmp.append(val)
         ss = tuple(tmp)
         is_handled_advanced = False
         array_encountered = False
@@ -290,7 +293,7 @@ class BlockArray(BlockArrayBase):
 
         av: ArrayView = ArrayView.from_block_array(self)
         # TODO (hme): We don't have to create, but do so for now until we need to optimize.
-        return av[item].create(BlockArray)
+        return av[ss].create(BlockArray)
 
     def _advanced_single_array_select(
         self, ss: tuple, block_size: int = None, axis: int = 0

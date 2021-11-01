@@ -175,7 +175,8 @@ class ComputeCls(ComputeImp):
         else:
             dst_arr_shape, _ = dst_arr_or_args
 
-        # Compute the set of indices that need to be updated.
+        # Note that here, we only compute the set of indices that need to be updated for axis.
+        # Slice and index subscript bounds are tested in the control process.
         # This could be optimized, but in its current state, it's simple and not a bottleneck.
         array = ss[axis]
         if is_assignment:
@@ -186,6 +187,8 @@ class ComputeCls(ComputeImp):
             dst_vec < dst_coord[axis] + dst_arr_shape[axis]
         )
 
+        # Compute a different mask for different assignment operations.
+        # For select operations, src_arr matches the dims of dst_arr.
         if len(src_arr.shape) == 0:
             # scalar
             mask = dst_mask
