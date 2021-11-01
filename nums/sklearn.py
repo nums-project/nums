@@ -151,7 +151,7 @@ def build_supervised_actors():
         AdaBoostRegressor,
         GradientBoostingRegressor,
     )
-    from sklearn.naive_bayes import GaussianNB
+    from sklearn.naive_bayes import GaussianNB, BernoulliNB
     from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
     from sklearn.linear_model import (
         LogisticRegression,
@@ -179,6 +179,7 @@ def build_supervised_actors():
         GradientBoostingClassifier,
         GradientBoostingRegressor,
         GaussianNB,
+        BernoulliNB,
         QuadraticDiscriminantAnalysis,
         LogisticRegression,
         LinearRegression,
@@ -207,6 +208,7 @@ def build_supervised_actors():
     GradientBoostingClassifier,
     GradientBoostingRegressor,
     GaussianNB,
+    BernoulliNB,
     QuadraticDiscriminantAnalysis,
     LogisticRegression,
     LinearRegression,
