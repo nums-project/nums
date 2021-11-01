@@ -69,7 +69,7 @@ class SystemInterface(object):
         :param name: The name of the actor.
         :param args: args to pass to __init__.
         :param device_id: A device id. This is captured by the system and not passed to __init__.
-        :param kwargs: kwargs to pass to __init.
+        :param kwargs: kwargs to pass to __init__.
         :return: An Actor.
         """
         raise NotImplementedError()
