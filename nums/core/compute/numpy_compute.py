@@ -154,8 +154,15 @@ class ComputeCls(ComputeImp):
             result[tuple(dst_index)] = src_arr[tuple(src_index)]
         return result
 
-    def update_block_along_axis(
-        self, dst_arr_or_args, src_arr, ss, axis, dst_coord, src_coord
+    def advanced_select_block_along_axis(
+        self,
+        dst_arr_or_args,
+        src_arr,
+        ss,
+        dst_axis,
+        src_axis,
+        dst_coord,
+        src_coord,
     ):
         # Can this be optimized using sparse arrays?
 
@@ -168,20 +175,21 @@ class ComputeCls(ComputeImp):
         else:
             dst_arr_shape, _ = dst_arr_or_args
 
-        # Compute the set of indices that need to be updated.
+        # Note that here, we only compute the set of indices that need to be updated for axis.
+        # Slice and index subscript bounds are tested in the control process.
         # This could be optimized, but in its current state, it's simple and not a bottleneck.
-        dst_vec = np.arange(len(ss))
-        dst_mask = (dst_coord[axis] <= dst_vec) & (
-            dst_vec < dst_coord[axis] + dst_arr_shape[axis]
+        array = ss[src_axis]
+        dst_vec = np.arange(len(array))
+        dst_mask = (dst_coord[dst_axis] <= dst_vec) & (
+            dst_vec < dst_coord[dst_axis] + dst_arr_shape[dst_axis]
         )
-        src_vec = np.array(ss)
-        src_mask = (src_coord[axis] <= src_vec) & (
-            src_vec < src_coord[axis] + src_arr.shape[axis]
+        src_vec = np.array(array)
+        src_mask = (src_coord[src_axis] <= src_vec) & (
+            src_vec < src_coord[src_axis] + src_arr.shape[src_axis]
         )
         mask = dst_mask & src_mask
-
-        dst_vec = dst_vec[mask] - dst_coord[axis]
-        src_vec = src_vec[mask] - src_coord[axis]
+        src_vec = src_vec[mask] - src_coord[src_axis]
+        dst_vec = dst_vec[mask] - dst_coord[dst_axis]
         if dst_vec.shape[0] == 0:
             # Nothing to do for this array.
             # Return input args.
@@ -197,11 +205,81 @@ class ComputeCls(ComputeImp):
             dst_arr = np.zeros(shape=dst_arr_or_args[0], dtype=dst_arr_or_args[1])
 
         # Create and apply the subscript argument.
-        dst_sel = [slice(None, None)] * len(dst_arr_shape)
-        src_sel = [slice(None, None)] * len(src_arr.shape)
-        dst_sel[axis] = dst_vec
-        src_sel[axis] = src_vec
+        src_sel, dst_sel = [], []
+        for i in range(len(ss)):
+            if i == src_axis:
+                src_sel.append(src_vec)
+            elif isinstance(ss[i], slice):
+                src_sel.append(ss[i])
+            else:
+                src_sel.append(ss[i] - src_coord[i])
+            if i == dst_axis:
+                dst_sel.append(dst_vec)
+            elif isinstance(ss[i], slice):
+                dst_sel.append(ss[i])
         dst_arr[tuple(dst_sel)] = src_arr[tuple(src_sel)]
+        return dst_arr
+
+    def advanced_assign_block_along_axis(
+        self, dst_arr, src_arr, ss, axis, dst_coord, src_coord
+    ):
+
+        # Note that here, we only compute the set of indices that need to be updated for axis.
+        # Slice and index subscript bounds are tested in the control process.
+        # This could be optimized, but in its current state, it's simple and not a bottleneck.
+        array = ss[axis]
+        dst_vec = np.array(array)
+        dst_mask = (dst_coord[axis] <= dst_vec) & (
+            dst_vec < dst_coord[axis] + dst_arr.shape[axis]
+        )
+
+        # Compute a different mask for different assignment operations.
+        # For select operations, src_arr matches the dims of dst_arr.
+        if len(src_arr.shape) == 0:
+            # scalar
+            mask = dst_mask
+        elif len(src_arr.shape) == 1:
+            src_vec = np.arange(len(array))
+            src_mask = (src_coord[0] <= src_vec) & (
+                src_vec < src_coord[0] + src_arr.shape[0]
+            )
+            mask = dst_mask & src_mask
+            src_vec = src_vec[mask] - src_coord[0]
+        else:
+            src_vec = np.arange(len(array))
+            src_mask = (src_coord[axis] <= src_vec) & (
+                src_vec < src_coord[axis] + src_arr.shape[axis]
+            )
+            mask = dst_mask & src_mask
+            src_vec = src_vec[mask] - src_coord[axis]
+        dst_vec = dst_vec[mask] - dst_coord[axis]
+
+        if dst_vec.shape[0] == 0:
+            # Nothing to do for this array.
+            return dst_arr
+
+        dst_arr = dst_arr.copy()
+        # Create and apply the subscript argument.
+        dst_sel = []
+        for i in range(len(ss)):
+            if i == axis:
+                dst_sel.append(dst_vec)
+            elif isinstance(ss[i], slice):
+                dst_sel.append(ss[i])
+            else:
+                dst_sel.append(ss[i] - dst_coord[i])
+
+        if len(src_arr.shape) == 0:
+            # scalar
+            dst_arr[tuple(dst_sel)] = src_arr
+        elif len(src_arr.shape) == 1:
+            # single-dim
+            dst_arr[tuple(dst_sel)] = src_arr[(src_vec,)]
+        else:
+            # multi-dim
+            src_sel = [slice(None, None)] * len(ss)
+            src_sel[axis] = src_vec
+            dst_arr[tuple(dst_sel)] = src_arr[tuple(src_sel)]
         return dst_arr
 
     def diag(self, arr, offset):
