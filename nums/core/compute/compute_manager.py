@@ -17,6 +17,7 @@
 import inspect
 from types import FunctionType
 from typing import Any, Union, List
+import warnings
 
 import numpy as np
 
@@ -247,6 +248,15 @@ class ComputeManager(ComputeInterface):
             shape, dtype, cluster_shape, num_cores
         )
 
+    def update_block_shape_map(self, shape_dim, block_shape_dim):
+        if shape_dim in self._block_shape_map:
+            if self._block_shape_map[shape_dim] != block_shape_dim:
+                warnings.warn(
+                    "Block size differs for dimensions of size %s, "
+                    "this may cause some operations to be slower." % shape_dim
+                )
+        self._block_shape_map[shape_dim] = block_shape_dim
+
     def get_block_shape(self, shape, dtype):
         # Simple way to ensure shape compatibility for basic linear algebra operations.
         block_shape = self.compute_block_shape(shape, dtype)
@@ -256,7 +266,7 @@ class ComputeManager(ComputeInterface):
             shape_dim = shape[axis]
             block_shape_dim = block_shape[axis]
             if shape_dim not in self._block_shape_map:
-                self._block_shape_map[shape_dim] = block_shape_dim
+                self.update_block_shape_map(shape_dim, block_shape_dim)
             final_block_shape.append(self._block_shape_map[shape_dim])
         return tuple(final_block_shape)
 

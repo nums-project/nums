@@ -52,64 +52,6 @@ def test_basic(nps_app_inst):
     assert nps.allclose(x_api, x_app)
 
 
-def test_shuffle(nps_app_inst):
-    def select(idx, np_idx, arr, np_arr):
-        if axis == 0:
-            arr_shuffle = arr[idx]
-            np_arr_shuffle = np_arr[np_idx]
-        else:
-            ss = [slice(None, None) for _ in range(3)]
-            ss[axis] = idx
-            np_ss = [slice(None, None) for _ in range(3)]
-            np_ss[axis] = np_idx
-            arr_shuffle = arr[tuple(ss)]
-            np_arr_shuffle = np_arr[tuple(np_ss)]
-        assert np.all(np_arr_shuffle == arr_shuffle.get())
-
-    import nums.numpy as nps
-
-    assert nps_app_inst is not None
-
-    shape = (12, 34, 56)
-    block_shape = (2, 5, 7)
-    arr: BlockArray = nps.arange(np.product(shape)).reshape(
-        shape, block_shape=block_shape
-    )
-    np_arr = arr.get()
-
-    for axis in range(3):
-        for axis_frac in (1.0, 0.5):
-            rs = nps.random.RandomState(1337)
-            idx = rs.permutation(int(shape[axis] * axis_frac))
-            np_idx = idx.get()
-            select(idx, np_idx, arr, np_arr)
-            # Also test boolean mask.
-            np_mask = np.zeros(shape[axis], dtype=bool)
-            np_mask[np_idx] = True
-            mask = nps.array(np_mask)
-            assert np.allclose(mask.get(), np_mask)
-            select(mask, np_mask, arr, np_arr)
-
-
-def test_shuffle_subscript_ops(nps_app_inst):
-    import nums.numpy as nps
-
-    assert nps_app_inst is not None
-
-    shape = (123, 45)
-    block_shape = (10, 20)
-    arr: BlockArray = nps.arange(np.product(shape)).reshape(
-        shape, block_shape=block_shape
-    )
-    np_arr = arr.get()
-    rs = nps.random.RandomState(1337)
-    idx: BlockArray = rs.permutation(shape[1])
-    np_idx = idx.get()
-    arr_shuffle = arr[:, idx]
-    np_arr_shuffle = np_arr[:, np_idx]
-    assert np.all(np_arr_shuffle == arr_shuffle.get())
-
-
 def test_blockarray_perm(nps_app_inst):
     import nums.numpy as nps
 
@@ -155,8 +97,6 @@ if __name__ == "__main__":
 
     nps_app_inst = application_manager.instance()
 
-    # test_basic(nps_app_inst)
-    test_shuffle(nps_app_inst)
-    # test_shuffle_subscript_ops(nps_app_inst)
+    test_basic(nps_app_inst)
     # test_default_random(nps_app_inst)
     # test_blockarray_perm(nps_app_inst)
