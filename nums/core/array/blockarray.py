@@ -249,6 +249,8 @@ class BlockArray(BlockArrayBase):
                 val = entry.get()
             else:
                 val = entry
+            if isinstance(val, list):
+                val = np.ndarray(val)
             if isinstance(val, np.ndarray):
                 # If this is a Boolean mask, convert it to integers.
                 if array_utils.is_bool(val.dtype, type_test=True):
