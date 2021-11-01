@@ -489,7 +489,7 @@ class BlockArray(BlockArrayBase):
                 if not (
                     dst_coord[curr_axis]
                     <= np_ss[curr_axis]
-                    < dst_coord[curr_axis] + dst_arr.shape[curr_axis]
+                    < dst_coord[curr_axis] + dst_block.shape[curr_axis]
                 ):
                     skip = True
                     break
