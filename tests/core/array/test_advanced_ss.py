@@ -24,17 +24,17 @@ from nums.numpy import BlockArray
 
 
 def test_select_assign(nps_app_inst):
-    def select(idx, np_idx, arr, np_arr):
-        if axis == 0:
-            arr_shuffle = arr[idx]
-            np_arr_shuffle = np_arr[np_idx]
-        else:
-            ss = [slice(None, None) for _ in range(3)]
-            ss[axis] = idx
-            np_ss = [slice(None, None) for _ in range(3)]
-            np_ss[axis] = np_idx
-            arr_shuffle = arr[tuple(ss)]
-            np_arr_shuffle = np_arr[tuple(np_ss)]
+    def select(idx, np_idx, arr, np_arr, idx_axes=None, idx_vals=None):
+        ss = [slice(None, None) for _ in range(3)]
+        ss[axis] = idx
+        np_ss = [slice(None, None) for _ in range(3)]
+        np_ss[axis] = np_idx
+        if idx_axes:
+            # If idx_axes is set, then we should not expect and exception.
+            ss[idx_axes[0]], ss[idx_axes[1]] = idx_vals[0], idx_vals[1]
+            np_ss[idx_axes[0]], np_ss[idx_axes[1]] = idx_vals[0], idx_vals[1]
+        arr_shuffle = arr[tuple(ss)]
+        np_arr_shuffle = np_arr[tuple(np_ss)]
         assert np.all(np_arr_shuffle == arr_shuffle.get())
 
     def assign(idx, np_idx, arr, np_arr, axis, mode, idx_axes=None, idx_vals=None):
