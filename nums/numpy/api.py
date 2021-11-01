@@ -391,7 +391,7 @@ def matmul(x1: BlockArray, x2: BlockArray) -> BlockArray:
 
 def inner(a: BlockArray, b: BlockArray):
     assert len(a.shape) == len(b.shape) == 1, "Only single-axis inputs supported."
-    return a.T @ b
+    return a.transpose(defer=True) @ b
 
 
 def outer(a: BlockArray, b: BlockArray):

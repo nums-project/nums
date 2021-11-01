@@ -31,11 +31,22 @@ def test_warmup(app_inst_all: ArrayApplication):
     assert True
 
 
-def test_block_grid_entry(app_inst_all: ArrayApplication):
+def test_transposed_block(app_inst_all: ArrayApplication):
     ba: BlockArray = app_inst_all.array(
         np.array([[1, 2, 3], [4, 5, 6]]), block_shape=(1, 3)
     )
     block1: Block = ba.T.blocks[0, 1]
+    assert block1.size() == 3
+    assert not block1.transposed
+    assert block1.grid_entry == block1.true_grid_entry()
+    assert block1.grid_shape == block1.true_grid_shape()
+
+
+def test_deferred_transposed_block(app_inst_all: ArrayApplication):
+    ba: BlockArray = app_inst_all.array(
+        np.array([[1, 2, 3], [4, 5, 6]]), block_shape=(1, 3)
+    )
+    block1: Block = ba.transpose(defer=True).blocks[0, 1]
     assert block1.size() == 3
     assert block1.transposed
     assert block1.grid_entry == (0, 1)
@@ -50,4 +61,4 @@ if __name__ == "__main__":
 
     app_inst = conftest.get_app("ray-none")
     test_warmup(app_inst)
-    test_block_grid_entry(app_inst)
+    test_deferred_transposed_block(app_inst)
