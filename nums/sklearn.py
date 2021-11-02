@@ -1,3 +1,5 @@
+import warnings
+
 from nums.core.array.blockarray import BlockArray
 from nums.core.application_manager import (
     instance,
@@ -18,11 +20,36 @@ def _register_train_test_split(app: ArrayApplication):
 call_on_create(_register_train_test_split)
 
 
+def _check_array(array, strict=False):
+    if not isinstance(array, BlockArray):
+        if strict:
+            raise ValueError("Input array is not a BlockArray.")
+        # These arrays should be a single block.
+        array = instance().array(array, block_shape=array.shape)
+    if not array.is_single_block():
+        if strict:
+            raise ValueError("Input array is not a single block.")
+        array_size_gb = array.nbytes / 10 ** 9
+        if array_size_gb > 100.0:
+            raise MemoryError(
+                "Operating on an "
+                "array of size %sGB is not supported." % array_size_gb
+            )
+        elif array_size_gb > 10.0:
+            # This is a large array of size 10GB.
+            warnings.warn(
+                "Attempting to convert an array "
+                "of size %sGB to a single block." % array_size_gb
+            )
+        array = array.to_single_block()
+    return array
+
+
 def train_test_split(*arrays, **options):
     # TODO: Add proper seed support.
+    updated_arrays = []
     for array in arrays:
-        assert isinstance(array, BlockArray)
-        assert array.is_single_block()
+        updated_arrays.append(_check_array(array))
     kwargs = options.copy()
     kwargs["syskwargs"] = {
         "options": {"num_returns": 2 * len(arrays)},
@@ -94,12 +121,16 @@ def build_sklearn_actor(cls: type):
 
         # TODO: (all functions) test inputs are single block, if not warn about performance
         def fit(self, X: BlockArray, y: BlockArray):
+            _check_array(X, True)
+            _check_array(y, True)
             instance().cm.call_actor_method(
                 self.actor, "fit", X.flattened_oids()[0], y.flattened_oids()[0]
             )
 
         def fit_transform(self, X: BlockArray, y: BlockArray = None):
+            _check_array(X, True)
             if y is not None:
+                _check_array(y, True)
                 y = y.flattened_oids()[0]
             r_oid = instance().cm.call_actor_method(
                 self.actor, "fit_transform", X.flattened_oids()[0], y
@@ -109,6 +140,7 @@ def build_sklearn_actor(cls: type):
             )
 
         def predict(self, X: BlockArray):
+            _check_array(X, True)
             r_oid = instance().cm.call_actor_method(
                 self.actor, "predict", X.flattened_oids()[0]
             )
@@ -117,7 +149,10 @@ def build_sklearn_actor(cls: type):
             )
 
         def score(self, X: BlockArray, y: BlockArray, sample_weight: BlockArray = None):
+            _check_array(X, True)
+            _check_array(y, True)
             if sample_weight is not None:
+                _check_array(sample_weight, True)
                 sample_weight = sample_weight.flattened_oids()[0]
             r_oid = instance().cm.call_actor_method(
                 self.actor,

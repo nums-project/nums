@@ -14,6 +14,7 @@
 # limitations under the License.
 
 
+import warnings
 import logging
 from types import FunctionType
 from typing import Any, Union, List, Dict, Optional
@@ -221,7 +222,12 @@ class RaySystem(SystemInterface):
         return int(num_cores)
 
     def register_actor(self, name: str, cls: type):
-        assert name not in self._actors
+        if name in self._actors:
+            warnings.warn(
+                "Actor %s has already been registered. "
+                "Overwriting with %s." % (name, cls.__name__)
+            )
+            return
         self._actors[name] = ray.remote(cls)
 
     def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
