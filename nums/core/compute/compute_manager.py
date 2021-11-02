@@ -157,6 +157,15 @@ class ComputeManager(ComputeInterface):
     def num_cores_total(self):
         return self.system.num_cores_total()
 
+    def register_actor(self, name: str, cls: type):
+        return self.system.register_actor(name, cls)
+
+    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+        return self.system.make_actor(name, *args, device_id=device_id, **kwargs)
+
+    def call_actor_method(self, actor, method: str, *args, **kwargs):
+        return self.system.call_actor_method(actor, method, *args, **kwargs)
+
     #########################
     # Block Shape Management
     #########################

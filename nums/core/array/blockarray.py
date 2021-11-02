@@ -57,6 +57,7 @@ class BlockArray(BlockArrayBase):
     @classmethod
     def from_oid(cls, oid, shape, dtype, cm):
         block_shape = shape
+        dtype = array_utils.to_dtype_cls(dtype)
         grid = ArrayGrid(shape, block_shape, dtype.__name__)
         ba = BlockArray(grid, cm)
         for i, grid_entry in enumerate(grid.get_entry_iterator()):
@@ -129,6 +130,24 @@ class BlockArray(BlockArrayBase):
             )
         self.cm.get(oids)
         return self
+
+    def is_single_block(self):
+        return self.blocks.size == 1
+
+    def to_single_block(self, replicate=False):
+        res: BlockArray = self.reshape(*self.shape, block_shape=(1,) * len(self.shape))
+        if replicate:
+            block: Block = res.blocks.item()
+            num_devices: int = len(self.cm.devices())
+            for i in range(num_devices):
+                self.cm.touch(
+                    block.oid,
+                    syskwargs={
+                        "grid_entry": (i,),
+                        "grid_shape": (num_devices,),
+                    },
+                )
+        return res
 
     def reshape(self, *shape, **kwargs):
         block_shape = kwargs.get("block_shape", None)

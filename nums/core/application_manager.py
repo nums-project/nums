@@ -32,6 +32,16 @@ from nums.core.systems.systems import SerialSystem, RaySystem
 
 
 _instance: ArrayApplication = None
+_call_on_create: list = []
+
+
+def call_on_create(func):
+    global _call_on_create
+    # Always include funcs in _call_on_create.
+    # If the app is destroyed, the hooks need to be invoked again on creation.
+    _call_on_create.append(func)
+    if is_initialized():
+        func(_instance)
 
 
 def is_initialized():
@@ -43,6 +53,8 @@ def instance():
     global _instance
     if _instance is None:
         _instance = create()
+        for func in _call_on_create:
+            func(_instance)
     return _instance
 
 
