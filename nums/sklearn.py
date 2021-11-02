@@ -23,7 +23,7 @@ call_on_create(_register_train_test_split)
 def _check_array(array, strict=False):
     if not isinstance(array, BlockArray):
         if strict:
-            raise ValueError("Input array is not a BlockArray.")
+            raise TypeError("Input array is not a BlockArray.")
         # These arrays should be a single block.
         array = instance().array(array, block_shape=array.shape)
     if not array.is_single_block():
@@ -52,11 +52,11 @@ def train_test_split(*arrays, **options):
         updated_arrays.append(_check_array(array))
     kwargs = options.copy()
     kwargs["syskwargs"] = {
-        "options": {"num_returns": 2 * len(arrays)},
+        "options": {"num_returns": 2 * len(updated_arrays)},
         "grid_entry": (0,),
         "grid_shape": (1,),
     }
-    array_oids = [array.flattened_oids()[0] for array in arrays]
+    array_oids = [array.flattened_oids()[0] for array in updated_arrays]
     result_oids = instance().cm.call("train_test_split", *array_oids, **kwargs)
     # Optimize by computing this directly.
     shape_dtype_oids = [

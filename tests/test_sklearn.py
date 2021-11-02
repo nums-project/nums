@@ -223,6 +223,32 @@ def test_regressors(nps_app_inst: ArrayApplication):
         assert nps_model.predict(X).dtype is float
 
 
+def test_typing(nps_app_inst):
+    assert nps_app_inst is not None
+    import nums.numpy as nps
+    from nums import sklearn
+    import numpy as np
+
+    np_arr = np.arange(100)
+    train, test = sklearn.train_test_split(np_arr)
+    assert isinstance(train, BlockArray) and isinstance(test, BlockArray)
+    model = sklearn.Lasso()
+    with pytest.raises(TypeError):
+        model.fit(np_arr)
+    X = nps.array(np_arr).reshape((10, 10), block_shape=(5, 5)).astype(float)
+    y = nps.arange(10).reshape(block_shape=(5,)).astype(float)
+    with pytest.raises(ValueError):
+        model.fit(X, y)
+    with pytest.raises(ValueError):
+        model.predict(X)
+    with pytest.raises(ValueError):
+        model.fit_transform(X, y)
+    with pytest.raises(ValueError):
+        model.fit_transform(X, y)
+    with pytest.raises(ValueError):
+        model.score(X, y)
+
+
 if __name__ == "__main__":
     # pylint: disable=import-error
     from nums.core import application_manager
@@ -231,4 +257,5 @@ if __name__ == "__main__":
     settings.system_name = "ray"
     nps_app_inst = application_manager.instance()
     # test_parallel_sklearn(nps_app_inst)
-    test_classifiers(nps_app_inst)
+    # test_classifiers(nps_app_inst)
+    test_typing(nps_app_inst)
