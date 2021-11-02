@@ -11,9 +11,6 @@ class ComputeInterface(object):
         """
         raise NotImplementedError()
 
-    def empty(self, grid_entry: Tuple, grid_meta: Dict, syskwargs: Dict):
-        raise NotImplementedError()
-
     def new_block(
         self, op_name: str, grid_entry: Tuple, grid_meta: Dict, syskwargs: Dict
     ):
@@ -59,8 +56,28 @@ class ComputeInterface(object):
     def update_block_by_index(self, dst_arr, src_arr, index_pairs, syskwargs: Dict):
         raise NotImplementedError()
 
-    def update_block_along_axis(
-        self, dst_arr, src_arr, index_pairs, axis, syskwargs: Dict
+    def advanced_assign_block_along_axis(
+        self,
+        dst_arr,
+        src_arr,
+        ss,
+        axis,
+        dst_coord,
+        src_coord,
+        syskwargs: Dict,
+    ):
+        raise NotImplementedError()
+
+    def advanced_select_block_along_axis(
+        self,
+        dst_arr,
+        src_arr,
+        ss,
+        dst_axis,
+        src_axis,
+        dst_coord,
+        src_coord,
+        syskwargs: Dict,
     ):
         raise NotImplementedError()
 
@@ -71,6 +88,9 @@ class ComputeInterface(object):
         raise NotImplementedError()
 
     def split(self, arr, indices_or_sections, axis, transposed, syskwargs: Dict):
+        raise NotImplementedError()
+
+    def shape_dtype(self, arr, syskwargs: Dict):
         raise NotImplementedError()
 
     def size(self, arr, syskwargs: Dict):

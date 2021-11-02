@@ -43,13 +43,8 @@ def test_rwd(app_inst_s3: ArrayApplication):
         assert "ETag" in write_result_arr[grid_entry]
     ba_read: BlockArray = app_inst_s3.read_s3(filename)
     assert app_inst_s3.get(app_inst_s3.allclose(ba, ba_read))
-    delete_result: BlockArray = app_inst_s3.delete_s3(filename)
-    delete_result_arr = app_inst_s3.get(delete_result)
-    for grid_entry in delete_result.grid.get_entry_iterator():
-        deleted_key = delete_result_arr[grid_entry]["Deleted"][0]["Key"]
-        assert deleted_key == StoredArrayS3(filename, delete_result.grid).get_key(
-            grid_entry
-        )
+    delete_result: bool = app_inst_s3.delete_s3(filename)
+    assert delete_result
 
 
 @mock_s3
