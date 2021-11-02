@@ -26,10 +26,16 @@ from nums.core.array.errors import AxisError
 # pylint: disable = no-member, trailing-whitespace
 
 
+def to_dtype_cls(dtype):
+    if hasattr(dtype, "__name__"):
+        return dtype
+    return np.__getattribute__(str(dtype))
+
+
 def get_uop_output_type(op_name, dtype):
     a = np.array(1, dtype=dtype)
     result_dtype = np.__getattribute__(op_name)(a).dtype
-    return np.__getattribute__(str(result_dtype))
+    return to_dtype_cls(result_dtype)
 
 
 def get_bop_output_type(op_name, dtype_a, dtype_b):
@@ -38,17 +44,25 @@ def get_bop_output_type(op_name, dtype_a, dtype_b):
     op_name = np_ufunc_map.get(op_name, op_name)
     try:
         dtype = np.__getattribute__(op_name)(a, b).dtype
-        return np.__getattribute__(str(dtype))
+        return to_dtype_cls(dtype)
     except TypeError as err:
         raise err
     except Exception as _:
         dtype = scipy.special.__getattribute__(op_name)(a, b).dtype
-        return np.__getattribute__(str(dtype))
+        return to_dtype_cls(dtype)
 
 
 def is_scalar(val):
+    return is_supported(val)
+
+
+def is_supported(val, type_test=False):
     return (
-        is_bool(val) or is_uint(val) or is_int(val) or is_float(val) or is_complex(val)
+        is_bool(val, type_test)
+        or is_uint(val, type_test)
+        or is_int(val, type_test)
+        or is_float(val, type_test)
+        or is_complex(val, type_test)
     )
 
 

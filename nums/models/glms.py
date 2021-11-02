@@ -14,6 +14,8 @@
 # limitations under the License.
 
 
+import warnings
+
 import numpy as np
 
 from nums.core.application_manager import instance as _instance
@@ -67,7 +69,7 @@ class GLM(object):
         C=1.0,
         tol=0.0001,
         max_iter=100,
-        solver="newton-cg",
+        solver="newton",
         lr=0.01,
         random_state=None,
         fit_intercept=True,
@@ -144,6 +146,8 @@ class GLM(object):
             else:
                 beta = block_sgd(self, beta, X, y, tol, max_iter, lr)
         elif self._opt == "newton" or self._opt == "newton-cg":
+            if self._opt == "newton-cg":
+                warnings.warn("Specified newton-cg solver, using newton instead.")
             beta = newton(self._app, self, beta, X, y, tol, max_iter)
         elif self._opt == "irls":
             # TODO (hme): Provide irls for all GLMs.
@@ -163,7 +167,7 @@ class GLM(object):
 
     def grad_norm_sq(self, X: BlockArray, y: BlockArray, beta=None):
         g = self.gradient(X, y, self.forward(X, beta), beta=beta)
-        return g.T @ g
+        return g.transpose(defer=True) @ g
 
     def predict(self, X):
         raise NotImplementedError()
@@ -237,10 +241,10 @@ class LinearRegression(GLM):
     ):
         if mu is None:
             mu = self.forward(X)
-        return X.T @ (mu - y)
+        return X.transpose(defer=True) @ (mu - y)
 
     def hessian(self, X: BlockArray, y: BlockArray, mu: BlockArray = None):
-        return X.T @ X
+        return X.transpose(defer=True) @ X
 
     def deviance(self, y, y_pred):
         return self._app.sum((y - y_pred) ** self._app.two)
@@ -275,10 +279,10 @@ class LogisticRegression(GLM):
         if mu is None:
             mu = self.forward(X)
         if self._penalty is None:
-            return X.T @ (mu - y)
+            return X.transpose(defer=True) @ (mu - y)
         else:
             assert beta is not None
-            return X.T @ (mu - y) + self._lambda_vec * beta
+            return X.transpose(defer=True) @ (mu - y) + self._lambda_vec * beta
 
     def hessian(self, X: BlockArray, y: BlockArray, mu: BlockArray = None):
         if mu is None:
@@ -286,10 +290,10 @@ class LogisticRegression(GLM):
         dim, block_dim = mu.shape[0], mu.block_shape[0]
         s = (mu * (self._app.one - mu)).reshape((dim, 1), block_shape=(block_dim, 1))
         if self._penalty is None:
-            return X.T @ (s * X)
+            return X.transpose(defer=True) @ (s * X)
         else:
             # TODO (hme): Construct diag of _lambda_vec once.
-            return X.T @ (s * X) + self._app.diag(self._lambda_vec)
+            return X.transpose(defer=True) @ (s * X) + self._app.diag(self._lambda_vec)
 
     def deviance(self, y, y_pred):
         raise NotImplementedError()
@@ -332,13 +336,13 @@ class PoissonRegression(GLM):
     ):
         if mu is None:
             mu = self.forward(X)
-        return X.T @ (mu - y)
+        return X.transpose(defer=True) @ (mu - y)
 
     def hessian(self, X: BlockArray, y: BlockArray, mu: BlockArray = None):
         if mu is None:
             mu = self.forward(X)
         # TODO (hme): This is sub-optimal as it forces the computation of X.T.
-        return (X.T * mu) @ X
+        return (X.transpose(defer=True) * mu) @ X
 
     def deviance(self, y: BlockArray, y_pred: BlockArray) -> BlockArray:
         return self._app.sum(
@@ -482,7 +486,7 @@ def irls(
         eta: BlockArray = X @ beta
         mu: BlockArray = model.link_inv(eta)
         s = mu * (1 - mu) + 1e-16
-        XT_s = X.T * s
+        XT_s = X.transpose(defer=True) * s
         # These are PSD, but inv is faster than psd inv.
         XTsX_inv = linalg.inv(app, XT_s @ X)
         z = eta + (y - mu) / s

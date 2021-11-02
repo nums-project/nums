@@ -532,9 +532,6 @@ class ArrayApplication(object):
     def max(self, X: BlockArray, axis=None, keepdims=False):
         return self.reduce("max", X, axis, keepdims)
 
-    def argmin(self, X: BlockArray, axis=None):
-        pass
-
     def sum(self, X: BlockArray, axis=None, keepdims=False, dtype=None):
         return self.reduce("sum", X, axis, keepdims, dtype)
 
@@ -596,13 +593,13 @@ class ArrayApplication(object):
         result.blocks[()].oid = argoptima
         return result
 
-    def sqrt(self, X):
+    def sqrt(self, X: BlockArray) -> BlockArray:
         if X.dtype not in (float, np.float32, np.float64):
             X = X.astype(np.float64)
         return X.ufunc("sqrt")
 
-    def norm(self, X):
-        return self.sqrt(X.T @ X)
+    def norm(self, X: BlockArray) -> BlockArray:
+        return self.sqrt(X.transpose(defer=True) @ X)
 
     def xlogy(self, x: BlockArray, y: BlockArray) -> BlockArray:
         if x.dtype not in (float, np.float32, np.float64):
