@@ -224,8 +224,8 @@ def test_regressors(nps_app_inst: ArrayApplication):
 
 
 def test_typing(nps_app_inst):
+    # pylint: disable=unbalanced-tuple-unpacking
     assert nps_app_inst is not None
-    import nums.numpy as nps
     from nums import sklearn
     import numpy as np
 
