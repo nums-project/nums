@@ -211,6 +211,8 @@ class GLM(object):
         return 1 - dev / dev_null
 
 
+# TODO: Add Lasso, Ridge, and ElasticNet.
+#  For Ridge, same terms for objective, gradient, and Hessian as Logistic with L2.
 class LinearRegression(GLM):
 
     # Assume Sigma = I
