@@ -219,7 +219,7 @@ def test_conversions(conversions_data: tuple):
     assert np.allclose(Z.get(), npZ)
     common.check_block_integrity(Z)
     if isinstance(Y, np.ndarray):
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             Z = Y + X
     else:
         Z = Y + X
@@ -233,7 +233,7 @@ def test_conversions(conversions_data: tuple):
     assert np.allclose(Z.get(), npZ)
     common.check_block_integrity(Z)
     if isinstance(Y, np.ndarray):
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             Z = Y - X
     else:
         Z = Y - X
@@ -247,7 +247,7 @@ def test_conversions(conversions_data: tuple):
     assert np.allclose(Z.get(), npZ)
     common.check_block_integrity(Z)
     if isinstance(Y, np.ndarray):
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             Z = Y * X
     else:
         Z = Y * X
@@ -261,7 +261,7 @@ def test_conversions(conversions_data: tuple):
     assert np.allclose(Z.get(), npZ)
     common.check_block_integrity(Z)
     if isinstance(Y, np.ndarray):
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             Z = Y / X
     else:
         Z = Y / X
@@ -275,7 +275,7 @@ def test_conversions(conversions_data: tuple):
     assert np.allclose(Z.get(), npZ)
     common.check_block_integrity(Z)
     if isinstance(Y, np.ndarray):
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             Z = Y ** X
     else:
         Z = Y ** X

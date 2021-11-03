@@ -1043,7 +1043,7 @@ class BlockArray(BlockArrayBase):
         if np.sum(self.shape) == len(self.shape):
             # If all ones or scalar, then this is defined.
             return self.get().__bool__()
-        raise ValueError("Boolean value for non-scalar is undefined.")
+        return True
 
     def __invert__(self):
         return self.ufunc("invert")
