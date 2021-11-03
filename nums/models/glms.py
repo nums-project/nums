@@ -99,6 +99,7 @@ class GLM(object):
             raise NotImplementedError("%s penalty not supported" % self._penalty)
         self._lambda = 1.0 / C
         self._lambda_vec = None
+        self._lambda_diag = None
         self._tol = tol
         self._max_iter = max_iter
         self._opt = solver
@@ -137,6 +138,7 @@ class GLM(object):
             self._lambda_vec = (
                 self._app.ones(beta.shape, beta.block_shape, beta.dtype) * self._lambda
             )
+            self._lambda_diag = self._app.diag(self._lambda_vec)
         if self._opt == "gd" or self._opt == "sgd" or self._opt == "block_sgd":
             lr: BlockArray = self._app.scalar(self._lr)
             if self._opt == "gd":
@@ -267,7 +269,14 @@ class LogisticRegression(GLM):
         assert beta is not None or self._beta is not None
         log, one = self._app.log, self._app.one
         mu = self.forward(X, beta) if mu is None else mu
-        return -self._app.sum(y * log(mu) + (one - y) * log(one - mu))
+        if self._penalty is None:
+            return -self._app.sum(y * log(mu) + (one - y) * log(one - mu))
+        else:
+            assert beta is not None
+            return (
+                -self._app.sum(y * log(mu) + (one - y) * log(one - mu))
+                + 0.5 * self._lambda * beta.T @ beta
+            )
 
     def gradient(
         self,
@@ -292,8 +301,7 @@ class LogisticRegression(GLM):
         if self._penalty is None:
             return X.transpose(defer=True) @ (s * X)
         else:
-            # TODO (hme): Construct diag of _lambda_vec once.
-            return X.transpose(defer=True) @ (s * X) + self._app.diag(self._lambda_vec)
+            return X.transpose(defer=True) @ (s * X) + self._lambda_diag
 
     def deviance(self, y, y_pred):
         raise NotImplementedError()
