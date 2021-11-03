@@ -240,7 +240,7 @@ def svd(app: ArrayApplication, X):
 
 def pca(app: ArrayApplication, X: BlockArray):
     C = app.cov(X)
-    U, S, VT = svd(app, C)
+    U, _, _ = svd(app, C)
     return X @ U
 
 
