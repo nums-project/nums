@@ -290,7 +290,7 @@ class Block(object):
     __imul__ = __mul__
     __imatmul__ = __matmul__
     __itruediv__ = __truediv__
-    __ipow__ = __truediv__
+    __ipow__ = __pow__
 
     def astype(self, dtype):
         block = self.copy()
@@ -318,6 +318,7 @@ class BlockArrayBase(object):
         self.cm = cm
         self.shape = self.grid.shape
         self.block_shape = self.grid.block_shape
+        self.grid_shape = self.grid.grid_shape
         self.size = np.product(self.shape)
         self.ndim = len(self.shape)
         self.dtype = self.grid.dtype

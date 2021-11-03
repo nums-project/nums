@@ -392,11 +392,77 @@ def test_tensordot_shape_error(nps_app_inst):
     check_tensordot_axes_type_error(np_A, np_B, [0, 1])
 
 
+def test_overloads(nps_app_inst):
+    assert nps_app_inst is not None
+
+    arithmetic_ops = [
+        lambda a, b: a % b,
+        lambda a, b: a + b,
+        lambda a, b: a - b,
+        lambda a, b: a * b,
+        lambda a, b: a / b,
+        lambda a, b: a // b,
+        lambda a, b: a ** b,
+    ]
+    bitwise_ops = [
+        lambda a, b: a ^ b,
+        lambda a, b: a | b,
+        lambda a, b: a & b,
+        lambda a, b: a >> b,
+        lambda a, b: a << b,
+    ]
+    ineq_ops = [
+        lambda a, b: a < b,
+        lambda a, b: a <= b,
+        lambda a, b: a > b,
+        lambda a, b: a >= b,
+        lambda a, b: a == b,
+        lambda a, b: a != b,
+    ]
+    vals = [(arithmetic_ops, 1, 2), (ineq_ops, 1, 2), (bitwise_ops, True, False)]
+    for ops, val1, val2 in vals:
+        for op in ops:
+            nps_val2 = nps.array(val2)
+            np_val2 = np.array(val2)
+            assert op(val1, np_val2) == op(val1, nps_val2).get()
+            assert op(np_val2, val1) == op(nps_val2, val1).get()
+
+    val1 = [[1, 2], [3, 4]]
+    val2 = [[5, 6], [7, 8]]
+    nps_val2 = nps.array(val2)
+    np_val2 = np.array(val2)
+    assert np.allclose(val1 @ np_val2, (val1 @ nps_val2).get())
+    assert np.allclose(np_val2 @ val1, (nps_val2 @ val1).get())
+
+
+def test_ams_metric(nps_app_inst):
+    assert nps_app_inst is not None
+
+    def metric(api, ytrue, ypred, weights):
+        # True-positive rate.
+        s = api.sum(weights[(ytrue == 1) & (ytrue == ypred)])
+        # False-positive rate.
+        b = api.sum(weights[(ytrue == 1) & (ytrue != ypred)])
+        br = 10.0
+        radicand = 2 * ((s + b + br) * api.log(1.0 + s / (b + br)) - s)
+        return api.sqrt(radicand)
+
+    y1 = nps.random.randint(2, size=100)
+    y2 = nps.random.randint(2, size=100)
+    weights = nps.random.rand(100)
+
+    np_val = metric(np, y1.get(), y2.get(), weights.get())
+    val = metric(nps, y1, y2, weights)
+    assert np.allclose(np_val, val.get())
+
+
 if __name__ == "__main__":
     from nums.core import application_manager
     from nums.core import settings
 
     settings.system_name = "serial"
     nps_app_inst = application_manager.instance()
-    test_inner_outer(nps_app_inst)
-    test_dot(nps_app_inst)
+    # test_inner_outer(nps_app_inst)
+    # test_dot(nps_app_inst)
+    test_overloads(nps_app_inst)
+    test_ams_metric(nps_app_inst)
