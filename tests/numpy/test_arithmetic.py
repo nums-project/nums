@@ -393,6 +393,8 @@ def test_tensordot_shape_error(nps_app_inst):
 
 
 def test_overloads(nps_app_inst):
+    assert nps_app_inst is not None
+
     arithmetic_ops = [
         lambda a, b: a % b,
         lambda a, b: a + b,
@@ -434,6 +436,8 @@ def test_overloads(nps_app_inst):
 
 
 def test_ams_metric(nps_app_inst):
+    assert nps_app_inst is not None
+
     def metric(api, ytrue, ypred, weights):
         # True-positive rate.
         s = api.sum(weights[(ytrue == 1) & (ytrue == ypred)])
