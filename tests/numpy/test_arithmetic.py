@@ -395,20 +395,27 @@ def test_tensordot_shape_error(nps_app_inst):
 def test_overloads(nps_app_inst):
     arithmetic_ops = [
         lambda a, b: a % b,
-        lambda a, b: a + b, lambda a, b: a - b,
+        lambda a, b: a + b,
+        lambda a, b: a - b,
         lambda a, b: a * b,
-        lambda a, b: a / b, lambda a, b: a // b,
-        lambda a, b: a ** b
+        lambda a, b: a / b,
+        lambda a, b: a // b,
+        lambda a, b: a ** b,
     ]
     bitwise_ops = [
         lambda a, b: a ^ b,
-        lambda a, b: a | b, lambda a, b: a & b,
-        lambda a, b: a >> b, lambda a, b: a << b,
+        lambda a, b: a | b,
+        lambda a, b: a & b,
+        lambda a, b: a >> b,
+        lambda a, b: a << b,
     ]
     ineq_ops = [
-        lambda a, b: a < b, lambda a, b: a <= b,
-        lambda a, b: a > b, lambda a, b: a >= b,
-        lambda a, b: a == b, lambda a, b: a != b,
+        lambda a, b: a < b,
+        lambda a, b: a <= b,
+        lambda a, b: a > b,
+        lambda a, b: a >= b,
+        lambda a, b: a == b,
+        lambda a, b: a != b,
     ]
     vals = [(arithmetic_ops, 1, 2), (ineq_ops, 1, 2), (bitwise_ops, True, False)]
     for ops, val1, val2 in vals:
