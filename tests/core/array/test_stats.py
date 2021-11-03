@@ -107,7 +107,6 @@ def test_top_k(app_inst: ArrayApplication):
 
 
 def test_cov(app_inst):
-    import numpy as np
 
     np_x = np.arange(30).reshape(10, 3)
     ba_x = app_inst.array(np_x, block_shape=(3, 2))
