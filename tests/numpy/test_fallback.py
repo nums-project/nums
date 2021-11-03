@@ -207,7 +207,6 @@ def get_test_set_g2n():
         "kron": [],
         "lexsort": [],
         "maximum_sctype": [],
-        "median": [],
         "meshgrid": [],
         "min_scalar_type": [],
         "mintypecode": [],
