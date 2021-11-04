@@ -522,6 +522,15 @@ class ArrayApplication(object):
             res = res.astype(dtype)
         return res
 
+    def cov(self, X: BlockArray, rowvar=True, bias=False, dtype=None):
+        axis = 0 if rowvar else 1
+        n = X.shape[0] if rowvar else X.shape[1]
+        Xc = (X - self.mean(X, axis=axis, keepdims=True)) / (n if bias else n - 1)
+        r = Xc @ Xc.transpose(defer=True) if rowvar else Xc.transpose(defer=True) @ Xc
+        if dtype is not None:
+            r = r.astype(dtype)
+        return r
+
     def argop(self, op_name: str, arr: BlockArray, axis=None):
         if len(arr.shape) > 1:
             raise NotImplementedError(

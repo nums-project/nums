@@ -106,11 +106,38 @@ def test_top_k(app_inst: ArrayApplication):
             assert np_x[i] == v
 
 
+def test_cov(app_inst):
+
+    np_x = np.arange(30).reshape(10, 3)
+    ba_x = app_inst.array(np_x, block_shape=(3, 2))
+    np.allclose(
+        np.cov(np_x, rowvar=False, bias=False),
+        app_inst.cov(ba_x, rowvar=False, bias=False).get(),
+    )
+    np.allclose(
+        np.cov(np_x, rowvar=False, bias=True),
+        app_inst.cov(ba_x, rowvar=False, bias=True).get(),
+    )
+    np.allclose(
+        np.cov(np_x, rowvar=True, bias=False),
+        app_inst.cov(ba_x, rowvar=True, bias=False).get(),
+    )
+    np.allclose(
+        np.cov(np_x, rowvar=True, bias=True),
+        app_inst.cov(ba_x, rowvar=True, bias=True).get(),
+    )
+    assert (
+        np.cov(np_x, dtype=np.float16).dtype
+        == app_inst.cov(ba_x, dtype=np.float16).get().dtype
+    )
+
+
 if __name__ == "__main__":
     # pylint: disable=import-error
     from tests import conftest
 
     app_inst: ArrayApplication = conftest.get_app("serial")
-    test_quickselect(app_inst)
-    test_median(app_inst)
-    test_top_k(app_inst)
+    # test_quickselect(app_inst)
+    # test_median(app_inst)
+    # test_top_k(app_inst)
+    test_cov(app_inst)
