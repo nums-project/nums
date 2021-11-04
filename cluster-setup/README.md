@@ -115,7 +115,8 @@ After you launch the cluster using the steps above, you can refer to [this examp
   ```
   ray attach aws-cluster.yaml
   ```
-  * Then on the head node, run ```python example.py``` to run this example on the cluster.
+  * Then on the head node, check the status of the cluster by running `watch ray status`. Wait until no nodes are in pending state. 
+  * Then run ```python example.py``` to run this example on the cluster.
   * Then ```exit``` to terminate the ssh connection to the head node. 
 
 
