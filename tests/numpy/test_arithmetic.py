@@ -455,6 +455,11 @@ def test_ams_metric(nps_app_inst):
     val = metric(nps, y1, y2, weights)
     assert np.allclose(np_val, val.get())
 
+    # Test edge-case where everything is a perfect match.
+    np_val = metric(np, y1.get(), y1.get(), weights.get())
+    val = metric(nps, y1, y1, weights)
+    assert np.allclose(np_val, val.get())
+
 
 if __name__ == "__main__":
     from nums.core import application_manager
@@ -464,5 +469,5 @@ if __name__ == "__main__":
     nps_app_inst = application_manager.instance()
     # test_inner_outer(nps_app_inst)
     # test_dot(nps_app_inst)
-    test_overloads(nps_app_inst)
+    # test_overloads(nps_app_inst)
     test_ams_metric(nps_app_inst)

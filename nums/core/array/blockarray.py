@@ -676,6 +676,8 @@ class BlockArray(BlockArrayBase):
     def reduce_axis(self, op_name, axis, keepdims=False):
         if not (axis is None or isinstance(axis, (int, np.int32, np.int64))):
             raise NotImplementedError("Only integer axis is currently supported.")
+        if 0 in self.shape:
+            return BlockArray.create("zeros", (), (), float, self.cm)
         block_reduced_oids = np.empty_like(self.blocks, dtype=tuple)
         for grid_entry in self.grid.get_entry_iterator():
             block = self.blocks[grid_entry]
