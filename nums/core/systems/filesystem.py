@@ -436,7 +436,7 @@ class FileSystem(object):
         # Check if all the nodes have all the data.
         all_has_all = True
         for result in file_results:
-            if result != "all":
+            if isinstance(result, str) and result != "all":
                 all_has_all = False
                 break
         if all_has_all:
