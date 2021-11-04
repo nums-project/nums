@@ -21,7 +21,14 @@ import pytest
 
 from nums.core.array.application import ArrayApplication
 from nums.core.storage.storage import BimodalGaussian
-from nums.models.glms import LogisticRegression, LinearRegression, PoissonRegression
+from nums.models.glms import (
+    LogisticRegression,
+    LinearRegression,
+    ElasticNet,
+    Ridge,
+    Lasso,
+    PoissonRegression,
+)
 
 
 # pylint: disable = protected-access, import-outside-toplevel, import-error
@@ -54,6 +61,35 @@ def test_logistic(nps_app_inst: ArrayApplication):
         print("norm", lr_model.grad_norm_sq(X, y).get())
         print("objective", lr_model.objective(X, y).get())
         print("accuracy", np.sum(y.get() == y_pred) / num_samples)
+
+
+def test_penalties(nps_app_inst: ArrayApplication):
+    num_samples, num_features = 1000, 10
+    real_X, real_y = BimodalGaussian.get_dataset(num_samples, num_features)
+    X = nps_app_inst.array(real_X, block_shape=(100, 3))
+    y = nps_app_inst.array(real_y, block_shape=(100,))
+    param_set = [
+        {"solver": "gd", "lr": 1e-6, "tol": 1e-8, "max_iter": 10},
+        {"solver": "sgd", "lr": 1e-6, "tol": 1e-8, "max_iter": 10},
+        {"solver": "block_sgd", "lr": 1e-6, "tol": 1e-8, "max_iter": 10},
+        {"solver": "newton", "tol": 1e-8, "max_iter": 10},
+        {"solver": "lbfgs", "tol": 1e-8, "max_iter": 20},
+    ]
+    for kwargs in param_set:
+        model: Lasso = Lasso(alpha=0.5, **kwargs)
+        model.fit(X, y)
+        if kwargs["solver"] in ("newton", "lbfgs"):
+            assert model.deviance_sqr(X, y) > 0.9
+
+        model: Ridge = Ridge(alpha=0.5, **kwargs)
+        model.fit(X, y)
+        if kwargs["solver"] in ("newton", "lbfgs"):
+            assert model.deviance_sqr(X, y) > 0.9
+
+        model: ElasticNet = ElasticNet(alpha=0.5, l1_ratio=0.5, **kwargs)
+        model.fit(X, y)
+        if kwargs["solver"] in ("newton", "lbfgs"):
+            assert model.deviance_sqr(X, y) > 0.9
 
 
 def test_logistic_cv(nps_app_inst: ArrayApplication):
@@ -313,13 +349,16 @@ def test_sklearn_poisson_regression(nps_app_inst: ArrayApplication):
 if __name__ == "__main__":
     # pylint: disable=import-error
     from nums.core import application_manager
+    from nums.core import settings
 
+    settings.system_name = "serial"
     nps_app_inst = application_manager.instance()
     # test_logistic(nps_app_inst)
     # test_logistic_cv(nps_app_inst)
     # test_lr(nps_app_inst)
     # test_poisson_basic(nps_app_inst)
     # test_poisson(nps_app_inst)
-    test_sklearn_linear_regression(nps_app_inst)
-    test_sklearn_logistic_regression(nps_app_inst)
-    test_sklearn_poisson_regression(nps_app_inst)
+    # test_sklearn_linear_regression(nps_app_inst)
+    # test_sklearn_logistic_regression(nps_app_inst)
+    # test_sklearn_poisson_regression(nps_app_inst)
+    test_penalties(nps_app_inst)
