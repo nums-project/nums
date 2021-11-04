@@ -52,6 +52,14 @@ def get_bop_output_type(op_name, dtype_a, dtype_b):
         return to_dtype_cls(dtype)
 
 
+def is_index_subscript(val):
+    return is_int(val) or is_uint(val)
+
+
+def is_regular_subscript(val):
+    return isinstance(val, slice) or is_index_subscript(val)
+
+
 def is_scalar(val):
     return is_supported(val)
 
@@ -216,7 +224,7 @@ def block_shape_from_subscript(subscript: tuple, block_shape: tuple):
     for i, obj in enumerate(subscript):
         if isinstance(obj, slice):
             new_block_shape.append(block_shape[i])
-        elif is_int(obj) or is_uint(obj):
+        elif is_regular_subscript(obj):
             continue
         else:
             raise NotImplementedError("No support for advanced indexing.")
@@ -299,7 +307,7 @@ def slice_sel_to_index_list(slice_selection: tuple):
     for slice_or_index in slice_selection:
         if isinstance(slice_or_index, slice):
             slice_ranges.append(list(range(slice_or_index.start, slice_or_index.stop)))
-        elif isinstance(slice_or_index, int):
+        elif is_regular_subscript(slice_or_index):
             slice_ranges.append([slice_or_index])
     index_list = list(itertools.product(*slice_ranges))
     return index_list
