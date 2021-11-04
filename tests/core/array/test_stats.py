@@ -110,19 +110,19 @@ def test_cov(app_inst):
 
     np_x = np.arange(30).reshape(10, 3)
     ba_x = app_inst.array(np_x, block_shape=(3, 2))
-    np.allclose(
+    assert np.allclose(
         np.cov(np_x, rowvar=False, bias=False),
         app_inst.cov(ba_x, rowvar=False, bias=False).get(),
     )
-    np.allclose(
+    assert np.allclose(
         np.cov(np_x, rowvar=False, bias=True),
         app_inst.cov(ba_x, rowvar=False, bias=True).get(),
     )
-    np.allclose(
+    assert np.allclose(
         np.cov(np_x, rowvar=True, bias=False),
         app_inst.cov(ba_x, rowvar=True, bias=False).get(),
     )
-    np.allclose(
+    assert np.allclose(
         np.cov(np_x, rowvar=True, bias=True),
         app_inst.cov(ba_x, rowvar=True, bias=True).get(),
     )
@@ -134,9 +134,11 @@ def test_cov(app_inst):
 
 if __name__ == "__main__":
     # pylint: disable=import-error
-    from tests import conftest
+    from nums.core import application_manager
+    from nums.core import settings
 
-    app_inst: ArrayApplication = conftest.get_app("serial")
+    settings.system_name = "serial"
+    app_inst = application_manager.instance()
     # test_quickselect(app_inst)
     # test_median(app_inst)
     # test_top_k(app_inst)

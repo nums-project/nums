@@ -42,3 +42,7 @@ def inv(a: BlockArray):
             + "execute on a single node."
         )
     return linalg.inv(_instance(), a)
+
+
+def pca(X: BlockArray):
+    return linalg.pca(_instance(), X)
