@@ -37,7 +37,7 @@ provider:
 ```
 3. In the ```available_node_types``` field, edit the ```node_config``` field for ```nums.head.default```. 
 This will configure the head node. You can choose the ec2 instance type, disk and AMI for the head node here. 
-Also edit the resources field to set the number of CPUs nums would use. A good rule of thumb is to set it to number of physical cores - 2. 
+Also edit the resources field to set the number of CPUs nums would use. A good rule of thumb is to set it to number of cores - 2. 
 For example for r5.16xlarge machines, we set it to 32 - 2 = 30. 
 ```
 available_node_types:
