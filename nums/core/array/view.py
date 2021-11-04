@@ -207,7 +207,9 @@ class ArrayView(object):
     def __setitem__(self, key, value):
         if isinstance(key, tuple):
             for entry in key:
-                assert array_utils.is_regular_subscript(entry) or isinstance(entry, type(...))
+                assert array_utils.is_regular_subscript(entry) or isinstance(
+                    entry, type(...)
+                )
             return self.assign(key, value)
         elif array_utils.is_regular_subscript(key) or isinstance(key, type(...)):
             return self.assign((key,), value)
