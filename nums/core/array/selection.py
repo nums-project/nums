@@ -226,7 +226,9 @@ class AxisArray(AxisSelection):
             # Must infer type.
             is_bool = True
             for entry in array_like:
-                if not (array_utils.is_index_subscript(entry) or array_utils.is_bool(entry)):
+                if not (
+                    array_utils.is_index_subscript(entry) or array_utils.is_bool(entry)
+                ):
                     raise Exception("Only integer or boolean arrays are valid indices.")
                 if array_utils.is_index_subscript(entry):
                     is_bool = False
