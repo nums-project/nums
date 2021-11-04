@@ -94,7 +94,8 @@ class GLM(Model):
     def __init__(
         self,
         penalty="none",
-        C=1.0,
+        alpha=1.0,
+        l1_ratio=0.5,
         tol=0.0001,
         max_iter=100,
         solver="newton",
@@ -123,10 +124,16 @@ class GLM(Model):
                 "Unexpected type for random_state %s" % str(type(random_state))
             )
         self._penalty = None if penalty == "none" else penalty
-        if not (self._penalty is None or self._penalty == "l2"):
+        if self._penalty not in (None, "l1", "l2", "elasticnet"):
             raise NotImplementedError("%s penalty not supported" % self._penalty)
-        self._lambda = 1.0 / C
-        self._lambda_vec = None
+        # All sources use lambda as regularization term, and alpha l1/l2 ratio.
+        self._lambda = alpha
+        self._l1penalty = None
+        self._l1penalty_vec = None
+        self._l2penalty = None
+        self._l2penalty_vec = None
+        self._l2penalty_diag = None
+        self.alpha = l1_ratio
         self._tol = tol
         self._max_iter = max_iter
         self._opt = solver
@@ -161,10 +168,35 @@ class GLM(Model):
         )
         tol: BlockArray = self._app.scalar(self._tol)
         max_iter: int = self._max_iter
-        if self._penalty == "l2":
-            self._lambda_vec = (
-                self._app.ones(beta.shape, beta.block_shape, beta.dtype) * self._lambda
+        if self._penalty == "elasticnet":
+            assert (
+                self.alpha is not None
+            ), "l1_ratio must be specified for elastic net penalty."
+            self._l1penalty = self.alpha * self._lambda
+            self._l1penalty_vec = self._l1penalty * (
+                self._app.ones(beta.shape, beta.block_shape, beta.dtype)
             )
+            self._l1penalty_vec[-1] = 0.0
+            self._l2penalty = 0.5 * (1.0 - self.alpha) * self._lambda
+            self._l2penalty_vec = self._l2penalty * (
+                self._app.ones(beta.shape, beta.block_shape, beta.dtype)
+            )
+            self._l2penalty_vec[-1] = 0.0
+            self._l2penalty_diag = self._app.diag(self._l2penalty_vec)
+        elif self._penalty == "l2":
+            self._l2penalty = 0.5 * self._lambda
+            self._l2penalty_vec = self._l2penalty * (
+                self._app.ones(beta.shape, beta.block_shape, beta.dtype)
+            )
+            self._l2penalty_vec[-1] = 0.0
+            self._l2penalty_diag = self._app.diag(self._l2penalty_vec)
+        elif self._penalty == "l1":
+            self._l1penalty = self._lambda
+            self._l1penalty_vec = self._l1penalty * (
+                self._app.ones(beta.shape, beta.block_shape, beta.dtype)
+            )
+            self._l1penalty_vec[-1] = 0.0
+
         if self._opt == "gd" or self._opt == "sgd" or self._opt == "block_sgd":
             lr: BlockArray = self._app.scalar(self._lr)
             if self._opt == "gd":
@@ -213,8 +245,41 @@ class GLM(Model):
         dev_null = self.deviance(y, y_mean)
         return 1 - dev / dev_null
 
+    def obj_penalty(self, beta):
+        if self._penalty == "l1":
+            return self._l1penalty * self._app.norm(beta, order=1)
+        elif self._penalty == "l2":
+            return self._l2penalty * self._app.norm(beta, order=2)
+        elif self._penalty == "elasticnet":
+            return self._l2penalty * self._app.norm(
+                beta, order=2
+            ) + self._l1penalty * self._app.norm(beta, order=1)
+        else:
+            raise ValueError("Unexpected call to objective term, penalty=None.")
 
-class LinearRegression(GLM):
+    def grad_penalty(self, beta):
+        if self._penalty == "l1":
+            return self._l1penalty_vec * self._app.map_uop("sign", beta)
+        elif self._penalty == "l2":
+            return self._l2penalty_vec * beta
+        elif self._penalty == "elasticnet":
+            return (
+                self._l2penalty_vec * beta.T @ beta
+                + self._l1penalty_vec * self._app.map_uop("sign", beta)
+            )
+        else:
+            raise ValueError("Unexpected call to objective term, penalty=None.")
+
+    def hessian_penalty(self):
+        if self._penalty == "l1":
+            return 0.0
+        elif self._penalty == "l2" or self._penalty == "elasticnet":
+            return self._l2penalty_diag
+        else:
+            raise ValueError("Unexpected call to objective term, penalty=None.")
+
+
+class LinearRegressionBase(GLM):
 
     # Assume Sigma = I
     # canonical parameter: theta = mu
@@ -235,7 +300,11 @@ class LinearRegression(GLM):
     ):
         assert beta is not None or self._beta is not None
         mu = self.forward(X, beta) if mu is None else mu
-        return self._app.sum((y - mu) ** self._app.two)
+        r = self._app.sum((y - mu) ** self._app.two)
+        if self._penalty is not None:
+            assert beta is not None
+            r += self.obj_penalty(beta)
+        return r
 
     def gradient(
         self,
@@ -246,10 +315,17 @@ class LinearRegression(GLM):
     ):
         if mu is None:
             mu = self.forward(X)
-        return X.transpose(defer=True) @ (mu - y)
+        r = X.transpose(defer=True) @ (mu - y)
+        if self._penalty is not None:
+            assert beta is not None
+            r += self.grad_penalty(beta)
+        return r
 
     def hessian(self, X: BlockArray, y: BlockArray, mu: BlockArray = None):
-        return X.transpose(defer=True) @ X
+        r = X.transpose(defer=True) @ X
+        if self._penalty is not None:
+            r += self.hessian_penalty()
+        return r
 
     def deviance(self, y, y_pred):
         return self._app.sum((y - y_pred) ** self._app.two)
@@ -258,7 +334,110 @@ class LinearRegression(GLM):
         return self.forward(X)
 
 
+class LinearRegression(LinearRegressionBase):
+    def __init__(
+        self,
+        tol=0.0001,
+        max_iter=100,
+        solver="newton",
+        lr=0.01,
+        random_state=None,
+        fit_intercept=True,
+        normalize=False,
+    ):
+        super().__init__(
+            tol=tol,
+            max_iter=max_iter,
+            solver=solver,
+            lr=lr,
+            random_state=random_state,
+            fit_intercept=fit_intercept,
+            normalize=normalize,
+        )
+
+
+class Ridge(LinearRegressionBase):
+    def __init__(
+        self,
+        alpha=1.0,
+        tol=0.0001,
+        max_iter=100,
+        solver="newton",
+        lr=0.01,
+        random_state=None,
+        fit_intercept=True,
+        normalize=False,
+    ):
+        super().__init__(
+            penalty="l2",
+            alpha=alpha,
+            tol=tol,
+            max_iter=max_iter,
+            solver=solver,
+            lr=lr,
+            random_state=random_state,
+            fit_intercept=fit_intercept,
+            normalize=normalize,
+        )
+
+
+class ElasticNet(LinearRegressionBase):
+    # Reference: https://glm-tools.github.io/pyglmnet/tutorial.html
+    # sklearn documentation suggests lasso and elastic net have different coefficients
+    # than linear regression, but this does not appear to be the case in any other source.
+    pass
+
+
+class Lasso(ElasticNet):
+    def __init__(
+        self,
+        alpha=1.0,
+        tol=0.0001,
+        max_iter=100,
+        solver="newton",
+        lr=0.01,
+        random_state=None,
+        fit_intercept=True,
+        normalize=False,
+    ):
+        super().__init__(
+            penalty="l1",
+            alpha=alpha,
+            tol=tol,
+            max_iter=max_iter,
+            solver=solver,
+            lr=lr,
+            random_state=random_state,
+            fit_intercept=fit_intercept,
+            normalize=normalize,
+        )
+
+
 class LogisticRegression(GLM):
+    def __init__(
+        self,
+        penalty="none",
+        C=1.0,
+        tol=0.0001,
+        max_iter=100,
+        solver="newton",
+        lr=0.01,
+        random_state=None,
+        fit_intercept=True,
+        normalize=False,
+    ):
+        super().__init__(
+            penalty=penalty,
+            alpha=1.0 / C,
+            tol=tol,
+            max_iter=max_iter,
+            solver=solver,
+            lr=lr,
+            random_state=random_state,
+            fit_intercept=fit_intercept,
+            normalize=normalize,
+        )
+
     def link_inv(self, eta: BlockArray):
         return self._app.one / (self._app.one + self._app.exp(-eta))
 
@@ -272,7 +451,11 @@ class LogisticRegression(GLM):
         assert beta is not None or self._beta is not None
         log, one = self._app.log, self._app.one
         mu = self.forward(X, beta) if mu is None else mu
-        return -self._app.sum(y * log(mu) + (one - y) * log(one - mu))
+        r = -self._app.sum(y * log(mu) + (one - y) * log(one - mu))
+        if self._penalty is not None:
+            assert beta is not None
+            r += self.obj_penalty(beta)
+        return r
 
     def gradient(
         self,
@@ -283,22 +466,21 @@ class LogisticRegression(GLM):
     ):
         if mu is None:
             mu = self.forward(X)
-        if self._penalty is None:
-            return X.transpose(defer=True) @ (mu - y)
-        else:
+        r = X.transpose(defer=True) @ (mu - y)
+        if self._penalty is not None:
             assert beta is not None
-            return X.transpose(defer=True) @ (mu - y) + self._lambda_vec * beta
+            r += self.grad_penalty(beta)
+        return r
 
     def hessian(self, X: BlockArray, y: BlockArray, mu: BlockArray = None):
         if mu is None:
             mu = self.forward(X)
         dim, block_dim = mu.shape[0], mu.block_shape[0]
         s = (mu * (self._app.one - mu)).reshape((dim, 1), block_shape=(block_dim, 1))
-        if self._penalty is None:
-            return X.transpose(defer=True) @ (s * X)
-        else:
-            # TODO (hme): Construct diag of _lambda_vec once.
-            return X.transpose(defer=True) @ (s * X) + self._app.diag(self._lambda_vec)
+        r = X.transpose(defer=True) @ (s * X)
+        if self._penalty is not None:
+            r += self.hessian_penalty()
+        return r
 
     def deviance(self, y, y_pred):
         raise NotImplementedError()
