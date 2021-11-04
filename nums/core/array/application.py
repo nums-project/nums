@@ -523,10 +523,12 @@ class ArrayApplication(object):
         return res
 
     def cov(self, X: BlockArray, rowvar=True, bias=False, dtype=None):
-        axis = 0 if rowvar else 1
-        n = X.shape[0] if rowvar else X.shape[1]
-        Xc = (X - self.mean(X, axis=axis, keepdims=True)) / (n if bias else n - 1)
-        r = Xc @ Xc.transpose(defer=True) if rowvar else Xc.transpose(defer=True) @ Xc
+        n = X.shape[1] if rowvar else X.shape[0]
+        const = n if bias else n - 1
+        Xc = X - self.mean(X, axis=(1 if rowvar else 0), keepdims=True)
+        r = (
+            Xc @ Xc.transpose(defer=True) if rowvar else Xc.transpose(defer=True) @ Xc
+        ) / const
         if dtype is not None:
             r = r.astype(dtype)
         return r
