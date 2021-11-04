@@ -351,7 +351,7 @@ class LinearRegression(LinearRegressionBase):
         )
 
 
-class RidgeRegression(LinearRegressionBase):
+class Ridge(LinearRegressionBase):
     def __init__(
         self,
         alpha=1.0,
