@@ -18,17 +18,15 @@ from nums.core.array.blockarray import BlockArray
 
 
 # pylint: disable=import-outside-toplevel
-def test_modin():
+def test_modin(nps_app_inst):
     import nums
     import nums.numpy as nps
-    from nums.core import application_manager
     import modin.pandas as mpd
-
     from nums.core import settings
+    from nums.core.systems.systems import RaySystem
 
-    settings.system_name = "ray"
-    nps_app_inst = application_manager.instance()
-    nps.random.reset()
+    if not isinstance(nps_app_inst.cm.system, RaySystem):
+        return
 
     filename = settings.pj(
         settings.project_root, "tests", "core", "storage", "test.csv"
@@ -37,4 +35,3 @@ def test_modin():
     df = mpd.read_csv(filename)
     ba2: BlockArray = nums.from_modin(df)
     assert nps.allclose(ba1, ba2)
-    application_manager.destroy()
