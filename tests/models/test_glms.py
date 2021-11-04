@@ -242,7 +242,7 @@ def test_sklearn_linear_regression(nps_app_inst: ArrayApplication):
         lr_model.fit(X, y)
         y_pred = lr_model.predict(X).get()
 
-        sk_lr_model = SKLinearRegression()
+        sk_lr_model = SKLinearRegression(**kwargs)
         sk_lr_model.fit(real_X, real_y)
         sk_y_pred = sk_lr_model.predict(real_X)
         np.allclose(sk_y_pred, y_pred)

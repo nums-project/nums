@@ -553,8 +553,13 @@ class ArrayApplication(object):
             X = X.astype(np.float64)
         return X.ufunc("sqrt")
 
-    def norm(self, X: BlockArray) -> BlockArray:
-        return self.sqrt(X.transpose(defer=True) @ X)
+    def norm(self, X: BlockArray, ord=2) -> BlockArray:
+        assert len(X.shape) == 1, "Only vector norms are supported."
+        assert ord in (1, 2), "Only order 1 and 2 norms supported."
+        if ord == 2:
+            return self.sqrt(X.transpose(defer=True) @ X)
+        else:
+            return self.sum(self.abs(X))
 
     def xlogy(self, x: BlockArray, y: BlockArray) -> BlockArray:
         if x.dtype not in (float, np.float32, np.float64):
