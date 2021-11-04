@@ -216,7 +216,7 @@ def block_shape_from_subscript(subscript: tuple, block_shape: tuple):
     for i, obj in enumerate(subscript):
         if isinstance(obj, slice):
             new_block_shape.append(block_shape[i])
-        elif isinstance(obj, (int, np.intp)):
+        elif is_int(obj) or is_uint(obj):
             continue
         else:
             raise NotImplementedError("No support for advanced indexing.")
