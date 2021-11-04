@@ -562,10 +562,10 @@ class ArrayApplication(object):
             X = X.astype(np.float64)
         return X.ufunc("sqrt")
 
-    def norm(self, X: BlockArray, ord=2) -> BlockArray:
+    def norm(self, X: BlockArray, order=2) -> BlockArray:
         assert len(X.shape) == 1, "Only vector norms are supported."
-        assert ord in (1, 2), "Only order 1 and 2 norms supported."
-        if ord == 2:
+        assert order in (1, 2), "Only order 1 and 2 norms supported."
+        if order == 2:
             return self.sqrt(X.transpose(defer=True) @ X)
         else:
             return self.sum(self.abs(X))

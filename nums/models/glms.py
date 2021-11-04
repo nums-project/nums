@@ -242,13 +242,13 @@ class GLM(object):
 
     def obj_penalty(self, beta):
         if self._penalty == "l1":
-            return self._l1penalty * self._app.norm(beta, ord=1)
+            return self._l1penalty * self._app.norm(beta, order=1)
         elif self._penalty == "l2":
-            return self._l2penalty * self._app.norm(beta, ord=2)
+            return self._l2penalty * self._app.norm(beta, order=2)
         elif self._penalty == "elasticnet":
             return self._l2penalty * self._app.norm(
-                beta, ord=2
-            ) + self._l1penalty * self._app.norm(beta, ord=1)
+                beta, order=2
+            ) + self._l1penalty * self._app.norm(beta, order=1)
         else:
             raise ValueError("Unexpected call to objective term, penalty=None.")
 
