@@ -162,6 +162,18 @@ def test_svd(app_inst: ArrayApplication):
     assert np.allclose((U.get() * S.get()) @ VT.get(), real_X)
 
 
+def test_pca(app_inst: ArrayApplication):
+    real_X, _ = BimodalGaussian.get_dataset(2345, 9)
+    X = app_inst.array(real_X, block_shape=(123, 4))
+
+    # Covariance matrix test.
+    C = app_inst.cov(X, rowvar=False)
+    V, _, VT = linalg.svd(app_inst, C)
+    assert app_inst.allclose(V, VT.T)
+    pc = X @ V
+    assert app_inst.allclose(pc, linalg.pca(app_inst, X))
+
+
 def test_lr(app_inst: ArrayApplication):
     num_features = 13
     rs = np.random.RandomState(1337)
