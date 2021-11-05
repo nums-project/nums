@@ -259,7 +259,7 @@ class GLM(object):
             return self._l2penalty_vec * beta
         elif self._penalty == "elasticnet":
             return (
-                self._l2penalty_vec * beta.T @ beta
+                self._l2penalty_vec * beta
                 + self._l1penalty_vec * self._app.map_uop("sign", beta)
             )
         else:
