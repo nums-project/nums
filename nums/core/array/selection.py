@@ -48,13 +48,13 @@ def is_advanced_selection(subscript: tuple):
                 array = obj
             else:
                 # TODO (hme): This is inefficient.
-                array = np.array(obj, dtype=np.intp)
+                array = np.array(obj, dtype=int)
             if len(array.shape) > 1:
                 return True
             elif get_array_order(array, axis=0) == 0:
                 return True
             num_ordered_arrays += 1
-        elif isinstance(obj, (int, np.intp)):
+        elif array_utils.is_index_subscript(obj):
             num_indexes += 1
     if num_ordered_arrays > 1:
         return True
@@ -226,9 +226,11 @@ class AxisArray(AxisSelection):
             # Must infer type.
             is_bool = True
             for entry in array_like:
-                if not isinstance(entry, (np.intp, int, bool)):
+                if not (
+                    array_utils.is_index_subscript(entry) or array_utils.is_bool(entry)
+                ):
                     raise Exception("Only integer or boolean arrays are valid indices.")
-                if isinstance(entry, (int, np.intp)):
+                if array_utils.is_index_subscript(entry):
                     is_bool = False
             arr: np.ndarray = np.array(array_like, dtype=(bool if is_bool else np.intp))
         self.array = arr
@@ -297,7 +299,7 @@ class BasicSelection(object):
                     # We instantiate a list, so okay to modify i.
                     axis_sels.append(AxisSlice.from_size(shape[j]))
                     i += 1
-            elif isinstance(axis_ss, (int, np.intp)):
+            elif array_utils.is_index_subscript(axis_ss):
                 axis_sels.append(AxisIndex.from_index(axis_ss, shape[i]))
                 i += 1
             elif isinstance(axis_ss, slice):
@@ -472,7 +474,7 @@ class BasicSelection(object):
         return str(self.selector())
 
     def __getitem__(self, item):
-        assert isinstance(item, (np.intp, int))
+        assert array_utils.is_index_subscript(item)
         return self.axes[item]
 
     def __or__(self, other):
@@ -748,7 +750,7 @@ class Position(object):
                             sel[i].stop - self.value[i],
                             sel[i].step,
                         )
-                elif isinstance(sel[i], (int, np.intp)):
+                elif array_utils.is_index_subscript(sel[i]):
                     if bop == "add":
                         sel[i] = sel[i] + self.value[i]
                     elif bop == "rsub":
