@@ -482,6 +482,7 @@ class BlockArray(BlockArrayBase):
                 else:
                     assert value.shape[i] == self.shape[i], "Shape mismatch."
                     new_block_shape.append(self.block_shape[i])
+            new_block_shape = tuple(new_block_shape)
             if new_block_shape != value.block_shape:
                 # TODO: This message occurs on X[idx[:n]] = X[idx[n:]] + 0.5,
                 #  even when n is a multiple of block_shape[0].
