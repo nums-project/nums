@@ -258,9 +258,8 @@ class GLM(object):
         elif self._penalty == "l2":
             return self._l2penalty_vec * beta
         elif self._penalty == "elasticnet":
-            return (
-                self._l2penalty_vec * beta
-                + self._l1penalty_vec * self._app.map_uop("sign", beta)
+            return self._l2penalty_vec * beta + self._l1penalty_vec * self._app.map_uop(
+                "sign", beta
             )
         else:
             raise ValueError("Unexpected call to objective term, penalty=None.")
