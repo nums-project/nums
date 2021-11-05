@@ -522,6 +522,17 @@ class ArrayApplication(object):
             res = res.astype(dtype)
         return res
 
+    def cov(self, X: BlockArray, rowvar=True, bias=False, dtype=None):
+        n = X.shape[1] if rowvar else X.shape[0]
+        const = n if bias else n - 1
+        Xc = X - self.mean(X, axis=(1 if rowvar else 0), keepdims=True)
+        r = (
+            Xc @ Xc.transpose(defer=True) if rowvar else Xc.transpose(defer=True) @ Xc
+        ) / const
+        if dtype is not None:
+            r = r.astype(dtype)
+        return r
+
     def argop(self, op_name: str, arr: BlockArray, axis=None):
         if len(arr.shape) > 1:
             raise NotImplementedError(
@@ -553,8 +564,13 @@ class ArrayApplication(object):
             X = X.astype(np.float64)
         return X.ufunc("sqrt")
 
-    def norm(self, X: BlockArray) -> BlockArray:
-        return self.sqrt(X.transpose(defer=True) @ X)
+    def norm(self, X: BlockArray, order=2) -> BlockArray:
+        assert len(X.shape) == 1, "Only vector norms are supported."
+        assert order in (1, 2), "Only order 1 and 2 norms supported."
+        if order == 2:
+            return self.sqrt(X.transpose(defer=True) @ X)
+        else:
+            return self.sum(self.abs(X))
 
     def xlogy(self, x: BlockArray, y: BlockArray) -> BlockArray:
         if x.dtype not in (float, np.float32, np.float64):

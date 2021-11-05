@@ -36,13 +36,15 @@ provider:
     availability_zone: us-west-2a,us-west-2b
 ```
 3. In the ```available_node_types``` field, edit the ```node_config``` field for ```nums.head.default```. 
-This will configure the head node. 
-You can choose the ec2 instance type, disk and AMI for the head node here. 
+This will configure the head node. You can choose the ec2 instance type, disk and AMI for the head node here. 
+Also edit the resources field to set the number of CPUs nums would use. A good rule of thumb is to set it to number of cores - 2. 
+For example for r5.16xlarge machines, we set it to 32 - 2 = 30. 
 ```
 available_node_types:
     nums.head.default:
-    .
-    .
+    ..
+    resources: {"CPU": 30}
+    ..
     node_config:
             InstanceType: r5.16xlarge
             ImageId: ami-0050625d58fa27b6d # Deep Learning AMI (Ubuntu 18.04) Version 50
@@ -59,12 +61,13 @@ Set the ```max_workers``` key to the same value.
         	min_workers: 3
         	max_workers: 3
 ```
-Edit worker node configurations here under the ```node_config``` field in a similar way as done before for the head node above.
+Edit worker node configurations here under the ```node_config``` field and number of CPUs under `resources` field in a similar way as done before for the head node above.
 Make sure to use the correct AMI as per your region and availability zones.
 
 4. Modify the ```file_mounts``` field to indicate any directories or files to copy from the local machine to every node on the cluster, or leave it commented.
 ```
 file_mounts: {
+#    "/path1/on/remote/machine": "/path1/on/local/machine",
 #    "/path2/on/remote/machine": "/path2/on/local/machine",
 }
 ```
@@ -73,19 +76,19 @@ file_mounts: {
 
 5. To launch a NumS cluster, run 
 ```
-ray up aws-cluster.yaml -y
+ray up aws-cluster.yaml
 ```
 * This will launch a ray cluster with NumS. 
 
 ## C. Example
 After you launch the cluster using the steps above, you can refer to [this example](https://github.com/nums-project/nums/blob/master/cluster-setup/example.py).
 * In this example:
-  * We first initialize ray and set the nums cluster shape.
+  * We first initialize ray and nums.
   ```
-  # Initialize ray and connect it to the cluster
+  # Initialize ray and connect it to the cluster.
   ray.init(address="auto")
-  # Set the cluster shape for nums. Here we set it to use all the nodes in the ray cluster.
-  settings.cluster_shape = (len(ray.nodes())-1, 1)
+  # Initialize nums with the cluster shape. Here we set it to use all the nodes in the ray cluster.
+  nums.init(cluster_shape=(len(ray.nodes()), 1))
   ```
   * Then we create two nums arrays with random values that get created in a distributed fashion on the worker nodes of the cluster. 
   ```
@@ -112,7 +115,8 @@ After you launch the cluster using the steps above, you can refer to [this examp
   ```
   ray attach aws-cluster.yaml
   ```
-  * Then on the head node, run ```python example.py``` to run this example on the cluster.
+  * Then on the head node, check the status of the cluster by running `watch ray status`. Wait until no nodes are in pending state. 
+  * Then run ```python example.py``` to run this example on the cluster.
   * Then ```exit``` to terminate the ssh connection to the head node. 
 
 

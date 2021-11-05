@@ -248,7 +248,7 @@ class BlockArray(BlockArrayBase):
     def __getattr__(self, item):
         if item == "__array_priority__" or item == "__array_struct__":
             # This is triggered by a numpy array on the LHS.
-            raise ValueError("Unable to covert numpy array to block array.")
+            raise TypeError("Unexpected conversion attempt from BlockArray to ndarray.")
         elif item == "ndim":
             return len(self.shape)
         elif item == "T":
@@ -482,10 +482,17 @@ class BlockArray(BlockArrayBase):
                 else:
                     assert value.shape[i] == self.shape[i], "Shape mismatch."
                     new_block_shape.append(self.block_shape[i])
+            new_block_shape = tuple(new_block_shape)
             if new_block_shape != value.block_shape:
+                # TODO: This message occurs on X[idx[:n]] = X[idx[n:]] + 0.5,
+                #  even when n is a multiple of block_shape[0].
                 warnings.warn(
-                    "Assigned value does not match block shape of assignee. "
-                    "Applying reshape to assigned value."
+                    ("Assigned value block shape %s " % str(value.block_shape))
+                    + (
+                        "does not match block shape %s of assignee. "
+                        % str(new_block_shape)
+                    )
+                    + "Applying reshape to assigned value."
                 )
                 value = value.reshape(block_shape=new_block_shape)
 
@@ -670,6 +677,8 @@ class BlockArray(BlockArrayBase):
     def reduce_axis(self, op_name, axis, keepdims=False):
         if not (axis is None or isinstance(axis, (int, np.int32, np.int64))):
             raise NotImplementedError("Only integer axis is currently supported.")
+        if 0 in self.shape:
+            return BlockArray.create("zeros", (), (), float, self.cm)
         block_reduced_oids = np.empty_like(self.blocks, dtype=tuple)
         for grid_entry in self.grid.get_entry_iterator():
             block = self.blocks[grid_entry]
@@ -745,14 +754,9 @@ class BlockArray(BlockArrayBase):
                 )
         return result
 
-    def __matmul__(self, other):
-        if len(self.shape) > 2:
-            # TODO (bcp): NumPy's implementation does a stacked matmul, which is not supported yet.
-            raise NotImplementedError(
-                "Matrix multiply for tensors of rank > 2 not supported yet."
-            )
-        else:
-            return self.tensordot(other, 1)
+    #################
+    # Linear Algebra
+    #################
 
     def _compute_tensordot_syskwargs(self, self_block: Block, other_block: Block):
         # Schedule on larger block.
@@ -762,11 +766,6 @@ class BlockArray(BlockArrayBase):
             return other_block.true_grid_entry(), other_block.true_grid_shape()
 
     def tensordot(self, other, axes=2):
-        if not isinstance(other, BlockArray):
-            raise ValueError(
-                "Cannot automatically construct BlockArray for tensor operations."
-            )
-
         if isinstance(axes, int):
             pass
         elif array_utils.is_array_like(axes):
@@ -774,12 +773,12 @@ class BlockArray(BlockArrayBase):
         else:
             raise TypeError(f"Unexpected axes type '{type(axes).__name__}'")
 
+        other = self.check_or_convert_other(other, compute_block_shape=True)
+
         if array_utils.np_tensordot_param_test(
             self.shape, self.ndim, other.shape, other.ndim, axes
         ):
             raise ValueError("shape-mismatch for sum")
-
-        other = self.check_or_convert_other(other, compute_block_shape=True)
 
         this_axes = self.grid.grid_shape[:-axes]
         this_sum_axes = self.grid.grid_shape[-axes:]
@@ -831,6 +830,25 @@ class BlockArray(BlockArrayBase):
                 )
         return result
 
+    def __matmul__(self, other):
+        if len(self.shape) > 2:
+            # TODO (bcp): NumPy's implementation does a stacked matmul, which is not supported yet.
+            raise NotImplementedError(
+                "Matrix multiply for tensors of rank > 2 not supported yet."
+            )
+        else:
+            return self.tensordot(other, 1)
+
+    def __rmatmul__(self, other):
+        other = self.check_or_convert_other(other)
+        return other @ self
+
+    __imatmul__ = __matmul__
+
+    #################
+    # Arithmetic
+    #################
+
     def _fast_element_wise(self, op_name, other):
         """
         Implements fast scheduling for basic element-wise operations.
@@ -877,41 +895,81 @@ class BlockArray(BlockArrayBase):
             blocks_op(other.blocks), result_shape=None, cm=self.cm
         )
 
+    def __neg__(self):
+        return self.ufunc("negative")
+
+    def __pos__(self):
+        return self
+
+    def __abs__(self):
+        return self.ufunc("abs")
+
+    def __mod__(self, other):
+        return self.__elementwise__("mod", other)
+
+    def __rmod__(self, other):
+        other = self.check_or_convert_other(other)
+        return other.__elementwise__("mod", self)
+
+    __imod__ = __mod__
+
     def __add__(self, other):
         return self.__elementwise__("add", other)
+
+    def __radd__(self, other):
+        other = self.check_or_convert_other(other)
+        return other.__elementwise__("add", self)
+
+    __iadd__ = __add__
 
     def __sub__(self, other):
         return self.__elementwise__("sub", other)
 
+    def __rsub__(self, other):
+        other = self.check_or_convert_other(other)
+        return other.__elementwise__("sub", self)
+
+    __isub__ = __sub__
+
     def __mul__(self, other):
         return self.__elementwise__("mul", other)
+
+    def __rmul__(self, other):
+        other = self.check_or_convert_other(other)
+        return other.__elementwise__("mul", self)
+
+    __imul__ = __mul__
 
     def __truediv__(self, other):
         return self.__elementwise__("truediv", other)
 
+    def __rtruediv__(self, other):
+        other = self.check_or_convert_other(other)
+        return other / self
+
+    __itruediv__ = __truediv__
+
+    def __floordiv__(self, other):
+        return self.__elementwise__("floor_divide", other)
+
+    def __rfloordiv__(self, other):
+        other = self.check_or_convert_other(other)
+        return other.__elementwise__("floor_divide", self)
+
+    __ifloordiv__ = __floordiv__
+
     def __pow__(self, other):
         return self.__elementwise__("pow", other)
 
-    def __invert__(self):
-        return self.ufunc("invert")
+    def __rpow__(self, other):
+        other = self.check_or_convert_other(other)
+        return other ** self
 
-    __iadd__ = __add__
-    __isub__ = __sub__
-    __imul__ = __mul__
-    __imatmul__ = __matmul__
-    __itruediv__ = __truediv__
     __ipow__ = __pow__
 
-    # TODO (hme): Type check bool ops.
-    def __bool__(self):
-        # pylint: disable=no-member
-        dtype = self.dtype
-        if isinstance(dtype, type):
-            # TODO (hme): Fix this strange issue.
-            dtype = dtype()
-        if isinstance(dtype, (bool, np.bool)) and np.sum(self.shape) == len(self.shape):
-            return self.get().__bool__()
-        return True
+    #################
+    # Inequalities
+    #################
 
     def __inequality__(self, op, other):
         other = self.check_or_convert_other(other)
@@ -939,46 +997,106 @@ class BlockArray(BlockArrayBase):
     def __ge__(self, other):
         return self.__inequality__("ge", other)
 
+    def __rge__(self, other):
+        other = self.check_or_convert_other(other)
+        return other.__inequality__("ge", self)
+
     def __gt__(self, other):
         return self.__inequality__("gt", other)
+
+    def __rgt__(self, other):
+        other = self.check_or_convert_other(other)
+        return other.__inequality__("gt", self)
 
     def __le__(self, other):
         return self.__inequality__("le", other)
 
+    def __rle__(self, other):
+        other = self.check_or_convert_other(other)
+        return other.__inequality__("le", self)
+
     def __lt__(self, other):
         return self.__inequality__("lt", other)
+
+    def __rlt__(self, other):
+        other = self.check_or_convert_other(other)
+        return other.__inequality__("lt", self)
 
     def __eq__(self, other):
         return self.__inequality__("eq", other)
 
+    def __req__(self, other):
+        other = self.check_or_convert_other(other)
+        return other.__inequality__("eq", self)
+
     def __ne__(self, other):
         return self.__inequality__("ne", other)
 
-    __radd__ = __add__
-
-    def __rsub__(self, other):
+    def __rne__(self, other):
         other = self.check_or_convert_other(other)
-        return other - self
+        return other.__inequality__("ne", self)
 
-    __rmul__ = __mul__
+    ##################
+    # Boolean
+    ##################
 
-    def __rmatmul__(self, other):
+    # TODO (hme): Type check bool ops.
+    def __bool__(self):
+        # pylint: disable=no-member
+        if np.sum(self.shape) == len(self.shape):
+            # If all ones or scalar, then this is defined.
+            return self.get().__bool__()
+        return True
+
+    def __invert__(self):
+        return self.ufunc("invert")
+
+    def __or__(self, other):
+        return self.__elementwise__("bitwise_or", other)
+
+    def __ror__(self, other):
         other = self.check_or_convert_other(other)
-        return other @ self
+        return other.__elementwise__("bitwise_or", self)
 
-    def __rtruediv__(self, other):
+    __ior__ = __or__
+
+    def __and__(self, other):
+        return self.__elementwise__("bitwise_and", other)
+
+    def __rand__(self, other):
         other = self.check_or_convert_other(other)
-        return other / self
+        return other.__elementwise__("bitwise_and", self)
 
-    def __rpow__(self, other):
+    __iand__ = __and__
+
+    def __xor__(self, other):
+        return self.__elementwise__("bitwise_xor", other)
+
+    def __rxor__(self, other):
         other = self.check_or_convert_other(other)
-        return other ** self
+        return other.__elementwise__("bitwise_xor", self)
 
-    def __neg__(self):
-        return -1 * self
+    __ixor__ = __xor__
 
-    def __pos__(self):
-        return self
+    def __lshift__(self, other):
+        return self.__elementwise__("left_shift", other)
+
+    def __rlshift__(self, other):
+        other = self.check_or_convert_other(other)
+        return other.__elementwise__("left_shift", self)
+
+    __ilshift__ = __lshift__
+
+    def __rshift__(self, other):
+        return self.__elementwise__("right_shift", other)
+
+    def __rrshift__(self, other):
+        other = self.check_or_convert_other(other)
+        return other.__elementwise__("right_shift", self)
+
+    __irshift__ = __rshift__
+
+    # All operators: https://docs.python.org/3/library/operator.html
 
     def astype(self, dtype):
         grid = ArrayGrid(self.shape, self.block_shape, dtype.__name__)
