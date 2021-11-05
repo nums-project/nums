@@ -406,7 +406,7 @@ class ElasticNet(LinearRegressionBase):
         )
 
 
-class Lasso(ElasticNet):
+class Lasso(LinearRegressionBase):
     def __init__(
         self,
         alpha=1.0,
