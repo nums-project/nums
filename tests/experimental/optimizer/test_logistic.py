@@ -27,7 +27,7 @@ import numpy as np
 
 from nums.core.storage.storage import BimodalGaussian
 from nums.core.array.application import ArrayApplication, BlockArray
-
+from nums.core import linalg
 from nums.experimental.optimizer.clusterstate import ClusterState
 from nums.experimental.optimizer.grapharray import (
     GraphArray,
@@ -60,13 +60,13 @@ def test_logistic(app_inst_mock_small):
     Z = Xc @ theta
     mu: BlockArray = app.one / (app.one + app.exp(-Z))
     # Gradient
-    g = Xc.T @ (mu - y)
+    g = Xc.transpose(defer=True) @ (mu - y)
     # Hessian
     s = mu * (app.one - mu)
     # TODO: Transpose here may have unexpected scheduling implications.
-    hess = (Xc.T * s) @ Xc
+    hess = (Xc.transpose(defer=True) * s) @ Xc
     # These are PSD, but inv is faster than psd inv.
-    theta += -app.inv(hess) @ g
+    theta += -linalg.inv(app, hess) @ g
     Z = theta[-1] + X @ theta[:-1]
     y_pred_proba = app.one / (app.one + app.exp(-Z))
     y_pred = (y_pred_proba > 0.5).astype(np.float32)
@@ -89,7 +89,7 @@ def test_graph_array_logistic(app_inst_mock_small):
         return g, hess
 
     def update_theta(g, hess, local_theta):
-        return local_theta - app.inv(hess) @ g
+        return local_theta - linalg.inv(app, hess) @ g
 
     num_samples, num_features = 64 * 10, 3
     real_X, real_y = BimodalGaussian.get_dataset(num_samples, num_features)

@@ -56,7 +56,6 @@ class ProgramState(object):
         max_reduction_pairs=None,
         force_final_action=True,
         unique_reduction_pairs=False,
-        plan_only=False,
         use_all_devices=False,
     ):
         self.arr: GraphArray = arr
@@ -66,7 +65,6 @@ class ProgramState(object):
             "unique_reduction_pairs": unique_reduction_pairs,
             "use_all_devices": use_all_devices,
         }
-        self.plan_only = plan_only
         # Keys are tree_node_id
         # Values are a 2-tuple corresponding to the actual tree node and the actions that can
         # be performed on that tree node.
@@ -131,14 +129,13 @@ class ProgramState(object):
             self.arr.copy(),
             **self.get_action_kwargs,
             force_final_action=self.force_final_action,
-            plan_only=self.plan_only
         )
 
     def commit_action(self, action):
         tnode_id, kwargs = action
         entry: TreeNodeActionPair = self.tnode_map[tnode_id]
         old_node: TreeNode = entry.node
-        new_node: TreeNode = old_node.execute_on(**kwargs, plan_only=self.plan_only)
+        new_node: TreeNode = old_node.execute_on(**kwargs)
         # The frontier needs to be updated, so remove the current node from frontier.
         del self.tnode_map[tnode_id]
         if old_node.parent is None and old_node is not new_node:
@@ -742,7 +739,6 @@ class ExhaustivePlanner(object):
             arr,
             max_reduction_pairs=self.max_reduction_pairs,
             force_final_action=self.force_final_action,
-            plan_only=True,
         )
         t0 = time.time()
         if self.nprocs == 1:
@@ -825,7 +821,6 @@ class RandomPlan(object):
             arr,
             max_reduction_pairs=self.max_reduction_pairs,
             force_final_action=self.force_final_action,
-            plan_only=True,
         )
         if len(state.tnode_map) == 0:
             return arr

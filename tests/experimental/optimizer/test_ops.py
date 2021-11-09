@@ -96,7 +96,7 @@ def test_transpose(app_inst_mock_small):
         force_final_action=True,
     ).solve(prob_ga)
     result_ba = BlockArray(result_ga.grid, app.cm, result_ga.to_blocks())
-    assert app.allclose(A.T @ A, result_ba)
+    assert app.allclose(A.transpose(defer=True) @ A, result_ba)
 
 
 if __name__ == "__main__":

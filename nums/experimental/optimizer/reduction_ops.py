@@ -241,9 +241,7 @@ class ReductionOp(TreeNode):
         )
         return resources
 
-    def execute_on(
-        self, device_id: DeviceID, leaf_ids=None, plan_only=False
-    ) -> TreeNode:
+    def execute_on(self, device_id: DeviceID, leaf_ids=None) -> TreeNode:
         """
         This can return:
         - Another ReductionOp.
@@ -253,7 +251,7 @@ class ReductionOp(TreeNode):
         leafs = self.leafs_dict[leaf_ids[0]], self.leafs_dict[leaf_ids[1]]
         left, right = leafs
         assert isinstance(left, Leaf) and isinstance(right, Leaf)
-        result = self._collapse(device_id, left, right, plan_only=plan_only)
+        result = self._collapse(device_id, left, right)
         new_leaf: Leaf = result[0]
         new_block: Block = result[1]
         # This updates load on nodes and channels.
@@ -288,7 +286,7 @@ class ReductionOp(TreeNode):
         else:
             return self
 
-    def _collapse(self, device_id: DeviceID, left: Leaf, right: Leaf, plan_only):
+    def _collapse(self, device_id: DeviceID, left: Leaf, right: Leaf):
         lblock: Block = left.block
         rblock: Block = right.block
         if self.op_name == "matmul":
@@ -297,9 +295,7 @@ class ReductionOp(TreeNode):
         else:
             op_name, args = self.op_name, {}
             assert lblock.shape == rblock.shape
-        block: Block = lblock.bop(
-            op_name, rblock, args=args, device_id=device_id, plan_only=plan_only
-        )
+        block: Block = lblock.bop(op_name, rblock, args=args, device_id=device_id)
         leaf: Leaf = Leaf(self.cluster_state)
         leaf.block = block
         leaf.copy_on_op = self.copy_on_op
@@ -502,14 +498,12 @@ class TreeReductionOp(TreeNode):
         )
         return resources
 
-    def execute_on(
-        self, device_id: DeviceID, leaf_ids=None, plan_only=False
-    ) -> TreeNode:
+    def execute_on(self, device_id: DeviceID, leaf_ids=None) -> TreeNode:
         assert len(leaf_ids) == 2
         leafs = self.leafs_dict[leaf_ids[0]], self.leafs_dict[leaf_ids[1]]
         left, right = leafs
         assert isinstance(left, Leaf) and isinstance(right, Leaf)
-        result = self._collapse(device_id, left, right, plan_only=plan_only)
+        result = self._collapse(device_id, left, right)
         new_leaf: Leaf = result[0]
         new_block: Block = result[1]
 
@@ -548,7 +542,7 @@ class TreeReductionOp(TreeNode):
             return new_leaf
         return self
 
-    def _collapse(self, device_id: DeviceID, left: Leaf, right: Leaf, plan_only):
+    def _collapse(self, device_id: DeviceID, left: Leaf, right: Leaf):
         lblock: Block = left.block
         rblock: Block = right.block
         if self.op_name == "matmul":
@@ -557,9 +551,7 @@ class TreeReductionOp(TreeNode):
         else:
             op_name, args = self.op_name, {}
             assert lblock.shape == rblock.shape
-        block: Block = lblock.bop(
-            op_name, rblock, args=args, device_id=device_id, plan_only=plan_only
-        )
+        block: Block = lblock.bop(op_name, rblock, args=args, device_id=device_id)
         leaf: Leaf = Leaf(self.cluster_state)
         leaf.block = block
         leaf.copy_on_op = self.copy_on_op

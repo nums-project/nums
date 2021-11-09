@@ -78,7 +78,7 @@ class TreeNode(object):
     def simulate_on(self, device_id: DeviceID, leaf_ids=None) -> np.ndarray:
         raise NotImplementedError()
 
-    def execute_on(self, device_id: DeviceID, leaf_ids=None, plan_only=False):
+    def execute_on(self, device_id: DeviceID, leaf_ids=None):
         raise NotImplementedError()
 
     def shape(self):
@@ -232,10 +232,10 @@ class UnaryOp(TreeNode):
         )
         return resources
 
-    def execute_on(self, device_id: DeviceID, leaf_ids=None, plan_only=False) -> Leaf:
+    def execute_on(self, device_id: DeviceID, leaf_ids=None) -> Leaf:
         assert leaf_ids is None
         assert isinstance(self.child, Leaf)
-        result = self._collapse(device_id, plan_only)
+        result = self._collapse(device_id)
         new_leaf: Leaf = result[0]
         new_block: Block = result[1]
         self.cluster_state.commit_uop(self._mem_cost(), self.child.block.id, device_id)
@@ -246,16 +246,14 @@ class UnaryOp(TreeNode):
             self.parent.update_child([self], [new_leaf])
         return new_leaf
 
-    def _collapse(self, device_id: DeviceID, plan_only):
+    def _collapse(self, device_id: DeviceID):
         assert isinstance(self.child, Leaf)
         block: Block = self.child.block
         op_name, args = self.op_name, {}
         if op_name == "transpose":
-            block: Block = block.transpose(plan_only=plan_only)
+            block: Block = block.transpose()
         else:
-            block: Block = block.ufunc(
-                op_name, device_id=device_id, plan_only=plan_only
-            )
+            block: Block = block.ufunc(op_name, device_id=device_id)
         leaf: Leaf = Leaf(self.cluster_state)
         leaf.block = block
         leaf.copy_on_op = self.copy_on_op
@@ -375,7 +373,7 @@ class BinaryOp(TreeNode):
         )
         return resources
 
-    def execute_on(self, device_id: DeviceID, leaf_ids=None, plan_only=False) -> Leaf:
+    def execute_on(self, device_id: DeviceID, leaf_ids=None) -> Leaf:
         """
         Update cluster state to reflect the cluster's load after computing this node.
         We generate a leaf node for BinaryOp, updating the leaf node's computation
@@ -383,7 +381,7 @@ class BinaryOp(TreeNode):
         """
         assert leaf_ids is None
         assert isinstance(self.left, Leaf) and isinstance(self.right, Leaf)
-        result = self._collapse(device_id, plan_only)
+        result = self._collapse(device_id)
         new_leaf: Leaf = result[0]
         new_block: Block = result[1]
         # This updates load on nodes and channels.
@@ -404,7 +402,7 @@ class BinaryOp(TreeNode):
             self.parent.update_child([self], [new_leaf])
         return new_leaf
 
-    def _collapse(self, device_id: DeviceID, plan_only):
+    def _collapse(self, device_id: DeviceID):
         assert isinstance(self.left, Leaf) and isinstance(self.right, Leaf)
         lblock: Block = self.left.block
         rblock: Block = self.right.block
@@ -415,9 +413,7 @@ class BinaryOp(TreeNode):
         else:
             op_name, args = self.op_name, {}
             assert array_utils.can_broadcast_shapes(lblock.shape, rblock.shape)
-        block: Block = lblock.bop(
-            op_name, rblock, args=args, device_id=device_id, plan_only=plan_only
-        )
+        block: Block = lblock.bop(op_name, rblock, args=args, device_id=device_id)
         leaf: Leaf = Leaf(self.cluster_state)
         leaf.block = block
         leaf.copy_on_op = self.copy_on_op

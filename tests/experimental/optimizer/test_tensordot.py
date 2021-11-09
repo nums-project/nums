@@ -121,7 +121,7 @@ def test_load_sqr(app_inst_mock_big):
     X: BlockArray = app.array(real_X, X_block_shape)
     Y: BlockArray = app.array(real_Y, Y_block_shape)
 
-    lhs, rhs, axes = X.T, Y, 1
+    lhs, rhs, axes = X.transpose(defer=True), Y, 1
     cluster_state: ClusterState = ClusterState(app.cm.devices())
     lhs_ga: GraphArray = GraphArray.from_ba(lhs, cluster_state)
     rhs_ga: GraphArray = GraphArray.from_ba(rhs, cluster_state)
