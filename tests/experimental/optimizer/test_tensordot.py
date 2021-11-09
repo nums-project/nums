@@ -20,24 +20,18 @@
 # DEALINGS IN THE SOFTWARE.
 
 
-import itertools
 import time
 
 import numpy as np
 
-from nums.core.systems.systems import RaySystem
-from nums.core.array.application import ArrayApplication, BlockArray
+from nums.core.array.application import BlockArray
 from nums.core.array.base import BlockArrayBase
-
 from nums.experimental.optimizer.clusterstate import ClusterState
 from nums.experimental.optimizer.grapharray import (
     GraphArray,
-    TreeNode,
-    BinaryOp,
-    ReductionOp,
-    Leaf,
 )
-from nums.experimental.optimizer.tree_search import RandomTS, DeviceGridTS
+from nums.experimental.optimizer.tree_search import RandomTS
+
 import conftest
 
 
@@ -202,12 +196,12 @@ if __name__ == "__main__":
     import conftest
 
     app = conftest.mock_cluster((1, 1))
-    test_matvec(app)
+    # test_matvec(app)
     test_matmat(app)
-    test_big_matmat(app)
+    # test_big_matmat(app)
     conftest.destroy_mock_cluster(app)
 
-    app = conftest.mock_cluster((10, 1))
-    test_load_sqr(app)
-    test_load_single_block_rhs(app)
-    conftest.destroy_mock_cluster(app)
+    # app = conftest.mock_cluster((10, 1))
+    # test_load_sqr(app)
+    # test_load_single_block_rhs(app)
+    # conftest.destroy_mock_cluster(app)

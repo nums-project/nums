@@ -14,17 +14,12 @@
 # limitations under the License.
 
 
-import itertools
-import copy
-
 import numpy as np
-import scipy.special
 
-from nums.core.storage.storage import ArrayGrid
-from nums.core.array.base import BlockArrayBase, Block
 from nums.core.array import utils as array_utils
-from nums.experimental.optimizer.clusterstate import ClusterState
+from nums.core.array.base import Block
 from nums.core.grid.grid import DeviceID
+from nums.experimental.optimizer.clusterstate import ClusterState
 
 
 def subsample(total_items, max_items, rs: np.random.RandomState):

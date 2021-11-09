@@ -21,6 +21,7 @@
 
 
 import numpy as np
+import pytest
 
 from nums.core.array.application import ArrayApplication, BlockArray
 from nums.core.compute import numpy_compute
@@ -28,13 +29,9 @@ from nums.core.compute.compute_manager import ComputeManager
 from nums.core.grid.grid import DeviceGrid, CyclicDeviceGrid, DeviceID
 from nums.core.storage.storage import StoredArray
 from nums.core.systems.filesystem import FileSystem
-from nums.core.systems.system_interface import SystemInterface
 from nums.core.systems.systems import RaySystem
 from nums.experimental.optimizer.grapharray import GraphArray
 from nums.experimental.optimizer.tree_search import RandomTS
-
-import pytest
-
 
 rs = np.random.RandomState(1337)
 

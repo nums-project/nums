@@ -15,18 +15,20 @@
 
 
 from typing import Union
+
 import numpy as np
 
-from nums.experimental.optimizer.grapharray import (
-    GraphArray,
+from nums.core.compute.compute_manager import ComputeManager
+from nums.experimental.optimizer.grapharray import GraphArray
+
+from nums.experimental.optimizer.graph import (
     TreeNode,
     BinaryOp,
-    ReductionOp,
     Leaf,
     UnaryOp,
 )
 
-from nums.core.compute.compute_manager import ComputeManager
+from nums.experimental.optimizer.reduction_ops import TreeReductionOp
 
 random_state = np.random.RandomState(1337)
 
@@ -94,7 +96,13 @@ class ProgramState(object):
         device_id = cm.device_grid.get_device_id(grid_entry, grid_shape)
         if isinstance(tnode, BinaryOp):
             actions = [(tnode.tree_node_id, {"device_id": device_id})]
-        elif isinstance(tnode, ReductionOp):
+        elif isinstance(tnode, TreeReductionOp):
+            # TreeReductionOp maintains an ordered list of leaves,
+            # which is initialized upon invoking get_actions().
+            # It may never be invoked if the reduction op consists of two input vertices.
+            # We therefore need to execute the following check to ensure the list of leaves
+            # is either initialized or can safely be initialized to execute the final op.
+            tnode.final_action_check()
             leaf_ids = tuple(tnode.leafs_dict.keys())[:2]
             actions = [
                 (tnode.tree_node_id, {"device_id": device_id, "leaf_ids": leaf_ids})
@@ -110,7 +118,7 @@ class ProgramState(object):
         actions = None
         if self.force_final_action and tnode.parent is None:
             if isinstance(tnode, (BinaryOp, UnaryOp)) or (
-                isinstance(tnode, ReductionOp) and len(tnode.children_dict) == 2
+                isinstance(tnode, TreeReductionOp) and len(tnode.children_dict) == 2
             ):
                 # This is a root frontier op.
                 # The next action is the last action,
@@ -146,7 +154,7 @@ class ProgramState(object):
         else:
             # There's still work that needs to be done to compute this node.
             # Add the returned node to the frontier.
-            # Either a BinaryOp or ReductionOp.
+            # Either a BinaryOp or TreeReductionOp.
             if new_node.is_frontier():
                 self.add_frontier_node(new_node)
         # That's it. This program state is now updated.

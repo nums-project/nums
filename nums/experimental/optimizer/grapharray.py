@@ -15,23 +15,18 @@
 
 
 import itertools
-import copy
+from typing import Union
 
 import numpy as np
-import scipy.special
 
-from typing import Union
-from nums.core.storage.storage import ArrayGrid
-from nums.core.array.base import BlockArrayBase, Block
 from nums.core.array import utils as array_utils
-from nums.experimental.optimizer.clusterstate import ClusterState
-from nums.experimental.optimizer.graph import TreeNode, Leaf, UnaryOp, BinaryOp
-from nums.experimental.optimizer.reduction_ops import ReductionOp, TreeReductionOp
+from nums.core.array.base import BlockArrayBase, Block
 from nums.core.compute.compute_manager import ComputeManager
 from nums.core.grid.grid import DeviceID
-
-
-rop_cls = TreeReductionOp
+from nums.core.storage.storage import ArrayGrid
+from nums.experimental.optimizer.clusterstate import ClusterState
+from nums.experimental.optimizer.graph import TreeNode, Leaf, UnaryOp
+from nums.experimental.optimizer.reduction_ops import TreeReductionOp
 
 
 class GraphArray(object):
@@ -150,7 +145,7 @@ class GraphArray(object):
                     dot_node: TreeNode = self_node.tensordot(other_node, axes=axes)
                     result_graphs[grid_entry] = dot_node
                 else:
-                    rop = rop_cls(self.cluster_state)
+                    rop = TreeReductionOp(self.cluster_state)
                     rop.op_name = "add"
                     rop.copy_on_op = self.copy_on_op
                     for k in sum_dims:
@@ -173,7 +168,7 @@ class GraphArray(object):
         assert axis is None, "Only complete reductions are currently supported."
         # # Note that this does not sum within each block.
         # # To do this, we need a new node type.
-        result_node = rop_cls(self.cluster_state)
+        result_node = TreeReductionOp(self.cluster_state)
         result_node.op_name = "add"
         result_node.copy_on_op = self.copy_on_op
         shape = None

@@ -20,22 +20,16 @@
 # DEALINGS IN THE SOFTWARE.
 
 
-import itertools
 import time
 
 import numpy as np
 
-from nums.core.storage.storage import BimodalGaussian
-from nums.core.array.application import ArrayApplication, BlockArray
 from nums.core import linalg
+from nums.core.array.application import ArrayApplication, BlockArray
+from nums.core.storage.storage import BimodalGaussian
 from nums.experimental.optimizer.clusterstate import ClusterState
-from nums.experimental.optimizer.grapharray import (
-    GraphArray,
-    TreeNode,
-    BinaryOp,
-    ReductionOp,
-    Leaf,
-)
+from nums.experimental.optimizer.grapharray import GraphArray
+
 import conftest
 
 

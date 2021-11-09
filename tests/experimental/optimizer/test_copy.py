@@ -20,37 +20,32 @@
 # DEALINGS IN THE SOFTWARE.
 
 
-import itertools
-import time
-
 import numpy as np
 
-from nums.core.systems.systems import RaySystem
 from nums.core.array.application import ArrayApplication, BlockArray
 from nums.core.array.base import BlockArrayBase
-
 from nums.experimental.optimizer.clusterstate import ClusterState
-from nums.experimental.optimizer.grapharray import (
-    GraphArray,
+from nums.experimental.optimizer.graph import (
     TreeNode,
     UnaryOp,
     BinaryOp,
-    ReductionOp,
     Leaf,
 )
-from nums.experimental.optimizer.tree_search import RandomTS, RandomPlan, Plan
+from nums.experimental.optimizer.grapharray import GraphArray
+from nums.experimental.optimizer.reduction_ops import TreeReductionOp
+from nums.experimental.optimizer.tree_search import RandomTS
+
 import conftest
 
 
 def random_solve(ga, seed):
-    planner: RandomPlan = RandomPlan(
+    ts: RandomTS = RandomTS(
         seed=seed,
         max_samples_per_step=1,
         max_reduction_pairs=1,
         force_final_action=True,
     )
-    planner.solve(ga)
-    return planner
+    return ts.solve(ga)
 
 
 def graphs_equal(ga1: GraphArray, ga2: GraphArray):
@@ -80,7 +75,7 @@ def graphs_equal(ga1: GraphArray, ga2: GraphArray):
             assert n1.args == n2.args
             assert n1.left.tree_node_id == n2.left.tree_node_id
             assert n1.right.tree_node_id == n2.right.tree_node_id
-        elif type(n1) is ReductionOp:
+        elif type(n1) is TreeReductionOp:
             assert n1.op_name == n2.op_name
             # TODO (hme): How to ensure proper replication of random state?
             assert set(n1.children_dict.keys()) == set(n2.children_dict.keys())
@@ -118,35 +113,6 @@ def test_matmat(app_inst: ArrayApplication):
     Y: BlockArray = app_inst.array(real_Y, Y_block_shape)
     Z_ga: GraphArray = tensordot(X, Y, axes=1)
     graphs_equal(Z_ga, Z_ga.copy())
-
-    plan1 = random_solve(Z_ga, 1337).plan
-    plan2 = random_solve(Z_ga, 1337).plan
-    action_seq1 = [(item[1], item[2][0], item[2][1]) for item in plan1.plan]
-    action_seq2 = [(item[1], item[2][0], item[2][1]) for item in plan2.plan]
-    for i in range(len(plan1.plan)):
-        s1, tn1, a1, r1, ns1, is_done1 = plan1.plan[i]
-        s2, tn2, a2, r2, ns2, is_done2 = plan2.plan[i]
-
-        s1: ClusterState = s1
-        s2: ClusterState = s2
-        assert s1 is not s2
-        assert np.allclose(s1.resources, s2.resources)
-
-        ns1: ClusterState = ns1
-        ns2: ClusterState = ns2
-        assert ns1 is not ns2
-        assert np.allclose(ns1.resources, ns2.resources)
-
-        assert tn1 is not tn2
-        tnid1, kwargs1 = a1
-        tnid2, kwargs2 = a2
-        assert tnid1 == tn1.tree_node_id == tnid2 == tn2.tree_node_id
-        assert list(kwargs1.keys()) == list(kwargs2.keys())
-        for key in kwargs1:
-            assert kwargs1[key] == kwargs2[key]
-
-        assert np.allclose(r1, r2)
-        assert is_done1 == is_done2
 
 
 if __name__ == "__main__":

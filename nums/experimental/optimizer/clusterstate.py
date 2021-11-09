@@ -17,6 +17,7 @@
 from typing import List
 
 import numpy as np
+
 from nums.core.grid.grid import DeviceID
 
 

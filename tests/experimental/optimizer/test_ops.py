@@ -20,22 +20,14 @@
 # DEALINGS IN THE SOFTWARE.
 
 
-import itertools
-import time
-
 import numpy as np
 
-from nums.core.array.application import ArrayApplication, BlockArray
+from nums.core.array.application import BlockArray
 from nums.experimental.optimizer.clusterstate import ClusterState
 from nums.experimental.optimizer.grapharray import (
     GraphArray,
-    TreeNode,
-    BinaryOp,
-    ReductionOp,
-    Leaf,
 )
-from nums.experimental.optimizer.tree_search import RandomTS, DeviceGridTS
-import conftest
+from nums.experimental.optimizer.tree_search import RandomTS
 
 
 def test_neg(app_inst_mock_small):
