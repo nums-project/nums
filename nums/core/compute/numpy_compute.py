@@ -22,6 +22,7 @@ import scipy.linalg
 import scipy.special
 from numpy.random import Generator
 from numpy.random import PCG64
+
 try:
     from crick import TDigest
 except Exception as e:
