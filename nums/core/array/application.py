@@ -487,9 +487,6 @@ class ArrayApplication(object):
     def max(self, X: BlockArray, axis=None, keepdims=False):
         return self.reduce("max", X, axis, keepdims)
 
-    def argmin(self, X: BlockArray, axis=None):
-        pass
-
     def sum(self, X: BlockArray, axis=None, keepdims=False, dtype=None):
         return self.reduce("sum", X, axis, keepdims, dtype)
 
@@ -525,6 +522,17 @@ class ArrayApplication(object):
             res = res.astype(dtype)
         return res
 
+    def cov(self, X: BlockArray, rowvar=True, bias=False, dtype=None):
+        n = X.shape[1] if rowvar else X.shape[0]
+        const = n if bias else n - 1
+        Xc = X - self.mean(X, axis=(1 if rowvar else 0), keepdims=True)
+        r = (
+            Xc @ Xc.transpose(defer=True) if rowvar else Xc.transpose(defer=True) @ Xc
+        ) / const
+        if dtype is not None:
+            r = r.astype(dtype)
+        return r
+
     def argop(self, op_name: str, arr: BlockArray, axis=None):
         if len(arr.shape) > 1:
             raise NotImplementedError(
@@ -551,13 +559,18 @@ class ArrayApplication(object):
         result.blocks[()].oid = argoptima
         return result
 
-    def sqrt(self, X):
+    def sqrt(self, X: BlockArray) -> BlockArray:
         if X.dtype not in (float, np.float32, np.float64):
             X = X.astype(np.float64)
         return X.ufunc("sqrt")
 
-    def norm(self, X):
-        return self.sqrt(X.T @ X)
+    def norm(self, X: BlockArray, order=2) -> BlockArray:
+        assert len(X.shape) == 1, "Only vector norms are supported."
+        assert order in (1, 2), "Only order 1 and 2 norms supported."
+        if order == 2:
+            return self.sqrt(X.transpose(defer=True) @ X)
+        else:
+            return self.sum(self.abs(X))
 
     def xlogy(self, x: BlockArray, y: BlockArray) -> BlockArray:
         if x.dtype not in (float, np.float32, np.float64):

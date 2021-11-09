@@ -14,6 +14,7 @@
 # limitations under the License.
 
 
+import warnings
 import logging
 from types import FunctionType
 from typing import Any, Union, List, Dict, Optional
@@ -26,10 +27,14 @@ from nums.core.systems.utils import get_private_ip, get_num_cores
 from nums.core import settings
 
 
+# pylint: disable = unused-argument
+
+
 class SerialSystem(SystemInterface):
     def __init__(self, num_cpus: Optional[int] = None):
         self.num_cpus = int(get_num_cores()) if num_cpus is None else num_cpus
         self._remote_functions: dict = {}
+        self._actors: dict = {}
 
     def init(self):
         pass
@@ -59,6 +64,16 @@ class SerialSystem(SystemInterface):
     def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
         return self._remote_functions[name](*args, **kwargs)
 
+    def register_actor(self, name: str, cls: type):
+        assert name not in self._actors
+        self._actors[name] = cls
+
+    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+        return self._actors[name](*args, **kwargs)
+
+    def call_actor_method(self, actor, method: str, *args, **kwargs):
+        return getattr(actor, method)(*args, **kwargs)
+
     def num_cores_total(self) -> int:
         return self.num_cpus
 
@@ -80,6 +95,8 @@ class RaySystem(SystemInterface):
         self.num_cpus = int(get_num_cores()) if num_cpus is None else num_cpus
         self._manage_ray = True
         self._remote_functions = {}
+        self._actors: dict = {}
+        self._actor_node_index = 0
         self._available_nodes = []
         self._head_node = None
         self._worker_nodes = []
@@ -204,6 +221,29 @@ class RaySystem(SystemInterface):
         )
         return int(num_cores)
 
+    def register_actor(self, name: str, cls: type):
+        if name in self._actors:
+            warnings.warn(
+                "Actor %s has already been registered. "
+                "Overwriting with %s." % (name, cls.__name__)
+            )
+            return
+        self._actors[name] = ray.remote(cls)
+
+    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+        # Distribute actors round-robin over devices.
+        if device_id is None:
+            device_id = self._devices[self._actor_node_index]
+            self._actor_node_index = (self._actor_node_index + 1) % len(self._devices)
+        actor = self._actors[name]
+        node = self._device_to_node[device_id]
+        node_key = self._node_key(node)
+        options = {"resources": {node_key: 1.0 / 10 ** 4}}
+        return actor.options(**options).remote(*args, **kwargs)
+
+    def call_actor_method(self, actor, method: str, *args, **kwargs):
+        return getattr(actor, method).remote(*args, **kwargs)
+
 
 class RaySystemStockScheduler(RaySystem):
     """
@@ -218,3 +258,7 @@ class RaySystemStockScheduler(RaySystem):
             if "resources" in options:
                 assert node_key not in options
         return self._remote_functions[name].options(**options).remote(*args, **kwargs)
+
+    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+        actor = self._actors[name]
+        return actor.remote(*args, **kwargs)

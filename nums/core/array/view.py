@@ -61,9 +61,9 @@ class ArrayView(object):
     def __getitem__(self, item):
         if isinstance(item, tuple):
             for val in item:
-                assert isinstance(val, (slice, int, np.intp))
+                assert array_utils.is_regular_subscript(val)
             return self.select(item)
-        elif isinstance(item, (slice, int, np.intp)):
+        elif array_utils.is_regular_subscript(item):
             return self.select((item,))
         else:
             raise Exception("getitem failed", item)
@@ -207,9 +207,11 @@ class ArrayView(object):
     def __setitem__(self, key, value):
         if isinstance(key, tuple):
             for entry in key:
-                assert isinstance(entry, (slice, int, np.intp, type(...)))
+                assert array_utils.is_regular_subscript(entry) or isinstance(
+                    entry, type(...)
+                )
             return self.assign(key, value)
-        elif isinstance(key, (slice, int, np.intp, type(...))):
+        elif array_utils.is_regular_subscript(key) or isinstance(key, type(...)):
             return self.assign((key,), value)
         else:
             raise Exception("setitem failed", key)

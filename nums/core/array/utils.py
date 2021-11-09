@@ -26,10 +26,16 @@ from nums.core.array.errors import AxisError
 # pylint: disable = no-member, trailing-whitespace
 
 
+def to_dtype_cls(dtype):
+    if hasattr(dtype, "__name__"):
+        return dtype
+    return np.__getattribute__(str(dtype))
+
+
 def get_uop_output_type(op_name, dtype):
     a = np.array(1, dtype=dtype)
     result_dtype = np.__getattribute__(op_name)(a).dtype
-    return np.__getattribute__(str(result_dtype))
+    return to_dtype_cls(result_dtype)
 
 
 def get_bop_output_type(op_name, dtype_a, dtype_b):
@@ -38,17 +44,33 @@ def get_bop_output_type(op_name, dtype_a, dtype_b):
     op_name = np_ufunc_map.get(op_name, op_name)
     try:
         dtype = np.__getattribute__(op_name)(a, b).dtype
-        return np.__getattribute__(str(dtype))
+        return to_dtype_cls(dtype)
     except TypeError as err:
         raise err
     except Exception as _:
         dtype = scipy.special.__getattribute__(op_name)(a, b).dtype
-        return np.__getattribute__(str(dtype))
+        return to_dtype_cls(dtype)
+
+
+def is_index_subscript(val):
+    return is_int(val) or is_uint(val)
+
+
+def is_regular_subscript(val):
+    return isinstance(val, slice) or is_index_subscript(val)
 
 
 def is_scalar(val):
+    return is_supported(val)
+
+
+def is_supported(val, type_test=False):
     return (
-        is_bool(val) or is_uint(val) or is_int(val) or is_float(val) or is_complex(val)
+        is_bool(val, type_test)
+        or is_uint(val, type_test)
+        or is_int(val, type_test)
+        or is_float(val, type_test)
+        or is_complex(val, type_test)
     )
 
 
@@ -202,7 +224,7 @@ def block_shape_from_subscript(subscript: tuple, block_shape: tuple):
     for i, obj in enumerate(subscript):
         if isinstance(obj, slice):
             new_block_shape.append(block_shape[i])
-        elif isinstance(obj, (int, np.intp)):
+        elif is_regular_subscript(obj):
             continue
         else:
             raise NotImplementedError("No support for advanced indexing.")
@@ -285,7 +307,7 @@ def slice_sel_to_index_list(slice_selection: tuple):
     for slice_or_index in slice_selection:
         if isinstance(slice_or_index, slice):
             slice_ranges.append(list(range(slice_or_index.start, slice_or_index.stop)))
-        elif isinstance(slice_or_index, int):
+        elif is_regular_subscript(slice_or_index):
             slice_ranges.append([slice_or_index])
     index_list = list(itertools.product(*slice_ranges))
     return index_list

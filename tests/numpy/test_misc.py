@@ -252,13 +252,27 @@ def test_arange(nps_app_inst):
         assert np.allclose(a, b)
 
 
+def test_transpose(nps_app_inst):
+    import nums.numpy as nps
+
+    assert nps_app_inst is not None
+    npX = np.arange(10).reshape(2, 5)
+    X = nps.array(npX)
+    assert np.all(npX.T == X.T.get())
+    assert np.all(npX.T == X.transpose().get())
+    assert np.all(npX.T == X.transpose(defer=True).get())
+    assert np.all(npX.T == X.transpose(redistribute=True).get())
+    assert np.all(npX.T == X.transpose(defer=True, redistribute=True).get())
+
+
 if __name__ == "__main__":
     from nums.core import application_manager
     from nums.core import settings
 
-    settings.system_name = "ray-task"
+    settings.system_name = "serial"
     nps_app_inst = application_manager.instance()
-    test_where(nps_app_inst)
+    # test_where(nps_app_inst)
+    test_transpose(nps_app_inst)
     # test_loadtxt(nps_app_inst)
     # test_reshape(nps_app_inst)
     # test_all_alltrue_any(nps_app_inst)

@@ -391,7 +391,7 @@ def matmul(x1: BlockArray, x2: BlockArray) -> BlockArray:
 
 def inner(a: BlockArray, b: BlockArray):
     assert len(a.shape) == len(b.shape) == 1, "Only single-axis inputs supported."
-    return a.T @ b
+    return a.transpose(defer=True) @ b
 
 
 def outer(a: BlockArray, b: BlockArray):
@@ -466,6 +466,33 @@ def copy(a: BlockArray, order="K", subok=False):
 
 ############################################
 # Reduction Ops
+############################################
+
+
+def where(condition: BlockArray, x: BlockArray = None, y: BlockArray = None):
+    return _instance().where(condition, x, y)
+
+
+def all(a: BlockArray, axis=None, out=None, keepdims=False):
+    if out is not None:
+        raise NotImplementedError("'out' is currently not supported.")
+    return _instance().reduce("all", a, axis=axis, keepdims=keepdims)
+
+
+def alltrue(a: BlockArray, axis=None, out=None, dtype=None, keepdims=False):
+    if out is not None:
+        raise NotImplementedError("'out' is currently not supported.")
+    return _instance().reduce("alltrue", a, axis=axis, keepdims=keepdims, dtype=dtype)
+
+
+def any(a: BlockArray, axis=None, out=None, keepdims=False):
+    if out is not None:
+        raise NotImplementedError("'out' is currently not supported.")
+    return _instance().reduce("any", a, axis=axis, keepdims=keepdims)
+
+
+############################################
+# Stats
 ############################################
 
 
@@ -551,26 +578,21 @@ def std(a: BlockArray, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     return _instance().std(a, axis=axis, ddof=ddof, keepdims=keepdims, dtype=dtype)
 
 
-def where(condition: BlockArray, x: BlockArray = None, y: BlockArray = None):
-    return _instance().where(condition, x, y)
-
-
-def all(a: BlockArray, axis=None, out=None, keepdims=False):
-    if out is not None:
-        raise NotImplementedError("'out' is currently not supported.")
-    return _instance().reduce("all", a, axis=axis, keepdims=keepdims)
-
-
-def alltrue(a: BlockArray, axis=None, out=None, dtype=None, keepdims=False):
-    if out is not None:
-        raise NotImplementedError("'out' is currently not supported.")
-    return _instance().reduce("alltrue", a, axis=axis, keepdims=keepdims, dtype=dtype)
-
-
-def any(a: BlockArray, axis=None, out=None, keepdims=False):
-    if out is not None:
-        raise NotImplementedError("'out' is currently not supported.")
-    return _instance().reduce("any", a, axis=axis, keepdims=keepdims)
+def cov(
+    m: BlockArray,
+    y=None,
+    rowvar=True,
+    bias=False,
+    ddof=None,
+    fweights=None,
+    aweights=None,
+    dtype=None,
+):
+    if not (y is None and ddof is None and fweights is None and aweights is None):
+        raise NotImplementedError("y, ddof, fweights, and aweights are not supported.")
+    if len(m.shape) != 2:
+        raise NotImplementedError("Only 2-dimensional arrays are supported.")
+    return _instance().cov(m, rowvar, bias, dtype)
 
 
 def average(
