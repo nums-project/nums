@@ -22,7 +22,12 @@ import scipy.linalg
 import scipy.special
 from numpy.random import Generator
 from numpy.random import PCG64
-from crick import TDigest
+try:
+    from crick import TDigest
+except Exception as e:
+    raise Exception(
+        "Unable to import crick. Install crick with command 'pip install cython; pip install crick'"
+    ) from e
 
 from nums.core.compute.compute_interface import ComputeImp, RNGInterface
 from nums.core.grid.grid import ArrayGrid
