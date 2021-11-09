@@ -25,7 +25,7 @@ from nums.core.systems.utils import get_num_cores
 
 
 @pytest.mark.parametrize("compute_name", ["numpy"])
-@pytest.mark.parametrize("system_name", ["serial", "ray"])
+@pytest.mark.parametrize("system_name", ["serial", "ray", "ray-scheduler"])
 @pytest.mark.parametrize("device_grid_name", ["cyclic", "packed"])
 @pytest.mark.parametrize("num_cpus", [2, 1, None])
 def test_app_manager(compute_name, system_name, device_grid_name, num_cpus):
