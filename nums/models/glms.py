@@ -263,9 +263,8 @@ class GLM(Model):
         elif self._penalty == "l2":
             return self._l2penalty_vec * beta
         elif self._penalty == "elasticnet":
-            return (
-                self._l2penalty_vec * beta.T @ beta
-                + self._l1penalty_vec * self._app.map_uop("sign", beta)
+            return self._l2penalty_vec * beta + self._l1penalty_vec * self._app.map_uop(
+                "sign", beta
             )
         else:
             raise ValueError("Unexpected call to objective term, penalty=None.")
@@ -385,10 +384,33 @@ class ElasticNet(LinearRegressionBase):
     # Reference: https://glm-tools.github.io/pyglmnet/tutorial.html
     # sklearn documentation suggests lasso and elastic net have different coefficients
     # than linear regression, but this does not appear to be the case in any other source.
-    pass
+    def __init__(
+        self,
+        alpha=1.0,
+        l1_ratio=0.5,
+        tol=0.0001,
+        max_iter=100,
+        solver="newton",
+        lr=0.01,
+        random_state=None,
+        fit_intercept=True,
+        normalize=False,
+    ):
+        super().__init__(
+            penalty="elasticnet",
+            alpha=alpha,
+            l1_ratio=l1_ratio,
+            tol=tol,
+            max_iter=max_iter,
+            solver=solver,
+            lr=lr,
+            random_state=random_state,
+            fit_intercept=fit_intercept,
+            normalize=normalize,
+        )
 
 
-class Lasso(ElasticNet):
+class Lasso(LinearRegressionBase):
     def __init__(
         self,
         alpha=1.0,
