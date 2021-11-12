@@ -246,7 +246,7 @@ class UnaryOp(TreeNode):
         block: Block = self.child.block
         op_name, args = self.op_name, {}
         if op_name == "transpose":
-            block: Block = block.transpose()
+            block: Block = block.transpose(defer=True)
         else:
             block: Block = block.ufunc(op_name, device_id=device_id)
         leaf: Leaf = Leaf(self.cluster_state)
