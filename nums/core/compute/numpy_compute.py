@@ -399,10 +399,15 @@ class ComputeCls(ComputeImp):
         if a2_T:
             a2 = a2.T
 
-        reduce_op = np.__getattribute__(op)
-
-        a = np.stack([a1, a2], axis=0)
-        r = reduce_op(a, axis=0, keepdims=False)
+        # These are faster.
+        if op == "sum":
+            r = a1 + a2
+        elif op == "prod":
+            r = a1 * a2
+        else:
+            reduce_op = np.__getattribute__(op)
+            a = np.stack([a1, a2], axis=0)
+            r = reduce_op(a, axis=0, keepdims=False)
 
         if a1 is np.nan or a2 is np.nan or r is np.nan:
             assert np.isscalar(a1) and np.isscalar(a2) and np.isscalar(r)
