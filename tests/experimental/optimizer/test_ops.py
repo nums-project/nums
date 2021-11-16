@@ -91,6 +91,34 @@ def test_transpose(app_inst_mock_small):
     assert app.allclose(A.transpose(defer=True) @ A, result_ba)
 
 
+def test_reduce(app_inst_mock_small):
+    import itertools
+    app = app_inst_mock_small
+    test_axis = (None, 0, 1, 2)
+    test_keepdims = (True, False)
+    test_op = ("sum", "prod")
+    test_block_shape = ((2, 5, 7), (3, 16, 20), (1, 1, 1))
+    test_inputs = list(itertools.product(test_axis, test_keepdims, test_op, test_block_shape))
+    for axis, keepdims, op, block_shape in test_inputs:
+        cluster_state = ClusterState(app.cm.devices())
+        X: BlockArray = app.random.random(shape=(3, 16, 20), block_shape=block_shape)
+        X_np: np.ndarray = X.get()
+        X_ga: GraphArray = GraphArray.from_ba(X, cluster_state)
+        reduced_ga: GraphArray = X_ga.reduce_axis(op, axis=axis, keepdims=keepdims)
+        result_ga: GraphArray = RandomTS(
+            seed=1337,
+            max_samples_per_step=1,
+            max_reduction_pairs=1,
+            force_final_action=True,
+        ).solve(reduced_ga)
+        result_ba = BlockArray(result_ga.grid, app.cm, result_ga.to_blocks())
+        if op == "sum":
+            reduced_np = X_np.sum(axis=axis, keepdims=keepdims)
+        else:
+            reduced_np = X_np.prod(axis=axis, keepdims=keepdims)
+        assert np.allclose(result_ba.get(), reduced_np)
+
+
 if __name__ == "__main__":
     import conftest
 
@@ -98,4 +126,5 @@ if __name__ == "__main__":
     test_neg(app)
     test_root_uop(app)
     test_transpose(app)
+    test_reduce(app)
     conftest.destroy_mock_cluster(app)

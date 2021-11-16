@@ -22,6 +22,7 @@ from nums.core.array.base import Block
 from nums.core.grid.grid import DeviceID
 from nums.experimental.optimizer.clusterstate import ClusterState
 from nums.experimental.optimizer.graph import TreeNode, Leaf
+import nums.core.array.utils as array_utils
 
 
 class TreeReductionOp(TreeNode):
@@ -256,17 +257,41 @@ class TreeReductionOp(TreeNode):
     def _collapse(self, device_id: DeviceID, left: Leaf, right: Leaf):
         lblock: Block = left.block
         rblock: Block = right.block
-        print("DEBUG TREE REDUCE")
-        print("device_id", device_id)
-        print("left", lblock.shape, lblock.grid_entry, lblock.grid_shape, lblock.device_id, self.cluster_state.get_block_device_ids(lblock.id))
-        print("right", rblock.shape, rblock.grid_entry, rblock.grid_shape, rblock.device_id, self.cluster_state.get_block_device_ids(rblock.id))
+        # print("DEBUG TREE REDUCE")
+        # print("device_id", device_id)
+        # print(
+        #     "left",
+        #     lblock.shape,
+        #     lblock.grid_entry,
+        #     lblock.grid_shape,
+        #     lblock.device_id,
+        #     self.cluster_state.get_block_device_ids(lblock.id),
+        # )
+        # print(
+        #     "right",
+        #     rblock.shape,
+        #     rblock.grid_entry,
+        #     rblock.grid_shape,
+        #     rblock.device_id,
+        #     self.cluster_state.get_block_device_ids(rblock.id),
+        # )
         if self.op_name == "matmul":
-            op_name, args = "tensordot", {"axes": 1}
-            assert lblock.shape[1] == rblock.shape[0]
-        else:
-            op_name, args = self.op_name, {}
-            assert lblock.shape == rblock.shape
-        block: Block = lblock.bop(op_name, rblock, args=args, device_id=device_id)
+            raise ValueError("matmul is not a supported reduction operator.")
+        op_name, args = self.op_name, {}
+        assert lblock.shape == rblock.shape
+        block: Block = lblock.copy()
+        block.transposed = False
+        block.dtype = array_utils.get_reduce_output_type(self.op_name, lblock.dtype)
+        block.oid = lblock._cm.bop_reduce(
+            op_name,
+            lblock.oid,
+            rblock.oid,
+            lblock.transposed,
+            rblock.transposed,
+            syskwargs={"device_id": device_id}
+        )
+        block.device_id = device_id
+
         leaf: Leaf = Leaf(self.cluster_state)
         leaf.block = block
         leaf.copy_on_op = self.copy_on_op

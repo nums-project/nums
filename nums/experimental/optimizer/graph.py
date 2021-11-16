@@ -14,6 +14,8 @@
 # limitations under the License.
 
 
+from typing import Union, Optional
+
 import numpy as np
 
 from nums.core.array import utils as array_utils
@@ -265,6 +267,71 @@ class UnaryOp(TreeNode):
             return tuple(reversed(child_shape))
         else:
             return child_shape
+
+
+class ReduceAxis(UnaryOp):
+    def __init__(self, cluster_state: ClusterState, tree_node_id=None):
+        super().__init__(cluster_state, tree_node_id)
+        self.axis = None
+        self.keepdims = None
+
+        # Lazily computed.
+        self._shape = None
+
+    def _collapse(self, device_id: DeviceID):
+        assert isinstance(self.child, Leaf)
+        child_block: Block = self.child.block
+        op_name, args = self.op_name, {}
+
+        block = Block(
+            grid_entry=self.update_tuple_property(
+                child_block.grid_entry, keep_dim_val=0
+            ),
+            grid_shape=self.update_tuple_property(
+                child_block.grid_shape, keep_dim_val=1
+            ),
+            rect=self.update_tuple_property(child_block.rect, keep_dim_val=(0, 1)),
+            shape=self.shape(),
+            dtype=array_utils.get_reduce_output_type(op_name, child_block.dtype),
+            transposed=False,
+            cm=child_block._cm,
+        )
+        block.oid = child_block._cm.reduce_axis(
+            op_name=op_name,
+            arr=child_block.oid,
+            axis=self.axis,
+            keepdims=self.keepdims,
+            transposed=child_block.transposed,
+            syskwargs={"device_id": device_id},
+        )
+        block.device_id = device_id
+        leaf: Leaf = Leaf(self.cluster_state)
+        leaf.block = block
+        leaf.copy_on_op = self.copy_on_op
+        return leaf, block
+
+    def _mem_cost(self):
+        assert isinstance(self.child, Leaf)
+        return np.product(self.shape())
+
+    def update_tuple_property(self, val, keep_dim_val: Union[int, tuple] = 1):
+        result = []
+        for curr_axis in range(len(val)):
+            axis_entry = val[curr_axis]
+            if curr_axis == self.axis or self.axis is None:
+                if self.keepdims:
+                    axis_entry = keep_dim_val
+                else:
+                    continue
+            result.append(axis_entry)
+        return tuple(result)
+
+    def shape(self):
+        if self._shape is None:
+            # Check child is Leaf to ensure the computation is cheap.
+            assert isinstance(self.child, Leaf)
+            self._shape = self.update_tuple_property(self.child.shape(), keep_dim_val=1)
+        return self._shape
 
 
 class BinaryOp(TreeNode):

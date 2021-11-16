@@ -25,7 +25,7 @@ from nums.core.compute.compute_manager import ComputeManager
 from nums.core.grid.grid import DeviceID
 from nums.core.storage.storage import ArrayGrid
 from nums.experimental.optimizer.clusterstate import ClusterState
-from nums.experimental.optimizer.graph import TreeNode, Leaf, UnaryOp
+from nums.experimental.optimizer.graph import TreeNode, Leaf, UnaryOp, ReduceAxis
 from nums.experimental.optimizer.reduction_ops import TreeReductionOp
 
 
@@ -98,6 +98,16 @@ class GraphArray(object):
             )
         return GraphArray(self.grid, new_cluster, graphs_copy)
 
+    def iterator(self):
+        # Yields a breadth first ordered list for each entry.
+        for grid_entry in self.grid.get_entry_iterator():
+            root: TreeNode = self.graphs[grid_entry]
+            q = [root]
+            while len(q) > 0:
+                node: TreeNode = q.pop(0)
+                q += node.get_children()
+                yield node
+
     def to_blocks(self) -> np.ndarray:
         blocks: np.ndarray = np.empty(self.grid.grid_shape, dtype=Block)
         for grid_entry in self.grid.get_entry_iterator():
@@ -146,7 +156,7 @@ class GraphArray(object):
                     result_graphs[grid_entry] = dot_node
                 else:
                     rop = TreeReductionOp(self.cluster_state)
-                    rop.op_name = "add"
+                    rop.op_name = "sum"
                     rop.copy_on_op = self.copy_on_op
                     for k in sum_dims:
                         self_node: TreeNode = self.graphs[tuple(i + k)]
@@ -160,35 +170,6 @@ class GraphArray(object):
                         rop.add_child(dot_node)
                     result_graphs[grid_entry] = rop
 
-        return GraphArray(
-            result_grid, self.cluster_state, result_graphs, copy_on_op=self.copy_on_op
-        )
-
-    def block_sum(self, axis=None):
-        assert axis is None, "Only complete reductions are currently supported."
-        # # Note that this does not sum within each block.
-        # # To do this, we need a new node type.
-        result_node = TreeReductionOp(self.cluster_state)
-        result_node.op_name = "add"
-        result_node.copy_on_op = self.copy_on_op
-        shape = None
-        for grid_entry in self.grid.get_entry_iterator():
-            node: TreeNode = self.graphs[grid_entry]
-            if shape is None:
-                shape = node.shape()
-            else:
-                assert shape == node.shape(), "shape mismatch for block_sum"
-            node.parent = result_node
-            result_node.add_child(node)
-
-        result_grid = ArrayGrid(
-            shape=shape, block_shape=shape, dtype=self.dtype.__name__
-        )
-        result_graphs = np.empty(shape=result_grid.grid_shape, dtype=np.object)
-        if shape == ():
-            result_graphs[()] = result_node
-        else:
-            result_graphs[:] = result_node
         return GraphArray(
             result_grid, self.cluster_state, result_graphs, copy_on_op=self.copy_on_op
         )
@@ -322,21 +303,107 @@ class GraphArray(object):
             old_root.parent = uop
         new_arr[grid_entry] = uop
 
-    def ordered_node_list(self, root: TreeNode):
-        result = []
-        q = [root]
-        while len(q) > 0:
-            node: TreeNode = q.pop(0)
-            q += node.get_children()
-            result.append(node)
-        return result
+    def reduce_axis(self, op_name, axis, keepdims):
+        if not (axis is None or isinstance(axis, (int, np.int32, np.int64))):
+            raise NotImplementedError("Only integer axis is currently supported.")
+        if 0 in self.shape:
+            raise ValueError("Attempted reduce on array with dimension of 0.")
 
-    def iterator(self):
-        # Yields a breadth first ordered list for each entry.
+        # Generate reduced tree nodes.
+        reduced_graphs = np.empty_like(self.graphs, dtype=np.object)
         for grid_entry in self.grid.get_entry_iterator():
-            root: TreeNode = self.graphs[grid_entry]
-            q = [root]
-            while len(q) > 0:
-                node: TreeNode = q.pop(0)
-                q += node.get_children()
-                yield node
+            tnode: TreeNode = self.graphs[grid_entry]
+            reduced_tnode: ReduceAxis = ReduceAxis(self.cluster_state)
+            reduced_tnode.child = tnode
+            assert tnode.parent is None
+            tnode.parent = reduced_tnode
+            reduced_tnode.op_name = op_name
+            reduced_tnode.axis = axis
+            reduced_tnode.keepdims = keepdims
+            reduced_graphs[grid_entry] = reduced_tnode
+
+        # Compute output GraphArray properties.
+        result_shape = []
+        result_block_shape = []
+        for curr_axis in range(len(self.shape)):
+            axis_size, axis_block_size = (
+                self.shape[curr_axis],
+                self.block_shape[curr_axis],
+            )
+            if curr_axis == axis or axis is None:
+                if keepdims:
+                    axis_size, axis_block_size = 1, 1
+                else:
+                    continue
+            result_shape.append(axis_size)
+            result_block_shape.append(axis_block_size)
+        result_shape = tuple(result_shape)
+        result_block_shape = tuple(result_block_shape)
+        result_dtype = array_utils.get_reduce_output_type(op_name, self.dtype)
+        result_grid = ArrayGrid(
+            shape=result_shape,
+            block_shape=result_block_shape,
+            dtype=result_dtype.__name__,
+        )
+
+        result_graphs = np.empty(shape=result_grid.grid_shape, dtype=np.object)
+        if reduced_graphs.size == 1:
+            # Just a single entry, nothing to do.
+            if result_grid.shape == ():
+                # keepdims = False.
+                result_graphs[()] = reduced_graphs.item()
+            else:
+                # keepdims = True.
+                result_graphs[:] = reduced_graphs.item()
+            return GraphArray(
+                grid=result_grid,
+                cluster_state=self.cluster_state,
+                graphs=result_graphs,
+                copy_on_op=self.copy_on_op,
+            )
+
+        # Compute output GraphArray.
+        if axis is None:
+            rop = TreeReductionOp(self.cluster_state)
+            rop.op_name = op_name
+            rop.copy_on_op = self.copy_on_op
+            for child in reduced_graphs.flatten().tolist():
+                rop.add_child(child)
+                assert child.parent is None
+                child.parent = rop
+            if result_grid.shape == ():
+                # keepdims = False.
+                result_graphs[()] = rop
+            else:
+                # keepdims = True.
+                result_graphs[:] = rop
+        else:
+            for result_grid_entry in result_grid.get_entry_iterator():
+                rop = TreeReductionOp(self.cluster_state)
+                rop.op_name = op_name
+                rop.copy_on_op = self.copy_on_op
+
+                for reduce_axis_entry in range(reduced_graphs.shape[axis]):
+                    grid_entry = list(result_grid_entry)
+                    if keepdims:
+                        grid_entry[axis] = reduce_axis_entry
+                    else:
+                        grid_entry = (
+                            grid_entry[:axis] + [reduce_axis_entry] + grid_entry[axis:]
+                        )
+                    grid_entry = tuple(grid_entry)
+                    child = reduced_graphs[grid_entry]
+                    rop.add_child(child)
+                    assert child.parent is None
+                    child.parent = rop
+                result_graphs[result_grid_entry] = rop
+
+        return GraphArray(
+            grid=result_grid,
+            cluster_state=self.cluster_state,
+            graphs=result_graphs,
+            copy_on_op=self.copy_on_op,
+        )
+
+    def sum(self, axis=None, keepdims=False):
+        return self.reduce_axis("sum", axis, keepdims)
