@@ -256,14 +256,10 @@ class TreeReductionOp(TreeNode):
     def _collapse(self, device_id: DeviceID, left: Leaf, right: Leaf):
         lblock: Block = left.block
         rblock: Block = right.block
-        print(
-            "DEBUG TREE REDUCE\ndevice_id=%s\nleft_device=%s\nright_device=%s\n"
-            % (
-                str(device_id),
-                str(self.cluster_state.get_block_device_ids(lblock.id)),
-                str(self.cluster_state.get_block_device_ids(rblock.id)),
-            )
-        )
+        print("DEBUG TREE REDUCE")
+        print("device_id", device_id)
+        print("left", lblock.shape, lblock.grid_entry, lblock.grid_shape, lblock.device_id, self.cluster_state.get_block_device_ids(lblock.id))
+        print("right", rblock.shape, rblock.grid_entry, rblock.grid_shape, rblock.device_id, self.cluster_state.get_block_device_ids(rblock.id))
         if self.op_name == "matmul":
             op_name, args = "tensordot", {"axes": 1}
             assert lblock.shape[1] == rblock.shape[0]
