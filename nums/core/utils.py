@@ -12,14 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import functools
 import re
 import inspect
 
 # From project Dask: https://github.com/dask/dask/blob/main/dask/utils.py
 
 
-# TODO (bcp): decorator maybe causing issues with parsing: https://stackoverflow.com/questions/51248994/python-3-6-inspect-signature-doesnt-show-arguments
 def get_named_args(func):
     """Get all non ``*args/**kwargs`` arguments for a function"""
     s = inspect.signature(func)
@@ -72,7 +71,6 @@ def extra_titles(doc):
 
 def ignore_warning(doc, cls, name, extra="", skipblocks=0):
     """Expand docstring by adding disclaimer and extra text"""
-    import inspect
 
     if inspect.isclass(cls):
         l1 = "This docstring was copied from %s.%s.%s.\n\n" % (
@@ -106,7 +104,8 @@ def ignore_warning(doc, cls, name, extra="", skipblocks=0):
 
     i = doc.find("Examples\n")
     if i != -1:
-        docstring_warning = "The doctests shown below are copied from NumPy. They won’t show the correct result until you operate ``.get()``."
+        docstring_warning = "The doctests shown below are copied from NumPy. \
+                            They won’t show the correct result until you operate ``get()``."
         head = doc[: i + 22]
         tail = doc[i + 22 :]
         bits = [head, indent, docstring_warning, "\n\n"] + [tail]
@@ -130,7 +129,7 @@ def unsupported_arguments(doc, args):
     return "\n".join(lines)
 
 
-def _derived_from(cls, method, ua_args=[], extra="", skipblocks=0, doctest=True):
+def _derived_from(cls, method, ua_args=None, extra="", skipblocks=0, doctest=True):
     """Helper function for derived_from to ease testing"""
     # do not use wraps here, as it hides keyword arguments displayed
     # in the doc
@@ -249,4 +248,4 @@ if __name__ == "__main__":
     # TODO: Test doc for debugging, delete once finished
     from nums import numpy as nps
 
-    print(nps.loadtxt.__doc__)
+    print(nps.column_stack.__doc__)
