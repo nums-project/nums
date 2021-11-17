@@ -22,13 +22,17 @@ import nums.core.array.utils as array_utils
 from nums.core.array.application import ArrayApplication
 
 
-def init(num_cpus: Optional[int] = None, cluster_shape: Optional[tuple] = None):
+def init(address: Optional[str] = None,
+         num_cpus: Optional[int] = None,
+         cluster_shape: Optional[tuple] = None):
     # pylint: disable = import-outside-toplevel
     import nums.core.settings as settings
 
     if cluster_shape is not None:
         settings.cluster_shape = cluster_shape
         settings.num_cpus = num_cpus
+    if address is not None:
+        settings.address = address
     _instance()
     return None
 

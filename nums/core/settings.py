@@ -33,6 +33,9 @@ system_name = os.environ.get("NUMS_SYSTEM", "ray")
 use_head = True
 head_ip = os.environ.get("NUMS_HEAD_IP", None)
 
+# An address to which the system client should connect.
+address = None
+
 
 # Compute settings.
 compute_name = os.environ.get("NUMS_COMPUTE", "numpy")

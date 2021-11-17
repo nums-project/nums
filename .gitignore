@@ -143,3 +143,4 @@ pyrightconfig.json
 # Directories
 notebooks
 
+*.lock
