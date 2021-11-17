@@ -288,7 +288,7 @@ class TreeReductionOp(TreeNode):
             rblock.oid,
             lblock.transposed,
             rblock.transposed,
-            syskwargs={"device_id": device_id}
+            syskwargs={"device_id": device_id},
         )
         block.device_id = device_id
 

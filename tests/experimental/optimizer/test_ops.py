@@ -93,12 +93,15 @@ def test_transpose(app_inst_mock_small):
 
 def test_reduce(app_inst_mock_small):
     import itertools
+
     app = app_inst_mock_small
     test_axis = (None, 0, 1, 2)
     test_keepdims = (True, False)
     test_op = ("sum", "prod")
     test_block_shape = ((2, 5, 7), (3, 16, 20), (1, 1, 1))
-    test_inputs = list(itertools.product(test_axis, test_keepdims, test_op, test_block_shape))
+    test_inputs = list(
+        itertools.product(test_axis, test_keepdims, test_op, test_block_shape)
+    )
     for axis, keepdims, op, block_shape in test_inputs:
         cluster_state = ClusterState(app.cm.devices())
         X: BlockArray = app.random.random(shape=(3, 16, 20), block_shape=block_shape)
