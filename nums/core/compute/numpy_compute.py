@@ -292,16 +292,16 @@ class ComputeCls(ComputeImp):
         op_func = np.__getattribute__(op_name)
         if transposed:
             arr = arr.T
-        if axis is not None and arr.shape[axis] > 1 and op_name == "sum" and not keepdims:
-            # We can optimize this with matmul or tensordot.
-            if len(arr.shape) == 2:
-                assert axis in (0, 1)
-                if axis == 0:
-                    return np.matmul(np.ones(arr.shape[0]), arr)
-                else:
-                    return np.matmul(arr, np.ones(arr.shape[1]))
-            else:
-                return np.tensordot(np.ones(arr.shape[axis]), arr, axes=(0, axis))
+        # if axis is not None and arr.shape[axis] > 1 and op_name == "sum" and not keepdims:
+        #     # We can optimize this with matmul or tensordot.
+        #     if len(arr.shape) == 2:
+        #         assert axis in (0, 1)
+        #         if axis == 0:
+        #             return np.matmul(np.ones(arr.shape[0]), arr)
+        #         else:
+        #             return np.matmul(arr, np.ones(arr.shape[1]))
+        #     else:
+        #         return np.tensordot(np.ones(arr.shape[axis]), arr, axes=(0, axis))
         return op_func(arr, axis=axis, keepdims=keepdims)
 
     # This is essentially a map.
