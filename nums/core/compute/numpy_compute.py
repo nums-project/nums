@@ -292,7 +292,7 @@ class ComputeCls(ComputeImp):
         op_func = np.__getattribute__(op_name)
         if transposed:
             arr = arr.T
-        if op_name == "sum" and not keepdims and axis is not None:
+        if axis is not None and arr.shape[axis] > 1 and op_name == "sum" and not keepdims:
             # We can optimize this with matmul or tensordot.
             if len(arr.shape) == 2:
                 assert axis in (0, 1)
