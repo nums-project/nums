@@ -95,8 +95,6 @@ class DaskSystem(SystemInterface):
         self._client = None
 
     def put(self, value: Any):
-        # If this doesn't work, just raise for now.
-        # raise NotImplementedError("Put currently not supported.")
         return self._client.submit(lambda x: x, value)
 
     def get(self, object_ids: Union[Any, List]):
@@ -150,3 +148,19 @@ class DaskSystem(SystemInterface):
 
     def call_actor_method(self, actor, method: str, *args, **kwargs):
         return getattr(actor, method).remote(*args, **kwargs)
+
+
+class DaskSystemStockScheduler(DaskSystem):
+    """
+    An implementation of the Dask system which ignores scheduling commands given
+    by the caller. For testing only.
+    """
+
+    def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
+        func = self._remote_functions[name]
+        return self._client.submit(func, *args, **kwargs)
+
+    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+        raise NotImplementedError(
+            "DaskSystemStockScheduler currently does not support Actors."
+        )
