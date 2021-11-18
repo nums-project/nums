@@ -112,7 +112,7 @@ class RaySystem(SystemInterface):
             if self._address is None:
                 ray.init(num_cpus=self.num_cpus)
             else:
-                ray.init(address=self._address, num_cpus=self.num_cpus)
+                ray.init(address=self._address)
         # Compute available nodes, based on CPU resource.
         if settings.head_ip is None:
             # TODO (hme): Have this be a class argument vs. using what's set in settings directly.
