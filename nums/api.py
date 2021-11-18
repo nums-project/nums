@@ -22,9 +22,11 @@ import nums.core.array.utils as array_utils
 from nums.core.array.application import ArrayApplication
 
 
-def init(address: Optional[str] = None,
-         num_cpus: Optional[int] = None,
-         cluster_shape: Optional[tuple] = None):
+def init(
+    address: Optional[str] = None,
+    num_cpus: Optional[int] = None,
+    cluster_shape: Optional[tuple] = None,
+):
     # pylint: disable = import-outside-toplevel
     import nums.core.settings as settings
 
