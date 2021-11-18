@@ -34,11 +34,12 @@ from nums.core.systems.utils import get_num_cores
 
 
 class DaskSystem(SystemInterface):
-
-    def __init__(self,
-                 address: Optional[str] = None,
-                 num_nodes: Optional[int] = None,
-                 num_cpus: Optional[int] = None):
+    def __init__(
+        self,
+        address: Optional[str] = None,
+        num_nodes: Optional[int] = None,
+        num_cpus: Optional[int] = None,
+    ):
         self._address: str = address
         self._num_nodes: int = num_nodes
         self.num_cpus: int = int(get_num_cores()) if num_cpus is None else num_cpus
@@ -54,17 +55,25 @@ class DaskSystem(SystemInterface):
 
     def init(self):
         if self._address is None:
-            self._client = Client(n_workers=self.num_cpus, processes=False, memory_limit=0)
+            self._client = Client(
+                n_workers=self.num_cpus, processes=False, memory_limit=0
+            )
         else:
             self._client = Client(address=self._address)
         self.init_devices()
 
     def init_devices(self):
         null_op = self._client.run(lambda: None)
-        self._worker_addresses = sorted(list(map(lambda addr: addr.split("://")[-1], null_op.keys())))
-        self._node_addresses = sorted(list(set(map(lambda addr: addr.split(":")[0], self._worker_addresses))))
+        self._worker_addresses = sorted(
+            list(map(lambda addr: addr.split("://")[-1], null_op.keys()))
+        )
+        self._node_addresses = sorted(
+            list(set(map(lambda addr: addr.split(":")[0], self._worker_addresses)))
+        )
         # Remove any trailing slashes.
-        self._node_addresses = list(map(lambda x: x.split("/")[0], self._node_addresses))
+        self._node_addresses = list(
+            map(lambda x: x.split("/")[0], self._node_addresses)
+        )
 
         self._devices = []
         self._device_to_node = {}
@@ -86,8 +95,6 @@ class DaskSystem(SystemInterface):
         self._client = None
 
     def put(self, value: Any):
-        # If this doesn't work, just raise for now.
-        # raise NotImplementedError("Put currently not supported.")
         return self._client.submit(lambda x: x, value)
 
     def get(self, object_ids: Union[Any, List]):
@@ -141,3 +148,19 @@ class DaskSystem(SystemInterface):
 
     def call_actor_method(self, actor, method: str, *args, **kwargs):
         return getattr(actor, method).remote(*args, **kwargs)
+
+
+class DaskSystemStockScheduler(DaskSystem):
+    """
+    An implementation of the Dask system which ignores scheduling commands given
+    by the caller. For testing only.
+    """
+
+    def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
+        func = self._remote_functions[name]
+        return self._client.submit(func, *args, **kwargs)
+
+    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+        raise NotImplementedError(
+            "DaskSystemStockScheduler currently does not support Actors."
+        )
