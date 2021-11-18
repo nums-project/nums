@@ -36,7 +36,12 @@ class Counter(object):
 
 
 class ClusterState(object):
-    def __init__(self, device_ids: List[DeviceID], counter: Counter = None):
+    def __init__(self,
+                 device_ids: List[DeviceID],
+                 counter: Counter = None,
+                 created_on_only=False,
+                 ):
+        self.created_on_only = created_on_only
         if counter is None:
             self.counter = Counter()
         else:
@@ -143,8 +148,9 @@ class ClusterState(object):
             block_id, to_device_id, self.resources
         )
         # Update node location.
-        block_device_ids: List[DeviceID] = self.get_block_device_ids(block_id)
-        block_device_ids.append(to_device_id)
+        if not self.created_on_only:
+            block_device_ids: List[DeviceID] = self.get_block_device_ids(block_id)
+            block_device_ids.append(to_device_id)
 
     def commit_op(
         self, op_mem: int, block_id_a: int, block_id_b: int, device_id: DeviceID
