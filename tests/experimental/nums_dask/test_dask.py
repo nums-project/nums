@@ -17,7 +17,7 @@
 # pylint: disable=import-outside-toplevel
 def test_dask_system():
     import numpy as np
-    import nums
+    from nums.core import linalg
     import nums.numpy as nps
     from nums.core import settings
     from nums.core.array.application import ArrayApplication
@@ -31,18 +31,21 @@ def test_dask_system():
 
     assert isinstance(app.cm.system, DaskSystem)
 
-    X = app.random.normal(shape=(3, 3), block_shape=(3, 3))
-    Y = app.random.normal(shape=(3, 3), block_shape=(3, 3))
-    Z = X @ Y
+    X: BlockArray = app.random.normal(shape=(3, 3), block_shape=(3, 3))
+    Y: BlockArray = app.random.normal(shape=(3, 3), block_shape=(3, 3))
+    Z: BlockArray = X @ Y
     assert np.allclose(Z.get(), X.get() @ Y.get())
 
-    X = app.random.normal(shape=(10, 20), block_shape=(3, 5))
-    Y = app.random.normal(shape=(20, 30), block_shape=(5, 6))
-    Z = X @ Y
+    X: BlockArray = app.random.normal(shape=(10, 20), block_shape=(3, 5))
+    Y: BlockArray = app.random.normal(shape=(20, 30), block_shape=(5, 6))
+    Z: BlockArray = X @ Y
     assert np.allclose(Z.get(), X.get() @ Y.get())
 
-    X = app.random.normal(shape=(100, 20), block_shape=(23, 5))
-    Q, R = nps.linalg.qr(X)
+    X: BlockArray = app.random.normal(shape=(100, 20), block_shape=(23, 5))
+    Q, R = linalg.indirect_tsqr(app, X)
+    assert nps.allclose(Q @ R, X)
+
+    Q, R = linalg.direct_tsqr(app, X)
     assert nps.allclose(Q @ R, X)
 
 
