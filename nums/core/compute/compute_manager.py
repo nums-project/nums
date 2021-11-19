@@ -119,7 +119,7 @@ class ComputeManager(ComputeInterface):
         syskwargs = kwargs["syskwargs"]
         del kwargs["syskwargs"]
         device_id, options = self._process_syskwargs(syskwargs)
-        return self.system.call("put", value, kwargs, device_id, options)
+        return self.system.put("put", value, kwargs, device_id, options)
 
     def get(self, object_ids: Union[Any, List]):
         return self.system.get(object_ids)
