@@ -238,7 +238,9 @@ class UnaryOp(TreeNode):
         self.cluster_state.commit_uop(self._mem_cost(), self.child.block.id, device_id)
         self.cluster_state.add_block(new_block.id, new_block.size(), [device_id])
         if not self.cluster_state.created_on_only:
-            assert self.cluster_state.blocks_local(self.child.block.id, new_leaf.block.id)
+            assert self.cluster_state.blocks_local(
+                self.child.block.id, new_leaf.block.id
+            )
         new_leaf.parent = self.parent
         if self.parent is not None:
             self.parent.update_child([self], [new_leaf])
@@ -457,8 +459,12 @@ class BinaryOp(TreeNode):
         # Update cluster state with new block.
         self.cluster_state.add_block(new_block.id, new_block.size(), [device_id])
         if not self.cluster_state.created_on_only:
-            assert self.cluster_state.blocks_local(self.left.block.id, self.right.block.id)
-            assert self.cluster_state.blocks_local(self.left.block.id, new_leaf.block.id)
+            assert self.cluster_state.blocks_local(
+                self.left.block.id, self.right.block.id
+            )
+            assert self.cluster_state.blocks_local(
+                self.left.block.id, new_leaf.block.id
+            )
         # These are mutating operations.
         # Eliminate references to this node and replace them with leaf.
         new_leaf.parent = self.parent

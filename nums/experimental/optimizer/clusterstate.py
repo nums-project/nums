@@ -36,11 +36,12 @@ class Counter(object):
 
 
 class ClusterState(object):
-    def __init__(self,
-                 device_ids: List[DeviceID],
-                 counter: Counter = None,
-                 created_on_only=False,
-                 ):
+    def __init__(
+        self,
+        device_ids: List[DeviceID],
+        counter: Counter = None,
+        created_on_only=False,
+    ):
         self.created_on_only = created_on_only
         if counter is None:
             self.counter = Counter()
