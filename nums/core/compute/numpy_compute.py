@@ -299,7 +299,21 @@ class ComputeCls(ComputeImp):
         op_func = np.__getattribute__(op_name)
         if transposed:
             arr = arr.T
-
+        if (
+            axis is not None
+            and arr.shape[axis] > 1
+            and op_name == "sum"
+            and not keepdims
+        ):
+            # We can optimize this with matmul or tensordot.
+            if len(arr.shape) == 2:
+                assert axis in (0, 1)
+                if axis == 0:
+                    return np.matmul(np.ones(arr.shape[0]), arr)
+                else:
+                    return np.matmul(arr, np.ones(arr.shape[1]))
+            else:
+                return np.tensordot(np.ones(arr.shape[axis]), arr, axes=(0, axis))
         return op_func(arr, axis=axis, keepdims=keepdims)
 
     # This is essentially a map.
@@ -400,8 +414,12 @@ class ComputeCls(ComputeImp):
             a1 = a1.T
         if a2_T:
             a2 = a2.T
-
         if op == "tensordot":
+            if axes == 1 and max(len(a1.shape), len(a2.shape)) <= 2:
+                # Execute this as a matmul.
+                # TODO: Outer product is optimized.
+                #  detect here and execute np.outer(...)
+                return np.matmul(a1, a2)
             return np.tensordot(a1, a2, axes=axes)
         op = np_ufunc_map.get(op, op)
         try:
@@ -416,10 +434,15 @@ class ComputeCls(ComputeImp):
         if a2_T:
             a2 = a2.T
 
-        reduce_op = np.__getattribute__(op)
-
-        a = np.stack([a1, a2], axis=0)
-        r = reduce_op(a, axis=0, keepdims=False)
+        # These are faster.
+        if op == "sum":
+            r = a1 + a2
+        elif op == "prod":
+            r = a1 * a2
+        else:
+            reduce_op = np.__getattribute__(op)
+            a = np.stack([a1, a2], axis=0)
+            r = reduce_op(a, axis=0, keepdims=False)
 
         if a1 is np.nan or a2 is np.nan or r is np.nan:
             assert np.isscalar(a1) and np.isscalar(a2) and np.isscalar(r)
