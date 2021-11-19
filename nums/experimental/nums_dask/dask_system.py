@@ -20,6 +20,7 @@ from types import FunctionType
 from typing import Any, Union, List, Dict, Optional
 
 try:
+    import dask
     from dask.distributed import Client
 except Exception as e:
     raise Exception(
@@ -117,7 +118,12 @@ class DaskSystem(SystemInterface):
         assert device_id is not None
         node_addr = self._device_to_node[device_id]
         func = self._remote_functions[name]
-        return self._client.submit(func, *args, **kwargs, workers=node_addr)
+        if "num_returns" in options:
+            dfunc = dask.delayed(func, nout=options["num_returns"])
+            result = dfunc(*args, **kwargs)
+            return self._client.compute(result, workers=node_addr)
+        else:
+            return self._client.submit(func, *args, **kwargs, workers=node_addr)
 
     def num_cores_total(self) -> int:
         num_cores = 0
