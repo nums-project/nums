@@ -43,7 +43,7 @@ class SerialSystem(SystemInterface):
         pass
 
     def put(self, args, kwargs, device_id: DeviceID, options: Dict):
-        return value
+        return args
 
     def get(self, object_ids: Union[Any, List]):
         return object_ids
@@ -184,7 +184,12 @@ class RaySystem(SystemInterface):
                 for _ in range(n):
                     _a = random.randint(0, 1000)
                     _b = random.randint(0, 1000)
-                    _v = self.get(r(self.put(_a, kwargs, self._devices[0],{}), self.put(_b, kwargs, self._devices[0],{})))
+                    _v = self.get(
+                        r(
+                            self.put(_a, {}, self._devices[0], {}),
+                            self.put(_b, {}, self._devices[0], {}),
+                        )
+                    )
 
             warmup_func(n)
 
