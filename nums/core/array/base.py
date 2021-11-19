@@ -172,7 +172,13 @@ class Block(object):
             False,
             self._cm,
         )
-        block.oid = self._cm.put(np.array(other, dtype=self.dtype))
+        block.oid = self._cm.put(
+            np.array(other, dtype=self.dtype),
+            syskwargs={
+                "grid_entry": self.grid_entry,
+                "grid_shape": self.grid_shape,
+            },
+        )
         return block
 
     def bop(self, op, other, args: dict, device_id=None):

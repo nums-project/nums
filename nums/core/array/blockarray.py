@@ -76,7 +76,10 @@ class BlockArray(BlockArrayBase):
             block = arr[grid_slice]
             if copy:
                 block = np.copy(block)
-            rarr.blocks[grid_entry].oid = cm.put(block)
+            rarr.blocks[grid_entry].oid = cm.put(
+                block,
+                syskwargs={"grid_entry": grid_entry, "grid_shape": grid.grid_shape},
+            )
             rarr.blocks[grid_entry].dtype = getattr(np, dtype_str)
         return rarr
 
@@ -363,7 +366,13 @@ class BlockArray(BlockArrayBase):
 
         src_arr = self
         np_ss = ss
-        ss = self.cm.put(ss)
+        ss = self.cm.put(
+            ss,
+            syskwargs={
+                "grid_entry": 0,
+                "grid_shape": dst_arr.grid.grid_shape,
+            },
+        )
         for src_grid_entry in src_arr.grid.get_entry_iterator():
             src_coord: tuple = src_arr.grid.get_entry_coordinates(src_grid_entry)
             src_block: Block = src_arr.blocks[src_grid_entry]
@@ -509,7 +518,13 @@ class BlockArray(BlockArrayBase):
         src_arr = value
         src_grid_shape = src_arr.grid.grid_shape
         np_ss = ss
-        ss = self.cm.put(ss)
+        ss = self.cm.put(
+            ss,
+            syskwargs={
+                "grid_entry": 0,
+                "grid_shape": src_grid_shape,
+            },
+        )
         for dst_grid_entry in dst_arr.grid.get_entry_iterator():
             dst_block: Block = dst_arr.blocks[dst_grid_entry]
             dst_coord: tuple = dst_arr.grid.get_entry_coordinates(dst_grid_entry)
