@@ -164,7 +164,12 @@ class DaskSystemStockScheduler(DaskSystem):
 
     def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
         func = self._remote_functions[name]
-        return self._client.submit(func, *args, **kwargs)
+        if "num_returns" in options:
+            dfunc = dask.delayed(func, nout=options["num_returns"])
+            result = dfunc(*args, **kwargs)
+            return self._client.compute(result)
+        else:
+            return self._client.submit(func, *args, **kwargs)
 
     def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
         raise NotImplementedError(
