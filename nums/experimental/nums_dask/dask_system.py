@@ -102,7 +102,7 @@ class DaskSystem(SystemInterface):
         return self._client.gather(object_ids)
 
     def remote(self, function: FunctionType, remote_params: dict):
-        return function
+        return function, remote_params
 
     def devices(self) -> List[DeviceID]:
         return self._devices
@@ -114,16 +114,27 @@ class DaskSystem(SystemInterface):
             remote_params = {}
         self._remote_functions[name] = self.remote(func, remote_params)
 
+    def _parse_call(self, name: str, options: Dict):
+        func, remote_params = self._remote_functions[name]
+        nout = None
+        if "num_returns" in options:
+            # options has higher priority than remote_params.
+            if options["num_returns"] > 1:
+                nout = options["num_returns"]
+        elif "num_returns" in remote_params and remote_params["num_returns"] > 1:
+            nout = remote_params["num_returns"]
+        return func, nout
+
     def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
         assert device_id is not None
         node_addr = self._device_to_node[device_id]
-        func = self._remote_functions[name]
-        if "num_returns" in options:
-            dfunc = dask.delayed(func, nout=options["num_returns"])
-            result = dfunc(*args, **kwargs)
-            return self._client.compute(result, workers=node_addr)
-        else:
+        func, nout = self._parse_call(name, options)
+        if nout is None:
             return self._client.submit(func, *args, **kwargs, workers=node_addr)
+        else:
+            dfunc = dask.delayed(func, nout=options["num_returns"])
+            result = tuple(dfunc(*args, **kwargs))
+            return self._client.compute(result, workers=node_addr)
 
     def num_cores_total(self) -> int:
         num_cores = 0
@@ -163,13 +174,13 @@ class DaskSystemStockScheduler(DaskSystem):
     """
 
     def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
-        func = self._remote_functions[name]
-        if "num_returns" in options:
-            dfunc = dask.delayed(func, nout=options["num_returns"])
-            result = dfunc(*args, **kwargs)
-            return self._client.compute(result)
-        else:
+        func, nout = self._parse_call(name, options)
+        if nout is None:
             return self._client.submit(func, *args, **kwargs)
+        else:
+            dfunc = dask.delayed(func, nout=options["num_returns"])
+            result = tuple(dfunc(*args, **kwargs))
+            return self._client.compute(result)
 
     def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
         raise NotImplementedError(
