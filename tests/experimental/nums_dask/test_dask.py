@@ -41,6 +41,10 @@ def test_dask_system():
     Z = X @ Y
     assert np.allclose(Z.get(), X.get() @ Y.get())
 
+    X = app.random.normal(shape=(100, 20), block_shape=(23, 5))
+    Q, R = nps.linalg.qr(X)
+    assert nps.allclose(Q @ R, X)
+
 
 if __name__ == "__main__":
     test_dask_system()
