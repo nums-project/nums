@@ -147,7 +147,7 @@ class ComputeInterface(object):
     def reshape(self, arr, shape, syskwargs: Dict):
         raise NotImplementedError()
 
-    def put(self, value):
+    def identity(self, value):
         raise NotImplementedError()
 
 

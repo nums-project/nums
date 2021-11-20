@@ -369,7 +369,7 @@ class BlockArray(BlockArrayBase):
         ss = self.cm.put(
             ss,
             syskwargs={
-                "grid_entry": 0,
+                "grid_entry": 1,
                 "grid_shape": dst_arr.grid.grid_shape,
             },
         )
@@ -521,7 +521,7 @@ class BlockArray(BlockArrayBase):
         ss = self.cm.put(
             ss,
             syskwargs={
-                "grid_entry": 0,
+                "grid_entry": 1,
                 "grid_shape": src_grid_shape,
             },
         )

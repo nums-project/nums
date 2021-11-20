@@ -27,7 +27,7 @@ class SystemInterface(object):
     def shutdown(self):
         raise NotImplementedError()
 
-    def put(self, args, kwargs, device_id: DeviceID, options: Dict):
+    def put(self, value: Any, device_id: DeviceID):
         """
         Put object into system storage and force placement on the relevant node
         """

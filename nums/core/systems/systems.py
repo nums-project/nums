@@ -42,8 +42,8 @@ class SerialSystem(SystemInterface):
     def shutdown(self):
         pass
 
-    def put(self, args, kwargs, device_id: DeviceID, options: Dict):
-        return args
+    def put(self, value: Any, device_id: DeviceID):
+        return value
 
     def get(self, object_ids: Union[Any, List]):
         return object_ids
@@ -193,8 +193,8 @@ class RaySystem(SystemInterface):
 
             warmup_func(n)
 
-    def put(self, args, kwargs, device_id: DeviceID, options: Dict):
-        return self.call("put", args, kwargs, device_id, options)
+    def put(self, value: Any, device_id: DeviceID):
+        return self.call("identity", value, {}, device_id, {})
 
     def get(self, object_ids):
         return ray.get(object_ids)

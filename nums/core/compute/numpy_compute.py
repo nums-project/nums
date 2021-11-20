@@ -491,5 +491,5 @@ class ComputeCls(ComputeImp):
     def reshape(self, arr, shape):
         return arr.reshape(shape)
 
-    def put(self, value):
+    def identity(self, value):
         return value
