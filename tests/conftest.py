@@ -27,13 +27,15 @@ from nums.core.systems.filesystem import FileSystem
 from nums.core.systems.systems import SystemInterface, SerialSystem, RaySystem
 
 
+# pylint: disable=protected-access, import-outside-toplevel
+
+
 @pytest.fixture(scope="module", params=[("dask", "cyclic"), ("ray", "packed")])
 def nps_app_inst(request):
     # This triggers initialization; it's not to be mixed with the app_inst fixture.
     # Observed (core dumped) after updating this fixture to run functions with "serial" backend.
     # Last time this happened, it was due poor control over the
     # scope and duration of ray resources.
-    # pylint: disable = import-outside-toplevel
     from nums.core import settings
     from nums.core import application_manager
     import nums.numpy as nps
@@ -52,7 +54,6 @@ def nps_app_inst(request):
 
 @pytest.fixture(scope="module", params=[("dask", "cyclic"), ("ray", "packed")])
 def app_inst(request):
-    # pylint: disable=protected-access
     _app_inst = get_app(*request.param)
     yield _app_inst
     if request.param[0] == "ray":
@@ -64,7 +65,6 @@ def app_inst(request):
 
 @pytest.fixture(scope="module", params=[("serial", "cyclic")])
 def app_inst_s3(request):
-    # pylint: disable=protected-access
     _app_inst = get_app(*request.param)
     assert isinstance(_app_inst.cm.system, SerialSystem)
     yield _app_inst
@@ -83,7 +83,6 @@ def app_inst_s3(request):
     ],
 )
 def app_inst_all(request):
-    # pylint: disable=protected-access
     _app_inst = get_app(*request.param)
     yield _app_inst
     if request.param[0] == "ray":
