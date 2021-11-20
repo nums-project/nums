@@ -43,6 +43,7 @@ def test_head_detection():
     sys.init()
     assert sys._head_node is not None
     sys.shutdown()
+    ray.shutdown()
 
 
 if __name__ == "__main__":
