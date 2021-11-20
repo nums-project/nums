@@ -172,7 +172,7 @@ class Block(object):
             False,
             self._cm,
         )
-        # We pass syskwargs here for correct node placement for `other`
+        # We pass syskwargs here for correct node placement for `other`, which should be local to self.
         block.oid = self._cm.put(
             np.array(other, dtype=self.dtype),
             syskwargs={

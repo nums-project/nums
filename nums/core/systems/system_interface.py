@@ -29,7 +29,7 @@ class SystemInterface(object):
 
     def put(self, value: Any, device_id: DeviceID):
         """
-        Put object into system storage and force placement on the relevant node
+        Put object into system storage and force placement on the relevant node.
         """
         raise NotImplementedError()
 

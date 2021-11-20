@@ -181,13 +181,17 @@ class RaySystem(SystemInterface):
                 import random
 
                 r = ray.remote(num_cpus=1)(lambda x, y: x + y).remote
-                for _ in range(n):
+
+                num_devices = len(self._devices)
+                for i in range(n):
                     _a = random.randint(0, 1000)
                     _b = random.randint(0, 1000)
+                    d0 = i % num_devices
+                    d1 = (i + 1) % num_devices
                     _v = self.get(
                         r(
-                            self.put(_a, self._devices[0]),
-                            self.put(_b, self._devices[0]),
+                            self.put(_a, self._devices[d0]),
+                            self.put(_b, self._devices[d1]),
                         )
                     )
 
