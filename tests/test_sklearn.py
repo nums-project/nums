@@ -4,7 +4,7 @@ from nums.core.array.blockarray import BlockArray
 import nums.numpy as nps
 from nums.core.array.application import ArrayApplication
 
-# pylint: disable = import-outside-toplevel
+# pylint: disable = import-outside-toplevel, unbalanced-tuple-unpacking
 
 
 def classifier_pipelines(
@@ -260,7 +260,6 @@ def test_regressors(nps_app_inst: ArrayApplication):
 
 
 def test_typing(nps_app_inst):
-    # pylint: disable=unbalanced-tuple-unpacking
     assert nps_app_inst is not None
     from nums import sklearn
     import numpy as np
