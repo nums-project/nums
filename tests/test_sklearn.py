@@ -156,6 +156,7 @@ def test_parallel_sklearn(nps_app_inst: ArrayApplication):
 
 def test_classifiers(nps_app_inst: ArrayApplication):
     from nums.core.systems.systems import RaySystem, SerialSystem
+
     if not isinstance(nps_app_inst.cm.system, (RaySystem, SerialSystem)):
         return
 
@@ -189,6 +190,7 @@ def test_classifiers(nps_app_inst: ArrayApplication):
 
 def test_regressors(nps_app_inst: ArrayApplication):
     from nums.core.systems.systems import RaySystem, SerialSystem
+
     if not isinstance(nps_app_inst.cm.system, (RaySystem, SerialSystem)):
         return
 
@@ -233,6 +235,7 @@ def test_regressors(nps_app_inst: ArrayApplication):
 
 def test_typing(nps_app_inst):
     from nums.core.systems.systems import RaySystem, SerialSystem
+
     if not isinstance(nps_app_inst.cm.system, (RaySystem, SerialSystem)):
         return
 

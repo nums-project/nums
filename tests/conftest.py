@@ -98,9 +98,12 @@ def get_app(system_name, device_grid_name="cyclic"):
         system: SystemInterface = SerialSystem()
     elif system_name == "ray":
         assert not ray.is_initialized()
-        system: SystemInterface = RaySystem(use_head=True, num_cpus=systems_utils.get_num_cores())
+        system: SystemInterface = RaySystem(
+            use_head=True, num_cpus=systems_utils.get_num_cores()
+        )
     elif system_name == "dask":
         from nums.experimental.nums_dask.dask_system import DaskSystem
+
         system: SystemInterface = DaskSystem(
             num_cpus=systems_utils.get_num_cores(), num_nodes=1
         )
