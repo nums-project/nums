@@ -186,8 +186,8 @@ class RaySystem(SystemInterface):
                     _b = random.randint(0, 1000)
                     _v = self.get(
                         r(
-                            self.put(_a, {}, self._devices[0], {}),
-                            self.put(_b, {}, self._devices[0], {}),
+                            self.put(_a, self._devices[0]),
+                            self.put(_b, self._devices[0]),
                         )
                     )
 
