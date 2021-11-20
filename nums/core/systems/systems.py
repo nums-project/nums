@@ -194,7 +194,7 @@ class RaySystem(SystemInterface):
             warmup_func(n)
 
     def put(self, value: Any, device_id: DeviceID):
-        return self.call("identity", value, {}, device_id, {})
+        return self.call("identity", [value], {}, device_id, {})
 
     def get(self, object_ids):
         return ray.get(object_ids)
