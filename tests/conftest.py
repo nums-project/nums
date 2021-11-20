@@ -45,7 +45,7 @@ def nps_app_inst(request):
     nps.random.reset()
     yield application_manager.instance()
     if request.param[0] == "ray":
-        assert app_inst.cm.system._manage_ray
+        assert application_manager.instance().cm.system._manage_ray
     application_manager.destroy()
     time.sleep(2)
 
@@ -53,22 +53,23 @@ def nps_app_inst(request):
 @pytest.fixture(scope="module", params=[("dask", "cyclic"), ("ray", "packed")])
 def app_inst(request):
     # pylint: disable=protected-access
-    app_inst = get_app(*request.param)
-    yield app_inst
+    _app_inst = get_app(*request.param)
+    yield _app_inst
     if request.param[0] == "ray":
-        assert app_inst.cm.system._manage_ray
-    app_inst.cm.system.shutdown()
-    app_inst.cm.destroy()
+        assert _app_inst.cm.system._manage_ray
+    _app_inst.cm.system.shutdown()
+    _app_inst.cm.destroy()
     time.sleep(2)
 
 
 @pytest.fixture(scope="module", params=[("serial", "cyclic")])
 def app_inst_s3(request):
     # pylint: disable=protected-access
-    app_inst = get_app(*request.param)
-    yield app_inst
-    app_inst.cm.system.shutdown()
-    app_inst.cm.destroy()
+    _app_inst = get_app(*request.param)
+    assert isinstance(_app_inst.cm.system, SerialSystem)
+    yield _app_inst
+    _app_inst.cm.system.shutdown()
+    _app_inst.cm.destroy()
     time.sleep(2)
 
 
@@ -83,12 +84,12 @@ def app_inst_s3(request):
 )
 def app_inst_all(request):
     # pylint: disable=protected-access
-    app_inst = get_app(*request.param)
-    yield app_inst
+    _app_inst = get_app(*request.param)
+    yield _app_inst
     if request.param[0] == "ray":
-        assert app_inst.cm.system._manage_ray
-    app_inst.cm.system.shutdown()
-    app_inst.cm.destroy()
+        assert _app_inst.cm.system._manage_ray
+    _app_inst.cm.system.shutdown()
+    _app_inst.cm.destroy()
     time.sleep(2)
 
 
@@ -97,8 +98,7 @@ def get_app(system_name, device_grid_name="cyclic"):
         system: SystemInterface = SerialSystem()
     elif system_name == "ray":
         assert not ray.is_initialized()
-        ray.init(num_cpus=systems_utils.get_num_cores())
-        system: SystemInterface = RaySystem(use_head=True)
+        system: SystemInterface = RaySystem(use_head=True, num_cpus=systems_utils.get_num_cores())
     elif system_name == "dask":
         from nums.experimental.nums_dask.dask_system import DaskSystem
         system: SystemInterface = DaskSystem(
