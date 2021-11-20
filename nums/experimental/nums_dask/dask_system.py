@@ -99,6 +99,9 @@ class DaskSystem(SystemInterface):
         return self._client.submit(lambda x: x, value)
 
     def get(self, object_ids: Union[Any, List]):
+        # TODO: Uncomment when actors take Future objects.
+        # if len(object_ids) == 1 and object_ids[0].__class__.__name__ == "ActorFuture":
+        #     return [object_ids[0].result()]
         return self._client.gather(object_ids)
 
     def remote(self, function: FunctionType, remote_params: dict):
@@ -132,7 +135,7 @@ class DaskSystem(SystemInterface):
         if nout is None:
             return self._client.submit(func, *args, **kwargs, workers=node_addr)
         else:
-            dfunc = dask.delayed(func, nout=options["num_returns"])
+            dfunc = dask.delayed(func, nout=nout)
             result = tuple(dfunc(*args, **kwargs))
             return self._client.compute(result, workers=node_addr)
 
@@ -154,17 +157,22 @@ class DaskSystem(SystemInterface):
         self._actors[name] = cls
 
     def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+        raise NotImplementedError("Dask actors are not supported.")
         # Distribute actors round-robin over devices.
         if device_id is None:
             device_id = self._devices[self._actor_node_index]
             self._actor_node_index = (self._actor_node_index + 1) % len(self._devices)
         actor = self._actors[name]
         node_addr = self._device_to_node[device_id]
-        # Do something with class and node address...
-        raise NotImplementedError("DaskSystem currently does not support Actors.")
+        future = self._client.submit(actor, actor=True, workers=node_addr)
+        actor = future.result()
+        return actor
 
     def call_actor_method(self, actor, method: str, *args, **kwargs):
-        return getattr(actor, method).remote(*args, **kwargs)
+        raise NotImplementedError("Dask actors are not supported.")
+        actor_func = getattr(actor, method)
+        actor_future = actor_func(*args, **kwargs)
+        return actor_future
 
 
 class DaskSystemStockScheduler(DaskSystem):
@@ -178,11 +186,13 @@ class DaskSystemStockScheduler(DaskSystem):
         if nout is None:
             return self._client.submit(func, *args, **kwargs)
         else:
-            dfunc = dask.delayed(func, nout=options["num_returns"])
+            dfunc = dask.delayed(func, nout=nout)
             result = tuple(dfunc(*args, **kwargs))
             return self._client.compute(result)
 
     def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
-        raise NotImplementedError(
-            "DaskSystemStockScheduler currently does not support Actors."
-        )
+        raise NotImplementedError("Dask actors are not supported.")
+        actor = self._actors[name]
+        future = self._client.submit(actor, actor=True)
+        actor_handle = future.result()
+        return actor_handle

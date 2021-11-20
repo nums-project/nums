@@ -155,6 +155,10 @@ def test_parallel_sklearn(nps_app_inst: ArrayApplication):
 
 
 def test_classifiers(nps_app_inst: ArrayApplication):
+    from nums.core.systems.systems import RaySystem, SerialSystem
+    if not isinstance(nps_app_inst.cm.system, (RaySystem, SerialSystem)):
+        return
+
     assert nps_app_inst is not None
     import numpy as np
     from sklearn import svm
@@ -184,6 +188,10 @@ def test_classifiers(nps_app_inst: ArrayApplication):
 
 
 def test_regressors(nps_app_inst: ArrayApplication):
+    from nums.core.systems.systems import RaySystem, SerialSystem
+    if not isinstance(nps_app_inst.cm.system, (RaySystem, SerialSystem)):
+        return
+
     assert nps_app_inst is not None
     from nums.sklearn import (
         MLPRegressor,
@@ -224,6 +232,10 @@ def test_regressors(nps_app_inst: ArrayApplication):
 
 
 def test_typing(nps_app_inst):
+    from nums.core.systems.systems import RaySystem, SerialSystem
+    if not isinstance(nps_app_inst.cm.system, (RaySystem, SerialSystem)):
+        return
+
     # pylint: disable=unbalanced-tuple-unpacking
     assert nps_app_inst is not None
     from nums import sklearn

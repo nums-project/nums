@@ -144,3 +144,4 @@ pyrightconfig.json
 notebooks
 
 *.lock
+**/dask-worker-space
