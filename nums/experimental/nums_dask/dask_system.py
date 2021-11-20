@@ -93,6 +93,7 @@ class DaskSystem(SystemInterface):
         else:
             # Disconnect this client.
             self._client.close()
+        del self._client
         self._client = None
 
     def put(self, value: Any):
