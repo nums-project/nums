@@ -238,6 +238,12 @@ def svd(app: ArrayApplication, X):
     return U, S, VT
 
 
+def pca(app: ArrayApplication, X: BlockArray):
+    C = app.cov(X, rowvar=False)
+    U, _, _ = svd(app, C)
+    return X @ U
+
+
 def inv(app: ArrayApplication, X: BlockArray):
     # TODO (hme): Implement scalable version.
     block_shape = X.block_shape
@@ -538,7 +544,7 @@ def fast_linear_regression(app: ArrayApplication, X: BlockArray, y: BlockArray):
     R_inv = inv(app, R)
     if R_shape != R_block_shape:
         R_inv = R_inv.reshape(R_shape, block_shape=R_block_shape)
-    theta = R_inv @ (Q.T @ y)
+    theta = R_inv @ (Q.transpose(defer=True) @ y)
     return theta
 
 
@@ -554,7 +560,7 @@ def linear_regression(app: ArrayApplication, X: BlockArray, y: BlockArray):
     R_inv = inv(app, R)
     if R_shape != R_block_shape:
         R_inv = R_inv.reshape(R_shape, block_shape=R_block_shape)
-    theta = R_inv @ (Q.T @ y)
+    theta = R_inv @ (Q.transpose(defer=True) @ y)
     return theta
 
 
@@ -570,5 +576,7 @@ def ridge_regression(app: ArrayApplication, X: BlockArray, y: BlockArray, lamb: 
     lamb_vec = app.array(lamb * np.eye(R_shape[0]), block_shape=R_block_shape)
     # TODO (hme): A better solution exists, which inverts R by augmenting X and y.
     #  See Murphy 7.5.2.
-    theta = inv(app, lamb_vec + R.T @ R) @ (X.T @ y)
+    theta = inv(app, lamb_vec + R.transpose(defer=True) @ R) @ (
+        X.transpose(defer=True) @ y
+    )
     return theta

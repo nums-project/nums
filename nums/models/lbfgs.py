@@ -30,7 +30,7 @@ class BackTrackingLineSearch(object):
         self.app = _instance()
         self.model = model
 
-    def f(self, theta_prime, X, y):
+    def f(self, X, y, theta_prime):
         return self.model.objective(
             X, y, theta_prime, self.model.forward(X, theta_prime)
         )
@@ -42,11 +42,13 @@ class BackTrackingLineSearch(object):
         alpha = init_alpha
         f_val = self.f(X, y, theta)
         f_next = self.f(X, y, theta + alpha * p)
-        while self.app.isnan(f_next) or f_next > f_val + c * alpha * grad.T @ p:
+        while (
+            self.app.isnan(f_next)
+            or f_next > f_val + c * alpha * grad.transpose(defer=True) @ p
+        ):
             alpha *= rho
             if alpha < min_alpha:
                 return min_alpha
-            # print("btls step alpha=%s" % alpha)
             f_next = self.f(X, y, theta + alpha * p)
         return max(alpha, min_alpha)
 
@@ -56,13 +58,13 @@ class LBFGSMemory(object):
         self.k = k
         self.s = s
         self.y = y
-        ys_inner = s.T @ y
+        ys_inner = s.transpose(defer=True) @ y
         self.rho = 1.0 / (ys_inner + 1e-30)
-        self.gamma = ys_inner / (y.T @ y + 1e-30)
+        self.gamma = ys_inner / (y.transpose(defer=True) @ y + 1e-30)
 
 
 class LBFGS(object):
-    def __init__(self, model: GLM, m=3, max_iter=100, thresh=1e-5, dtype=np.float64):
+    def __init__(self, model: GLM, m=10, max_iter=100, thresh=1e-4, dtype=np.float64):
         self.app: ArrayApplication = _instance()
         self.model: GLM = model
         self.m = m
@@ -89,12 +91,12 @@ class LBFGS(object):
             mem_i: LBFGSMemory = self.memory[i]
             if mem_i is None:
                 break
-            alpha = mem_i.rho * mem_i.s.T @ q
+            alpha = mem_i.rho * mem_i.s.transpose(defer=True) @ q
             q -= alpha * mem_i.y
             forward_vars.insert(0, (alpha, mem_i))
         r = H @ q
         for alpha, mem_i in forward_vars:
-            beta = mem_i.rho * mem_i.y.T @ r
+            beta = mem_i.rho * mem_i.y.transpose(defer=True) @ r
             r += mem_i.s * (alpha - beta)
         return r
 
@@ -109,7 +111,7 @@ class LBFGS(object):
             dtype=self.dtype,
         )
 
-        g = self.model.gradient(X, y, self.model.forward(X, theta))
+        g = self.model.gradient(X, y, self.model.forward(X, theta), theta)
         next_g = None
         next_theta = None
         while self.k < self.max_iter:
@@ -127,16 +129,14 @@ class LBFGS(object):
                 c=1e-4,
                 min_alpha=1e-30,
             )
-            print("alpha", alpha)
-            # print("alpha", alpha,
-            #       "objective", f(theta).get(),
-            #       "grad_norm", self.app.sqrt(g.T @ g).get())
             next_theta = theta + alpha * p
             if self.k + 1 >= self.max_iter:
                 # Terminate immediately if this is the last iteration.
                 theta = next_theta
                 break
-            next_g = self.model.gradient(X, y, self.model.forward(X, next_theta))
+            next_g = self.model.gradient(
+                X, y, self.model.forward(X, next_theta), next_theta
+            )
             theta_diff = next_theta - theta
             grad_diff = next_g - g
             mem: LBFGSMemory = LBFGSMemory(k=self.k, s=theta_diff, y=grad_diff)
@@ -156,7 +156,8 @@ class LBFGS(object):
         return theta
 
     def converged(self, g):
-        return self.app.sqrt(g.T @ g) < self.thresh
+        # Use this criteria (vs gradient norm) as it is standard in sklearn.
+        return self.app.max(self.app.abs(g)) <= self.thresh
 
 
 if __name__ == "__main__":

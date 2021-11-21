@@ -26,12 +26,22 @@ from nums.core.compute.compute_manager import ComputeManager
 from nums.core.grid.grid import DeviceGrid, CyclicDeviceGrid, PackedDeviceGrid
 from nums.core.systems.filesystem import FileSystem
 from nums.core.systems.system_interface import SystemInterface
-from nums.core.systems.systems import SerialSystem, RaySystem
+from nums.core.systems.systems import SerialSystem, RaySystem, RaySystemStockScheduler
 
 # pylint: disable=global-statement
 
 
 _instance: ArrayApplication = None
+_call_on_create: list = []
+
+
+def call_on_create(func):
+    global _call_on_create
+    # Always include funcs in _call_on_create.
+    # If the app is destroyed, the hooks need to be invoked again on creation.
+    _call_on_create.append(func)
+    if is_initialized():
+        func(_instance)
 
 
 def is_initialized():
@@ -43,6 +53,8 @@ def instance():
     global _instance
     if _instance is None:
         _instance = create()
+        for func in _call_on_create:
+            func(_instance)
     return _instance
 
 
@@ -62,6 +74,12 @@ def create():
         use_head = settings.use_head
         num_nodes = int(np.product(settings.cluster_shape))
         system: SystemInterface = RaySystem(
+            use_head=use_head, num_nodes=num_nodes, num_cpus=settings.num_cpus
+        )
+    elif system_name == "ray-scheduler":
+        use_head = settings.use_head
+        num_nodes = int(np.product(settings.cluster_shape))
+        system: SystemInterface = RaySystemStockScheduler(
             use_head=use_head, num_nodes=num_nodes, num_cpus=settings.num_cpus
         )
     else:

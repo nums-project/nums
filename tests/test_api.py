@@ -41,10 +41,8 @@ def test_rwd():
         assert write_result_ba[grid_entry].get() == write_result_np[grid_entry]
     ba_read: BlockArray = nums.read(filename)
     assert nps_app_inst.get(nps_app_inst.allclose(ba, ba_read))
-    delete_result_ba: BlockArray = nums.delete(filename)
-    delete_result_np = delete_result_ba.get()
-    for grid_entry in delete_result_ba.grid.get_entry_iterator():
-        assert delete_result_ba[grid_entry].get() == delete_result_np[grid_entry]
+    delete_result_ba: bool = nums.delete(filename)
+    assert delete_result_ba
 
 
 @mock_s3
@@ -69,10 +67,8 @@ def test_rwd_s3():
         assert write_result_ba[grid_entry].get() == write_result_np[grid_entry]
     ba_read: BlockArray = nums.read(filename)
     assert nps_app_inst.get(nps_app_inst.allclose(ba, ba_read))
-    delete_result_ba: BlockArray = nums.delete(filename)
-    delete_result_np = delete_result_ba.get()
-    for grid_entry in delete_result_ba.grid.get_entry_iterator():
-        assert delete_result_ba[grid_entry].get() == delete_result_np[grid_entry]
+    delete_result_ba: bool = nums.delete(filename)
+    assert delete_result_ba
 
 
 def test_read_csv():
@@ -96,6 +92,6 @@ if __name__ == "__main__":
 
     settings.system_name = "serial"
     nps_app_inst = application_manager.instance()
-    # test_rwd()
+    test_rwd()
     test_rwd_s3()
     # test_read_csv()
