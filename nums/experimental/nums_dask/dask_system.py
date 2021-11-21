@@ -96,8 +96,10 @@ class DaskSystem(SystemInterface):
         del self._client
         self._client = None
 
-    def put(self, value: Any):
-        return self._client.submit(lambda x: x, value)
+    def put(self, value: Any, device_id: DeviceID):
+        assert device_id is not None
+        node_addr = self._device_to_node[device_id]
+        return self._client.submit(lambda x: x, value, workers=node_addr)
 
     def get(self, object_ids: Union[Any, List]):
         # TODO: Uncomment when actors take Future objects.
@@ -197,3 +199,6 @@ class DaskSystemStockScheduler(DaskSystem):
         future = self._client.submit(actor, actor=True)
         actor_handle = future.result()
         return actor_handle
+
+    def put(self, value: Any, device_id: DeviceID):
+        return self._client.submit(lambda x: x, value)
