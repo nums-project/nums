@@ -4,7 +4,7 @@ from nums.core.array.blockarray import BlockArray
 import nums.numpy as nps
 from nums.core.array.application import ArrayApplication
 
-# pylint: disable = import-outside-toplevel
+# pylint: disable = import-outside-toplevel, unbalanced-tuple-unpacking
 
 
 def classifier_pipelines(
@@ -154,7 +154,7 @@ def test_parallel_sklearn(nps_app_inst: ArrayApplication):
     # print("serial time", time.time() - t)
 
 
-def test_classifiers(nps_app_inst: ArrayApplication):
+def test_supervised(nps_app_inst: ArrayApplication):
     from nums.core.systems.systems import RaySystem, SerialSystem
 
     if not isinstance(nps_app_inst.cm.system, (RaySystem, SerialSystem)):
@@ -165,7 +165,7 @@ def test_classifiers(nps_app_inst: ArrayApplication):
     from sklearn import svm
     from sklearn import preprocessing
     from nums.sklearn import StandardScaler
-    from nums.sklearn import SVC
+    from nums.sklearn import SVC, SVR
 
     size, feats = 100, 10
     X = np.random.rand(size, feats)
@@ -177,15 +177,51 @@ def test_classifiers(nps_app_inst: ArrayApplication):
     nps_pX = StandardScaler().fit_transform(nps_X)
     assert np.allclose(pX, nps_pX.get())
 
-    sklearn_model = svm.SVC()
-    sklearn_model.fit(pX, y)
-    y_pred = sklearn_model.predict(pX)
+    def test_model_pair(sklearn_cls, nps_cls):
+        sklearn_model = sklearn_cls()
+        sklearn_model.fit(pX, y)
+        y_pred = sklearn_model.predict(pX)
+        sklearn_score = sklearn_model.score(pX, y)
 
-    nps_model = SVC()
-    nps_model.fit(nps_pX, nps_y)
-    nps_y_pred = nps_model.predict(nps_pX)
+        nps_model = nps_cls()
+        nps_model.fit(nps_pX, nps_y)
+        nps_y_pred = nps_model.predict(nps_pX)
+        nps_score = nps_model.score(nps_pX, nps_y)
 
-    assert np.allclose(y_pred, nps_y_pred.get())
+        assert np.allclose(y_pred, nps_y_pred.get())
+        assert np.allclose(sklearn_score, nps_score.get())
+
+    test_model_pair(svm.SVC, SVC)
+    test_model_pair(svm.SVR, SVR)
+
+
+def test_train_test_split(nps_app_inst: ArrayApplication):
+    assert nps_app_inst is not None
+    import numpy as np
+    from nums.sklearn import SVC, SVR, train_test_split
+
+    size, feats = 100, 10
+    X: BlockArray = nps.random.rand(size, feats).reshape(block_shape=(10, 10))
+    y: BlockArray = nps.random.randint(2, size=size).reshape(block_shape=(10,))
+    assert not X.is_single_block(), not y.is_single_block()
+    X_t, X_v, y_t, y_v = train_test_split(X, y)
+    assert (
+        X_t.is_single_block()
+        and X_v.is_single_block()
+        and y_t.is_single_block()
+        and y_v.is_single_block()
+    )
+
+    def test_model_pair(model_cls):
+        model = model_cls()
+        model.fit(X_t, y_t)
+        y_v_pred = model.predict(X_v)
+        assert y_v_pred.get().shape[0] == X_v.shape[0]
+        model_score = model.score(X_v, y_v)
+        assert isinstance(model_score.get(), np.ndarray)
+
+    test_model_pair(SVC)
+    test_model_pair(SVR)
 
 
 def test_regressors(nps_app_inst: ArrayApplication):
@@ -224,7 +260,7 @@ def test_regressors(nps_app_inst: ArrayApplication):
         Lasso,
         ElasticNet,
     ]
-    size, feats = 100, 10
+    size, feats = 10, 3
     X: BlockArray = nps.random.rand(size, feats)
     y: BlockArray = nps.random.rand(size, 1)
     for Regressor in regressors:
@@ -239,7 +275,6 @@ def test_typing(nps_app_inst):
     if not isinstance(nps_app_inst.cm.system, (RaySystem, SerialSystem)):
         return
 
-    # pylint: disable=unbalanced-tuple-unpacking
     assert nps_app_inst is not None
     from nums import sklearn
     import numpy as np
@@ -272,5 +307,6 @@ if __name__ == "__main__":
     settings.system_name = "ray"
     nps_app_inst = application_manager.instance()
     # test_parallel_sklearn(nps_app_inst)
-    # test_classifiers(nps_app_inst)
-    test_typing(nps_app_inst)
+    test_supervised(nps_app_inst)
+    test_train_test_split(nps_app_inst)
+    # test_typing(nps_app_inst)
