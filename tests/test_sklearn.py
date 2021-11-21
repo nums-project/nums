@@ -162,7 +162,7 @@ def test_classifiers(nps_app_inst: ArrayApplication):
     from nums.sklearn import StandardScaler
     from nums.sklearn import SVC
 
-    size, feats = 100, 10
+    size, feats = 10, 10
     X = np.random.rand(size, feats)
     y = np.random.randint(2, size=size)
     pX = preprocessing.StandardScaler().fit_transform(X)
@@ -214,7 +214,7 @@ def test_regressors(nps_app_inst: ArrayApplication):
         Lasso,
         ElasticNet,
     ]
-    size, feats = 100, 10
+    size, feats = 10, 10
     X: BlockArray = nps.random.rand(size, feats)
     y: BlockArray = nps.random.rand(size, 1)
     for Regressor in regressors:
