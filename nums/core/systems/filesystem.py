@@ -388,16 +388,17 @@ class FileSystem(object):
     def write_meta_fs(self, ba: BlockArray, filename: str):
         # Currently, no need for anything more than the array grid.
         meta = {"grid": ba.grid.to_meta()}
-        oids = []
-        for grid_entry in ba.grid.get_entry_iterator():
-            device_id: DeviceID = self.cm.device_grid.get_device_id(
-                grid_entry, ba.grid.grid_shape
-            )
+        nodes_written_to = set()
+        for device_id in self.cm.devices():
+            device_id: DeviceID = device_id
+            if device_id.node_id in nodes_written_to:
+                continue
+            nodes_written_to.add(device_id.node_id)
             oid = self.cm.call(
                 "write_meta_fs", meta, filename, syskwargs={"device_id": device_id}
             )
-            oids.append(oid)
-        return oids
+            result = self.cm.get(oid)
+            assert isinstance(result, np.ndarray) and result.item() is None
 
     def read_meta_fs(self, filename: str):
         for device_id in self.cm.devices():
