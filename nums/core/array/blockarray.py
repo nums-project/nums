@@ -135,7 +135,7 @@ class BlockArray(BlockArrayBase):
         return self.blocks.size == 1
 
     def to_single_block(self, replicate=False):
-        res: BlockArray = self.reshape(*self.shape, block_shape=(1,) * len(self.shape))
+        res: BlockArray = self.reshape(*self.shape, block_shape=self.shape)
         if replicate:
             block: Block = res.blocks.item()
             num_devices: int = len(self.cm.devices())

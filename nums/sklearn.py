@@ -1,5 +1,7 @@
 import warnings
 
+import numpy as np
+
 from nums.core.array.blockarray import BlockArray
 from nums.core.application_manager import (
     instance,
@@ -108,7 +110,7 @@ def build_sklearn_actor(cls: type):
             return self.instance.predict(X)
 
         def score(self, X, y, sample_weight=None):
-            return self.instance.score(X, y, sample_weight)
+            return np.array(self.instance.score(X, y, sample_weight))
 
     class NumsModel(object):
         def __init__(self, *args, **kwargs):
