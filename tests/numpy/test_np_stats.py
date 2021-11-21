@@ -43,12 +43,11 @@ def test_stats_1d(nps_app_inst):
         ):
             ns_op = nps.__getattribute__(op)
             np_op = np.__getattribute__(op)
-            if op in ["median"]:
+            if op == "median":
                 np_result = np_op(np_arr, axis=axis, keepdims=keepdims)
                 ba_result: BlockArray = ns_op(ba, axis=axis, keepdims=keepdims)
-            else:
-                if op in ["quantile"]:
-                    q = q / 100
+            elif op == "quantile":
+                q = q / 100
                 np_result = np_op(np_arr, q, axis=axis, keepdims=keepdims)
                 ba_result: BlockArray = ns_op(ba, q, axis=axis, keepdims=keepdims)
             assert ba_result.grid.grid_shape == ba_result.blocks.shape
