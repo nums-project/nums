@@ -258,3 +258,7 @@ class RaySystemStockScheduler(RaySystem):
             if "resources" in options:
                 assert node_key not in options
         return self._remote_functions[name].options(**options).remote(*args, **kwargs)
+
+    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+        actor = self._actors[name]
+        return actor.remote(*args, **kwargs)
