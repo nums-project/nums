@@ -113,8 +113,15 @@ class ComputeManager(ComputeInterface):
     # System Interface
     ####################
 
-    def put(self, value: Any):
-        return self.system.put(value)
+    def put(self, value: Any, **kwargs):
+        assert "syskwargs" in kwargs
+        kwargs = kwargs.copy()
+        syskwargs = kwargs["syskwargs"]
+        del kwargs["syskwargs"]
+        assert "options" not in syskwargs
+        device_id, options = self._process_syskwargs(syskwargs)
+        assert len(options) == 0
+        return self.system.put(value, device_id)
 
     def get(self, object_ids: Union[Any, List]):
         return self.system.get(object_ids)
