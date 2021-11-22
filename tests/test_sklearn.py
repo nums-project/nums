@@ -200,6 +200,10 @@ def test_train_test_split(nps_app_inst: ArrayApplication):
     import numpy as np
     from nums.sklearn import SVC, SVR, train_test_split
 
+    from nums.core.systems.systems import RaySystem, SerialSystem
+    if not isinstance(nps_app_inst.cm.system, (RaySystem, SerialSystem)):
+        return
+
     size, feats = 100, 10
     X: BlockArray = nps.random.rand(size, feats).reshape(block_shape=(10, 10))
     y: BlockArray = nps.random.randint(2, size=size).reshape(block_shape=(10,))
