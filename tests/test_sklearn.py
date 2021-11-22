@@ -7,11 +7,30 @@ from nums.core.array.application import ArrayApplication
 # pylint: disable = import-outside-toplevel, unbalanced-tuple-unpacking
 
 
+def sample_Xy(categorical=True, seed=1337, single_block=False):
+    from nums.numpy.random import RandomState
+
+    rs = RandomState(seed)
+
+    size, feats = 10, 3
+    block_shape = (size, feats) if single_block else (5, 2)
+    X: BlockArray = rs.rand(size, feats).reshape(block_shape=block_shape)
+    if categorical:
+        y: BlockArray = rs.randint(2, size=size).reshape(block_shape=(block_shape[0],))
+        y[0] = 1
+        y[3] = 0
+    else:
+        y: BlockArray = rs.rand(
+            size,
+        ).reshape(block_shape=(block_shape[0],))
+    return X, y
+
+
 def classifier_pipelines(
     X, y, train_test_split, StandardScaler, RobustScaler, KNeighborsClassifier, SVC
 ):
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=1337)
 
     scores = []
     for preprocessor in [StandardScaler, RobustScaler]:
@@ -50,7 +69,7 @@ def regressor_pipelines(
     X, y, train_test_split, StandardScaler, RobustScaler, Ridge, ElasticNet
 ):
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=1337)
 
     scores = []
     for preprocessor in [StandardScaler, RobustScaler]:
@@ -85,7 +104,7 @@ def regressor_pipelines(
         print(pname, mname, score)
 
 
-def exec_parallel(size, features):
+def exec_parallel():
     from nums.sklearn import (
         train_test_split,
         StandardScaler,
@@ -96,27 +115,25 @@ def exec_parallel(size, features):
         ElasticNet,
     )
 
-    X: BlockArray = nps.random.rand(size, features)
-    y: BlockArray = nps.random.randint(2, size=size)
+    X, y = sample_Xy(categorical=True)
     classifier_pipelines(
         X, y, train_test_split, StandardScaler, RobustScaler, KNeighborsClassifier, SVC
     )
-    y = nps.random.rand(size, 1)
+    X, y = sample_Xy(categorical=False)
     regressor_pipelines(
         X, y, train_test_split, StandardScaler, RobustScaler, Ridge, ElasticNet
     )
 
 
-def exec_serial(size, features):
-    import numpy as np
+def exec_serial():
     from sklearn import svm
     from sklearn import preprocessing
     from sklearn import neighbors
     from sklearn import model_selection
     from sklearn import linear_model
 
-    X = np.random.rand(size, features)
-    y = np.random.randint(2, size=size)
+    X, y = sample_Xy(categorical=True)
+    X, y = X.get(), y.get()
     classifier_pipelines(
         X,
         y,
@@ -126,7 +143,9 @@ def exec_serial(size, features):
         neighbors.KNeighborsClassifier,
         svm.SVC,
     )
-    y = np.random.rand(size, 1)
+
+    X, y = sample_Xy(categorical=False)
+    X, y = X.get(), y.get()
     regressor_pipelines(
         X,
         y,
@@ -141,17 +160,7 @@ def exec_serial(size, features):
 @pytest.mark.skip
 def test_parallel_sklearn(nps_app_inst: ArrayApplication):
     assert nps_app_inst is not None
-
-    size, feats = 10000, 10
-    exec_parallel(size, feats)
-
-    # t = time.time()
-    # exec_parallel(size, feats)
-    # print("parallel time", time.time() - t)
-
-    # t = time.time()
-    # exec_serial(size, feats)
-    # print("serial time", time.time() - t)
+    exec_parallel()
 
 
 def test_supervised(nps_app_inst: ArrayApplication):
@@ -162,14 +171,11 @@ def test_supervised(nps_app_inst: ArrayApplication):
     from nums.sklearn import StandardScaler
     from nums.sklearn import SVC, SVR
 
-    size, feats = 10, 10
-    X = np.random.rand(size, feats)
-    y = np.random.randint(2, size=size)
-    pX = preprocessing.StandardScaler().fit_transform(X)
+    nps_X, nps_y = sample_Xy(single_block=True)
+    X, y = nps_X.get(), nps_y.get()
 
-    nps_X = nps.array(X)
-    nps_y = nps.array(y)
     nps_pX = StandardScaler().fit_transform(nps_X)
+    pX = preprocessing.StandardScaler().fit_transform(X)
     assert np.allclose(pX, nps_pX.get())
 
     def test_model_pair(sklearn_cls, nps_cls):
@@ -195,17 +201,24 @@ def test_train_test_split(nps_app_inst: ArrayApplication):
     import numpy as np
     from nums.sklearn import SVC, SVR, train_test_split
 
-    size, feats = 100, 10
-    X: BlockArray = nps.random.rand(size, feats).reshape(block_shape=(10, 10))
-    y: BlockArray = nps.random.randint(2, size=size).reshape(block_shape=(10,))
+    X, y = sample_Xy()
     assert not X.is_single_block(), not y.is_single_block()
-    X_t, X_v, y_t, y_v = train_test_split(X, y)
+    X_t, X_v, y_t, y_v = train_test_split(X, y, random_state=1337)
     assert (
         X_t.is_single_block()
         and X_v.is_single_block()
         and y_t.is_single_block()
         and y_v.is_single_block()
     )
+
+    # Make sure rng works properly.
+    X_t2, X_v2, y_t2, y_v2 = train_test_split(X, y, random_state=1337)
+    assert nps.allclose(X_t, X_t2) and nps.allclose(X_v, X_v2)
+    assert nps.allclose(y_t, y_t2) and nps.allclose(y_v, y_v2)
+
+    X_t2, X_v2, y_t2, y_v2 = train_test_split(X, y, random_state=1338)
+    assert not nps.allclose(X_t, X_t2) and not nps.allclose(X_v, X_v2)
+    assert not nps.allclose(y_t, y_t2) and not nps.allclose(y_v, y_v2)
 
     def test_model_pair(model_cls):
         model = model_cls()
@@ -222,37 +235,12 @@ def test_train_test_split(nps_app_inst: ArrayApplication):
 def test_regressors(nps_app_inst: ArrayApplication):
     assert nps_app_inst is not None
     from nums.sklearn import (
-        MLPRegressor,
-        KNeighborsRegressor,
-        SVR,
-        GaussianProcessRegressor,
         DecisionTreeRegressor,
-        RandomForestRegressor,
-        AdaBoostRegressor,
-        GradientBoostingRegressor,
         LinearRegression,
-        Ridge,
-        Lasso,
-        ElasticNet,
     )
 
-    regressors = [
-        MLPRegressor,
-        KNeighborsRegressor,
-        SVR,
-        GaussianProcessRegressor,
-        DecisionTreeRegressor,
-        RandomForestRegressor,
-        AdaBoostRegressor,
-        GradientBoostingRegressor,
-        LinearRegression,
-        Ridge,
-        Lasso,
-        ElasticNet,
-    ]
-    size, feats = 10, 3
-    X: BlockArray = nps.random.rand(size, feats)
-    y: BlockArray = nps.random.rand(size, 1)
+    regressors = [DecisionTreeRegressor, LinearRegression]
+    X, y = sample_Xy(categorical=False, single_block=True)
     for Regressor in regressors:
         nps_model = Regressor()
         nps_model.fit(X, y)
@@ -264,14 +252,14 @@ def test_typing(nps_app_inst):
     from nums import sklearn
     import numpy as np
 
-    np_arr = np.arange(100)
-    train, test = sklearn.train_test_split(np_arr)
+    np_arr = np.arange(10)
+    train, test = sklearn.train_test_split(np_arr, random_state=1337)
     assert isinstance(train, BlockArray) and isinstance(test, BlockArray)
     model = sklearn.Lasso()
     with pytest.raises(TypeError):
         model.fit(np_arr)
-    X = nps.array(np_arr).reshape((10, 10), block_shape=(5, 5)).astype(float)
-    y = nps.arange(10).reshape(block_shape=(5,)).astype(float)
+
+    X, y = sample_Xy(categorical=False, single_block=False)
     with pytest.raises(ValueError):
         model.fit(X, y)
     with pytest.raises(ValueError):
@@ -289,9 +277,9 @@ if __name__ == "__main__":
     from nums.core import application_manager
     from nums.core import settings
 
-    settings.system_name = "ray"
+    settings.system_name = "serial"
     nps_app_inst = application_manager.instance()
     # test_parallel_sklearn(nps_app_inst)
-    test_supervised(nps_app_inst)
+    # test_supervised(nps_app_inst)
     test_train_test_split(nps_app_inst)
     # test_typing(nps_app_inst)
