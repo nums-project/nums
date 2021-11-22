@@ -86,6 +86,7 @@ def train_test_split(
     shuffle: bool = True,
     stratify=None
 ):
+    # pylint: disable = protected-access
     updated_arrays = []
     for array in arrays:
         updated_arrays.append(_check_array(array))
