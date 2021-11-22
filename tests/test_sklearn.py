@@ -126,7 +126,6 @@ def exec_parallel():
 
 
 def exec_serial():
-    import numpy as np
     from sklearn import svm
     from sklearn import preprocessing
     from sklearn import neighbors
