@@ -212,6 +212,15 @@ def test_train_test_split(nps_app_inst: ArrayApplication):
         and y_v.is_single_block()
     )
 
+    # Make sure rng works properly.
+    X_t2, X_v2, y_t2, y_v2 = train_test_split(X, y, random_state=1337)
+    assert nps.allclose(X_t, X_t2) and nps.allclose(X_v, X_v2)
+    assert nps.allclose(y_t, y_t2) and nps.allclose(y_v, y_v2)
+
+    X_t2, X_v2, y_t2, y_v2 = train_test_split(X, y, random_state=1338)
+    assert not nps.allclose(X_t, X_t2) and not nps.allclose(X_v, X_v2)
+    assert not nps.allclose(y_t, y_t2) and not nps.allclose(y_v, y_v2)
+
     def test_model_pair(model_cls):
         model = model_cls()
         model.fit(X_t, y_t)
