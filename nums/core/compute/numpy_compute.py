@@ -23,13 +23,6 @@ import scipy.special
 from numpy.random import Generator
 from numpy.random import PCG64
 
-try:
-    from crick import TDigest
-except Exception as e:
-    raise Exception(
-        "Unable to import crick. Install crick with command 'pip install cython; pip install crick'"
-    ) from e
-
 from nums.core.compute.compute_interface import ComputeImp, RNGInterface
 from nums.core.grid.grid import ArrayGrid
 from nums.core.settings import np_ufunc_map
@@ -362,11 +355,17 @@ class ComputeCls(ComputeImp):
         return arr.size
 
     def tdigest_chunk(self, arr):
+        # pylint: disable = import-outside-toplevel
+        from crick import TDigest
+
         t = TDigest()
         t.update(arr)
         return t
 
     def percentiles_from_tdigest(self, q, *digests):
+        # pylint: disable = import-outside-toplevel
+        from crick import TDigest
+
         t = TDigest()
         t.merge(*digests)
         return np.array(t.quantile(q))

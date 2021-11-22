@@ -671,6 +671,16 @@ class ArrayApplication(object):
         Returns:
             Returns the q-th quantile of the array elements.
         """
+        # pylint: disable = import-outside-toplevel
+        # pylint: disable = unused-import
+        try:
+            import crick
+        except Exception as e:
+            raise Exception(
+                "Unable to import crick. \
+                Install crick with command 'pip install cython; pip install crick'"
+            ) from e
+
         if arr.ndim != 1:
             raise NotImplementedError("Only 1D 'arr' is currently supported.")
         if q < 0.0 or q > 1.0:
