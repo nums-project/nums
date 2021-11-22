@@ -201,6 +201,7 @@ def test_train_test_split(nps_app_inst: ArrayApplication):
     from nums.sklearn import SVC, SVR, train_test_split
 
     from nums.core.systems.systems import RaySystem, SerialSystem
+
     if not isinstance(nps_app_inst.cm.system, (RaySystem, SerialSystem)):
         return
 
