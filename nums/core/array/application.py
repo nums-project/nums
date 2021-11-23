@@ -671,8 +671,7 @@ class ArrayApplication(object):
         Returns:
             Returns the q-th quantile of the array elements.
         """
-        # pylint: disable = import-outside-toplevel
-        # pylint: disable = unused-import
+        # pylint: disable = import-outside-toplevel unused-import
         try:
             import crick
         except Exception as e:
