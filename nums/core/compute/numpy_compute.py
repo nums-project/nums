@@ -490,3 +490,6 @@ class ComputeCls(ComputeImp):
 
     def reshape(self, arr, shape):
         return arr.reshape(shape)
+
+    def identity(self, value):
+        return value

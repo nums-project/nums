@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
+
 import pytest
 import ray
 
@@ -25,13 +27,15 @@ from nums.core.systems.filesystem import FileSystem
 from nums.core.systems.systems import SystemInterface, SerialSystem, RaySystem
 
 
-@pytest.fixture(scope="module", params=[("serial", "cyclic"), ("ray", "packed")])
+# pylint: disable=protected-access, import-outside-toplevel
+
+
+@pytest.fixture(scope="module", params=[("dask", "cyclic"), ("ray", "packed")])
 def nps_app_inst(request):
     # This triggers initialization; it's not to be mixed with the app_inst fixture.
     # Observed (core dumped) after updating this fixture to run functions with "serial" backend.
     # Last time this happened, it was due poor control over the
     # scope and duration of ray resources.
-    # pylint: disable = import-outside-toplevel
     from nums.core import settings
     from nums.core import application_manager
     import nums.numpy as nps
@@ -42,36 +46,50 @@ def nps_app_inst(request):
     # It's the only stateful numpy API object.
     nps.random.reset()
     yield application_manager.instance()
+    if request.param[0] == "ray":
+        assert application_manager.instance().cm.system._manage_ray
     application_manager.destroy()
+    time.sleep(2)
 
 
-@pytest.fixture(scope="module", params=[("serial", "cyclic"), ("ray", "packed")])
+@pytest.fixture(scope="module", params=[("dask", "cyclic"), ("ray", "packed")])
 def app_inst(request):
-    # pylint: disable=protected-access
-    app_inst = get_app(*request.param)
-    yield app_inst
-    app_inst.cm.destroy()
-    ray.shutdown()
+    _app_inst = get_app(*request.param)
+    yield _app_inst
+    if request.param[0] == "ray":
+        assert _app_inst.cm.system._manage_ray
+    _app_inst.cm.system.shutdown()
+    _app_inst.cm.destroy()
+    time.sleep(2)
 
 
 @pytest.fixture(scope="module", params=[("serial", "cyclic")])
 def app_inst_s3(request):
-    # pylint: disable=protected-access
-    app_inst = get_app(*request.param)
-    yield app_inst
-    app_inst.cm.destroy()
-    ray.shutdown()
+    _app_inst = get_app(*request.param)
+    assert isinstance(_app_inst.cm.system, SerialSystem)
+    yield _app_inst
+    _app_inst.cm.system.shutdown()
+    _app_inst.cm.destroy()
+    time.sleep(2)
 
 
 @pytest.fixture(
-    scope="module", params=[("serial", "cyclic"), ("ray", "cyclic"), ("ray", "packed")]
+    scope="module",
+    params=[
+        ("serial", "cyclic"),
+        ("dask", "cyclic"),
+        ("ray", "cyclic"),
+        ("ray", "packed"),
+    ],
 )
 def app_inst_all(request):
-    # pylint: disable=protected-access
-    app_inst = get_app(*request.param)
-    yield app_inst
-    app_inst.cm.destroy()
-    ray.shutdown()
+    _app_inst = get_app(*request.param)
+    yield _app_inst
+    if request.param[0] == "ray":
+        assert _app_inst.cm.system._manage_ray
+    _app_inst.cm.system.shutdown()
+    _app_inst.cm.destroy()
+    time.sleep(2)
 
 
 def get_app(system_name, device_grid_name="cyclic"):
@@ -79,8 +97,15 @@ def get_app(system_name, device_grid_name="cyclic"):
         system: SystemInterface = SerialSystem()
     elif system_name == "ray":
         assert not ray.is_initialized()
-        ray.init(num_cpus=systems_utils.get_num_cores())
-        system: SystemInterface = RaySystem(use_head=True)
+        system: SystemInterface = RaySystem(
+            use_head=True, num_cpus=systems_utils.get_num_cores()
+        )
+    elif system_name == "dask":
+        from nums.experimental.nums_dask.dask_system import DaskSystem
+
+        system: SystemInterface = DaskSystem(
+            num_cpus=systems_utils.get_num_cores(), num_nodes=1
+        )
     else:
         raise Exception("Unexpected system name %s" % system_name)
     system.init()

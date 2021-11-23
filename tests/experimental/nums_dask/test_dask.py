@@ -47,6 +47,7 @@ def test_dask_system():
 
     Q, R = linalg.direct_tsqr(app, X)
     assert nps.allclose(Q @ R, X)
+    application_manager.destroy()
 
 
 if __name__ == "__main__":
