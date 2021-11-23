@@ -655,6 +655,79 @@ class ArrayApplication(object):
                 result_arrays.append(axis_result)
             return tuple(result_arrays)
 
+    def quantile(
+        self, arr: BlockArray, q: float, interpolation="linear", method="tdigest"
+    ) -> BlockArray:
+        """Compute the q-th quantile of the array elements.
+        Args:
+            arr: BlockArray.
+            q: quantile to compute, which must be between 0 and 1 inclusive.
+            interpolation: interpolation method to use when the desired quantile lies between two
+            data points i < j.
+            also see https://numpy.org/doc/1.20/reference/generated/numpy.quantile.html.
+            also see https://docs.dask.org/en/latest/_modules/dask/array/percentile.html.
+
+
+        Returns:
+            Returns the q-th quantile of the array elements.
+        """
+        # pylint: disable = import-outside-toplevel, unused-import
+        try:
+            import crick
+        except Exception as e:
+            raise Exception(
+                "Unable to import crick. \
+                Install crick with command 'pip install cython; pip install crick'"
+            ) from e
+
+        if arr.ndim != 1:
+            raise NotImplementedError("Only 1D 'arr' is currently supported.")
+        if q < 0.0 or q > 1.0:
+            raise ValueError("Quantiles must be in the range [0, 1]")
+        assert interpolation == "linear"
+        assert method == "tdigest"
+
+        arr_oids = arr.flattened_oids()
+        num_arrs = len(arr_oids)
+        q = [q]
+        t_oids = []
+
+        for i, arr_oid in enumerate(arr_oids):
+            syskwargs = {
+                "grid_entry": (i,),
+                "grid_shape": (num_arrs,),
+                "options": {"num_returns": 1},
+            }
+            t_oids.append(self.cm.tdigest_chunk(arr_oid, syskwargs=syskwargs))
+
+        p_oid = self.cm.percentiles_from_tdigest(q, *t_oids, syskwargs=syskwargs)
+        return BlockArray.from_oid(p_oid, (1,), np.float64, self.cm)
+
+    def percentile(
+        self,
+        arr: BlockArray,
+        q: float,
+        interpolation: str = "linear",
+        method: str = "tdigest",
+    ) -> BlockArray:
+        """Compute the q-th percentile of the array elements.
+        Args:
+            arr: BlockArray.
+            q: Percentile to compute, which must be between 0 and 100 inclusive.
+            interpolation: interpolation method to use when the desired percentile lies between two
+            data points i < j.
+            also see https://numpy.org/doc/1.20/reference/generated/numpy.percentile.html.
+
+        Returns:
+            Returns the q-th percentile of the array elements.
+        """
+        if arr.ndim != 1:
+            raise NotImplementedError("Only 1D 'arr' is currently supported.")
+        if not 0 <= q <= 100:
+            raise ValueError("Percentiles must be in the range [0, 100]")
+        q = q / 100
+        return self.quantile(arr, q, interpolation=interpolation, method=method)
+
     def _quickselect(self, arr_oids: List[object], kth: int):
         """Find the `kth` largest element in a 1D BlockArray in O(n) time.
         Used as a subprocedure in `median` and `top_k`.
