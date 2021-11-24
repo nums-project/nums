@@ -139,15 +139,30 @@ class DeviceID(object):
 
 
 class DeviceGrid(object):
-    def __init__(self, grid_shape, device_type, device_ids):
+    def __init__(self, grid_shape, device_type, device_ids, workers_per_node=None):
         # TODO (hme): Work out what this becomes in the multi-node multi-device setting.
         self.grid_shape = grid_shape
         self.device_type = device_type
         self.device_ids: List[DeviceID] = device_ids
         self.device_grid: np.ndarray = np.empty(shape=self.grid_shape, dtype=object)
+        self.workers_per_node = workers_per_node
+        # For nested layouts.
+        self.node_grid_shape = None
+
+        if self.workers_per_node is not None:
+            self.node_grid_shape = []
+            for dim in self.grid_shape:
+                assert dim % self.workers_per_node == 0
+                self.node_grid_shape.append(dim // self.workers_per_node)
+        self.node_grid_shape = tuple(self.node_grid_shape)
 
         for i, cluster_entry in enumerate(self.get_cluster_entry_iterator()):
-            self.device_grid[cluster_entry] = self.device_ids[i]
+            device_id: DeviceID = self.device_ids[i]
+            # Check some assumptions if workers_per_node is given.
+            if self.workers_per_node is not None:
+                assert device_id.node_id == i // self.workers_per_node
+                assert device_id.device_id == i % self.workers_per_node
+            self.device_grid[cluster_entry] = device_id
             logging.getLogger(__name__).info(
                 "device_grid %s %s", cluster_entry, str(self.device_ids[i])
             )
@@ -185,7 +200,63 @@ class CyclicDeviceGrid(DeviceGrid):
         return tuple(cluster_entry)
 
 
+class NestedCyclicDeviceGrid(CyclicDeviceGrid):
+    # Distribute the data such that each array grid axis
+    # is first cycled over nodes, and then cycled over workers.
+    # For example, if we have 3 workers per node and 2 nodes,
+    # map the blocks for array grid (7,) as follows:
+    # i, node_idx, worker_idx
+    # 0, 0, 0
+    # 1, 1, 0
+    # 2, 2, 0
+    # 3, 0, 1
+    # 4, 1, 1
+    # 5, 2, 1
+    # 6, 0, 2
+
+    def get_cluster_entry_axis_index(self, axis, agrid_entry):
+        # For some value 0 <= i < agrid_shape[axis]
+        # Compute the entry axis index in device_grid coordinates.
+        axis_num_nodes = self.node_grid_shape[axis]
+        i = agrid_entry[axis]
+        node_idx = i % axis_num_nodes
+        worker_idx = (i // max(1, axis_num_nodes)) % self.workers_per_node
+        # So far, we have computed node_idx and worker_idx as described in the example given above.
+        # Now flatten to device_grid coordinates.
+        # The device grid is laid out as
+        # node_id, device_id
+        # 0, 0
+        # 0, 1
+        # 0, 2
+        # 1, 0
+        # 1, 1
+        # 1, 2
+        # etc.
+        # We want to jump node_idx * self.workers_per_node workers,
+        # moving us to the segment of devices corresponding to node_idx.
+        return node_idx * self.workers_per_node + worker_idx
+
+    def get_cluster_entry(self, agrid_entry, agrid_shape):
+        # pylint: disable = unused-argument
+        cluster_entry = []
+        num_grid_entry_axes = len(agrid_entry)
+        num_cluster_axes = len(self.grid_shape)
+        for cluster_axis in range(num_cluster_axes):
+            if cluster_axis < num_grid_entry_axes:
+                cluster_entry_axis = self.get_cluster_entry_axis_index(
+                    cluster_axis, agrid_entry
+                )
+                cluster_entry.append(cluster_entry_axis)
+            else:
+                # When array has fewer axes than cluster.
+                cluster_entry.append(0)
+            # Ignore trailing array axes, as these are "cycled" to 0 by assuming
+            # the dimension of those cluster axes is 1.
+        return tuple(cluster_entry)
+
+
 class PackedDeviceGrid(DeviceGrid):
+    # For the nested case, where number of devices = number of workers, this is equivalent to unnested cyclic.
     def get_device_id(self, agrid_entry, agrid_shape):
         cluster_entry = self.get_cluster_entry(agrid_entry, agrid_shape)
         return self.device_grid[cluster_entry]

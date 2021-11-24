@@ -23,7 +23,12 @@ from nums.core import settings
 from nums.core.array.application import ArrayApplication
 from nums.core.compute import numpy_compute
 from nums.core.compute.compute_manager import ComputeManager
-from nums.core.grid.grid import DeviceGrid, CyclicDeviceGrid, PackedDeviceGrid
+from nums.core.grid.grid import (
+    DeviceGrid,
+    NestedCyclicDeviceGrid,
+    CyclicDeviceGrid,
+    PackedDeviceGrid,
+)
 from nums.core.systems.filesystem import FileSystem
 from nums.core.systems.system_interface import SystemInterface
 from nums.core.systems.systems import SerialSystem, RaySystem, RaySystemStockScheduler
@@ -117,6 +122,13 @@ def create():
     if settings.device_grid_name == "cyclic":
         device_grid: DeviceGrid = CyclicDeviceGrid(
             settings.cluster_shape, "cpu", system.devices()
+        )
+    elif settings.device_grid_name == "nested":
+        assert isinstance(
+            system, DaskSystem
+        ), "Nested data layouts are only supported with Dask."
+        device_grid: DeviceGrid = NestedCyclicDeviceGrid(
+            settings.cluster_shape, "cpu", system.devices(), system.workers_per_node
         )
     elif settings.device_grid_name == "packed":
         device_grid: DeviceGrid = PackedDeviceGrid(

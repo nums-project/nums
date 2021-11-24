@@ -53,6 +53,7 @@ class DaskSystem(SystemInterface):
         self._node_addresses = []
         self._node_to_worker = {}
         self._devices = []
+        self.workers_per_node = None
 
     def init(self):
         if self._address is None:
@@ -85,31 +86,31 @@ class DaskSystem(SystemInterface):
                 self._node_to_worker[node_address]["workers"]
             )
             num_workers = len(self._node_to_worker[node_address]["workers"])
-            logging.getLogger(__name__).info(
-                "node addr=%s, num_workers=%s" % (node_address, num_workers)
-            )
+            # logging.getLogger(__name__).info(
+            #     "node addr=%s, num_workers=%s" % (node_address, num_workers)
+            # )
 
-            if nodes_per_worker is None:
-                nodes_per_worker = num_workers
+            if self.workers_per_node is None:
+                self.workers_per_node = num_workers
             else:
-                if nodes_per_worker != num_workers:
+                if self.workers_per_node != num_workers:
                     s = ""
                     s += "\node_address=%s" % node_address
-                    s += "\nnodes_per_worker=%s" % nodes_per_worker
+                    s += "\nworkers_per_node=%s" % self.workers_per_node
                     s += "\nnum_workers=%s" % num_workers
                     raise Exception("Unexpected number of workers." + s)
 
-        assert self._num_devices % nodes_per_worker == 0, "%s vs %s" % (
+        assert self._num_devices % self.workers_per_node == 0, "%s vs %s" % (
             self._num_devices,
-            nodes_per_worker,
+            self.workers_per_node,
         )
-        num_nodes = self._num_devices // nodes_per_worker
+        num_nodes = self._num_devices // self.workers_per_node
         self._devices = []
         for node_id in range(num_nodes):
             node_addr = self._node_addresses[node_id]
             workers = self._node_to_worker[node_addr]["workers"]
             for worker_id, worker_addr in enumerate(workers):
-                logging.getLogger(__name__).info("worker address %s", worker_addr)
+                # logging.getLogger(__name__).info("worker address %s", worker_addr)
                 did = DeviceID(node_id, node_addr, "cpu", worker_id)
                 self._devices.append(did)
         logging.getLogger(__name__).info("total cpus %s", len(self._worker_addresses))
