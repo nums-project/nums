@@ -53,15 +53,16 @@ class DaskSystem(SystemInterface):
         self._node_addresses = []
         self._node_to_worker = {}
         self._devices = []
-        self._device_to_node: Dict[DeviceID, Dict] = {}
 
     def init(self):
         if self._address is None:
+            # Keep processes=True to avoid dealing with special cases while scheduling.
             self._client = Client(
-                n_workers=self.num_cpus, processes=False, memory_limit=0
+                n_workers=self.num_cpus, processes=True, memory_limit=0
             )
         else:
-            self._client = Client(address=self._address)
+            # direct_to_workers does not seem to circumvent scheduler for client.submit.
+            self._client = Client(address=self._address, direct_to_workers=True)
         self.init_devices()
 
     def init_devices(self):
@@ -79,27 +80,23 @@ class DaskSystem(SystemInterface):
 
         self._node_to_worker = {}
         for node_address in self._node_addresses:
-            self._node_to_worker[node_address] = {"index": 0, "workers": []}
+            self._node_to_worker[node_address] = {"workers": []}
             for worker_address in self._worker_addresses:
                 if node_address in worker_address:
                     self._node_to_worker[node_address]["workers"].append(worker_address)
+            self._node_to_worker[node_address]["workers"] = sorted(
+                self._node_to_worker[node_address]["workers"]
+            )
 
         self._devices = []
-        self._device_to_node = {}
         for node_id in range(self._num_nodes):
             node_addr = self._node_addresses[node_id]
-            # node_addr = self._node_addresses[node_id]
-            logging.getLogger(__name__).info("worker node %s", node_addr)
-            did = DeviceID(node_id, node_addr, "cpu", 1)
-            self._devices.append(did)
-            self._device_to_node[did] = node_addr
+            workers = self._node_to_worker[node_addr]
+            for worker_id, worker_addr in enumerate(workers):
+                logging.getLogger(__name__).info("worker address %s", worker_addr)
+                did = DeviceID(node_id, node_addr, "cpu", worker_id)
+                self._devices.append(did)
         logging.getLogger(__name__).info("total cpus %s", len(self._worker_addresses))
-
-    def next_worker(self, node_addr):
-        node: dict = self._node_to_worker[node_addr]
-        _next_worker = node["workers"][node["index"]]
-        node["index"] = (node["index"] + 1) % len(node["workers"])
-        return _next_worker
 
     def shutdown(self):
         if self._address is None:
@@ -113,8 +110,9 @@ class DaskSystem(SystemInterface):
 
     def put(self, value: Any, device_id: DeviceID):
         assert device_id is not None
-        node_addr = self._device_to_node[device_id]
-        worker_addr = self.next_worker(node_addr)
+        node_addr = device_id.node_addr
+        worker_addrs = self._node_to_worker[node_addr]["workers"]
+        worker_addr = worker_addrs[device_id.device_id]
         return self._client.submit(lambda x: x, value, workers=worker_addr)
 
     def get(self, object_ids: Union[Any, List]):
@@ -149,8 +147,9 @@ class DaskSystem(SystemInterface):
 
     def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
         assert device_id is not None
-        node_addr = self._device_to_node[device_id]
-        worker_addr = self.next_worker(node_addr)
+        workers = self._node_to_worker[device_id.node_addr]["workers"]
+        worker_addr = workers[device_id.device_id]
+
         func, nout = self._parse_call(name, options)
         if nout is None:
             return self._client.submit(func, *args, **kwargs, workers=worker_addr)
@@ -160,12 +159,7 @@ class DaskSystem(SystemInterface):
             return self._client.compute(result, workers=worker_addr)
 
     def num_cores_total(self) -> int:
-        num_cores = 0
-        for node_addr in list(self._device_to_node.values()):
-            for worker_addr in self._worker_addresses:
-                if node_addr in worker_addr:
-                    num_cores += 1
-        return num_cores
+        return len(self._worker_addresses)
 
     def register_actor(self, name: str, cls: type):
         if name in self._actors:
