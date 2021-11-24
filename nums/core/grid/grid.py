@@ -152,8 +152,12 @@ class DeviceGrid(object):
         if self.workers_per_node is not None:
             self.node_grid_shape = []
             for dim in self.grid_shape:
-                assert dim % self.workers_per_node == 0
-                self.node_grid_shape.append(dim // self.workers_per_node)
+                if dim == 1:
+                    # Special case. Ignore this dim.
+                    self.node_grid_shape.append(1)
+                else:
+                    assert dim % self.workers_per_node == 0
+                    self.node_grid_shape.append(dim // self.workers_per_node)
         self.node_grid_shape = tuple(self.node_grid_shape)
 
         for i, cluster_entry in enumerate(self.get_cluster_entry_iterator()):
@@ -218,6 +222,10 @@ class NestedCyclicDeviceGrid(CyclicDeviceGrid):
         # For some value 0 <= i < agrid_shape[axis]
         # Compute the entry axis index in device_grid coordinates.
         axis_num_nodes = self.node_grid_shape[axis]
+        if axis_num_nodes == 1:
+            # Special case. Map to 0.
+            # This is fine since we're expecting the work to be saturated by the other axes.
+            return 0
         i = agrid_entry[axis]
         node_idx = i % axis_num_nodes
         worker_idx = (i // max(1, axis_num_nodes)) % self.workers_per_node
