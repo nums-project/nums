@@ -213,7 +213,7 @@ class DaskSystemStockScheduler(DaskSystem):
                 n_workers=self.num_cpus, processes=True, memory_limit=0
             )
         else:
-            self._client = Client(address=self._address, direct_to_workers=False)
+            self._client = Client(address=self._address)
         self.init_devices()
 
     def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
