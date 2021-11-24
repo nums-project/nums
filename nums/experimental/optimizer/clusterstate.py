@@ -49,14 +49,14 @@ class ClusterState(object):
             self.counter = counter
         self.device_ids: List[DeviceID] = device_ids
         self.num_nodes: int = len(self.device_ids)
-        self.node_ids: List[int] = sorted(list(set([device_id.node_id for device_id in self.device_ids])))
+        self.node_ids: List[int] = sorted(
+            list(set([device_id.node_id for device_id in self.device_ids]))
+        )
         # The system instance on which we perform operations.
         # This is exposed for use by nodes only.
         # 3 matrices: mem, net_in, net_out.
         self.mem_idx, self.net_in_idx, self.net_out_idx = 0, 1, 2
-        self.resources: np.ndarray = np.zeros(
-            shape=(3, self.num_nodes), dtype=np.float
-        )
+        self.resources: np.ndarray = np.zeros(shape=(3, self.num_nodes), dtype=np.float)
         # Dict from block id to block size.
         self.block_sizes: [int, int] = {}
         # Dict from block id to list of device id.
@@ -100,7 +100,9 @@ class ClusterState(object):
         block_b_device_ids = self.get_block_device_ids(block_id_b)
         return list(set(block_a_device_ids).intersection(set(block_b_device_ids)))
 
-    def blocks_local(self, block_id_a: int, block_id_b: int, local_to_node: bool = False):
+    def blocks_local(
+        self, block_id_a: int, block_id_b: int, local_to_node: bool = False
+    ):
         if local_to_node:
             block_a_node_ids = self.get_block_node_ids(block_id_a)
             block_b_node_ids = self.get_block_node_ids(block_id_b)

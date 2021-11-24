@@ -94,7 +94,9 @@ def create():
 
         num_devices = int(np.product(settings.cluster_shape))
         system: SystemInterface = DaskSystem(
-            address=settings.address, num_devices=num_devices, num_cpus=settings.num_cpus
+            address=settings.address,
+            num_devices=num_devices,
+            num_cpus=settings.num_cpus,
         )
     elif system_name == "dask-scheduler":
         # pylint: disable=import-outside-toplevel
@@ -102,7 +104,9 @@ def create():
 
         num_devices = int(np.product(settings.cluster_shape))
         system: SystemInterface = DaskSystemStockScheduler(
-            address=settings.address, num_devices=num_devices, num_cpus=settings.num_cpus
+            address=settings.address,
+            num_devices=num_devices,
+            num_cpus=settings.num_cpus,
         )
     else:
         raise Exception("Unexpected system name %s" % settings.system_name)

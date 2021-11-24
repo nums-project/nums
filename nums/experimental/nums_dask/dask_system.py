@@ -79,13 +79,15 @@ class DaskSystem(SystemInterface):
         for node_address in self._node_addresses:
             self._node_to_worker[node_address] = {"workers": []}
             for worker_address in self._worker_addresses:
-                if node_address+":" in worker_address:
+                if node_address + ":" in worker_address:
                     self._node_to_worker[node_address]["workers"].append(worker_address)
             self._node_to_worker[node_address]["workers"] = sorted(
                 self._node_to_worker[node_address]["workers"]
             )
             num_workers = len(self._node_to_worker[node_address]["workers"])
-            logging.getLogger(__name__).info("node addr=%s, num_workers=%s" % (node_address, num_workers))
+            logging.getLogger(__name__).info(
+                "node addr=%s, num_workers=%s" % (node_address, num_workers)
+            )
 
             if nodes_per_worker is None:
                 nodes_per_worker = num_workers
@@ -97,7 +99,10 @@ class DaskSystem(SystemInterface):
                     s += "\nnum_workers=%s" % num_workers
                     raise Exception("Unexpected number of workers." + s)
 
-        assert self._num_devices % nodes_per_worker == 0, "%s vs %s" % (self._num_devices, nodes_per_worker)
+        assert self._num_devices % nodes_per_worker == 0, "%s vs %s" % (
+            self._num_devices,
+            nodes_per_worker,
+        )
         num_nodes = self._num_devices // nodes_per_worker
         self._devices = []
         for node_id in range(num_nodes):
