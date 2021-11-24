@@ -83,8 +83,8 @@ class DaskSystem(SystemInterface):
         for node_address in self._node_addresses:
             self._node_to_worker[node_address] = {"workers": []}
             for worker_address in self._worker_addresses:
-                print("node_address", node_address, "worker_address", worker_address)
                 if node_address in worker_address:
+                    print("node_address", node_address, "worker_address", worker_address)
                     self._node_to_worker[node_address]["workers"].append(worker_address)
             self._node_to_worker[node_address]["workers"] = sorted(
                 self._node_to_worker[node_address]["workers"]
