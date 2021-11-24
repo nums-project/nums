@@ -87,7 +87,7 @@ class DaskSystem(SystemInterface):
         self._devices = []
         self._device_to_node = {}
         for node_id in range(self._num_nodes):
-            node_addr = self._worker_addresses[node_id]
+            node_addr = self._node_addresses[node_id]
             # node_addr = self._node_addresses[node_id]
             logging.getLogger(__name__).info("worker node %s", node_addr)
             did = DeviceID(node_id, node_addr, "cpu", 1)
