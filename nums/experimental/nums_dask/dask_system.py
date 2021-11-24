@@ -73,10 +73,6 @@ class DaskSystem(SystemInterface):
         self._node_addresses = sorted(
             list(set(map(lambda addr: addr.split(":")[0], self._worker_addresses)))
         )
-        # # Remove any trailing slashes.
-        # self._node_addresses = list(
-        #     map(lambda x: x.split("/")[0], self._node_addresses)
-        # )
 
         self._node_to_worker = {}
         nodes_per_worker = None
@@ -84,7 +80,6 @@ class DaskSystem(SystemInterface):
             self._node_to_worker[node_address] = {"workers": []}
             for worker_address in self._worker_addresses:
                 if node_address+":" in worker_address:
-                    print("node_address", node_address, "worker_address", worker_address)
                     self._node_to_worker[node_address]["workers"].append(worker_address)
             self._node_to_worker[node_address]["workers"] = sorted(
                 self._node_to_worker[node_address]["workers"]
@@ -210,6 +205,16 @@ class DaskSystemStockScheduler(DaskSystem):
     An implementation of the Dask system which ignores scheduling commands given
     by the caller. For testing only.
     """
+
+    def init(self):
+        if self._address is None:
+            # Keep processes=True to avoid dealing with special cases while scheduling.
+            self._client = Client(
+                n_workers=self.num_cpus, processes=True, memory_limit=0
+            )
+        else:
+            self._client = Client(address=self._address, direct_to_workers=False)
+        self.init_devices()
 
     def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
         func, nout = self._parse_call(name, options)
