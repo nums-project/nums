@@ -88,10 +88,16 @@ class DaskSystem(SystemInterface):
             self._node_to_worker[node_address]["workers"] = sorted(
                 self._node_to_worker[node_address]["workers"]
             )
+            num_workers = len(self._node_to_worker[node_address]["workers"])
             if nodes_per_worker is None:
-                nodes_per_worker = len(self._node_to_worker[node_address]["workers"])
+                nodes_per_worker = num_workers
             else:
-                assert nodes_per_worker == len(self._node_to_worker[node_address]["workers"])
+                if nodes_per_worker != num_workers:
+                    s = ""
+                    s += "\node_address=%s" % node_address
+                    s += "\nnodes_per_worker=%s" % nodes_per_worker
+                    s += "\nnum_workers=%s" % num_workers
+                    raise Exception("Unexpected number of workers." + s)
 
         assert self._num_devices % nodes_per_worker == 0
         num_nodes = self._num_devices // nodes_per_worker
