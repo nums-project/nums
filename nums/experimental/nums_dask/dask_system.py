@@ -51,6 +51,7 @@ class DaskSystem(SystemInterface):
         self._actor_node_index = 0
         self._worker_addresses = []
         self._node_addresses = []
+        self._node_to_worker = {}
         self._devices = []
         self._device_to_node: Dict[DeviceID, Dict] = {}
 
@@ -68,13 +69,20 @@ class DaskSystem(SystemInterface):
         self._worker_addresses = sorted(
             list(map(lambda addr: addr.split("://")[-1], null_op.keys()))
         )
-        # Remove any trailing slashes.
-        self._worker_addresses = list(
-            map(lambda x: x.split("/")[0], self._worker_addresses)
-        )
         self._node_addresses = sorted(
             list(set(map(lambda addr: addr.split(":")[0], self._worker_addresses)))
         )
+        # Remove any trailing slashes.
+        self._node_addresses = list(
+            map(lambda x: x.split("/")[0], self._node_addresses)
+        )
+
+        self._node_to_worker = {}
+        for node_address in self._node_addresses:
+            self._node_to_worker[node_address] = {"index": 0, "workers": []}
+            for worker_address in self._worker_addresses:
+                if node_address in worker_address:
+                    self._node_to_worker[node_address]["workers"].append(worker_address)
 
         self._devices = []
         self._device_to_node = {}
@@ -86,6 +94,12 @@ class DaskSystem(SystemInterface):
             self._devices.append(did)
             self._device_to_node[did] = node_addr
         logging.getLogger(__name__).info("total cpus %s", len(self._worker_addresses))
+
+    def next_worker(self, node_addr):
+        node: dict = self._node_to_worker[node_addr]
+        _next_worker = node["workers"][node["index"]]
+        node["index"] = (node["index"] + 1) % len(node["workers"])
+        return _next_worker
 
     def shutdown(self):
         if self._address is None:
@@ -100,7 +114,8 @@ class DaskSystem(SystemInterface):
     def put(self, value: Any, device_id: DeviceID):
         assert device_id is not None
         node_addr = self._device_to_node[device_id]
-        return self._client.submit(lambda x: x, value, workers=node_addr)
+        worker_addr = self.next_worker(node_addr)
+        return self._client.submit(lambda x: x, value, workers=worker_addr)
 
     def get(self, object_ids: Union[Any, List]):
         # TODO: Uncomment when actors take Future objects.
@@ -135,13 +150,14 @@ class DaskSystem(SystemInterface):
     def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
         assert device_id is not None
         node_addr = self._device_to_node[device_id]
+        worker_addr = self.next_worker(node_addr)
         func, nout = self._parse_call(name, options)
         if nout is None:
-            return self._client.submit(func, *args, **kwargs, workers=node_addr)
+            return self._client.submit(func, *args, **kwargs, workers=worker_addr)
         else:
             dfunc = dask.delayed(func, nout=nout)
             result = tuple(dfunc(*args, **kwargs))
-            return self._client.compute(result, workers=node_addr)
+            return self._client.compute(result, workers=worker_addr)
 
     def num_cores_total(self) -> int:
         num_cores = 0
