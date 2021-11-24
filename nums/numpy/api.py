@@ -2282,7 +2282,7 @@ def cov(
 @derived_from(np)
 def average(
     a: BlockArray,
-    axis: Union[None, int] = None,
+    axis: Optional[int] = None,
     weights: Optional[BlockArray] = None,
     returned: bool = False,
 ) -> Union[BlockArray, Tuple[BlockArray, BlockArray]]:
@@ -2325,7 +2325,62 @@ def average(
     return avg, weights_sum
 
 
+
 @derived_from(np)
+def quantile(
+    a: BlockArray,
+    q: float,
+    axis: Optional[int] = None,
+    out: BlockArray = None,
+    overwrite_input: bool = False,
+    interpolation: {"linear"} = "linear",
+    keepdims: bool = False,
+) -> BlockArray:
+    """Compute the q-th quantile of the data along the specified axis.
+    refer to https://numpy.org/doc/1.20/reference/generated/numpy.quantile.html
+    """
+    if axis is not None:
+        raise NotImplementedError("'axis' is currently not supported.")
+    if out is not None:
+        raise NotImplementedError("'out' is currently not supported.")
+    if overwrite_input:
+        raise NotImplementedError("'overwrite_input' is currently not supported.")
+    if interpolation != "linear":
+        raise NotImplementedError(
+            "only 'linear' 'interpolation' is currently supported."
+        )
+    if keepdims:
+        raise NotImplementedError("'keepdims' is currently not supported.")
+    return _instance().quantile(a, q, interpolation=interpolation)
+
+
+def percentile(
+    a: BlockArray,
+    q: float,
+    axis: Optional[int] = None,
+    out: BlockArray = None,
+    overwrite_input: bool = False,
+    interpolation: {"linear"} = "linear",
+    keepdims: bool = False,
+) -> BlockArray:
+    """Compute the q-th percentile of the data along the specified axis.
+    refer to https://numpy.org/doc/1.20/reference/generated/numpy.percentile.html
+    """
+    if axis is not None:
+        raise NotImplementedError("'axis' is currently not supported.")
+    if out is not None:
+        raise NotImplementedError("'out' is currently not supported.")
+    if overwrite_input:
+        raise NotImplementedError("'overwrite_input' is currently not supported.")
+    if interpolation != "linear":
+        raise NotImplementedError(
+            "only 'linear' 'interpolation' is currently supported."
+        )
+    if keepdims:
+        raise NotImplementedError("'keepdims' is currently not supported.")
+    return _instance().percentile(a, q, interpolation=interpolation)
+
+
 def median(a: BlockArray, axis=None, out=None, keepdims=False) -> BlockArray:
     """Compute the median of a BlockArray.
 
