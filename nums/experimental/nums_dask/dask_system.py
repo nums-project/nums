@@ -38,11 +38,11 @@ class DaskSystem(SystemInterface):
     def __init__(
         self,
         address: Optional[str] = None,
-        num_nodes: Optional[int] = None,
+        num_devices: Optional[int] = None,
         num_cpus: Optional[int] = None,
     ):
         self._address: str = address
-        self._num_nodes: int = num_nodes
+        self._num_devices: int = num_devices
         self.num_cpus: int = int(get_num_cores()) if num_cpus is None else num_cpus
 
         self._client: Client = None
@@ -79,6 +79,7 @@ class DaskSystem(SystemInterface):
         )
 
         self._node_to_worker = {}
+        nodes_per_worker = None
         for node_address in self._node_addresses:
             self._node_to_worker[node_address] = {"workers": []}
             for worker_address in self._worker_addresses:
@@ -87,11 +88,17 @@ class DaskSystem(SystemInterface):
             self._node_to_worker[node_address]["workers"] = sorted(
                 self._node_to_worker[node_address]["workers"]
             )
+            if nodes_per_worker is None:
+                nodes_per_worker = len(self._node_to_worker[node_address]["workers"])
+            else:
+                assert nodes_per_worker == len(self._node_to_worker[node_address]["workers"])
 
+        assert self._num_devices % nodes_per_worker == 0
+        num_nodes = self._num_devices // nodes_per_worker
         self._devices = []
-        for node_id in range(self._num_nodes):
+        for node_id in range(num_nodes):
             node_addr = self._node_addresses[node_id]
-            workers = self._node_to_worker[node_addr]
+            workers = self._node_to_worker[node_addr]["workers"]
             for worker_id, worker_addr in enumerate(workers):
                 logging.getLogger(__name__).info("worker address %s", worker_addr)
                 did = DeviceID(node_id, node_addr, "cpu", worker_id)

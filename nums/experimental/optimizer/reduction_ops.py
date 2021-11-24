@@ -50,7 +50,7 @@ class TreeReductionOp(TreeNode):
     def num_nodes(self):
         r = 1
         for _, child in self.children_dict.items():
-            r += child.num_nodes()
+            r += child.num_devices()
         return r
 
     def copy(self, cluster_state, parent=None, new_ids=False):

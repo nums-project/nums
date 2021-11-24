@@ -103,8 +103,9 @@ def get_app(system_name, device_grid_name="cyclic"):
     elif system_name == "dask":
         from nums.experimental.nums_dask.dask_system import DaskSystem
 
+        num_workers = systems_utils.get_num_cores()
         system: SystemInterface = DaskSystem(
-            num_cpus=systems_utils.get_num_cores(), num_nodes=1
+            num_cpus=num_workers, num_devices=num_workers
         )
     else:
         raise Exception("Unexpected system name %s" % system_name)

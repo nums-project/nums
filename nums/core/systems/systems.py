@@ -88,12 +88,12 @@ class RaySystem(SystemInterface):
         self,
         address: Optional[str] = None,
         use_head: bool = False,
-        num_nodes: Optional[int] = None,
+        num_devices: Optional[int] = None,
         num_cpus: Optional[int] = None,
     ):
         self._address: str = address
         self._use_head = use_head
-        self._num_nodes = num_nodes
+        self._num_nodes = num_devices
         self.num_cpus = int(get_num_cores()) if num_cpus is None else num_cpus
         self._manage_ray = True
         self._remote_functions = {}
