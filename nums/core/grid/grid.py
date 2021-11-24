@@ -158,7 +158,7 @@ class DeviceGrid(object):
                 else:
                     assert dim % self.workers_per_node == 0
                     self.node_grid_shape.append(dim // self.workers_per_node)
-        self.node_grid_shape = tuple(self.node_grid_shape)
+            self.node_grid_shape = tuple(self.node_grid_shape)
 
         for i, cluster_entry in enumerate(self.get_cluster_entry_iterator()):
             device_id: DeviceID = self.device_ids[i]
