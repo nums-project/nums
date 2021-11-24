@@ -148,6 +148,7 @@ class DeviceGrid(object):
         self.workers_per_node = workers_per_node
         # For nested layouts.
         self.node_grid_shape = None
+        self.num_nodes = None
 
         if self.workers_per_node is not None:
             self.node_grid_shape = []
@@ -159,17 +160,28 @@ class DeviceGrid(object):
                     assert dim % self.workers_per_node == 0
                     self.node_grid_shape.append(dim // self.workers_per_node)
             self.node_grid_shape = tuple(self.node_grid_shape)
+            self.num_nodes = np.product(self.node_grid_shape)
+            logging.getLogger(__name__).info("node_grid %s", str(self.node_grid_shape))
+            assert self.num_nodes == len(self.device_ids) // self.workers_per_node
+        else:
+            logging.getLogger(__name__).info("no node_grid.")
 
+        unique_node_ids = set()
+        node_addr_check = set()
         for i, cluster_entry in enumerate(self.get_cluster_entry_iterator()):
             device_id: DeviceID = self.device_ids[i]
             # Check some assumptions if workers_per_node is given.
+            unique_node_ids.add(device_id.node_id)
+            node_addr_check.add(device_id.node_addr)
             if self.workers_per_node is not None:
                 assert device_id.node_id == i // self.workers_per_node
                 assert device_id.device_id == i % self.workers_per_node
             self.device_grid[cluster_entry] = device_id
-            logging.getLogger(__name__).info(
-                "device_grid %s %s", cluster_entry, str(self.device_ids[i])
-            )
+
+        assert len(node_addr_check) == len(unique_node_ids)
+        if self.workers_per_node is not None:
+            assert len(node_addr_check) == self.num_nodes
+        logging.getLogger(__name__).info("device_grid %s", str(self.grid_shape))
 
     def get_cluster_entry_iterator(self):
         return itertools.product(*map(range, self.grid_shape))
