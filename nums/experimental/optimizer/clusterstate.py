@@ -100,8 +100,13 @@ class ClusterState(object):
         block_b_device_ids = self.get_block_device_ids(block_id_b)
         return list(set(block_a_device_ids).intersection(set(block_b_device_ids)))
 
-    def blocks_local(self, block_id_a: int, block_id_b: int):
-        return len(self.mutual_devices(block_id_a, block_id_b)) > 0
+    def blocks_local(self, block_id_a: int, block_id_b: int, local_to_node: bool = False):
+        if local_to_node:
+            block_a_node_ids = self.get_block_node_ids(block_id_a)
+            block_b_node_ids = self.get_block_node_ids(block_id_b)
+            return list(set(block_a_node_ids).intersection(set(block_b_node_ids)))
+        else:
+            return len(self.mutual_devices(block_id_a, block_id_b)) > 0
 
     def init_mem_load(self, device_id: DeviceID, block_id: int):
         size: int = self._get_block_size(block_id)

@@ -233,8 +233,8 @@ class TreeReductionOp(TreeNode):
         # Update cluster state with new block.
         self.cluster_state.add_block(new_block.id, new_block.size(), [device_id])
         if not self.cluster_state.created_on_only:
-            assert self.cluster_state.blocks_local(left.block.id, right.block.id)
-            assert self.cluster_state.blocks_local(left.block.id, new_leaf.block.id)
+            assert self.cluster_state.blocks_local(left.block.id, right.block.id, local_to_node=True)
+            assert self.cluster_state.blocks_local(left.block.id, new_leaf.block.id, local_to_node=True)
         # The following are mutating operations.
         # Set the new leaf's parent to this node.
         new_leaf.parent = self
