@@ -248,4 +248,4 @@ if __name__ == "__main__":
     # TODO: Test doc for debugging, delete once finished
     from nums import numpy as nps
 
-    print(nps.column_stack.__doc__)
+    print(nps.dot.__doc__)

@@ -1575,8 +1575,69 @@ def column_stack(tup):
 ############################################
 
 
-@derived_from(np)
 def arange(start=None, stop=None, step=1, dtype=None) -> BlockArray:
+    """Return evenly spaced values within a given interval.
+
+    This docstring was copied from numpy.arange.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Values are generated within the half-open interval ``[start, stop)``
+    (in other words, the interval including `start` but excluding `stop`).
+    For integer arguments the function is equivalent to the Python built-in
+    `range` function, but returns an ndarray rather than a list.
+
+    When using a non-integer step, such as 0.1, the results will often not
+    be consistent.  It is better to use `nums.linspace` for these cases.
+
+    Parameters
+    ----------
+    start : number, optional
+        Start of interval.  The interval includes this value.  The default
+        start value is 0.
+    stop : number
+        End of interval.  The interval does not include this value, except
+        in some cases where `step` is not an integer and floating point
+        round-off affects the length of `out`.
+    step : number, optional
+        Spacing between values.  For any output `out`, this is the distance
+        between two adjacent values, ``out[i+1] - out[i]``.  The default
+        step size is 1.  If `step` is specified as a position argument,
+        `start` must also be given.
+    dtype : dtype
+        The type of the output array.  If `dtype` is not given, infer the data
+        type from the other input arguments.
+
+    Returns
+    -------
+    arange : BlockArray
+        Array of evenly spaced values.
+
+        For floating point arguments, the length of the result is
+        ``ceil((stop - start)/step)``.  Because of floating point overflow,
+        this rule may result in the last element of `out` being greater
+        than `stop`.
+
+    See Also
+    --------
+    linspace : Evenly spaced numbers with careful handling of endpoints.
+
+    Notes
+    -----
+    Only step size of 1 is currently supported.
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> nps.arange(3).get()  # doctest: +SKIP
+    array([0, 1, 2])
+    >>> nps.arange(3.0).get()  # doctest: +SKIP
+    array([ 0.,  1.,  2.])
+    >>> nps.arange(3,7).get()  # doctest: +SKIP
+    array([3, 4, 5, 6])
+    """
     if start is None:
         raise TypeError("Missing required argument start")
     if stop is None:
@@ -1592,8 +1653,72 @@ def arange(start=None, stop=None, step=1, dtype=None) -> BlockArray:
     return app.arange(start, shape, block_shape, step, dtype)
 
 
-@derived_from(np)
 def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None, axis=0):
+    """Return evenly spaced numbers over a specified interval.
+
+    This docstring was copied from numpy.linspace.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Returns `num` evenly spaced samples, calculated over the
+    interval [`start`, `stop`].
+
+    The endpoint of the interval can optionally be excluded.
+
+    Parameters
+    ----------
+    start : BlockArray
+        The starting value of the sequence.
+    stop : BlockArray
+        The end value of the sequence, unless `endpoint` is set to False.
+        In that case, the sequence consists of all but the last of ``num + 1``
+        evenly spaced samples, so that `stop` is excluded.  Note that the step
+        size changes when `endpoint` is False.
+    num : int, optional
+        Number of samples to generate. Default is 50. Must be non-negative.
+    endpoint : bool, optional
+        If True, `stop` is the last sample. Otherwise, it is not included.
+        Default is True.
+    retstep : bool, optional
+        If True, return (`samples`, `step`), where `step` is the spacing
+        between samples.
+    dtype : dtype, optional
+        The type of the output array.  If `dtype` is not given, infer the data
+        type from the other input arguments.
+    axis : int, optional
+        The axis in the result to store the samples.  Relevant only if start
+        or stop are array-like.  By default (0), the samples will be along a
+        new axis inserted at the beginning. Use -1 to get an axis at the end.
+
+    Returns
+    -------
+    samples : BlockArray
+        There are `num` equally spaced samples in the closed interval
+        ``[start, stop]`` or the half-open interval ``[start, stop)``
+        (depending on whether `endpoint` is True or False).
+    step : float, optional
+        Only returned if `retstep` is True
+
+        Size of spacing between samples.
+
+
+    See Also
+    --------
+    arange : Similar to `linspace`, but uses a step size (instead of the
+             number of samples).
+    geomspace : Similar to `linspace`, but with numbers spaced evenly on a log
+                scale (a geometric progression).
+    logspace : Similar to `geomspace`, but with the end points specified as
+               logarithms.
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> nps.linspace(2.0, 3.0, num=5).get()  # doctest: +SKIP
+    array([2.  , 2.25, 2.5 , 2.75, 3.  ])
+    """
     shape = (num,)
     dtype = np.float64 if dtype is None else dtype
     app = _instance()
@@ -1601,8 +1726,78 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None, axis
     return app.linspace(start, stop, shape, block_shape, endpoint, retstep, dtype, axis)
 
 
-@derived_from(np)
 def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None, axis=0):
+    """Return numbers spaced evenly on a log scale.
+
+    This docstring was copied from numpy.logspace.
+
+    Some inconsistencies with the NumS version may exist.
+
+    In linear space, the sequence starts at ``base ** start``
+    (`base` to the power of `start`) and ends with ``base ** stop``
+    (see `endpoint` below).
+
+    Parameters
+    ----------
+    start : BlockArray
+        ``base ** start`` is the starting value of the sequence.
+    stop : BlockArray
+        ``base ** stop`` is the final value of the sequence, unless `endpoint`
+        is False.  In that case, ``num + 1`` values are spaced over the
+        interval in log-space, of which all but the last (a sequence of
+        length `num`) are returned.
+    num : integer, optional
+        Number of samples to generate.  Default is 50.
+    endpoint : boolean, optional
+        If true, `stop` is the last sample. Otherwise, it is not included.
+        Default is True.
+    base : float, optional
+        The base of the log space. The step size between the elements in
+        ``ln(samples) / ln(base)`` (or ``log_base(samples)``) is uniform.
+        Default is 10.0.
+    dtype : dtype
+        The type of the output array.  If `dtype` is not given, infer the data
+        type from the other input arguments.
+    axis : int, optional
+        The axis in the result to store the samples.  Relevant only if start
+        or stop are array-like.  By default (0), the samples will be along a
+        new axis inserted at the beginning. Use -1 to get an axis at the end.
+
+        .. versionadded:: 1.16.0
+
+
+    Returns
+    -------
+    samples : BlockArray
+        `num` samples, equally spaced on a log scale.
+
+    See Also
+    --------
+    arange : Similar to linspace, with the step size specified instead of the
+             number of samples. Note that, when used with a float endpoint, the
+             endpoint may or may not be included.
+    linspace : Similar to logspace, but with the samples uniformly distributed
+               in linear space, instead of log space.
+
+    Notes
+    -----
+    Logspace is equivalent to the code
+
+    >>> y = nps.linspace(start, stop, num=num, endpoint=endpoint)  # doctest: +SKIP
+    ... # doctest: +SKIP
+    >>> power(base, y).astype(dtype)  # doctest: +SKIP
+    ... # doctest: +SKIP
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> nps.logspace(2.0, 3.0, num=4).get()  # doctest: +SKIP
+    array([ 100.        ,  215.443469  ,  464.15888336, 1000.        ])
+    >>> nps.logspace(2.0, 3.0, num=4, base=2.0).get()  # doctest: +SKIP
+    array([4.        ,  5.0396842 ,  6.34960421,  8.        ])
+    """
     app = _instance()
     ba: BlockArray = linspace(start, stop, num, endpoint, dtype=None, axis=axis)
     ba = power(app.scalar(base), ba)
@@ -1616,30 +1811,264 @@ def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None, axis=0):
 ############################################
 
 
-@derived_from(np)
 def tensordot(x1: BlockArray, x2: BlockArray, axes=2) -> BlockArray:
+    """Compute tensor dot product along specified axes.
+
+    This docstring was copied from numpy.tensordot.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Given two tensors, `a` and `b`, and an array_like object containing
+    two array_like objects, ``(a_axes, b_axes)``, sum the products of
+    `a`'s and `b`'s elements (components) over the axes specified by
+    ``a_axes`` and ``b_axes``. The third argument can be a single non-negative
+    integer_like scalar, ``N``; if it is such, then the last ``N`` dimensions
+    of `a` and the first ``N`` dimensions of `b` are summed over.
+
+    Parameters
+    ----------
+    a, b : BlockArray
+        Tensors to "dot".
+
+    axes : int or (2,) array_like
+        * integer_like
+          If an int N, sum over the last N axes of `a` and the first N axes
+          of `b` in order. The sizes of the corresponding axes must match.
+        * (2,) array_like
+          Or, a list of axes to be summed over, first sequence applying to `a`,
+          second to `b`. Both elements array_like must be of the same length.
+
+    Returns
+    -------
+    output : BlockArray
+        The tensor dot product of the input.
+
+    See Also
+    --------
+    dot
+
+    Notes
+    -----
+    Three common use cases are:
+        * ``axes = 0`` : tensor product :math:`a\otimes b`
+        * ``axes = 1`` : tensor dot product :math:`a\cdot b`
+        * ``axes = 2`` : (default) tensor double contraction :math:`a:b`
+
+    When `axes` is integer_like, the sequence for evaluation will be: first
+    the -Nth axis in `a` and 0th axis in `b`, and the -1th axis in `a` and
+    Nth axis in `b` last.
+
+    When there is more than one axis to sum over - and they are not the last
+    (first) axes of `a` (`b`) - the argument `axes` should consist of
+    two sequences of the same length, with the first axis to sum over given
+    first in both sequences, the second axis second, and so forth.
+
+    The shape of the result consists of the non-contracted axes of the
+    first tensor, followed by the non-contracted axes of the second.
+
+    Non-integer axes is currently not supported.
+    """
     return _instance().tensordot(arr_1=x1, arr_2=x2, axes=axes)
 
 
-@derived_from(np)
 def matmul(x1: BlockArray, x2: BlockArray) -> BlockArray:
+    """Matrix product of two arrays.
+
+    This docstring was copied from numpy.matmul.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Parameters
+    ----------
+    x1, x2 : BlockArray
+        Input arrays, scalars not allowed.
+
+    Returns
+    -------
+    y : BlockArray
+        The matrix product of the inputs.
+        This is a scalar only when both x1, x2 are 1-d vectors.
+
+    Raises
+    ------
+    ValueError
+        If the last dimension of `a` is not the same size as
+        the second-to-last dimension of `b`.
+
+        If a scalar value is passed in.
+
+    See Also
+    --------
+    tensordot : Sum products over arbitrary axes.
+    dot : alternative matrix product with different broadcasting rules.
+    """
     return _instance().matmul(arr_1=x1, arr_2=x2)
 
 
-@derived_from(np)
 def inner(a: BlockArray, b: BlockArray):
+    """Inner product of two arrays.
+
+    This docstring was copied from numpy.inner.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Ordinary inner product of vectors for 1-D arrays (without complex
+    conjugation), in higher dimensions a sum product over the last axes.
+
+    Parameters
+    ----------
+    a, b : BlockArray
+        If `a` and `b` are nonscalar, their last dimensions must match.
+
+    Returns
+    -------
+    out : BlockArray
+        `out.shape = a.shape[:-1] + b.shape[:-1]`
+
+    Raises
+    ------
+    ValueError
+        If the last dimension of `a` and `b` has different size.
+
+    See Also
+    --------
+    tensordot : Sum products over arbitrary axes.
+    dot : Generalised matrix product, using second last dimension of `b`.
+
+    Notes
+    -----
+    Only single-axis inputs supported.
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    Ordinary inner product for vectors:
+
+    >>> a = nps.array([1,2,3])  # doctest: +SKIP
+    >>> b = nps.array([0,1,0])  # doctest: +SKIP
+    >>> nps.inner(a, b).get() # doctest: +SKIP
+    array(2)
+    """
     assert len(a.shape) == len(b.shape) == 1, "Only single-axis inputs supported."
     return a.transpose(defer=True) @ b
 
 
-@derived_from(np)
 def outer(a: BlockArray, b: BlockArray):
+    """Compute the outer product of two vectors.
+
+    This docstring was copied from numpy.outer.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Given two vectors, ``a = [a0, a1, ..., aM]`` and
+    ``b = [b0, b1, ..., bN]``,
+    the outer product [1]_ is::
+
+      [[a0*b0  a0*b1 ... a0*bN ]
+       [a1*b0    .
+       [ ...          .
+       [aM*b0            aM*bN ]]
+
+    Parameters
+    ----------
+    a : (M,) BlockArray
+        First input vector.  Input is flattened if
+        not already 1-dimensional.
+    b : (N,) BlockArray
+        Second input vector.  Input is flattened if
+        not already 1-dimensional.
+
+    Returns
+    -------
+    out : (M, N) BlockArray
+        ``out[i, j] = a[i] * b[j]``
+
+    See also
+    --------
+    inner
+    outer
+    tensordot
+
+    Notes
+    -----
+    Only single-axis inputs supported.
+    """
     assert len(a.shape) == len(b.shape) == 1, "Only single-axis inputs supported."
     return a.reshape((a.shape[0], 1)) @ b.reshape((1, b.shape[0]))
 
 
-@derived_from(np)
 def dot(a: BlockArray, b: BlockArray, out=None) -> BlockArray:
+    """Dot product of two arrays.
+
+    This docstring was copied from numpy.dot.
+
+    Some inconsistencies with the NumS version may exist.
+
+    - If both `a` and `b` are 1-D arrays, it is inner product of vectors
+      (without complex conjugation).
+
+    - If both `a` and `b` are 2-D arrays, it is matrix multiplication,
+      but using :func:`matmul` or ``a @ b`` is preferred.
+
+    - If either `a` or `b` is 0-D (scalar), it is equivalent to :func:`multiply`
+      and using ``numpy.multiply(a, b)`` or ``a * b`` is preferred.
+
+    - If `a` is an N-D array and `b` is a 1-D array, it is a sum product over
+      the last axis of `a` and `b`.
+
+    - If `a` is an N-D array and `b` is an M-D array (where ``M>=2``), it is a
+      sum product over the last axis of `a` and the second-to-last axis of `b`::
+
+        dot(a, b)[i,j,k,m] = sum(a[i,j,:] * b[k,:,m])
+
+    Parameters
+    ----------
+    a : BlockArray
+        First argument.
+    b : BlockArray
+        Second argument.
+    out : BlockArray, optional
+        Output argument. This must have the exact kind that would be returned
+        if it was not used. In particular, it must have the right type, must be
+        C-contiguous, and its dtype must be the dtype that would be returned
+        for `dot(a,b)`. This is a performance feature. Therefore, if these
+        conditions are not met, an exception is raised, instead of attempting
+        to be flexible.
+
+    Returns
+    -------
+    output : BlockArray
+        Returns the dot product of `a` and `b`.  If `a` and `b` are both
+        scalars or both 1-D arrays then a scalar is returned; otherwise
+        an array is returned.
+        If `out` is given, then it is returned.
+
+    Raises
+    ------
+    ValueError
+        If the last dimension of `a` is not the same size as
+        the second-to-last dimension of `b`.
+
+    See Also
+    --------
+    tensordot : Sum products over arbitrary axes.
+    matmul : '@' operator as method with out parameter.
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    For 2-D arrays it is the matrix product:
+
+    >>> a = nps.array([[1, 0], [0, 1]])  # doctest: +SKIP
+    >>> b = nps.array([[4, 1], [2, 2]])  # doctest: +SKIP
+    >>> nps.dot(a, b).get()  # doctest: +SKIP
+    array([[4, 1],
+           [2, 2]])
+    """
     assert out is None, "Specifying an output array is not supported."
     a_len, b_len = len(a.shape), len(b.shape)
     if a_len == b_len == 1:
@@ -1831,6 +2260,7 @@ def std(a: BlockArray, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().std(a, axis=axis, ddof=ddof, keepdims=keepdims, dtype=dtype)
+
 
 def cov(
     m: BlockArray,
