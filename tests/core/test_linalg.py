@@ -129,13 +129,15 @@ def test_inv_uppertri(app_inst: ArrayApplication):
     block_shape, shape = (3, 3), (20, 20)
     R_matrices = []
 
-    # Create test inputs
+    # Create an upper-triangular matrix with sequential values.
     R_np = np.arange(1, shape[0] ** 2 + 1, 1).reshape(*shape).astype(float)
     R_matrices.append(np.triu(R_np))
 
+    # Create a random upper-triangular matrix
     _, R_np = np.linalg.qr(np.random.rand(*shape))
     R_matrices.append(R_np)
 
+    # Test the upper-triangular inversion algorithm on each of the above matrices.
     for R_np in R_matrices:
         R = app_inst.array(R_np, block_shape=block_shape)
 

@@ -263,18 +263,36 @@ def inv(app: ArrayApplication, X: BlockArray):
 
 
 def inv_uppertri(app: ArrayApplication, X: BlockArray):
-    # Inversion of an Upper Triangular Matrix
-    # Use the method described in https://www.cs.utexas.edu/users/flame/pubs/siam_spd.pdf
+    """
+    Distributed algorithm for the inversion of an Upper Triangular Matrix.
+    We use the method and notation described in -
+    https://www.cs.utexas.edu/users/flame/pubs/siam_spd.pdf.
+
+    The upper-triangular matrix X is partitioned as follows:
+
+                                    ____________________________
+             _________________      |  R_00  ‖  R_01  |  R_02  |
+             | R_TL  |  R_TR |      |==========================|
+    X = R -> |---------------|   -> |   0    ‖  R_11  |  R_12  |
+             |  0    |  R_BR |      |--------------------------|
+             ⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻      |   0    ‖   0    |  R_22  |
+                                    ⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻
+
+    where the double lines represent the boundaries between R_TL, R_TR, and R_BR.
+    """
+
+    # Check if X is a square matrix and if it is backed by a single block.
     assert len(X.shape) == 2
     assert X.shape[0] == X.shape[1], "This function only accepts square matrices"
     single_block = X.shape[0] == X.block_shape[0] and X.shape[1] == X.block_shape[1]
     nonsquare_block = X.block_shape[0] != X.block_shape[1]
 
-    # If X is single block or block size is non-square, then reshape BS to row_size // 4
+    # If X is represented by a single block or its block size is non-square,
+    # then perform a naive inversion.
     if single_block or nonsquare_block:
         return inv(app, X)
 
-    # Setup metadata
+    # Setup the metadata.
     full_shape = X.shape
     grid_shape = X.grid.grid_shape
     block_shape = X.block_shape
@@ -282,7 +300,7 @@ def inv_uppertri(app: ArrayApplication, X: BlockArray):
     R = X.copy()
     Zs = app.zeros(full_shape, block_shape, X.dtype)
 
-    # Calculate R_11^-1
+    # Calculate the inverse for block R_11.
     r11_oid = R.blocks[(0, 0)].oid
     r11_inv_oid = app.cm.inv(
         r11_oid, syskwargs={"grid_entry": (0, 0), "grid_shape": grid_shape}
@@ -290,9 +308,10 @@ def inv_uppertri(app: ArrayApplication, X: BlockArray):
     R.blocks[(0, 0)].oid = r11_inv_oid
     R_tl_shape = block_shape
 
-    # Continue while R_tl.shape != R.shape
+    # This iterative algorithm continues until shape(X) == shape(R_TL)
     while R_tl_shape[0] != full_shape[0] and R_tl_shape[1] != full_shape[1]:
-        # Calculate R11
+
+        # Calculate the block index for R_11.
         R11_block = (
             R_tl_shape[0] // block_shape[0],
             R_tl_shape[1] // block_shape[1],
@@ -300,38 +319,39 @@ def inv_uppertri(app: ArrayApplication, X: BlockArray):
         R11_oid = R.blocks[R11_block].oid
         R11_shape = R.blocks[R11_block].shape
 
+        # Calculate the inverse for block R_11.
         R11_inv_oid = app.cm.inv(
             R11_oid, syskwargs={"grid_entry": R11_block, "grid_shape": grid_shape}
         )
 
-        # Reset R11 inplace
+        # Replace R_11 with its inverse in R inplace.
         R.blocks[R11_block].oid = R11_inv_oid
 
-        # Calculate R01
+        # Calculate the blocks within R_01.
         R01_oids = []
         R01_shapes = []
         R01_grid_entries = []
         R01_sb_row, R01_sb_col = 0, R11_block[1]  # sb -- start_block
         R01_num_blocks = R11_block[0]
 
-        # Collect data for R01
+        # Collect the block metadata.
         for inc in range(R01_num_blocks):
             R01_oids.append(R.blocks[(R01_sb_row + inc, R01_sb_col)].oid)
             R01_shapes.append(R.blocks[(R01_sb_row + inc, R01_sb_col)].shape)
             R01_grid_entries.append((R01_sb_row + inc, R01_sb_col))
 
-        # Perform matrix multiplication: R01_1 = -R00 @ R01
+        # Perform blocked matrix multiplication: R_01 = -R_00 @ R_01.
         R01_1_oids = []
         for row_block in range(R01_num_blocks):
             sub_oids = []
 
             for col_block in range(R01_num_blocks):
 
-                # Get data for R00
+                # Get the data for the next block in R_00.
                 R00_oid = R.blocks[(row_block, col_block)].oid
                 Z_oid = Zs.blocks[(row_block, col_block)].oid
 
-                # Calculate -R00 = 0 - R00
+                # Calculate -R_00 by subtracting R_00 from zero.
                 neg_R00_oid = app.cm.bop(
                     "subtract",
                     Z_oid,
@@ -344,7 +364,8 @@ def inv_uppertri(app: ArrayApplication, X: BlockArray):
                         "grid_shape": grid_shape,
                     },
                 )
-                # Calculate -R00 @ R01
+
+                # Calculate -R00 @ R01.
                 sub_oids.append(
                     app.cm.bop(
                         "tensordot",
@@ -360,7 +381,7 @@ def inv_uppertri(app: ArrayApplication, X: BlockArray):
                     )
                 )
 
-            # Finished with one blocked mult
+            # Perform the summation step over all column blocks.
             R01_1_oids.append(
                 app.cm.sum_reduce(
                     *sub_oids,
@@ -371,7 +392,7 @@ def inv_uppertri(app: ArrayApplication, X: BlockArray):
                 )
             )
 
-        # Perform matrix multiplication: R_01_2 = R_01_1 @ R_11_inv
+        # Perform a second blocked matrix multiplication: R_01 = R_01 @ inv(R_11).
         R01_2_oids = []
         for row_block in range(R01_num_blocks):
             R01_2_oids.append(
@@ -389,17 +410,17 @@ def inv_uppertri(app: ArrayApplication, X: BlockArray):
                 )
             )
 
-        # Reset R_01
+        # Replace the entries in R with the new object IDs.
         for i, entry in enumerate(R01_grid_entries):
             R.blocks[entry].oid = R01_2_oids[i]
 
-        # Recompute R_tl.shape
+        # Recompute shape(R_TL).
         r11_r, r11_c = R11_shape
         old_r, old_c = R_tl_shape
 
         R_tl_shape = (old_r + r11_r, old_c + r11_c)
 
-    # By the time we finish, R = R_inv
+    # By the time we finish the algorithm, R is now an inverse of X.
     return R.reshape(block_shape=block_shape)
 
 
