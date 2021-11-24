@@ -94,8 +94,10 @@ def app_inst_all(request):
 
 def get_app(system_name, device_grid_name="cyclic"):
     if system_name == "serial":
+        cluster_shape = (1, 1)
         system: SystemInterface = SerialSystem()
     elif system_name == "ray":
+        cluster_shape = (1, 1)
         assert not ray.is_initialized()
         system: SystemInterface = RaySystem(
             use_head=True, num_cpus=systems_utils.get_num_cores()
@@ -104,6 +106,7 @@ def get_app(system_name, device_grid_name="cyclic"):
         from nums.experimental.nums_dask.dask_system import DaskSystem
 
         num_workers = systems_utils.get_num_cores()
+        cluster_shape = (num_workers, 1)
         system: SystemInterface = DaskSystem(
             num_cpus=num_workers, num_devices=num_workers
         )
@@ -111,7 +114,6 @@ def get_app(system_name, device_grid_name="cyclic"):
         raise Exception("Unexpected system name %s" % system_name)
     system.init()
 
-    cluster_shape = (1, 1)
     if device_grid_name == "cyclic":
         device_grid: DeviceGrid = CyclicDeviceGrid(
             cluster_shape, "cpu", system.devices()

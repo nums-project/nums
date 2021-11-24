@@ -73,17 +73,17 @@ class DaskSystem(SystemInterface):
         self._node_addresses = sorted(
             list(set(map(lambda addr: addr.split(":")[0], self._worker_addresses)))
         )
-        # Remove any trailing slashes.
-        self._node_addresses = list(
-            map(lambda x: x.split("/")[0], self._node_addresses)
-        )
+        # # Remove any trailing slashes.
+        # self._node_addresses = list(
+        #     map(lambda x: x.split("/")[0], self._node_addresses)
+        # )
 
         self._node_to_worker = {}
         nodes_per_worker = None
         for node_address in self._node_addresses:
             self._node_to_worker[node_address] = {"workers": []}
             for worker_address in self._worker_addresses:
-                if node_address in worker_address:
+                if node_address+":" in worker_address:
                     print("node_address", node_address, "worker_address", worker_address)
                     self._node_to_worker[node_address]["workers"].append(worker_address)
             self._node_to_worker[node_address]["workers"] = sorted(
@@ -102,7 +102,7 @@ class DaskSystem(SystemInterface):
                     s += "\nnum_workers=%s" % num_workers
                     raise Exception("Unexpected number of workers." + s)
 
-        assert self._num_devices % nodes_per_worker == 0
+        assert self._num_devices % nodes_per_worker == 0, "%s vs %s" % (self._num_devices, nodes_per_worker)
         num_nodes = self._num_devices // nodes_per_worker
         self._devices = []
         for node_id in range(num_nodes):

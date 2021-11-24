@@ -24,8 +24,10 @@ def test_dask_system():
     from nums.core.array.blockarray import BlockArray
     from nums.core import application_manager
     from nums.experimental.nums_dask.dask_system import DaskSystem
+    from nums.core.systems.utils import get_num_cores
 
     settings.system_name = "dask"
+    settings.cluster_shape = (get_num_cores(), 1)
     assert not application_manager.is_initialized()
     app: ArrayApplication = application_manager.instance()
 
