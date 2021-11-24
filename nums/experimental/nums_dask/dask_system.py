@@ -68,18 +68,19 @@ class DaskSystem(SystemInterface):
         self._worker_addresses = sorted(
             list(map(lambda addr: addr.split("://")[-1], null_op.keys()))
         )
+        # Remove any trailing slashes.
+        self._worker_addresses = list(
+            map(lambda x: x.split("/")[0], self._worker_addresses)
+        )
         self._node_addresses = sorted(
             list(set(map(lambda addr: addr.split(":")[0], self._worker_addresses)))
-        )
-        # Remove any trailing slashes.
-        self._node_addresses = list(
-            map(lambda x: x.split("/")[0], self._node_addresses)
         )
 
         self._devices = []
         self._device_to_node = {}
         for node_id in range(self._num_nodes):
-            node_addr = self._node_addresses[node_id]
+            node_addr = self._worker_addresses[node_id]
+            # node_addr = self._node_addresses[node_id]
             logging.getLogger(__name__).info("worker node %s", node_addr)
             did = DeviceID(node_id, node_addr, "cpu", 1)
             self._devices.append(did)
