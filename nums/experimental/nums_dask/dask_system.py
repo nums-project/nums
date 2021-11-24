@@ -89,6 +89,8 @@ class DaskSystem(SystemInterface):
                 self._node_to_worker[node_address]["workers"]
             )
             num_workers = len(self._node_to_worker[node_address]["workers"])
+            logging.getLogger(__name__).info("node addr=%s, num_workers=%s" % (node_address, num_workers))
+
             if nodes_per_worker is None:
                 nodes_per_worker = num_workers
             else:
