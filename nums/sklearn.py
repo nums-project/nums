@@ -1,8 +1,10 @@
 import warnings
+from typing import Optional, Union
 
 import numpy as np
 
 from nums.core.array.blockarray import BlockArray
+from nums.core.array.random import NumsRandomState
 from nums.core.application_manager import (
     instance,
     call_on_create,
@@ -15,8 +17,37 @@ from nums.core.application_manager import (
 
 def _register_train_test_split(app: ArrayApplication):
     from sklearn import model_selection
+    from numpy.random import Generator, RandomState
 
-    app.cm.register("train_test_split", model_selection.train_test_split, {})
+    from nums.core.compute.numpy_compute import block_rng
+
+    def train_test_split_wrapper(
+        *arrays,
+        rng_params,
+        test_size=None,
+        train_size=None,
+        shuffle=True,
+        stratify=None
+    ):
+        if rng_params is None:
+            random_state = None
+        else:
+            rng: Generator = block_rng(*rng_params)
+            # TODO:  Because train_test_split doesn't support Generator,
+            #  we need a way to obtain RandomState from Generator instance.
+            #  Need to ensure this provides same guarantees on collisions that Generator provides.
+            seed: int = rng.integers(0, np.iinfo(np.uint32).max)
+            random_state = RandomState(seed=seed)
+        return model_selection.train_test_split(
+            *arrays,
+            test_size=test_size,
+            train_size=train_size,
+            random_state=random_state,
+            shuffle=shuffle,
+            stratify=stratify
+        )
+
+    app.cm.register("train_test_split", train_test_split_wrapper, {})
 
 
 call_on_create(_register_train_test_split)
@@ -47,19 +78,43 @@ def _check_array(array, strict=False):
     return array
 
 
-def train_test_split(*arrays, **options):
-    # TODO: Add proper seed support.
+def train_test_split(
+    *arrays,
+    test_size: Union[int, float] = None,
+    train_size: Union[int, float] = None,
+    random_state: Optional[Union[NumsRandomState, int]] = None,
+    shuffle: bool = True,
+    stratify=None
+):
+    # pylint: disable = protected-access
     updated_arrays = []
     for array in arrays:
         updated_arrays.append(_check_array(array))
-    kwargs = options.copy()
-    kwargs["syskwargs"] = {
+    syskwargs = {
         "options": {"num_returns": 2 * len(updated_arrays)},
         "grid_entry": (0,),
         "grid_shape": (1,),
     }
+
+    if random_state is None:
+        rng_params = None
+    else:
+        if isinstance(random_state, int):
+            # It's a seed.
+            random_state: NumsRandomState = instance().random_state(random_state)
+        rng_params = random_state._rng.new_block_rng_params()
+
     array_oids = [array.flattened_oids()[0] for array in updated_arrays]
-    result_oids = instance().cm.call("train_test_split", *array_oids, **kwargs)
+    result_oids = instance().cm.call(
+        "train_test_split",
+        *array_oids,
+        rng_params=rng_params,
+        test_size=test_size,
+        train_size=train_size,
+        shuffle=shuffle,
+        stratify=stratify,
+        syskwargs=syskwargs
+    )
     # Optimize by computing this directly.
     shape_dtype_oids = [
         instance().cm.shape_dtype(
