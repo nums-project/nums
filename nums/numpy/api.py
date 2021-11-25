@@ -1036,10 +1036,8 @@ def diag(v: BlockArray, k=0) -> BlockArray:
     See Also
     --------
     diagonal : Return specified diagonals.
-    diagflat : Create a 2-D array with the flattened input as a diagonal.
     trace : Sum along diagonals.
     triu : Upper triangle of an array.
-    tril : Lower triangle of an array.
 
     Notes
     -----
@@ -1118,7 +1116,7 @@ def trace(a: BlockArray, offset=0, axis1=0, axis2=1, dtype=None, out=None):
 
     See Also
     --------
-    diag, diagonal, diagflat
+    diag, diagonal
 
     Notes
     -----
@@ -2425,8 +2423,64 @@ def transpose(a: BlockArray, axes=None):
 ############################################
 
 
-@derived_from(np)
 def copy(a: BlockArray, order="K", subok=False):
+    """Return an array copy of the given object.
+
+    This docstring was copied from numpy.copy.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Parameters
+    ----------
+    a : BlockArray
+        Input data.
+    order : {'C', 'F', 'A', 'K'}, optional
+        Controls the memory layout of the copy. 'C' means C-order,
+        'F' means F-order, 'A' means 'F' if `a` is Fortran contiguous,
+        'C' otherwise. 'K' means match the layout of `a` as closely
+        as possible. (Note that this function and :meth:`ndarray.copy` are very
+        similar, but have different default values for their order=
+        arguments.)
+    subok : bool, optional
+        If True, then sub-classes will be passed-through, otherwise the
+        returned array will be forced to be a base-class array (defaults to False).
+
+    Returns
+    -------
+    arr : BlockArray
+        Array interpretation of `a`.
+
+    See Also
+    --------
+    copy : Preferred method for creating an array copy
+
+    Notes
+    -----
+    This is equivalent to:
+
+    >>> nps.array(a, copy=True).get()  #doctest: +SKIP
+
+    Only default args supported.
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    Create an array x, with a reference y and a copy z:
+
+    >>> x = nps.array([1, 2, 3])  # doctest: +SKIP
+    >>> y = x  # doctest: +SKIP
+    >>> z = nps.copy(x)  # doctest: +SKIP
+
+    Note that, when we modify x, y changes, but not z:
+
+    >>> x[0] = 10  # doctest: +SKIP
+    >>> (x[0] == y[0]).get()  # doctest: +SKIP
+    array(True)
+    >>> (x[0] == z[0]).get()  # doctest: +SKIP
+    False
+    """
     assert order == "K" and not subok, "Only default args supported."
     return a.copy()
 
@@ -2440,6 +2494,97 @@ def copy(a: BlockArray, order="K", subok=False):
 def min(
     a: BlockArray, axis=None, out=None, keepdims=False, initial=None, where=None
 ) -> BlockArray:
+    """Return the minimum of an array or minimum along an axis.
+
+    This docstring was copied from numpy.min.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Parameters
+    ----------
+    a : BlockArray
+        Input data.
+    axis : None or int or tuple of ints, optional
+        Axis or axes along which to operate.  By default, flattened input is
+        used.
+        If this is a tuple of ints, the minimum is selected over multiple axes,
+        instead of a single axis or all the axes as before.
+    out : BlockArray, optional
+        Alternative output array in which to place the result.  Must
+        be of the same shape and buffer length as the expected output.
+    keepdims : bool, optional
+        If this is set to True, the axes which are reduced are left
+        in the result as dimensions with size one. With this option,
+        the result will broadcast correctly against the input array.
+        If the default value is passed, then `keepdims` will not be
+        passed through to the `amin` method of sub-classes of
+        `ndarray`, however any non-default value will be. If the
+        sub-class' method does not implement `keepdims` any
+        exceptions will be raised.
+    initial : scalar, optional
+        The maximum value of an output element. Must be present to allow
+        computation on empty slice. See `~numpy.ufunc.reduce` for details.
+    where : BlockArray of bool, optional
+        Elements to compare for the minimum. See `~numpy.ufunc.reduce`
+        for details.
+
+    Returns
+    -------
+    amin : BlockArray
+        Minimum of `a`. If `axis` is None, the result is a scalar value.
+        If `axis` is given, the result is an array of dimension
+        ``a.ndim - 1``.
+
+    See Also
+    --------
+    amax :
+        The maximum value of an array along a given axis, propagating any NaNs.
+    nanmin :
+        The minimum value of an array along a given axis, ignoring any NaNs.
+    minimum :
+        Element-wise minimum of two arrays, propagating any NaNs.
+    fmin :
+        Element-wise minimum of two arrays, ignoring any NaNs.
+    argmin :
+        Return the indices of the minimum values.
+
+    nanmax, maximum, fmax
+
+    Notes
+    -----
+    NaN values are propagated, that is if at least one item is NaN, the
+    corresponding min value will be NaN as well. To ignore NaN values
+    (MATLAB behavior), please use nanmin.
+
+    Don't use `amin` for element-wise comparison of 2 arrays; when
+    ``a.shape[0]`` is 2, ``minimum(a[0], a[1])`` is faster than
+    ``amin(a, axis=0)``.
+
+    'initial' is currently not supported.
+
+    'where' is currently not supported.
+
+    'out' is currently not supported.
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> a = nps.arange(4).reshape((2,2))  # doctest: +SKIP
+    >>> a.get()  # doctest: +SKIP
+    array([[0, 1],
+           [2, 3]])
+    >>> nps.amin(a).get()           # Minimum of the flattened array  # doctest: +SKIP
+    array(0)
+    >>> nps.amin(a, axis=0).get()   # Minima along the first axis  # doctest: +SKIP
+    array([0, 1])
+    >>> nps.amin(a, axis=1).get()   # Minima along the second axis  # doctest: +SKIP
+    array([0, 2])
+
+    >>> nps.nanmin(b).get()  # doctest: +SKIP
+    0.0
+    """
     if initial is not None:
         raise NotImplementedError("'initial' is currently not supported.")
     if where is not None:
@@ -2452,10 +2597,102 @@ def min(
 amin = min
 
 
-@derived_from(np)
 def max(
     a: BlockArray, axis=None, out=None, keepdims=False, initial=None, where=None
 ) -> BlockArray:
+    """Return the maximum of an array or maximum along an axis.
+
+    This docstring was copied from numpy.max.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Parameters
+    ----------
+    a : BlockArray
+        Input data.
+    axis : None or int or tuple of ints, optional
+        Axis or axes along which to operate.  By default, flattened input is
+        used.
+        If this is a tuple of ints, the maximum is selected over multiple axes,
+        instead of a single axis or all the axes as before.
+    out : BlockArray, optional
+        Alternative output array in which to place the result.  Must
+        be of the same shape and buffer length as the expected output.
+        See `ufuncs-output-type` for more details.
+    keepdims : bool, optional
+        If this is set to True, the axes which are reduced are left
+        in the result as dimensions with size one. With this option,
+        the result will broadcast correctly against the input array.
+        If the default value is passed, then `keepdims` will not be
+        passed through to the `amax` method of sub-classes of
+        `ndarray`, however any non-default value will be.  If the
+        sub-class' method does not implement `keepdims` any
+        exceptions will be raised.
+    initial : scalar, optional
+        The minimum value of an output element. Must be present to allow
+        computation on empty slice. See `~numpy.ufunc.reduce` for details.
+    where : BlockArray of bool, optional
+        Elements to compare for the maximum. See `~numpy.ufunc.reduce`
+        for details.
+    Returns
+    -------
+    amax : BlockArray or scalar
+        Maximum of `a`. If `axis` is None, the result is a scalar value.
+        If `axis` is given, the result is an array of dimension
+        ``a.ndim - 1``.
+
+    See Also
+    --------
+    amin :
+        The minimum value of an array along a given axis, propagating any NaNs.
+    nanmax :
+        The maximum value of an array along a given axis, ignoring any NaNs.
+    maximum :
+        Element-wise maximum of two arrays, propagating any NaNs.
+    fmax :
+        Element-wise maximum of two arrays, ignoring any NaNs.
+    argmax :
+        Return the indices of the maximum values.
+
+    nanmin, minimum, fmin
+
+    Notes
+    -----
+    NaN values are propagated, that is if at least one item is NaN, the
+    corresponding max value will be NaN as well. To ignore NaN values
+    (MATLAB behavior), please use nanmax.
+
+    Don't use `amax` for element-wise comparison of 2 arrays; when
+    ``a.shape[0]`` is 2, ``maximum(a[0], a[1])`` is faster than
+    ``amax(a, axis=0)``.
+
+    'initial' is currently not supported.
+
+    'where' is currently not supported.
+
+    'out' is currently not supported.
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> a = nps.arange(4).reshape((2,2))  # doctest: +SKIP
+    >>> a.get()  # doctest: +SKIP
+    array([[0, 1],
+           [2, 3]])
+    >>> nps.amax(a).get()           # Maximum of the flattened array  # doctest: +SKIP
+    array(3)
+    >>> nps.amax(a, axis=0).get()   # Maxima along the first axis  # doctest: +SKIP
+    array([2, 3])
+    >>> nps.amax(a, axis=1).get()   # Maxima along the second axis  # doctest: +SKIP
+    >>> b = nps.arange(5, dtype=float)  # doctest: +SKIP
+    >>> b[2] = nps.NaN  # doctest: +SKIP
+    >>> nps.amax(b).get()  # doctest: +SKIP
+    array(nan)
+    >>> nps.nanmax(b).get()  # doctest: +SKIP
+    array(4.)
+    """
     if initial is not None:
         raise NotImplementedError("'initial' is currently not supported.")
     if where is not None:
@@ -2468,15 +2705,112 @@ def max(
 amax = max
 
 
-@derived_from(np)
 def argmin(a: BlockArray, axis=None, out=None):
+    """Returns the indices of the minimum values along an axis.
+
+    This docstring was copied from numpy.argmin.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Parameters
+    ----------
+    a : BlockArray
+        Input array.
+    axis : int, optional
+        By default, the index is into the flattened array, otherwise
+        along the specified axis.
+    out : array, optional
+        If provided, the result will be inserted into this array. It should
+        be of the appropriate shape and dtype.
+
+    Returns
+    -------
+    index_array : BlockArray of ints
+        Array of indices into the array. It has the same shape as `a.shape`
+        with the dimension along `axis` removed.
+
+    See Also
+    --------
+    argmin, argmax
+    amin : The minimum value along a given axis.
+
+    Notes
+    -----
+    In case of multiple occurrences of the minimum values, the indices
+    corresponding to the first occurrence are returned.
+
+    'out' is currently not supported.
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> b = nps.arange(6) + 10  # doctest: +SKIP
+    >>> b[4] = 10  # doctest: +SKIP
+    >>> b.get()  # doctest: +SKIP
+    array([10, 11, 12, 13, 10, 15])
+    >>> nps.argmin(b).get()  # Only the first occurrence is returned.  # doctest: +SKIP
+    array(0)
+    """
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().argop("argmin", a, axis=axis)
 
 
-@derived_from(np)
 def argmax(a: BlockArray, axis=None, out=None):
+    """Returns the indices of the maximum values along an axis.
+
+    This docstring was copied from numpy.argmax.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Parameters
+    ----------
+    a : BlockArray
+        Input array.
+    axis : int, optional
+        By default, the index is into the flattened array, otherwise
+        along the specified axis.
+    out : array, optional
+        If provided, the result will be inserted into this array. It should
+        be of the appropriate shape and dtype.
+
+    Returns
+    -------
+    index_array : BlockArray of ints
+        Array of indices into the array. It has the same shape as `a.shape`
+        with the dimension along `axis` removed.
+
+    See Also
+    --------
+    argmax, argmin
+    amax : The maximum value along a given axis.
+
+    Notes
+    -----
+    In case of multiple occurrences of the maximum values, the indices
+    corresponding to the first occurrence are returned.
+
+    argmax currently only supports one-dimensional arrays.
+
+    'out' is currently not supported.
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+
+    Indexes of the maximal elements of a N-dimensional array:
+
+    >>> b = nps.arange(6)  # doctest: +SKIP
+    >>> b[1] = 5  # doctest: +SKIP
+    >>> b.get()  # doctest: +SKIP
+    array([0, 5, 2, 3, 4, 5])
+    >>> nps.argmax(b).get()  # Only the first occurrence is returned.  # doctest: +SKIP
+    array(1)
+    """
     if len(a.shape) > 1:
         raise NotImplementedError(
             "argmax currently only supports one-dimensional arrays."
@@ -2486,7 +2820,6 @@ def argmax(a: BlockArray, axis=None, out=None):
     return _instance().argop("argmax", a, axis=axis)
 
 
-@derived_from(np)
 def sum(
     a: BlockArray,
     axis=None,
@@ -2496,6 +2829,82 @@ def sum(
     initial=None,
     where=None,
 ) -> BlockArray:
+    """Sum of array elements over a given axis.
+
+    This docstring was copied from numpy.sum.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Parameters
+    ----------
+    a : BlockArray
+        Elements to sum.
+    axis : None or int or tuple of ints, optional
+        Axis or axes along which a sum is performed.  The default,
+        axis=None, will sum all of the elements of the input array.  If
+        axis is negative it counts from the last to the first axis.
+        If axis is a tuple of ints, a sum is performed on all of the axes
+        specified in the tuple instead of a single axis or all the axes as
+        before.
+    dtype : dtype, optional
+        The type of the returned array and of the accumulator in which the
+        elements are summed.  The dtype of `a` is used by default unless `a`
+        has an integer dtype of less precision than the default platform
+        integer.  In that case, if `a` is signed then the platform integer
+        is used while if `a` is unsigned then an unsigned integer of the
+        same precision as the platform integer is used.
+    out : BlockArray, optional
+        Alternative output array in which to place the result. It must have
+        the same shape as the expected output, but the type of the output
+        values will be cast if necessary.
+    keepdims : bool, optional
+        If this is set to True, the axes which are reduced are left
+        in the result as dimensions with size one. With this option,
+        the result will broadcast correctly against the input array.
+        If the default value is passed, then `keepdims` will not be
+        passed through to the `sum` method of sub-classes of
+        `ndarray`, however any non-default value will be.  If the
+        sub-class' method does not implement `keepdims` any
+        exceptions will be raised.
+    initial : scalar, optional
+        Starting value for the sum.
+    where : BlockArray of bool, optional
+        Elements to include in the sum.
+
+    Returns
+    -------
+    sum_along_axis : BlockArray
+        An array with the same shape as `a`, with the specified
+        axis removed.   If `a` is a 0-d array, or if `axis` is None, a scalar
+        is returned.  If an output array is specified, a reference to
+        `out` is returned.
+
+    See Also
+    --------
+    mean, average
+
+    Notes
+    -----
+    'initial' is currently not supported.
+
+    'where' is currently not supported.
+
+    'out' is currently not supported.
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> nps.sum(nps.array([0.5, 1.5])).get()  # doctest: +SKIP
+    array(2.)
+    >>> nps.sum(nps.array([[0, 1], [0, 5]])).get()  # doctest: +SKIP
+    array(6)
+    >>> nps.sum(nps.array([[0, 1], [0, 5]]), axis=0).get()  # doctest: +SKIP
+    array([0, 6])
+    >>> nps.sum(nps.array([[0, 1], [0, 5]]), axis=1).get()  # doctest: +SKIP
+    array([1, 5])
+    """
     if initial is not None:
         raise NotImplementedError("'initial' is currently not supported.")
     if where is not None:
@@ -2505,22 +2914,258 @@ def sum(
     return _instance().sum(a, axis=axis, keepdims=keepdims, dtype=dtype)
 
 
-@derived_from(np)
 def mean(a: BlockArray, axis=None, dtype=None, out=None, keepdims=False):
+    """Compute the arithmetic mean along the specified axis.
+
+    This docstring was copied from numpy.mean.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Parameters
+    ----------
+    a : BlockArray
+        Array containing numbers whose mean is desired. If `a` is not an
+        array, a conversion is attempted.
+    axis : None or int or tuple of ints, optional
+        Axis or axes along which the means are computed. The default is to
+        compute the mean of the flattened array.
+        If this is a tuple of ints, a mean is performed over multiple axes,
+        instead of a single axis or all the axes as before.
+    dtype : data-type, optional
+        Type to use in computing the mean.  For integer inputs, the default
+        is `float64`; for floating point inputs, it is the same as the
+        input dtype.
+    out : BlockArray, optional
+        Alternate output array in which to place the result.  The default
+        is ``None``; if provided, it must have the same shape as the
+        expected output, but the type will be cast if necessary.
+        See `ufuncs-output-type` for more details.
+    keepdims : bool, optional
+        If this is set to True, the axes which are reduced are left
+        in the result as dimensions with size one. With this option,
+        the result will broadcast correctly against the input array.
+        If the default value is passed, then `keepdims` will not be
+        passed through to the `mean` method of sub-classes of
+        `ndarray`, however any non-default value will be.  If the
+        sub-class' method does not implement `keepdims` any
+        exceptions will be raised.
+
+    Returns
+    -------
+    m : BlockArray, see dtype parameter above
+        If `out=None`, returns a new array containing the mean values,
+        otherwise a reference to the output array is returned.
+
+    See Also
+    --------
+    average : Weighted average
+    std, var, nanmean, nanstd, nanvar
+
+    Notes
+    -----
+    The arithmetic mean is the sum of the elements along the axis divided
+    by the number of elements.
+
+    Note that for floating-point input, the mean is computed using the
+    same precision the input has.  Depending on the input data, this can
+    cause the results to be inaccurate, especially for `float32` (see
+    example below).  Specifying a higher-precision accumulator using the
+    `dtype` keyword can alleviate this issue.
+
+    By default, `float16` results are computed using `float32` intermediates
+    for extra precision.
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> a = nps.array([[1, 2], [3, 4]])  # doctest: +SKIP
+    >>> nps.mean(a).get()  # doctest: +SKIP
+    array(2.5)
+    >>> nps.mean(a, axis=0).get()  # doctest: +SKIP
+    array([2., 3.])
+    >>> nps.mean(a, axis=1).get()  # doctest: +SKIP
+    array([1.5, 3.5])
+    """
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().mean(a, axis=axis, keepdims=keepdims, dtype=dtype)
 
 
-@derived_from(np)
 def var(a: BlockArray, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+    """Compute the variance along the specified axis.
+
+    This docstring was copied from numpy.var.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Returns the variance of the array elements, a measure of the spread of a
+    distribution.  The variance is computed for the flattened array by
+    default, otherwise over the specified axis.
+
+    Parameters
+    ----------
+    a : BlockArray
+        Array containing numbers whose variance is desired.  If `a` is not an
+        array, a conversion is attempted.
+    axis : None or int or tuple of ints, optional
+        Axis or axes along which the variance is computed.  The default is to
+        compute the variance of the flattened array.
+        If this is a tuple of ints, a variance is performed over multiple axes,
+        instead of a single axis or all the axes as before.
+    dtype : data-type, optional
+        Type to use in computing the variance.  For arrays of integer type
+        the default is `float`; for arrays of float types it is the same as
+        the array type.
+    out : BlockArray, optional
+        Alternate output array in which to place the result.  It must have
+        the same shape as the expected output, but the type is cast if
+        necessary.
+    ddof : int, optional
+        "Delta Degrees of Freedom": the divisor used in the calculation is
+        ``N - ddof``, where ``N`` represents the number of elements. By
+        default `ddof` is zero.
+    keepdims : bool, optional
+        If this is set to True, the axes which are reduced are left
+        in the result as dimensions with size one. With this option,
+        the result will broadcast correctly against the input array.
+
+        If the default value is passed, then `keepdims` will not be
+        passed through to the `var` method of sub-classes of
+        `BlockArray`, however any non-default value will be.  If the
+        sub-class' method does not implement `keepdims` any
+        exceptions will be raised.
+
+    Returns
+    -------
+    variance : BlockArray, see dtype parameter above
+        If ``out=None``, returns a new array containing the variance;
+        otherwise, a reference to the output array is returned.
+
+    See Also
+    --------
+    std, mean, nanmean, nanstd, nanvar
+
+    Notes
+    -----
+    The variance is the average of the squared deviations from the mean,
+    i.e.,  ``var = mean(abs(x - x.mean())**2)``.
+
+    The mean is normally calculated as ``x.sum() / N``, where ``N = len(x)``.
+    If, however, `ddof` is specified, the divisor ``N - ddof`` is used
+    instead.  In standard statistical practice, ``ddof=1`` provides an
+    unbiased estimator of the variance of a hypothetical infinite population.
+    ``ddof=0`` provides a maximum likelihood estimate of the variance for
+    normally distributed variables.
+
+    Note that for complex numbers, the absolute value is taken before
+    squaring, so that the result is always real and nonnegative.
+
+    'out' is currently not supported.
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> a = nps.array([[1, 2], [3, 4]]) # doctest: +SKIP
+    >>> nps.var(a).get()  # doctest: +SKIP
+    array(1.25)
+    >>> nps.var(a, axis=0).get()  # doctest: +SKIP
+    array([1.,  1.])
+    >>> nps.var(a, axis=1).get()  # doctest: +SKIP
+    array([0.25,  0.25])
+    """
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().var(a, axis=axis, ddof=ddof, keepdims=keepdims, dtype=dtype)
 
 
-@derived_from(np)
 def std(a: BlockArray, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+    """Compute the standard deviation along the specified axis.
+
+    This docstring was copied from numpy.std.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Returns the standard deviation, a measure of the spread of a distribution,
+    of the array elements. The standard deviation is computed for the
+    flattened array by default, otherwise over the specified axis.
+
+    Parameters
+    ----------
+    a : BlockArray
+        Calculate the standard deviation of these values.
+    axis : None or int or tuple of ints, optional
+        Axis or axes along which the standard deviation is computed. The
+        default is to compute the standard deviation of the flattened array.
+        If this is a tuple of ints, a standard deviation is performed over
+        multiple axes, instead of a single axis or all the axes as before.
+    dtype : dtype, optional
+        Type to use in computing the standard deviation. For arrays of
+        integer type the default is None.
+    out : BlockArray, optional
+        Alternative output array in which to place the result. It must have
+        the same shape as the expected output but the type (of the calculated
+        values) will be cast if necessary.
+    ddof : int, optional
+        Means Delta Degrees of Freedom.  The divisor used in calculations
+        is ``N - ddof``, where ``N`` represents the number of elements.
+        By default `ddof` is zero.
+    keepdims : bool, optional
+        If this is set to True, the axes which are reduced are left
+        in the result as dimensions with size one. With this option,
+        the result will broadcast correctly against the input array.
+        If the default value is passed, then `keepdims` will not be
+        passed through to the `std` method of sub-classes of
+        `BlockArray`, however any non-default value will be.  If the
+        sub-class' method does not implement `keepdims` any
+        exceptions will be raised.
+
+    Returns
+    -------
+    standard_deviation : BlockArray, see dtype parameter above.
+        If `out` is None, return a new array containing the standard deviation,
+        otherwise return a reference to the output array.
+
+    See Also
+    --------
+    var, mean, nanmean, nanstd, nanvar
+
+    Notes
+    -----
+    The standard deviation is the square root of the average of the squared
+    deviations from the mean, i.e., ``std = sqrt(mean(abs(x - x.mean())**2))``.
+
+    The average squared deviation is normally calculated as
+    ``x.sum() / N``, where ``N = len(x)``.  If, however, `ddof` is specified,
+    the divisor ``N - ddof`` is used instead. In standard statistical
+    practice, ``ddof=1`` provides an unbiased estimator of the variance
+    of the infinite population. ``ddof=0`` provides a maximum likelihood
+    estimate of the variance for normally distributed variables. The
+    standard deviation computed in this function is the square root of
+    the estimated variance, so even with ``ddof=1``, it will not be an
+    unbiased estimate of the standard deviation per se.
+
+    Note that, for complex numbers, `std` takes the absolute
+    value before squaring, so that the result is always real and nonnegative.
+
+    'out' is currently not supported.
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> a = nps.array([[1, 2], [3, 4]])  # doctest: +SKIP
+    >>> nps.std(a).get()  # doctest: +SKIP
+    array(1.1180339887498949) # may vary
+    >>> nps.std(a, axis=0).get()  # doctest: +SKIP
+    array([1.,  1.])
+    >>> nps.std(a, axis=1).get()  # doctest: +SKIP
+    array([0.5,  0.5])
+    """
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().std(a, axis=axis, ddof=ddof, keepdims=keepdims, dtype=dtype)
@@ -2552,7 +3197,6 @@ def any(a: BlockArray, axis=None, out=None, keepdims=False):
     return _instance().reduce("any", a, axis=axis, keepdims=keepdims)
 
 
-@derived_from(np)
 def average(
     a: BlockArray,
     axis: Union[None, int] = None,
@@ -2561,15 +3205,92 @@ def average(
 ) -> Union[BlockArray, Tuple[BlockArray, BlockArray]]:
     """Compute the weighted average along the specified axis.
 
-    Args:
-        a: BlockArray to be averaged.
-        axis: Axis along which to average `a`.
-        weights: BlockArray of weights associated with `a`.
-        returned: Whether to return the sum of the weights.
+    This docstring was copied from numpy.average.
 
-    Returns:
-        The average along the specified axis. If `returned` is True, return a tuple with the
-        average as the first element and the sum of the weights as the second element.
+    Some inconsistencies with the NumS version may exist.
+
+    Compute the weighted average along the specified axis.
+
+    Parameters
+    ----------
+    a : BlockArray
+        Array containing data to be averaged. If `a` is not an array, a
+        conversion is attempted.
+    axis : None or int or tuple of ints, optional
+        Axis or axes along which to average `a`.  The default,
+        axis=None, will average over all of the elements of the input array.
+        If axis is negative it counts from the last to the first axis.
+        If axis is a tuple of ints, averaging is performed on all of the axes
+        specified in the tuple instead of a single axis or all the axes as
+        before.
+    weights : BlockArray, optional
+        An array of weights associated with the values in `a`. Each value in
+        `a` contributes to the average according to its associated weight.
+        The weights array can either be 1-D (in which case its length must be
+        the size of `a` along the given axis) or of the same shape as `a`.
+        If `weights=None`, then all data in `a` are assumed to have a
+        weight equal to one.  The 1-D calculation is::
+
+            avg = sum(a * weights) / sum(weights)
+
+        The only constraint on `weights` is that `sum(weights)` must not be 0.
+    returned : bool, optional
+        Default is `False`. If `True`, the tuple (`average`, `sum_of_weights`)
+        is returned, otherwise only the average is returned.
+        If `weights=None`, `sum_of_weights` is equivalent to the number of
+        elements over which the average is taken.
+
+    Returns
+    -------
+    retval, [sum_of_weights] : array_type or double
+        Return the average along the specified axis. When `returned` is `True`,
+        return a tuple with the average as the first element and the sum
+        of the weights as the second element. `sum_of_weights` is of the
+        same type as `retval`. The result dtype follows a genereal pattern.
+        If `weights` is None, the result dtype will be that of `a` , or ``float64``
+        if `a` is integral. Otherwise, if `weights` is not None and `a` is non-
+        integral, the result type will be the type of lowest precision capable of
+        representing values of both `a` and `weights`. If `a` happens to be
+        integral, the previous rules still applies but the result dtype will
+        at least be ``float``.
+
+    Raises
+    ------
+    ZeroDivisionError
+        When all weights along axis are zero. See `numpy.ma.average` for a
+        version robust to this type of error.
+    TypeError
+        When the length of 1D `weights` is not the same as the shape of `a`
+        along axis.
+
+    See Also
+    --------
+    mean
+
+    Notes
+    -----
+    Only single 'axis' is currently supported.
+
+    1D weights broadcasting is currently not supported.
+
+    Weights along one or more axes sum to zero.
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> data = nps.arange(1, 5)  # doctest: +SKIP
+    >>> data.get()  # doctest: +SKIP
+    array([1, 2, 3, 4])
+    >>> nps.average(data).get()  # doctest: +SKIP
+    array(2.5)
+
+    >>> data = nps.arange(6).reshape((3,2))  # doctest: +SKIP
+    >>> data.get()  # doctest: +SKIP
+    array([[0, 1],
+           [2, 3],
+           [4, 5]])
     """
     if axis and not isinstance(axis, int):
         raise NotImplementedError("Only single 'axis' is currently supported.")
@@ -2600,13 +3321,55 @@ def average(
 
 @derived_from(np)
 def median(a: BlockArray, axis=None, out=None, keepdims=False) -> BlockArray:
-    """Compute the median of a BlockArray.
+    """Compute the median along the specified axis.
 
-    Args:
-        a: A BlockArray.
+    This docstring was copied from numpy.median.
 
-    Returns:
-        The median value.
+    Some inconsistencies with the NumS version may exist.
+
+    Returns the median of the array elements.
+
+    Parameters
+    ----------
+    a : BlockArray
+        Input array or object that can be converted to an array.
+    axis : {int, sequence of int, None}, optional
+        Axis or axes along which the medians are computed. The default
+        is to compute the median along a flattened version of the array.
+    out : BlockArray, optional
+        Alternative output array in which to place the result. It must
+        have the same shape and buffer length as the expected output,
+        but the type (of the output) will be cast if necessary.
+    keepdims : bool, optional
+        If this is set to True, the axes which are reduced are left
+        in the result as dimensions with size one. With this option,
+        the result will broadcast correctly against the original `arr`.
+
+    Returns
+    -------
+    median : BlockArray
+        A new array holding the result. If the input contains integers
+        or floats smaller than ``float64``, then the output data-type is
+        ``nps.float64``.  Otherwise, the data-type of the output is the
+        same as that of the input. If `out` is specified, that array is
+        returned instead.
+
+    See Also
+    --------
+    mean, percentile
+
+    Notes
+    -----
+    Given a vector ``V`` of length ``N``, the median of ``V`` is the
+    middle value of a sorted copy of ``V``, ``V_sorted`` - i
+    e., ``V_sorted[(N-1)/2]``, when ``N`` is odd, and the average of the
+    two middle values of ``V_sorted`` when ``N`` is even.
+
+    'axis' is currently not supported.
+
+    'out' is currently not supported.
+
+    'keepdims' is currently not supported.
     """
     if axis is not None:
         raise NotImplementedError("'axis' is currently not supported.")
@@ -2646,43 +3409,536 @@ def top_k(
 ############################################
 
 
-@derived_from(np)
 def nanmax(a: BlockArray, axis=None, out=None, keepdims=False):
+    """Return the maximum of an array or maximum along an axis, ignoring any
+    NaNs.  When all-NaN slices are encountered a ``RuntimeWarning`` is
+    raised and NaN is returned for that slice.
+
+    This docstring was copied from numpy.nanmax.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Parameters
+    ----------
+    a : BlockArray
+        Array containing numbers whose maximum is desired. If `a` is not an
+        array, a conversion is attempted.
+    axis : {int, tuple of int, None}, optional
+        Axis or axes along which the maximum is computed. The default is to compute
+        the maximum of the flattened array.
+    out : BlockArray, optional
+        Alternate output array in which to place the result.  The default
+        is ``None``; if provided, it must have the same shape as the
+        expected output, but the type will be cast if necessary.
+    keepdims : bool, optional
+        If this is set to True, the axes which are reduced are left
+        in the result as dimensions with size one. With this option,
+        the result will broadcast correctly against the original `a`.
+        If the value is anything but the default, then
+        `keepdims` will be passed through to the `max` method
+        of sub-classes of `ndarray`.  If the sub-classes methods
+        does not implement `keepdims` any exceptions will be raised.
+
+    Returns
+    -------
+    nanmax : BlockArray
+        An array with the same shape as `a`, with the specified axis removed.
+        If `a` is a 0-d array, or if axis is None, an ndarray scalar is
+        returned.  The same dtype as `a` is returned.
+
+    See Also
+    --------
+    nanmin :
+        The minimum value of an array along a given axis, ignoring any NaNs.
+    amax :
+        The maximum value of an array along a given axis, propagating any NaNs.
+    fmax :
+        Element-wise maximum of two arrays, ignoring any NaNs.
+    maximum :
+        Element-wise maximum of two arrays, propagating any NaNs.
+    isnan :
+        Shows which elements are Not a Number (NaN).
+    isfinite:
+        Shows which elements are neither NaN nor infinity.
+
+    amin, fmin, minimum
+
+    Notes
+    -----
+    NumPy uses the IEEE Standard for Binary Floating-Point for Arithmetic
+    (IEEE 754). This means that Not a Number is not equivalent to infinity.
+    Positive infinity is treated as a very large number and negative
+    infinity is treated as a very small (i.e. negative) number.
+
+    If the input has a integer type the function is equivalent to nps.max.
+
+    'out' is currently not supported.
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> a = nps.array([[1, 2], [3, nps.nan]])  # doctest: +SKIP
+    >>> nps.nanmax(a).get()  # doctest: +SKIP
+    array(3.)
+    >>> nps.nanmax(a, axis=0).get()  # doctest: +SKIP
+    array([3.,  2.])
+    >>> nps.nanmax(a, axis=1).get()  # doctest: +SKIP
+    array([2.,  3.])
+    """
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().reduce("nanmax", a, axis=axis, keepdims=keepdims)
 
 
-@derived_from(np)
 def nanmin(a: BlockArray, axis=None, out=None, keepdims=False):
+    """Return minimum of an array or minimum along an axis, ignoring any NaNs.
+    When all-NaN slices are encountered a ``RuntimeWarning`` is raised and
+    Nan is returned for that slice.
+
+    This docstring was copied from numpy.nanmin.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Parameters
+    ----------
+    a : BlockArray
+        Array containing numbers whose minimum is desired. If `a` is not an
+        array, a conversion is attempted.
+    axis : {int, tuple of int, None}, optional
+        Axis or axes along which the minimum is computed. The default is to compute
+        the minimum of the flattened array.
+    out : BlockArray, optional
+        Alternate output array in which to place the result.  The default
+        is ``None``; if provided, it must have the same shape as the
+        expected output, but the type will be cast if necessary.
+    keepdims : bool, optional
+        If this is set to True, the axes which are reduced are left
+        in the result as dimensions with size one. With this option,
+        the result will broadcast correctly against the original `a`.
+
+        If the value is anything but the default, then
+        `keepdims` will be passed through to the `min` method
+        of sub-classes of `ndarray`.  If the sub-classes methods
+        does not implement `keepdims` any exceptions will be raised.
+
+    Returns
+    -------
+    nanmin : BlockArray
+        An array with the same shape as `a`, with the specified axis
+        removed.  If `a` is a 0-d array, or if axis is None, an ndarray
+        scalar is returned.  The same dtype as `a` is returned.
+
+    See Also
+    --------
+    nanmax :
+        The maximum value of an array along a given axis, ignoring any NaNs.
+    amin :
+        The minimum value of an array along a given axis, propagating any NaNs.
+    fmin :
+        Element-wise minimum of two arrays, ignoring any NaNs.
+    minimum :
+        Element-wise minimum of two arrays, propagating any NaNs.
+    isnan :
+        Shows which elements are Not a Number (NaN).
+    isfinite:
+        Shows which elements are neither NaN nor infinity.
+
+    amax, fmax, maximum
+
+    Notes
+    -----
+    NumPy uses the IEEE Standard for Binary Floating-Point for Arithmetic
+    (IEEE 754). This means that Not a Number is not equivalent to infinity.
+    Positive infinity is treated as a very large number and negative
+    infinity is treated as a very small (i.e. negative) number.
+
+    If the input has a integer type the function is equivalent to nps.min.
+
+    'out' is currently not supported.
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> a = nps.array([[1, 2], [3, nps.nan]])  # doctest: +SKIP
+    >>> nps.nanmin(a).get()  # doctest: +SKIP
+    arary(1.)
+    >>> nps.nanmin(a, axis=0).get()  # doctest: +SKIP
+    array([1.,  2.])
+    >>> nps.nanmin(a, axis=1).get()  # doctest: +SKIP
+    array([1.,  3.])
+    """
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().reduce("nanmin", a, axis=axis, keepdims=keepdims)
 
 
-@derived_from(np)
 def nansum(a: BlockArray, axis=None, dtype=None, out=None, keepdims=False):
+    """Return the sum of array elements over a given axis treating Not a
+    Numbers (NaNs) as zero.
+
+    This docstring was copied from numpy.nansum.
+
+    Some inconsistencies with the NumS version may exist.
+
+    In NumPy versions <= 1.9.0 Nan is returned for slices that are all-NaN or
+    empty. In later versions zero is returned.
+
+    Parameters
+    ----------
+    a : BlockArray
+        Array containing numbers whose sum is desired. If `a` is not an
+        array, a conversion is attempted.
+    axis : {int, tuple of int, None}, optional
+        Axis or axes along which the sum is computed. The default is to compute the
+        sum of the flattened array.
+    dtype : data-type, optional
+        The type of the returned array and of the accumulator in which the
+        elements are summed.  By default, the dtype of `a` is used.  An
+        exception is when `a` has an integer type with less precision than
+        the platform (u)intp. In that case, the default will be either
+        (u)int32 or (u)int64 depending on whether the platform is 32 or 64
+        bits. For inexact inputs, dtype must be inexact.
+    out : BlockArray, optional
+        Alternate output array in which to place the result.  The default
+        is ``None``. If provided, it must have the same shape as the
+        expected output, but the type will be cast if necessary.  See
+        `ufuncs-output-type` for more details. The casting of NaN to integer
+        can yield unexpected results.
+    keepdims : bool, optional
+        If this is set to True, the axes which are reduced are left
+        in the result as dimensions with size one. With this option,
+        the result will broadcast correctly against the original `a`.
+        If the value is anything but the default, then
+        `keepdims` will be passed through to the `mean` or `sum` methods
+        of sub-classes of `BlockArray`.  If the sub-classes methods
+        does not implement `keepdims` any exceptions will be raised.
+
+    Returns
+    -------
+    nansum : BlockArray.
+        A new array holding the result is returned unless `out` is
+        specified, in which it is returned. The result has the same
+        size as `a`, and the same shape as `a` if `axis` is not None
+        or `a` is a 1-d array.
+
+    See Also
+    --------
+    numpy.sum : Sum across array propagating NaNs.
+    isnan : Show which elements are NaN.
+    isfinite: Show which elements are not NaN or +/-inf.
+
+    Notes
+    -----
+    If both positive and negative infinity are present, the sum will be Not
+    A Number (NaN).
+
+    'out' is currently not supported.
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> nps.nansum(nps.array([1])).get()  # doctest: +SKIP
+    array(1)
+    >>> nps.nansum(nps.array([1, nps.nan])).get()  # doctest: +SKIP
+    array(1.)
+    >>> a = nps.array([[1, 1], [1, nps.nan]])  # doctest: +SKIP
+    >>> nps.nansum(a).get()  # doctest: +SKIP
+    array(3.)
+    >>> nps.nansum(a, axis=0).get()  # doctest: +SKIP
+    array([2.,  1.])
+    >>> nps.nansum(nps.array([1, nps.nan, nps.inf])).get()  # doctest: +SKIP
+    array(inf)
+    >>> nps.nansum(nps.array([1, nps.nan, nps.NINF])).get()  # doctest: +SKIP
+    array(-inf)
+    """
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().reduce("nansum", a, axis=axis, dtype=dtype, keepdims=keepdims)
 
 
-@derived_from(np)
 def nanmean(a: BlockArray, axis=None, dtype=None, out=None, keepdims=False):
+    """Compute the arithmetic mean along the specified axis, ignoring NaNs.
+
+    This docstring was copied from numpy.nanmean.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Returns the average of the array elements.  The average is taken over
+    the flattened array by default, otherwise over the specified axis.
+    `float` intermediate and return values are used for integer inputs.
+
+    For all-NaN slices, NaN is returned and a `RuntimeWarning` is raised.
+
+    Parameters
+    ----------
+    a : BlockArray
+        Array containing numbers whose mean is desired. If `a` is not an
+        array, a conversion is attempted.
+    axis : {int, tuple of int, None}, optional
+        Axis or axes along which the means are computed. The default is to compute
+        the mean of the flattened array.
+    dtype : data-type, optional
+        Type to use in computing the mean.  For integer inputs, the default
+        is `float64`; for inexact inputs, it is the same as the input
+        dtype.
+    out : BlockArray, optional
+        Alternate output array in which to place the result.  The default
+        is ``None``; if provided, it must have the same shape as the
+        expected output, but the type will be cast if necessary.
+    keepdims : bool, optional
+        If this is set to True, the axes which are reduced are left
+        in the result as dimensions with size one. With this option,
+        the result will broadcast correctly against the original `a`.
+        If the value is anything but the default, then
+        `keepdims` will be passed through to the `mean` or `sum` methods
+        of sub-classes of `ndarray`.  If the sub-classes methods
+        does not implement `keepdims` any exceptions will be raised.
+
+    Returns
+    -------
+    m : BlockArray, see dtype parameter above
+        If `out=None`, returns a new array containing the mean values,
+        otherwise a reference to the output array is returned. Nan is
+        returned for slices that contain only NaNs.
+
+    See Also
+    --------
+    average : Weighted average
+    mean : Arithmetic mean taken while not ignoring NaNs
+    var, nanvar
+
+    Notes
+    -----
+    The arithmetic mean is the sum of the non-NaN elements along the axis
+    divided by the number of non-NaN elements.
+
+    Note that for floating-point input, the mean is computed using the same
+    precision the input has.  Depending on the input data, this can cause
+    the results to be inaccurate, especially for `float32`.  Specifying a
+    higher-precision accumulator using the `dtype` keyword can alleviate
+    this issue.
+
+    'out' is currently not supported.
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> a = nps.array([[1, nps.nan], [3, 4]])  # doctest: +SKIP
+    >>> nps.nanmean(a).get()  # doctest: +SKIP
+    array(2.66666667)
+    >>> nps.nanmean(a, axis=0).get()  # doctest: +SKIP
+    array([2.,  4.])
+    >>> nps.nanmean(a, axis=1).get()  # doctest: +SKIP
+    array([1.,  3.5]) # may vary
+    """
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().nanmean(a, axis=axis, dtype=dtype, keepdims=keepdims)
 
 
-@derived_from(np)
 def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+    """Compute the variance along the specified axis, while ignoring NaNs.
+
+    This docstring was copied from numpy.nanvar.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Returns the variance of the array elements, a measure of the spread of
+    a distribution.  The variance is computed for the flattened array by
+    default, otherwise over the specified axis.
+
+    For all-NaN slices or slices with zero degrees of freedom, NaN is
+    returned and a `RuntimeWarning` is raised.
+
+    Parameters
+    ----------
+    a : BlockArray
+        Array containing numbers whose variance is desired.  If `a` is not an
+        array, a conversion is attempted.
+    axis : {int, tuple of int, None}, optional
+        Axis or axes along which the variance is computed.  The default is to compute
+        the variance of the flattened array.
+    dtype : data-type, optional
+        Type to use in computing the variance.  For arrays of integer type
+        the default is `float64`; for arrays of float types it is the same as
+        the array type.
+    out : BlockArray, optional
+        Alternate output array in which to place the result.  It must have
+        the same shape as the expected output, but the type is cast if
+        necessary.
+    ddof : int, optional
+        "Delta Degrees of Freedom": the divisor used in the calculation is
+        ``N - ddof``, where ``N`` represents the number of non-NaN
+        elements. By default `ddof` is zero.
+    keepdims : bool, optional
+        If this is set to True, the axes which are reduced are left
+        in the result as dimensions with size one. With this option,
+        the result will broadcast correctly against the original `a`.
+
+
+    Returns
+    -------
+    variance : BlockArray, see dtype parameter above
+        If `out` is None, return a new array containing the variance,
+        otherwise return a reference to the output array. If ddof is >= the
+        number of non-NaN elements in a slice or the slice contains only
+        NaNs, then the result for that slice is NaN.
+
+    See Also
+    --------
+    std : Standard deviation
+    mean : Average
+    var : Variance while not ignoring NaNs
+    nanstd, nanmean
+
+    Notes
+    -----
+    The variance is the average of the squared deviations from the mean,
+    i.e.,  ``var = mean(abs(x - x.mean())**2)``.
+
+    The mean is normally calculated as ``x.sum() / N``, where ``N = len(x)``.
+    If, however, `ddof` is specified, the divisor ``N - ddof`` is used
+    instead.  In standard statistical practice, ``ddof=1`` provides an
+    unbiased estimator of the variance of a hypothetical infinite
+    population.  ``ddof=0`` provides a maximum likelihood estimate of the
+    variance for normally distributed variables.
+
+    Note that for complex numbers, the absolute value is taken before
+    squaring, so that the result is always real and nonnegative.
+
+    For floating-point input, the variance is computed using the same
+    precision the input has.  Depending on the input data, this can cause
+    the results to be inaccurate, especially for `float32` (see example
+    below).  Specifying a higher-accuracy accumulator using the ``dtype``
+    keyword can alleviate this issue.
+
+    For this function to work on sub-classes of ndarray, they must define
+    `sum` with the kwarg `keepdims`
+
+    'out' is currently not supported.
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> a = nps.array([[1, nps.nan], [3, 4]])  # doctest: +SKIP
+    >>> nps.nanvar(a).get()  # doctest: +SKIP
+    array(1.55555556)
+    >>> nps.nanvar(a, axis=0).get()  # doctest: +SKIP
+    array([1.,  0.])
+    >>> nps.nanvar(a, axis=1).get()  # doctest: +SKIP
+    array([0.,  0.25])  # may vary
+    """
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().nanvar(a, axis=axis, dtype=dtype, ddof=ddof, keepdims=keepdims)
 
 
-@derived_from(np)
 def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+    """Compute the standard deviation along the specified axis, while
+    ignoring NaNs.
+
+    This docstring was copied from numpy.nanstd.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Returns the standard deviation, a measure of the spread of a
+    distribution, of the non-NaN array elements. The standard deviation is
+    computed for the flattened array by default, otherwise over the
+    specified axis.
+
+    For all-NaN slices or slices with zero degrees of freedom, NaN is
+    returned and a `RuntimeWarning` is raised.
+
+    Parameters
+    ----------
+    a : BlockArray
+        Calculate the standard deviation of the non-NaN values.
+    axis : {int, tuple of int, None}, optional
+        Axis or axes along which the standard deviation is computed. The default is
+        to compute the standard deviation of the flattened array.
+    dtype : dtype, optional
+        Type to use in computing the standard deviation. For arrays of
+        integer type the default is float64, for arrays of float types it
+        is the same as the array type.
+    out : BlockArray, optional
+        Alternative output array in which to place the result. It must have
+        the same shape as the expected output but the type (of the
+        calculated values) will be cast if necessary.
+    ddof : int, optional
+        Means Delta Degrees of Freedom.  The divisor used in calculations
+        is ``N - ddof``, where ``N`` represents the number of non-NaN
+        elements.  By default `ddof` is zero.
+    keepdims : bool, optional
+        If this is set to True, the axes which are reduced are left
+        in the result as dimensions with size one. With this option,
+        the result will broadcast correctly against the original `a`.
+        If this value is anything but the default it is passed through
+        as-is to the relevant functions of the sub-classes.  If these
+        functions do not have a `keepdims` kwarg, a RuntimeError will
+        be raised.
+
+    Returns
+    -------
+    standard_deviation : BlockArray, see dtype parameter above.
+        If `out` is None, return a new array containing the standard
+        deviation, otherwise return a reference to the output array. If
+        ddof is >= the number of non-NaN elements in a slice or the slice
+        contains only NaNs, then the result for that slice is NaN.
+
+    See Also
+    --------
+    var, mean, std
+    nanvar, nanmean
+
+    Notes
+    -----
+    The standard deviation is the square root of the average of the squared
+    deviations from the mean: ``std = sqrt(mean(abs(x - x.mean())**2))``.
+
+    The average squared deviation is normally calculated as
+    ``x.sum() / N``, where ``N = len(x)``.  If, however, `ddof` is
+    specified, the divisor ``N - ddof`` is used instead. In standard
+    statistical practice, ``ddof=1`` provides an unbiased estimator of the
+    variance of the infinite population. ``ddof=0`` provides a maximum
+    likelihood estimate of the variance for normally distributed variables.
+    The standard deviation computed in this function is the square root of
+    the estimated variance, so even with ``ddof=1``, it will not be an
+    unbiased estimate of the standard deviation per se.
+
+    Note that, for complex numbers, `std` takes the absolute value before
+    squaring, so that the result is always real and nonnegative.
+
+    For floating-point input, the *std* is computed using the same
+    precision the input has. Depending on the input data, this can cause
+    the results to be inaccurate, especially for float32 (see example
+    below).  Specifying a higher-accuracy accumulator using the `dtype`
+    keyword can alleviate this issue.
+
+    'out' is currently not supported'
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> a = nps.array([[1, nps.nan], [3, 4]])  # doctest: +SKIP
+    >>> nps.nanstd(a).get()  # doctest: +SKIP
+    array(1.24721913)
+    >>> nps.nanstd(a, axis=0).get()  # doctest: +SKIP
+    array([1., 0.])
+    >>> nps.nanstd(a, axis=1).get()  # doctest: +SKIP
+    array([0.,  0.5]) # may vary
+    """
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().nanstd(a, axis=axis, dtype=dtype, ddof=ddof, keepdims=keepdims)
@@ -2695,20 +3951,158 @@ def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
 
 @derived_from(np)
 def array_equal(a: BlockArray, b: BlockArray, equal_nan=False) -> BlockArray:
+    """True if two arrays have the same shape and elements, False otherwise.
+
+    This docstring was copied from numpy.array_equal.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Parameters
+    ----------
+    a1, a2 : BlockArray
+        Input arrays.
+    equal_nan : bool
+        Whether to compare NaN's as equal. If the dtype of a1 and a2 is
+        complex, values will be considered equal if either the real or the
+        imaginary component of a given value is ``nan``.
+
+    Returns
+    -------
+    b : bool
+        Returns True if the arrays are equal.
+
+    See Also
+    --------
+    allclose: Returns True if two arrays are element-wise equal within a
+              tolerance.
+    array_equiv: Returns True if input arrays are shape consistent and all
+                 elements equal.
+
+    Notes
+    -----
+    equal_nan=True not supported.
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> nps.array_equal(nps.array([1, 2]), nps.array([1, 2])).get()  # doctest: +SKIP
+    array(True)
+    >>> a = nps.array([1, nps.nan])  # doctest: +SKIP
+    >>> nps.array_equal(a, a).get()  # doctest: +SKIP
+    array(False)
+    """
     if equal_nan is not False:
         raise NotImplementedError("equal_nan=True not supported.")
     return _instance().array_equal(a, b)
 
 
-@derived_from(np)
 def array_equiv(a: BlockArray, b: BlockArray) -> BlockArray:
+    """Returns True if input arrays are shape consistent and all elements equal.
+
+    This docstring was copied from numpy.array_equiv.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Shape consistent means they are either the same shape, or one input array
+    can be broadcasted to create the same shape as the other one.
+
+    Parameters
+    ----------
+    a1, a2 : BlockArray
+        Input arrays.
+
+    Returns
+    -------
+    out : BlockArray
+        True if equivalent, False otherwise.
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> nps.array_equiv(nps.array([1, 2]), nps.array([1, 2])).get()  # doctest: +SKIP
+    array(True)
+    >>> nps.array_equiv(nps.array([1, 2]), nps.array([1, 3])).get()  # doctest: +SKIP
+    array(False)
+    """
     return _instance().array_equiv(a, b)
 
 
-@derived_from(np)
 def allclose(
     a: BlockArray, b: BlockArray, rtol=1.0e-5, atol=1.0e-8, equal_nan=False
 ) -> BlockArray:
+    """Returns True if two arrays are element-wise equal within a tolerance.
+
+    This docstring was copied from numpy.allclose.
+
+    Some inconsistencies with the NumS version may exist.
+
+    The tolerance values are positive, typically very small numbers.  The
+    relative difference (`rtol` * abs(`b`)) and the absolute difference
+    `atol` are added together to compare against the absolute difference
+    between `a` and `b`.
+
+    NaNs are treated as equal if they are in the same place and if
+    ``equal_nan=True``.  Infs are treated as equal if they are in the same
+    place and of the same sign in both arrays.
+
+    Parameters
+    ----------
+    a, b : BlockArray
+        Input arrays to compare.
+    rtol : float
+        The relative tolerance parameter (see Notes).
+    atol : float
+        The absolute tolerance parameter (see Notes).
+    equal_nan : bool
+        Whether to compare NaN's as equal.  If True, NaN's in `a` will be
+        considered equal to NaN's in `b` in the output array.
+
+    Returns
+    -------
+    allclose : bool
+        Returns True if the two arrays are equal within the given
+        tolerance; False otherwise.
+
+    See Also
+    --------
+    isclose, all, any, equal
+
+    Notes
+    -----
+    If the following equation is element-wise True, then allclose returns
+    True.
+
+     absolute(`a` - `b`) <= (`atol` + `rtol` * absolute(`b`))
+
+    The above equation is not symmetric in `a` and `b`, so that
+    ``allclose(a, b)`` might be different from ``allclose(b, a)`` in
+    some rare cases.
+
+    The comparison of `a` and `b` uses standard broadcasting, which
+    means that `a` and `b` need not have the same shape in order for
+    ``allclose(a, b)`` to evaluate to True.  The same is true for
+    `equal` but not `array_equal`.
+
+    equal_nan=True not supported.
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> nps.allclose(nps.array([1e10,1e-7]), nps.array([1.00001e10,1e-8])).get()  # doctest: +SKIP
+    array(False)
+    >>> nps.allclose(nps.array([1e10,1e-8]), nps.array([1.00001e10,1e-9])).get()  # doctest: +SKIP
+    array(True)
+    >>> nps.allclose(nps.array([1e10,1e-8]), nps.array([1.0001e10,1e-9])).get()  # doctest: +SKIP
+    array(False)
+    >>> nps.allclose(nps.array([1.0, nps.nan]), nps.array([1.0, nps.nan])).get()  # doctest: +SKIP
+    array(False)
+    """
     if equal_nan is not False:
         raise NotImplementedError("equal_nan=True not supported.")
     return _instance().allclose(a, b, rtol, atol)
