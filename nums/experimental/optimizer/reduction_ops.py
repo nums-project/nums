@@ -14,6 +14,7 @@
 # limitations under the License.
 
 
+from typing import List, Set
 import copy
 
 import numpy as np
@@ -134,24 +135,25 @@ class TreeReductionOp(TreeNode):
             frontier_nodes += child.get_frontier()
         return frontier_nodes
 
-    def _group_leafs(self):
+    def _group_leafs(self) -> List[Set]:
+        # Group leafs by node.
         tree_nodes = sorted(
             list(self.leafs_dict.values()), key=lambda x: x.tree_node_id
         )
         grouped_leafs = {}
         leaf_set = set()
         for device_id in self.cluster_state.device_ids:
-            if device_id not in grouped_leafs:
-                grouped_leafs[device_id] = set()
+            if device_id.node_id not in grouped_leafs:
+                grouped_leafs[device_id.node_id] = set()
             for tree_node in tree_nodes:
                 assert isinstance(tree_node, Leaf)
                 leaf: Leaf = tree_node
-                if device_id in self.cluster_state.get_block_device_ids(leaf.block.id):
+                if device_id.node_id in self.cluster_state.get_block_node_ids(leaf.block.id):
                     if leaf.tree_node_id not in leaf_set:
-                        grouped_leafs[device_id].add(leaf.tree_node_id)
+                        grouped_leafs[device_id.node_id].add(leaf.tree_node_id)
                         leaf_set.add(leaf.tree_node_id)
         assert len(leaf_set) == len(tree_nodes)
-        return grouped_leafs
+        return list(grouped_leafs.values())
 
     def _get_actions(self, leaf_ids, **kwargs):
         assert len(leaf_ids) == 2
@@ -183,8 +185,8 @@ class TreeReductionOp(TreeNode):
                     # The ReductionOp should have returned the last leaf upon executing
                     # the last pair of leaves.
                     raise Exception("Unexpected state.")
-                grouped_leafs: dict = self._group_leafs()
-                for leaf_set in grouped_leafs.values():
+                grouped_leafs: List[Set] = self._group_leafs()
+                for leaf_set in grouped_leafs:
                     for tnode_id in leaf_set:
                         self.action_leaf_q.append(tnode_id)
             leaf_id_pair = tuple(self.action_leaf_q[:2])
