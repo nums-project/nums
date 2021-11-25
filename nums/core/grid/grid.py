@@ -168,6 +168,9 @@ class DeviceGrid(object):
 
         unique_node_ids = set()
         node_addr_check = set()
+        # TODO: For nested cyclic, when given workers,
+        #  order device list so that it cycles nodes.
+        #  This will enable nested cyclic layouts over arbitrary number of dimensions.
         for i, cluster_entry in enumerate(self.get_cluster_entry_iterator()):
             device_id: DeviceID = self.device_ids[i]
             # Check some assumptions if workers_per_node is given.
