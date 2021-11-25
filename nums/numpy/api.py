@@ -24,7 +24,6 @@ import scipy.stats
 from nums.core.application_manager import instance as _instance
 from nums.core.array.blockarray import BlockArray
 from nums.numpy import numpy_utils
-from nums.core.utils import derived_from
 
 
 # pylint: disable = redefined-builtin, too-many-lines
@@ -2607,7 +2606,7 @@ def all(a: BlockArray, axis=None, out=None, keepdims=False):
 
 
 def alltrue(a: BlockArray, axis=None, out=None, dtype=None, keepdims=False):
-    """ Check if all elements of input array are true.
+    """Check if all elements of input array are true.
 
     This docstring was copied from numpy.alltrue.
 
@@ -2702,7 +2701,7 @@ def any(a: BlockArray, axis=None, out=None, keepdims=False):
 # Stats
 ############################################
 
-@derived_from(np)
+
 def min(
     a: BlockArray, axis=None, out=None, keepdims=False, initial=None, where=None
 ) -> BlockArray:
@@ -3626,8 +3625,6 @@ def average(
     return avg, weights_sum
 
 
-
-@derived_from(np)
 def quantile(
     a: BlockArray,
     q: float,
@@ -3862,7 +3859,6 @@ def percentile(
     return _instance().percentile(a, q, interpolation=interpolation)
 
 
-@derived_from(np)
 def median(a: BlockArray, axis=None, out=None, keepdims=False) -> BlockArray:
     """Compute the median along the specified axis.
 
@@ -4492,7 +4488,6 @@ def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
 ############################################
 
 
-@derived_from(np)
 def array_equal(a: BlockArray, b: BlockArray, equal_nan=False) -> BlockArray:
     """True if two arrays have the same shape and elements, False otherwise.
 
@@ -5898,7 +5893,6 @@ def exp2(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockAr
     )
 
 
-@derived_from(np)
 def expm1(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     """Calculate ``exp(x) - 1`` for all elements in the array.
 
@@ -6472,7 +6466,6 @@ def log(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArr
     )
 
 
-@derived_from(np)
 def log10(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     """Return the base 10 logarithm of the input array, element-wise.
 
@@ -7770,7 +7763,6 @@ def add(
     )
 
 
-@derived_from(np)
 def arctan2(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -7867,7 +7859,8 @@ def arctan2(
 
     >>> nps.arctan2(nps.array([1., -1.]), nps.array([0., 0.])).get()  # doctest: +SKIP
     array([ 1.57079633, -1.57079633])
-    >>> nps.arctan2(nps.array([0., 0., nps.inf]), nps.array([+0., -0., nps.inf])).get()  # doctest: +SKIP
+    >>> nps.arctan2(nps.array([0., 0., nps.inf]),
+    ...     nps.array([+0., -0., nps.inf])).get()  # doctest: +SKIP
     array([ 0.        ,  3.14159265,  0.78539816])
     """
     return _instance().map_bop(
@@ -7880,7 +7873,6 @@ def arctan2(
     )
 
 
-@derived_from(np)
 def bitwise_and(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -8302,7 +8294,6 @@ def equal(
     )
 
 
-@derived_from(np)
 def float_power(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -8504,7 +8495,8 @@ def fmax(
     array([[ 1. ,  2. ],
            [ 0.5,  2. ]])
 
-    >>> nps.fmax(nps.array([nps.nan, 0, nps.nan]),nps.array([0, nps.nan, nps.nan])).get()  # doctest: +SKIP
+    >>> nps.fmax(nps.array([nps.nan, 0, nps.nan]),
+    ...     nps.array([0, nps.nan, nps.nan])).get()  # doctest: +SKIP
     array([ 0.,  0., nan])
     """
     return _instance().map_bop(
@@ -8517,7 +8509,6 @@ def fmax(
     )
 
 
-@derived_from(np)
 def fmin(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -8591,7 +8582,8 @@ def fmin(
     array([[ 0.5,  0. ],
            [ 0. ,  1. ]])
 
-    >>> nps.fmin(nps.array([nps.nan, 0, nps.nan]),nps.array([0, nps.nan, nps.nan])).get()  # doctest: +SKIP
+    >>> nps.fmin(nps.array([nps.nan, 0, nps.nan]),
+    ...     nps.array([0, nps.nan, nps.nan])).get()  # doctest: +SKIP
     array([ 0.,  0., nan])
     """
     return _instance().map_bop(
@@ -8692,7 +8684,6 @@ def fmod(
     )
 
 
-@derived_from(np)
 def gcd(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -8804,7 +8795,6 @@ def greater(
     )
 
 
-@derived_from(np)
 def greater_equal(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -8853,7 +8843,7 @@ def greater_equal(
 
     >>> nps.greater_equal(nps.array([4, 2, 1]), nps.array([2, 2, 2])).get()  # doctest: +SKIP
     array([ True, True, False])
-        """
+    """
     return _instance().map_bop(
         op_name="greater_equal",
         arr_1=x1,
@@ -8935,7 +8925,6 @@ def heaviside(
     )
 
 
-@derived_from(np)
 def hypot(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -9180,7 +9169,8 @@ def left_shift(
     result and can lead to unexpected results in some cases (see
     :ref:`Casting Rules <ufuncs.casting>`):
 
-    >>> a = nps.left_shift(nps.array(255, dtype=nps.uint8), nps.array(1)) # Expect 254  # doctest: +SKIP
+    >>> a = nps.left_shift(nps.array(255, dtype=nps.uint8),
+    ...     nps.array(1)) # Expect 254  # doctest: +SKIP
     >>> print(a, type(a)) # Unexpected result due to upcasting  # doctest: +SKIP
     510 <class 'nums.core.array.blockarray.BlockArray'>
     """
@@ -9254,7 +9244,6 @@ def less(
     )
 
 
-@derived_from(np)
 def less_equal(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -9451,7 +9440,6 @@ def logaddexp2(
     )
 
 
-@derived_from(np)
 def logical_and(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -9632,7 +9620,8 @@ def logical_xor(
 
     >>> nps.logical_xor(nps.array(True), nps.array(False)).get()  # doctest: +SKIP
     array(True)
-    >>> nps.logical_xor(nps.array([True, True, False, False]), nps.array([True, False, True, False])).get()  # doctest: +SKIP
+    >>> nps.logical_xor(nps.array([True, True, False, False]),
+    ...     nps.array([True, False, True, False])).get()  # doctest: +SKIP
     array([False,  True,  True, False])
 
     >>> x = nps.arange(5)  # doctest: +SKIP
@@ -9723,7 +9712,8 @@ def maximum(
     array([[ 1. ,  2. ],
            [ 0.5,  2. ]])
 
-    >>> nps.maximum(nps.array([nps.nan, 0, nps.nan]), nps.array([0, nps.nan, nps.nan])).get()  # doctest: +SKIP
+    >>> nps.maximum(nps.array([nps.nan, 0, nps.nan]),
+    ...     nps.array([0, nps.nan, nps.nan])).get()  # doctest: +SKIP
     array([nan, nan, nan])
     >>> nps.maximum(nps.array(nps.Inf), nps.array(1)).get()  # doctest: +SKIP
     arrray(inf)
@@ -9738,7 +9728,6 @@ def maximum(
     )
 
 
-@derived_from(np)
 def minimum(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -9813,7 +9802,8 @@ def minimum(
     array([[ 0.5,  0. ],
            [ 0. ,  1. ]])
 
-    >>> nps.minimum(nps.array([nps.nan, 0, nps.nan]),nps.array([0, nps.nan, nps.nan])).get()  # doctest: +SKIP
+    >>> nps.minimum(nps.array([nps.nan, 0, nps.nan]),
+    ...     nps.array([0, nps.nan, nps.nan])).get()  # doctest: +SKIP
     array([nan, nan, nan])
     >>> nps.minimum(nps.array(-nps.Inf), nps.array(1)).get()  # doctest: +SKIP
     array(-inf)
@@ -10017,7 +10007,6 @@ def nextafter(
     )
 
 
-@derived_from(np)
 def not_equal(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -10209,7 +10198,6 @@ def remainder(
     )
 
 
-@derived_from(np)
 def right_shift(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
@@ -10341,7 +10329,6 @@ def subtract(
     )
 
 
-@derived_from(np)
 def true_divide(
     x1: BlockArray, x2: BlockArray, out: BlockArray = None, where=True, **kwargs
 ) -> BlockArray:
