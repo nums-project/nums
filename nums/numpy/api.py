@@ -26,7 +26,7 @@ from nums.core.array.blockarray import BlockArray
 from nums.numpy import numpy_utils
 
 
-# pylint: disable = redefined-builtin, too-many-lines
+# pylint: disable = redefined-builtin, too-many-lines, W1401
 
 
 def _not_implemented(func):
