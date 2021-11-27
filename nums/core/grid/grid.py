@@ -139,64 +139,55 @@ class DeviceID(object):
 
 
 class DeviceGrid(object):
-    def __init__(self, grid_shape, device_type, device_ids, workers_per_node=None):
-        # TODO (hme): Work out what this becomes in the multi-node multi-device setting.
+    def __init__(self, grid_shape, device_type, device_ids):
         self.grid_shape = grid_shape
         self.device_type = device_type
-        self.device_ids: List[DeviceID] = device_ids
         self.device_grid: np.ndarray = np.empty(shape=self.grid_shape, dtype=object)
-        self.workers_per_node = workers_per_node
-        # For nested layouts.
-        self.node_grid_shape = None
-        self.num_nodes = None
 
-        if self.workers_per_node is not None:
-            self.node_grid_shape = []
-            for dim in self.grid_shape:
-                if dim == 1:
-                    # Special case. Ignore this dim.
-                    self.node_grid_shape.append(1)
-                else:
-                    assert dim % self.workers_per_node == 0
-                    self.node_grid_shape.append(dim // self.workers_per_node)
-            self.node_grid_shape = tuple(self.node_grid_shape)
-            self.num_nodes = np.product(self.node_grid_shape)
-            logging.getLogger(__name__).info("node_grid %s", str(self.node_grid_shape))
-            assert self.num_nodes == len(self.device_ids) // self.workers_per_node
-        else:
-            logging.getLogger(__name__).info("no node_grid.")
+        self._check_devices(device_ids)
+        # Delegate device ordering to subclasses,
+        # so that proper ordering is achieved when given multiple devices/workers per node.
+        device_ids: List[DeviceID] = self._order_device_ids(device_ids)
 
-        unique_node_ids = set()
-        node_addr_check = set()
-        # TODO: For nested cyclic, when given workers,
-        #  order device list so that it cycles nodes.
-        #  This will enable nested cyclic layouts over arbitrary number of dimensions.
-        for i, cluster_entry in enumerate(self.get_cluster_entry_iterator()):
-            device_id: DeviceID = self.device_ids[i]
-            # Check some assumptions if workers_per_node is given.
-            unique_node_ids.add(device_id.node_id)
-            node_addr_check.add(device_id.node_addr)
-            if self.workers_per_node is not None:
-                assert device_id.node_id == i // self.workers_per_node
-                assert device_id.device_id == i % self.workers_per_node
+        for i, cluster_entry in enumerate(self.get_grid_entry_iterator()):
+            device_id: DeviceID = device_ids[i]
             self.device_grid[cluster_entry] = device_id
 
-        assert len(node_addr_check) == len(unique_node_ids)
-        if self.workers_per_node is not None:
-            assert len(node_addr_check) == self.num_nodes
         logging.getLogger(__name__).info("device_grid %s", str(self.grid_shape))
 
-    def get_cluster_entry_iterator(self):
+    def _check_devices(self, device_ids: List[DeviceID]):
+        node_map = {}
+        node_addr_check = set()
+        for device_id in device_ids:
+            node_addr_check.add(device_id.node_addr)
+            if device_id.node_id not in node_map:
+                node_map[device_id.node_id] = 0
+            node_map[device_id.node_id] += 1
+        assert len(node_addr_check) == len(node_map)
+        devices_per_node = None
+        for node_id, device_count in node_map.items():
+            if devices_per_node is None:
+                devices_per_node = device_count
+            assert devices_per_node == device_count
+        num_nodes = len(node_map)
+        return num_nodes, devices_per_node
+
+    def _order_device_ids(self, device_ids: List[DeviceID]):
+        raise NotImplementedError()
+
+    def get_grid_entry_iterator(self):
         return itertools.product(*map(range, self.grid_shape))
 
     def get_device_id(self, agrid_entry, agrid_shape):
         raise NotImplementedError()
 
-    def get_entry_iterator(self) -> Iterator[Tuple]:
-        return itertools.product(*map(range, self.grid_shape))
-
 
 class CyclicDeviceGrid(DeviceGrid):
+    def _order_device_ids(self, device_ids: List[DeviceID]):
+        # We order by device id first, then by node id, which ensures data layout
+        # cycles over nodes first, then workers.
+        return sorted(device_ids, key=lambda device_id: (device_id.device_id, device_id.node_id))
+
     def get_device_id(self, agrid_entry, agrid_shape):
         cluster_entry = self.get_cluster_entry(agrid_entry, agrid_shape)
         return self.device_grid[cluster_entry]
@@ -219,67 +210,16 @@ class CyclicDeviceGrid(DeviceGrid):
         return tuple(cluster_entry)
 
 
-class NestedCyclicDeviceGrid(CyclicDeviceGrid):
-    # Distribute the data such that each array grid axis
-    # is first cycled over nodes, and then cycled over workers.
-    # For example, if we have 3 workers per node and 2 nodes,
-    # map the blocks for array grid (7,) as follows:
-    # i, node_idx, worker_idx
-    # 0, 0, 0
-    # 1, 1, 0
-    # 2, 2, 0
-    # 3, 0, 1
-    # 4, 1, 1
-    # 5, 2, 1
-    # 6, 0, 2
-
-    def get_cluster_entry_axis_index(self, axis, agrid_entry):
-        # For some value 0 <= i < agrid_shape[axis]
-        # Compute the entry axis index in device_grid coordinates.
-        axis_num_nodes = self.node_grid_shape[axis]
-        if axis_num_nodes == 1:
-            # Special case. Map to 0.
-            # This is fine since we're expecting the work to be saturated by the other axes.
-            return 0
-        i = agrid_entry[axis]
-        node_idx = i % axis_num_nodes
-        worker_idx = (i // max(1, axis_num_nodes)) % self.workers_per_node
-        # So far, we have computed node_idx and worker_idx as described in the example given above.
-        # Now flatten to device_grid coordinates.
-        # The device grid is laid out as
-        # node_id, device_id
-        # 0, 0
-        # 0, 1
-        # 0, 2
-        # 1, 0
-        # 1, 1
-        # 1, 2
-        # etc.
-        # We want to jump node_idx * self.workers_per_node workers,
-        # moving us to the segment of devices corresponding to node_idx.
-        return node_idx * self.workers_per_node + worker_idx
-
-    def get_cluster_entry(self, agrid_entry, agrid_shape):
-        # pylint: disable = unused-argument
-        cluster_entry = []
-        num_grid_entry_axes = len(agrid_entry)
-        num_cluster_axes = len(self.grid_shape)
-        for cluster_axis in range(num_cluster_axes):
-            if cluster_axis < num_grid_entry_axes:
-                cluster_entry_axis = self.get_cluster_entry_axis_index(
-                    cluster_axis, agrid_entry
-                )
-                cluster_entry.append(cluster_entry_axis)
-            else:
-                # When array has fewer axes than cluster.
-                cluster_entry.append(0)
-            # Ignore trailing array axes, as these are "cycled" to 0 by assuming
-            # the dimension of those cluster axes is 1.
-        return tuple(cluster_entry)
-
-
 class PackedDeviceGrid(DeviceGrid):
-    # For the nested case, where number of devices = number of workers, this is equivalent to unnested cyclic.
+    # Places adjacent blocks on the same nodes.
+    # Only useful on Ray.
+    def _order_device_ids(self, device_ids: List[DeviceID]):
+        return sorted(device_ids, key=lambda device_id: (device_id.node_id, device_id.device_id))
+
+    def _check_devices(self, device_ids: List[DeviceID]):
+        num_nodes, devices_per_node = super()._check_devices(device_ids)
+        assert devices_per_node == 1
+
     def get_device_id(self, agrid_entry, agrid_shape):
         cluster_entry = self.get_cluster_entry(agrid_entry, agrid_shape)
         return self.device_grid[cluster_entry]

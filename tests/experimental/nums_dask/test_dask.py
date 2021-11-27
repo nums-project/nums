@@ -26,6 +26,7 @@ def test_dask_system():
     from nums.experimental.nums_dask.dask_system import DaskSystem
     from nums.core.systems.utils import get_num_cores
 
+    settings.device_grid_name = "cyclic"
     settings.system_name = "dask"
     settings.cluster_shape = (get_num_cores(), 1)
     assert not application_manager.is_initialized()

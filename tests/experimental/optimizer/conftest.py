@@ -78,11 +78,25 @@ class MockMultiNodeSystem(RaySystem):
             self._device_to_node[did] = src_node
 
 
+class MockCyclicDeviceGrid(CyclicDeviceGrid):
+    def __init__(self, grid_shape, device_type, device_ids):
+        self.grid_shape = grid_shape
+        self.device_type = device_type
+        self.device_grid: np.ndarray = np.empty(shape=self.grid_shape, dtype=object)
+
+        # Skip tests.
+        device_ids = self._order_device_ids(device_ids)
+
+        for i, cluster_entry in enumerate(self.get_grid_entry_iterator()):
+            device_id: DeviceID = device_ids[i]
+            self.device_grid[cluster_entry] = device_id
+
+
 def mock_cluster(cluster_shape):
     system: MockMultiNodeSystem = MockMultiNodeSystem(use_head=True)
     system.init()
     system.mock_devices(np.product(cluster_shape))
-    device_grid: DeviceGrid = CyclicDeviceGrid(cluster_shape, "cpu", system.devices())
+    device_grid: DeviceGrid = MockCyclicDeviceGrid(cluster_shape, "cpu", system.devices())
     cm = ComputeManager.create(system, numpy_compute, device_grid)
     fs = FileSystem(cm)
     return ArrayApplication(cm, fs)
