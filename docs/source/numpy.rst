@@ -160,11 +160,3 @@ NumS Supported API
    empty_like
    trace
    top_k
-
-NumS Fallback API
-~~~~~~~~~~~~~~~~~
-
-.. autosummary::
-   :toctree: generated/
-
-   nan_to_num
