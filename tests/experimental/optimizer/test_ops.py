@@ -122,12 +122,63 @@ def test_reduce(app_inst_mock_small):
         assert np.allclose(result_ba.get(), reduced_np)
 
 
+def test_bop(app_inst_mock_small):
+    from nums.core.array.application import ArrayApplication
+    from nums.experimental.optimizer.grapharray import GraphArray
+    from nums.experimental.optimizer.tree_search import RandomTS
+
+    random_seed = 1337
+
+    def collapse_graph_array(app: ArrayApplication, ga):
+        return RandomTS(
+            seed=random_seed,
+            max_samples_per_step=1,
+            max_reduction_pairs=1,
+            force_final_action=True,
+        ).solve(ga)
+
+    def compute_graph_array(app: ArrayApplication, ga) -> BlockArray:
+        result_ga: GraphArray = RandomTS(
+            seed=random_seed,
+            max_samples_per_step=1,
+            max_reduction_pairs=1,
+            force_final_action=True,
+        ).solve(ga)
+        return BlockArray(result_ga.grid, app.cm, result_ga.to_blocks())
+
+    app = app_inst_mock_small
+    cluster_state = ClusterState(app.cm.devices())
+    X = app.random.normal(shape=(10, 3), block_shape=(5, 3))
+    # y = app.random.integers(0, 2, shape=(10,), block_shape=(5,))
+    Xc = app.concatenate(
+        [
+            X,
+            app.ones(
+                shape=(X.shape[0], 1), block_shape=(X.block_shape[0], 1), dtype=X.dtype
+            ),
+        ],
+        axis=1,
+        axis_block_size=X.block_shape[1],
+    )
+    theta: GraphArray = app.zeros((Xc.shape[1],), (Xc.block_shape[1],), dtype=Xc.dtype)
+    X_ga: GraphArray = GraphArray.from_ba(Xc, cluster_state)
+    # y_ga: GraphArray = GraphArray.from_ba(y, cluster_state)
+    theta_ga: GraphArray = GraphArray.from_ba(theta, cluster_state)
+    Z_ga: GraphArray = X_ga @ theta_ga
+    Z_ga: GraphArray = collapse_graph_array(app, Z_ga)
+    one_ga: GraphArray = GraphArray.from_ba(app.one, cluster_state)
+    mu_ga: GraphArray = collapse_graph_array(app, one_ga / (one_ga + app.exp(-Z_ga)))
+    mu_ba: BlockArray = compute_graph_array(app, mu_ga)
+    mu_ba.touch()
+
+
 if __name__ == "__main__":
     import conftest
 
-    app = conftest.mock_cluster((4, 1))
-    test_neg(app)
-    test_root_uop(app)
-    test_transpose(app)
-    test_reduce(app)
+    app = conftest.mock_dask_cluster((8, 1))
+    # test_neg(app)
+    # test_root_uop(app)
+    # test_transpose(app)
+    # test_reduce(app)
+    test_bop(app)
     conftest.destroy_mock_cluster(app)

@@ -30,6 +30,7 @@ from nums.core.grid.grid import DeviceGrid, CyclicDeviceGrid, DeviceID
 from nums.core.storage.storage import StoredArray
 from nums.core.systems.filesystem import FileSystem
 from nums.core.systems.systems import RaySystem
+from nums.experimental.nums_dask.dask_system import DaskSystem
 from nums.experimental.optimizer.grapharray import GraphArray
 from nums.experimental.optimizer.tree_search import RandomTS
 
@@ -63,7 +64,7 @@ def check_block_integrity(arr: BlockArray):
         assert arr.blocks[grid_entry].shape == arr.grid.get_block_shape(grid_entry)
 
 
-class MockMultiNodeSystem(RaySystem):
+class MockMultiNodeRaySystem(RaySystem):
     def mock_devices(self, num_nodes):
         assert len(self._available_nodes) == 1
         src_node = self._available_nodes[0]
@@ -76,6 +77,32 @@ class MockMultiNodeSystem(RaySystem):
             did = DeviceID(node_id, src_node_key, "cpu", 1)
             self._devices.append(did)
             self._device_to_node[did] = src_node
+
+
+class MockMultiNodeDaskSystem(DaskSystem):
+    def mock_devices(self, num_workers, workers_per_node):
+        assert len(self._node_addresses) == 1
+        self._num_devices = num_workers
+        assert num_workers % workers_per_node == 0
+        num_nodes = num_workers // workers_per_node
+        assert workers_per_node == len(self._worker_addresses)
+        self.workers_per_node = workers_per_node
+
+        worker_addresses = sorted(self._worker_addresses)
+        node_addr = self._node_addresses[0]
+        self._node_addresses = []
+        self._worker_addresses = []
+        self._node_to_worker = {}
+        self._devices = []
+        for node_id in range(num_nodes):
+            mock_node_addr = "mock." + node_addr
+            self._node_addresses.append(mock_node_addr)
+            self._worker_addresses += worker_addresses
+            self._node_to_worker[mock_node_addr] = {"workers": list(worker_addresses)}
+            for worker_id, worker_addr in enumerate(worker_addresses):
+                # What matters for DaskSystem is that worker_id maps to a valid worker_addr.
+                did = DeviceID(node_id, mock_node_addr, "cpu", worker_id)
+                self._devices.append(did)
 
 
 class MockCyclicDeviceGrid(CyclicDeviceGrid):
@@ -92,8 +119,22 @@ class MockCyclicDeviceGrid(CyclicDeviceGrid):
             self.device_grid[cluster_entry] = device_id
 
 
-def mock_cluster(cluster_shape):
-    system: MockMultiNodeSystem = MockMultiNodeSystem(use_head=True)
+def mock_dask_cluster(cluster_shape):
+    workers_per_node = 4
+    for dim in cluster_shape:
+        assert dim == 1 or dim % workers_per_node == 0
+    system: MockMultiNodeDaskSystem = MockMultiNodeDaskSystem(num_devices=workers_per_node,
+                                                              num_cpus=workers_per_node)
+    system.init()
+    system.mock_devices(np.product(cluster_shape), workers_per_node=workers_per_node)
+    device_grid: DeviceGrid = MockCyclicDeviceGrid(cluster_shape, "cpu", system.devices())
+    cm = ComputeManager.create(system, numpy_compute, device_grid)
+    fs = FileSystem(cm)
+    return ArrayApplication(cm, fs)
+
+
+def mock_ray_cluster(cluster_shape):
+    system: MockMultiNodeRaySystem = MockMultiNodeRaySystem(use_head=True)
     system.init()
     system.mock_devices(np.product(cluster_shape))
     device_grid: DeviceGrid = MockCyclicDeviceGrid(cluster_shape, "cpu", system.devices())
@@ -109,20 +150,27 @@ def destroy_mock_cluster(app: ArrayApplication):
 
 @pytest.fixture(scope="function", params=[(1, 1)])
 def app_inst_mock_none(request):
-    app_inst = mock_cluster(request.param)
+    app_inst = mock_ray_cluster(request.param)
     yield app_inst
     destroy_mock_cluster(app_inst)
 
 
 @pytest.fixture(scope="function", params=[(10, 1)])
 def app_inst_mock_big(request):
-    app_inst = mock_cluster(request.param)
+    app_inst = mock_ray_cluster(request.param)
     yield app_inst
     destroy_mock_cluster(app_inst)
 
 
 @pytest.fixture(scope="function", params=[(4, 1)])
 def app_inst_mock_small(request):
-    app_inst = mock_cluster(request.param)
+    app_inst = mock_ray_cluster(request.param)
+    yield app_inst
+    destroy_mock_cluster(app_inst)
+
+
+@pytest.fixture(scope="function", params=[(8, 1)])
+def app_inst_mock_dask(request):
+    app_inst = mock_dask_cluster(request.param)
     yield app_inst
     destroy_mock_cluster(app_inst)
