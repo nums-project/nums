@@ -315,8 +315,8 @@ class RandomTS(TreeSearch):
             return state, state.objective(state.arr.cluster_state.resources), True
         min_action = None
         min_cost = np.float64("inf")
-        actions_info = [(state.tnode_map[action[0]].node, action[1]) for action in actions]
-        prior_resources = state.arr.cluster_state.resources.sum(axis=1)
+        # actions_info = [(state.tnode_map[action[0]].node, action[1]) for action in actions]
+        # prior_resources = state.arr.cluster_state.resources.sum(axis=1)
         for i in range(len(actions)):
             action = actions[i]
             action_cost = state.simulate_action(action)
@@ -324,9 +324,9 @@ class RandomTS(TreeSearch):
                 min_action = action
                 min_cost = action_cost
         curr_cost = state.commit_action(min_action)
-        print("")
-        print("actions", actions_info)
-        print("min_action", min_action)
-        curr_resources = state.arr.cluster_state.resources.sum(axis=1)
-        print("cost diff", curr_resources - prior_resources)
+        # print("")
+        # print("actions", actions_info)
+        # print("min_action", min_action)
+        # curr_resources = state.arr.cluster_state.resources.sum(axis=1)
+        # print("cost diff", curr_resources - prior_resources)
         return state, curr_cost, False
