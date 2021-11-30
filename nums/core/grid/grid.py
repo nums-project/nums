@@ -186,7 +186,7 @@ class CyclicDeviceGrid(DeviceGrid):
     def _order_device_ids(self, device_ids: List[DeviceID]):
         # We order by device id first, then by node id, which ensures data layout
         # cycles over nodes first, then workers.
-        return sorted(device_ids, key=lambda device_id: (device_id.device_id, device_id.node_id))
+        return sorted(device_ids, key=lambda device_id: (device_id._device_id, device_id.node_id))
 
     def get_device_id(self, agrid_entry, agrid_shape):
         cluster_entry = self.get_cluster_entry(agrid_entry, agrid_shape)
@@ -214,7 +214,7 @@ class PackedDeviceGrid(DeviceGrid):
     # Places adjacent blocks on the same nodes.
     # Only useful on Ray.
     def _order_device_ids(self, device_ids: List[DeviceID]):
-        return sorted(device_ids, key=lambda device_id: (device_id.node_id, device_id.device_id))
+        return sorted(device_ids, key=lambda device_id: (device_id.node_id, device_id._device_id))
 
     def _check_devices(self, device_ids: List[DeviceID]):
         num_nodes, devices_per_node = super()._check_devices(device_ids)

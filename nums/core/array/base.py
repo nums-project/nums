@@ -53,7 +53,7 @@ class Block(object):
             Block.block_id_counter += 1
             self.id = Block.block_id_counter
         # Set if a device id was used to compute this block.
-        self.device_id = None
+        self._device_id = None
 
     def __repr__(self):
         return "Block(" + str(self.oid) + ")"
@@ -84,6 +84,11 @@ class Block(object):
         if self.transposed:
             return tuple(reversed(self.grid_shape))
         return self.grid_shape
+
+    def device_id(self):
+        if self._device_id is not None:
+            return self._device_id
+        return self._cm.device_grid.get_device_id(self.true_grid_entry(), self.true_grid_shape())
 
     def transpose(self, defer=False, redistribute=False):
         # If defer is True, this operation does not modify the remote object.
@@ -152,7 +157,7 @@ class Block(object):
             syskwargs = {"grid_entry": block.grid_entry, "grid_shape": block.grid_shape}
         else:
             syskwargs = {"device_id": device_id}
-        block.device_id = device_id
+        block._device_id = device_id
         block.oid = self._cm.map_uop(
             op_name, self.oid, args, kwargs, syskwargs=syskwargs
         )
@@ -242,7 +247,7 @@ class Block(object):
             syskwargs = {"grid_entry": block.grid_entry, "grid_shape": block.grid_shape}
         else:
             syskwargs = {"device_id": device_id}
-        block.device_id = device_id
+        block._device_id = device_id
         block.oid = self._cm.bop(
             op,
             self.oid,

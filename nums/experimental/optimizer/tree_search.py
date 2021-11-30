@@ -322,4 +322,7 @@ class RandomTS(TreeSearch):
                 min_action = action
                 min_cost = action_cost
         curr_cost = state.commit_action(min_action)
+        print("")
+        print("actions", actions)
+        print("min", min_action, curr_cost)
         return state, curr_cost, False

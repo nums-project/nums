@@ -171,6 +171,11 @@ class UnaryOp(TreeNode):
         self.child: TreeNode = None
         self.op_name = None
 
+    def __repr__(self):
+        return "UnaryOp(name=%s, id=%s, child=%s)" % (self.op_name,
+                                                      str(self.tree_node_id),
+                                                      str(self.child.tree_node_id))
+
     def get_children(self):
         return [self.child]
 
@@ -307,7 +312,7 @@ class ReduceAxis(UnaryOp):
             transposed=child_block.transposed,
             syskwargs={"device_id": device_id},
         )
-        block.device_id = device_id
+        block._device_id = device_id
         leaf: Leaf = Leaf(self.cluster_state)
         leaf.block = block
         leaf.copy_on_op = self.copy_on_op

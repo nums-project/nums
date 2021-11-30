@@ -279,7 +279,7 @@ class TreeReductionOp(TreeNode):
             rblock.transposed,
             syskwargs={"device_id": device_id},
         )
-        block.device_id = device_id
+        block._device_id = device_id
 
         leaf: Leaf = Leaf(self.cluster_state)
         leaf.block = block
