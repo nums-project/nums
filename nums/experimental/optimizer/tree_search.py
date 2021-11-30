@@ -304,6 +304,13 @@ class RandomTS(TreeSearch):
             actions += state.tnode_map[tnode_id].actions
         return actions
 
+    def debug_log(self, state: ProgramState, actions, min_action, curr_cost):
+        actions = [(state.tnode_map[action[0]], action[1]) for action in actions]
+        min_action = (state.tnode_map[min_action[0]], min_action[1])
+        print("")
+        print("actions", actions)
+        print("min", min_action, curr_cost)
+
     def step(self, state: ProgramState):
         # Sampling slows things down because for some reason,
         # the lowest cost computations are the sums, so
@@ -322,7 +329,5 @@ class RandomTS(TreeSearch):
                 min_action = action
                 min_cost = action_cost
         curr_cost = state.commit_action(min_action)
-        print("")
-        print("actions", actions)
-        print("min", min_action, curr_cost)
+        self.debug_log(state, actions, min_action, curr_cost)
         return state, curr_cost, False
