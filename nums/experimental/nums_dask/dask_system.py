@@ -76,7 +76,6 @@ class DaskSystem(SystemInterface):
         )
 
         self._node_to_worker = {}
-        nodes_per_worker = None
         for node_address in self._node_addresses:
             self._node_to_worker[node_address] = {"workers": []}
             for worker_address in self._worker_addresses:

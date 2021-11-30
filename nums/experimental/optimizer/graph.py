@@ -134,7 +134,8 @@ class Leaf(TreeNode):
         return []
 
     def __repr__(self):
-        return "Leaf(id=%s, bid=%s)" % (str(self.tree_node_id), str(self.block.id))
+        device_id: DeviceID = self.block.device_id()
+        return "Leaf(id=%s, bid=%s, device_id=%s)" % (str(self.tree_node_id), str(self.block.id), str(device_id))
 
     def num_nodes(self):
         return 1
