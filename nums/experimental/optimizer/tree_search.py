@@ -315,7 +315,7 @@ class RandomTS(TreeSearch):
             return state, state.objective(state.arr.cluster_state.resources), True
         min_action = None
         min_cost = np.float64("inf")
-        actions_info = [(state.tnode_map[action[0]], action[1]) for action in actions]
+        actions_info = [(state.tnode_map[action[0]].node, action[1]) for action in actions]
         for i in range(len(actions)):
             action = actions[i]
             action_cost = state.simulate_action(action)
