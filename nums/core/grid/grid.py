@@ -135,7 +135,8 @@ class DeviceID(object):
         )
 
     def __eq__(self, other):
-        return str(self) == str(other)
+        return self.node_id == other.node_id and self.device_id == other.device_id
+        # return str(self) == str(other)
 
 
 class DeviceGrid(object):
