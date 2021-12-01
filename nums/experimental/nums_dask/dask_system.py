@@ -63,7 +63,7 @@ class DaskSystem(SystemInterface):
             )
         else:
             # direct_to_workers does not seem to circumvent scheduler for client.submit.
-            self._client = Client(address=self._address, direct_to_workers=True)
+            self._client = Client(address=self._address, direct_to_workers=False)
         self.init_devices()
 
     def init_devices(self):
