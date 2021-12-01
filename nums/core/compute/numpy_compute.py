@@ -288,6 +288,9 @@ class ComputeCls(ComputeImp):
     def arange(self, start, stop, step, dtype):
         return np.arange(start, stop, step, dtype)
 
+    def sum_reduce(self, *arrs):
+        return np.add.reduce(arrs)
+
     def reduce_axis(self, op_name, arr, axis, keepdims, transposed):
         op_func = np.__getattribute__(op_name)
         if transposed:
