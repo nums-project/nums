@@ -37,26 +37,41 @@ class Counter(object):
 
 class ClusterState(object):
     def __init__(
-        self,
-        device_ids: List[DeviceID],
-        counter: Counter = None,
-        created_on_only=False,
+            self,
+            device_ids: List[DeviceID],
+            counter: Counter = None,
+            created_on_only=False,
+            local_transfer_coeff=0.1
     ):
         self.created_on_only = created_on_only
+        # Intra-node transfers are faster than inter-node transfers.
+        # It's critical we account for this when objects need to be transferred within a node.
+        # The value below is the fraction of network load to use for local transfers.
+        # By default, assume an order of magnitude speedup for local transfers.
+        self.local_transfer_coeff = local_transfer_coeff
         if counter is None:
             self.counter = Counter()
         else:
             self.counter = counter
         self.device_ids: List[DeviceID] = device_ids
-        self.num_nodes: int = len(self.device_ids)
+        self.num_devices: int = len(self.device_ids)
         self.node_ids: List[int] = sorted(
             list(set([device_id.node_id for device_id in self.device_ids]))
         )
+        self.num_nodes: int = len(self.node_ids)
+        self.workers_per_node: int = self.num_devices // self.num_nodes
+        # Check assumptions.
+        workers_per_node = {node_id: 0 for node_id in self.node_ids}
+        for device_id in self.device_ids:
+            workers_per_node[device_id.node_id] += 1
+        for node_id, count in workers_per_node.items():
+            assert self.workers_per_node == count
+
         # The system instance on which we perform operations.
         # This is exposed for use by nodes only.
         # 3 matrices: mem, net_in, net_out.
         self.mem_idx, self.net_in_idx, self.net_out_idx = 0, 1, 2
-        self.resources: np.ndarray = np.zeros(shape=(3, self.num_nodes), dtype=np.float)
+        self.resources: np.ndarray = np.zeros(shape=(3, self.num_devices), dtype=float)
         # Dict from block id to block size.
         self.block_sizes: [int, int] = {}
         # Dict from block id to list of device id.
@@ -73,6 +88,11 @@ class ClusterState(object):
             new_cluster.block_devices[block_id] = list(self.block_devices[block_id])
         return new_cluster
 
+    def add_resource_load(self, resources: np.ndarray, resource_idx: int, device_id: DeviceID, value):
+        device_idx = self.workers_per_node * device_id.node_id + device_id.device_id
+        resources[resource_idx][device_idx] += value
+        return resources
+
     # Block Ops.
 
     def add_block(self, block_id: int, block_size: int, device_ids: List[DeviceID]):
@@ -87,9 +107,6 @@ class ClusterState(object):
     def get_block_device_ids(self, block_id: int):
         return self.block_devices[block_id]
 
-    def get_block_node_ids(self, block_id: int):
-        return [device_id.node_id for device_id in self.block_devices[block_id]]
-
     def union_devices(self, block_id_a: int, block_id_b: int):
         block_a_device_ids = self.get_block_device_ids(block_id_a)
         block_b_device_ids = self.get_block_device_ids(block_id_b)
@@ -101,36 +118,41 @@ class ClusterState(object):
         return list(set(block_a_device_ids).intersection(set(block_b_device_ids)))
 
     def blocks_local(
-        self, block_id_a: int, block_id_b: int, local_to_node: bool = False
+        self, block_id_a: int, block_id_b: int
     ):
-        if local_to_node:
-            block_a_node_ids = self.get_block_node_ids(block_id_a)
-            block_b_node_ids = self.get_block_node_ids(block_id_b)
-            return list(set(block_a_node_ids).intersection(set(block_b_node_ids)))
-        else:
-            return len(self.mutual_devices(block_id_a, block_id_b)) > 0
+        return len(self.mutual_devices(block_id_a, block_id_b)) > 0
 
     def init_mem_load(self, device_id: DeviceID, block_id: int):
         size: int = self._get_block_size(block_id)
         block_device_ids: list = self.get_block_device_ids(block_id)
         assert device_id in block_device_ids
-        self.resources[self.mem_idx][device_id.node_id] += size
+        self.add_resource_load(self.resources, self.mem_idx, device_id, size)
+        # self.resources[self.mem_idx][device_id.node_id] += size
 
     def simulate_copy_block(
         self, block_id: int, to_device_id: DeviceID, resources: np.ndarray
     ):
         size: int = self._get_block_size(block_id)
-        block_node_ids: List[int] = self.get_block_node_ids(block_id)
-        if to_device_id.node_id in block_node_ids:
+        device_ids: List[DeviceID] = self.get_block_device_ids(block_id)
+        if to_device_id in device_ids:
             return resources
-        # Pick the first node. This is the worst-case assumption,
+        # Pick the first device. This is the worst-case assumption,
         # since it imposes the greatest load (w.r.t. cost function) on the network,
         # though we really don't have control over this.
-        from_node_id: int = block_node_ids[0]
+        from_device_id: DeviceID = device_ids[0]
         # Update load.
-        resources[self.net_out_idx][from_node_id] += size
-        resources[self.net_in_idx][to_device_id.node_id] += size
-        resources[self.mem_idx][to_device_id.node_id] += size
+        transfer_cost = size
+        if from_device_id.node_id == to_device_id.node_id:
+            # This is a local (intra-node) object transfer.
+            # We account for the speedup by reducing the cost
+            # by a factor of local_transfer_coeff.
+            transfer_cost *= self.local_transfer_coeff
+        self.add_resource_load(resources, self.net_out_idx, from_device_id, transfer_cost)
+        self.add_resource_load(resources, self.net_in_idx, to_device_id, transfer_cost)
+        self.add_resource_load(resources, self.mem_idx, to_device_id, size)
+        # resources[self.net_out_idx][from_device_id.device_id] += size
+        # resources[self.net_in_idx][to_device_id.device_id] += size
+        # resources[self.mem_idx][to_device_id.device_id] += size
         return resources
 
     def simulate_op(
@@ -141,11 +163,12 @@ class ClusterState(object):
         device_id: DeviceID,
         resources: np.ndarray,
     ):
-        if device_id.node_id not in self.get_block_node_ids(block_id_a):
+        if device_id not in self.get_block_device_ids(block_id_a):
             resources = self.simulate_copy_block(block_id_a, device_id, resources)
-        if device_id.node_id not in self.get_block_node_ids(block_id_b):
+        if device_id not in self.get_block_device_ids(block_id_b):
             resources = self.simulate_copy_block(block_id_b, device_id, resources)
-        resources[self.mem_idx][device_id.node_id] += op_mem
+        self.add_resource_load(resources, self.mem_idx, device_id, op_mem)
+        # resources[self.mem_idx][device_id.device_id] += op_mem
         return resources
 
     def commit_copy_block(self, block_id: int, to_device_id: DeviceID):
@@ -160,21 +183,24 @@ class ClusterState(object):
     def commit_op(
         self, op_mem: int, block_id_a: int, block_id_b: int, device_id: DeviceID
     ):
-        if device_id.node_id not in self.get_block_node_ids(block_id_a):
+        if device_id not in self.get_block_device_ids(block_id_a):
             self.commit_copy_block(block_id_a, device_id)
-        if device_id.node_id not in self.get_block_node_ids(block_id_b):
+        if device_id not in self.get_block_device_ids(block_id_b):
             self.commit_copy_block(block_id_b, device_id)
-        self.resources[self.mem_idx][device_id.node_id] += op_mem
+        self.add_resource_load(self.resources, self.mem_idx, device_id, op_mem)
+        # self.resources[self.mem_idx][device_id.device_id] += op_mem
 
     def simulate_uop(
         self, op_mem: int, block_id: int, device_id: DeviceID, resources: np.ndarray
     ):
-        if device_id.node_id not in self.get_block_node_ids(block_id):
+        if device_id not in self.get_block_device_ids(block_id):
             resources = self.simulate_copy_block(block_id, device_id, resources)
-        resources[self.mem_idx][device_id.node_id] += op_mem
+        self.add_resource_load(resources, self.mem_idx, device_id, op_mem)
+        # resources[self.mem_idx][device_id.device_id] += op_mem
         return resources
 
     def commit_uop(self, op_mem: int, block_id: int, device_id: DeviceID):
-        if device_id.node_id not in self.get_block_node_ids(block_id):
+        if device_id not in self.get_block_device_ids(block_id):
             self.commit_copy_block(block_id, device_id)
-        self.resources[self.mem_idx][device_id.node_id] += op_mem
+        self.add_resource_load(self.resources, self.mem_idx, device_id, op_mem)
+        # self.resources[self.mem_idx][device_id.device_id] += op_mem

@@ -155,7 +155,7 @@ class RaySystem(SystemInterface):
         self._device_to_node = {}
         for node_id in range(self._num_nodes):
             node = self._available_nodes[node_id]
-            did = DeviceID(node_id, self._node_key(node), "cpu", 1)
+            did = DeviceID(node_id, self._node_key(node), "cpu", 0)
             self._devices.append(did)
             self._device_to_node[did] = node
 

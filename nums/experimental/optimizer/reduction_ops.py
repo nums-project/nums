@@ -135,25 +135,16 @@ class TreeReductionOp(TreeNode):
             frontier_nodes += child.get_frontier()
         return frontier_nodes
 
-    def _group_leafs(self) -> List[Set]:
-        # Group leafs by node.
-        tree_nodes = sorted(
-            list(self.leafs_dict.values()), key=lambda x: x.tree_node_id
-        )
-        grouped_leafs = {}
-        leaf_set = set()
-        for device_id in self.cluster_state.device_ids:
-            if device_id.node_id not in grouped_leafs:
-                grouped_leafs[device_id.node_id] = set()
-            for tree_node in tree_nodes:
-                assert isinstance(tree_node, Leaf)
-                leaf: Leaf = tree_node
-                if device_id.node_id in self.cluster_state.get_block_node_ids(leaf.block.id):
-                    if leaf.tree_node_id not in leaf_set:
-                        grouped_leafs[device_id.node_id].add(leaf.tree_node_id)
-                        leaf_set.add(leaf.tree_node_id)
-        assert len(leaf_set) == len(tree_nodes)
-        return list(grouped_leafs.values())
+    def _sort_leafs(self) -> List[Leaf]:
+        # Sort leafs by node, then by device.
+        result = []
+        for leaf in self.leafs_dict.values():
+            assert isinstance(leaf, Leaf)
+            device_id: DeviceID = self.cluster_state.get_block_device_ids(leaf.block.id)[0]
+            result.append((leaf, device_id))
+        result = sorted(result, key=lambda v: (v[1].node_id, v[1].device_id))
+        leafs, _ = zip(*result)
+        return leafs
 
     def _get_actions(self, leaf_ids, **kwargs):
         assert len(leaf_ids) == 2
@@ -185,10 +176,9 @@ class TreeReductionOp(TreeNode):
                     # The ReductionOp should have returned the last leaf upon executing
                     # the last pair of leaves.
                     raise Exception("Unexpected state.")
-                grouped_leafs: List[Set] = self._group_leafs()
-                for leaf_set in grouped_leafs:
-                    for tnode_id in leaf_set:
-                        self.action_leaf_q.append(tnode_id)
+                sorted_leafs: List[Leaf] = self._sort_leafs()
+                for leaf in sorted_leafs:
+                    self.action_leaf_q.append(leaf.tree_node_id)
             leaf_id_pair = tuple(self.action_leaf_q[:2])
             return self._get_actions(leaf_id_pair)
         return []
@@ -236,10 +226,10 @@ class TreeReductionOp(TreeNode):
         self.cluster_state.add_block(new_block.id, new_block.size(), [device_id])
         if not self.cluster_state.created_on_only:
             assert self.cluster_state.blocks_local(
-                left.block.id, right.block.id, local_to_node=True
+                left.block.id, right.block.id
             )
             assert self.cluster_state.blocks_local(
-                left.block.id, new_leaf.block.id, local_to_node=True
+                left.block.id, new_leaf.block.id
             )
         # The following are mutating operations.
         # Set the new leaf's parent to this node.

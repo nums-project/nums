@@ -74,7 +74,7 @@ class MockMultiNodeRaySystem(RaySystem):
         for node_id in range(self._num_nodes):
             # Generate distinct device ids, but map them all to the same actual node.
             # When the function is invoked, the device id will map to the actual node.
-            did = DeviceID(node_id, src_node_key, "cpu", 1)
+            did = DeviceID(node_id, src_node_key, "cpu", 0)
             self._devices.append(did)
             self._device_to_node[did] = src_node
 
