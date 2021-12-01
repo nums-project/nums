@@ -351,6 +351,10 @@ class BinaryOp(TreeNode):
         self.op_name = None
         self.args = None
 
+        # Lazily computed.
+        self._shape = None
+        self._computed_mem_cost = None
+
     def __repr__(self):
         bop_symbol = {
             "add": "+",
@@ -384,6 +388,8 @@ class BinaryOp(TreeNode):
         bop.left = self.left.copy(cluster_state, bop, new_ids=new_ids)
         bop.right = self.right.copy(cluster_state, bop, new_ids=new_ids)
         bop.copy_on_op = self.copy_on_op
+        bop._shape = self._shape
+        bop._computed_mem_cost = self._computed_mem_cost
         return bop
 
     def update_child(self, old_children, new_children):
@@ -504,22 +510,26 @@ class BinaryOp(TreeNode):
         return tuple(left_shape[:-axes] + right_shape[axes:])
 
     def _mem_cost(self):
-        # Computes the memory required to perform this operation.
-        # We approximate by just computing the memory required to store the result.
-        assert isinstance(self.left, Leaf) and isinstance(self.right, Leaf)
-        lblock: Block = self.left.block
-        rblock: Block = self.right.block
-        if self.op_name == "matmul" or self.op_name == "tensordot":
-            output_shape = self._tdop_shape(lblock.shape, rblock.shape)
-        else:
-            assert array_utils.can_broadcast_shapes(lblock.shape, rblock.shape)
-            output_shape = array_utils.broadcast_shape(lblock.shape, rblock.shape)
-        return np.product(output_shape)
+        if self._computed_mem_cost is None:
+            # Computes the memory required to perform this operation.
+            # We approximate by just computing the memory required to store the result.
+            assert isinstance(self.left, Leaf) and isinstance(self.right, Leaf)
+            lblock: Block = self.left.block
+            rblock: Block = self.right.block
+            if self.op_name == "matmul" or self.op_name == "tensordot":
+                output_shape = self._tdop_shape(lblock.shape, rblock.shape)
+            else:
+                assert array_utils.can_broadcast_shapes(lblock.shape, rblock.shape)
+                output_shape = array_utils.broadcast_shape(lblock.shape, rblock.shape)
+            self._computed_mem_cost = np.product(output_shape)
+        return self._computed_mem_cost
 
     def shape(self):
-        left_shape = self.left.shape()
-        right_shape = self.right.shape()
-        if self.op_name == "matmul" or self.op_name == "tensordot":
-            return self._tdop_shape(left_shape, right_shape)
-        else:
-            return array_utils.broadcast_shape(left_shape, right_shape)
+        if self._shape is None:
+            left_shape = self.left.shape()
+            right_shape = self.right.shape()
+            if self.op_name == "matmul" or self.op_name == "tensordot":
+                self._shape = self._tdop_shape(left_shape, right_shape)
+            else:
+                self._shape = array_utils.broadcast_shape(left_shape, right_shape)
+        return self._shape
