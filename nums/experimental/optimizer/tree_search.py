@@ -241,9 +241,9 @@ class TreeSearch(object):
         while True:
             num_steps += 1
             state, cost, is_done = self.step(state)
-            print(num_steps, state.num_nodes(), cost)
             if is_done:
                 break
+        print("solve completed", num_steps, cost)
         return state.arr
 
 
