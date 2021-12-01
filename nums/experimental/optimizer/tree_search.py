@@ -243,7 +243,7 @@ class TreeSearch(object):
             state, cost, is_done = self.step(state)
             if is_done:
                 break
-        print("solve completed", num_steps, cost)
+        # print("solve completed", num_steps, cost)
         return state.arr
 
 
@@ -317,6 +317,7 @@ class RandomTS(TreeSearch):
         min_cost = np.float64("inf")
         # actions_info = [(state.tnode_map[action[0]].node, action[1]) for action in actions]
         # prior_resources = state.arr.cluster_state.resources.sum(axis=1)
+        print("num actions sampled", len(actions))
         for i in range(len(actions)):
             action = actions[i]
             action_cost = state.simulate_action(action)
