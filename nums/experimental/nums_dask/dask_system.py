@@ -163,13 +163,15 @@ class DaskSystem(SystemInterface):
 
     def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
         assert device_id is not None
+        workers = self._node_to_worker[device_id.node_addr]["workers"]
+        worker_addr = workers[device_id.device_id]
         func, nout = self._parse_call(name, options)
         if nout is None:
-            return self._client.submit(func, *args, **kwargs, workers=self._node_to_worker[device_id.node_addr]["workers"][device_id.device_id], pure=False)
+            return self._client.submit(func, *args, **kwargs, workers=worker_addr, pure=False)
         else:
             dfunc = dask.delayed(func, nout=nout)
             result = tuple(dfunc(*args, **kwargs))
-            return self._client.compute(result, workers=self._node_to_worker[device_id.node_addr]["workers"][device_id.device_id], optimize_graph=False)
+            return self._client.compute(result, workers=worker_addr, optimize_graph=False)
 
     def num_cores_total(self) -> int:
         return len(self._worker_addresses)
@@ -221,13 +223,15 @@ class DaskSystemStockScheduler(DaskSystem):
     def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
         func, nout = self._parse_call(name, options)
         workers = self._node_to_worker[device_id.node_addr]["workers"]
-        worker_addr = self._node_addresses
+        worker_addr = workers[device_id.device_id]
+        assert isinstance(worker_addr, str)
+
         if nout is None:
-            return self._client.submit(func, *args, **kwargs, workers=worker_addr, pure=False)
+            return self._client.submit(func, *args, **kwargs, workers=self._node_addresses, pure=False)
         else:
             dfunc = dask.delayed(func, nout=nout)
             result = tuple(dfunc(*args, **kwargs))
-            return self._client.compute(result, workers=worker_addr, optimize_graph=False)
+            return self._client.compute(result, workers=self._node_addresses, optimize_graph=False)
 
     def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
         raise NotImplementedError("Dask actors are not supported.")
