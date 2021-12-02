@@ -236,6 +236,10 @@ class DaskSystemStockScheduler(DaskSystem):
         Invoking _call with workers=None is the default value for the
         workers parameter in Client.submit.
         """
+        assert device_id is not None, (
+            "Inconsistent usage of %s (device_id is None)."
+            % DaskSystemStockScheduler.__name__
+        )
         return self._call(
             name,
             args,
