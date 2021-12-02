@@ -224,7 +224,7 @@ class DaskSystemStockScheduler(DaskSystem):
     def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
         func, nout = self._parse_call(name, options)
         if nout is None:
-            return self._client.submit(func, *args, **kwargs)
+            return self._client.submit(func, *args, workers=self._node_addresses, **kwargs)
         else:
             dfunc = dask.delayed(func, nout=nout)
             result = tuple(dfunc(*args, **kwargs))
