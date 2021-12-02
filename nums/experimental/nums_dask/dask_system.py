@@ -168,7 +168,7 @@ class DaskSystem(SystemInterface):
 
         func, nout = self._parse_call(name, options)
         if nout is None:
-            return self._client.submit(func, *args, **kwargs, workers=worker_addr, pure=False)
+            return self._client.submit(func, *args, workers=worker_addr, pure=False, **kwargs)
         else:
             dfunc = dask.delayed(func, nout=nout)
             result = tuple(dfunc(*args, **kwargs))
@@ -224,10 +224,10 @@ class DaskSystemStockScheduler(DaskSystem):
     def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
         func, nout = self._parse_call(name, options)
         if nout is None:
-            return self._client.submit(func, *args, workers=self._node_addresses, **kwargs)
+            return self._client.submit(func, *args, workers=self._node_addresses, pure=False, **kwargs)
         else:
             dfunc = dask.delayed(func, nout=nout)
-            result = tuple(dfunc(*args, **kwargs))
+            result = tuple(dfunc(*args, **kwargs, optimize_graph=False))
             return self._client.compute(result)
 
     def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
