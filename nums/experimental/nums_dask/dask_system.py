@@ -231,9 +231,11 @@ class DaskSystemStockScheduler(DaskSystem):
         self.init_devices()
 
     def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
-        # We want this implementation to use Dask's scheduler.
-        # Invoking _call with workers=None is the default value for the
-        # workers parameter in Client.submit.
+        """
+        We want this implementation to use Dask's scheduler.
+        Invoking _call with workers=None is the default value for the
+        workers parameter in Client.submit.
+        """
         return self._call(
             name,
             args,
