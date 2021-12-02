@@ -63,7 +63,7 @@ class DaskSystem(SystemInterface):
             )
         else:
             # direct_to_workers does not seem to circumvent scheduler for client.submit.
-            self._client = Client(address=self._address, direct_to_workers=False)
+            self._client = Client(address=self._address, direct_to_workers=True)
         self.init_devices()
 
     def init_devices(self):
@@ -168,7 +168,7 @@ class DaskSystem(SystemInterface):
 
         func, nout = self._parse_call(name, options)
         if nout is None:
-            return self._client.submit(func, *args, **kwargs, workers=worker_addr)
+            return self._client.submit(func, *args, **kwargs, workers=worker_addr, pure=False)
         else:
             dfunc = dask.delayed(func, nout=nout)
             result = tuple(dfunc(*args, **kwargs))
