@@ -162,16 +162,14 @@ class DaskSystem(SystemInterface):
         return func, nout
 
     def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
-        assert device_id is not None
-        workers = self._node_to_worker[device_id.node_addr]["workers"]
-        worker_addr = workers[device_id.device_id]
+        waddr = self._node_to_worker[device_id.node_addr]["workers"][device_id.device_id]
         func, nout = self._parse_call(name, options)
         if nout is None:
-            return self._client.submit(func, *args, **kwargs, workers=worker_addr, pure=False)
+            return self._client.submit(func, *args, **kwargs, workers=waddr, pure=False)
         else:
             dfunc = dask.delayed(func, nout=nout)
             result = tuple(dfunc(*args, **kwargs))
-            return self._client.compute(result, workers=worker_addr, optimize_graph=False)
+            return self._client.compute(result, workers=waddr)
 
     def num_cores_total(self) -> int:
         return len(self._worker_addresses)
