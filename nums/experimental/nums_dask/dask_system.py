@@ -168,7 +168,10 @@ class DaskSystem(SystemInterface):
 
         func, nout = self._parse_call(name, options)
         if nout is None:
-            return self._client.submit(func, *args, workers=worker_addr, pure=False, **kwargs)
+            with dask.config.set(
+                    {"distributed.diagnostics.computations.ignore-modules": ["dask_system"]}
+            ):
+                return self._client.submit(func, *args, workers=worker_addr, pure=False, **kwargs)
         else:
             dfunc = dask.delayed(func, nout=nout)
             result = tuple(dfunc(*args, **kwargs))
