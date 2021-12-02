@@ -37,11 +37,11 @@ class Counter(object):
 
 class ClusterState(object):
     def __init__(
-            self,
-            device_ids: List[DeviceID],
-            counter: Counter = None,
-            created_on_only=False,
-            local_transfer_coeff=0.1
+        self,
+        device_ids: List[DeviceID],
+        counter: Counter = None,
+        created_on_only=False,
+        local_transfer_coeff=0.1,
     ):
         self.created_on_only = created_on_only
         # Intra-node transfers are faster than inter-node transfers.
@@ -88,7 +88,9 @@ class ClusterState(object):
             new_cluster.block_devices[block_id] = list(self.block_devices[block_id])
         return new_cluster
 
-    def add_resource_load(self, resources: np.ndarray, resource_idx: int, device_id: DeviceID, value):
+    def add_resource_load(
+        self, resources: np.ndarray, resource_idx: int, device_id: DeviceID, value
+    ):
         device_idx = self.workers_per_node * device_id.node_id + device_id.device_id
         resources[resource_idx][device_idx] += value
         return resources
@@ -117,9 +119,7 @@ class ClusterState(object):
         block_b_device_ids = self.get_block_device_ids(block_id_b)
         return list(set(block_a_device_ids).intersection(set(block_b_device_ids)))
 
-    def blocks_local(
-        self, block_id_a: int, block_id_b: int
-    ):
+    def blocks_local(self, block_id_a: int, block_id_b: int):
         return len(self.mutual_devices(block_id_a, block_id_b)) > 0
 
     def init_mem_load(self, device_id: DeviceID, block_id: int):
@@ -147,7 +147,9 @@ class ClusterState(object):
             # We account for the speedup by reducing the cost
             # by a factor of local_transfer_coeff.
             transfer_cost *= self.local_transfer_coeff
-        self.add_resource_load(resources, self.net_out_idx, from_device_id, transfer_cost)
+        self.add_resource_load(
+            resources, self.net_out_idx, from_device_id, transfer_cost
+        )
         self.add_resource_load(resources, self.net_in_idx, to_device_id, transfer_cost)
         self.add_resource_load(resources, self.mem_idx, to_device_id, size)
         # resources[self.net_out_idx][from_device_id.device_id] += size

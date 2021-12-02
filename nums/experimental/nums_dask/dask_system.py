@@ -162,14 +162,26 @@ class DaskSystem(SystemInterface):
         return func, nout
 
     def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
-        waddr = self._node_to_worker[device_id.node_addr]["workers"][device_id.device_id]
+        return self._call(
+            name,
+            args,
+            kwargs,
+            options,
+            workers=self._node_to_worker[device_id.node_addr]["workers"][
+                device_id.device_id
+            ],
+        )
+
+    def _call(self, name: str, args, kwargs, options: Dict, workers):
         func, nout = self._parse_call(name, options)
         if nout is None:
-            return self._client.submit(func, *args, **kwargs, workers=waddr, pure=False)
+            return self._client.submit(
+                func, *args, **kwargs, workers=workers, pure=False
+            )
         else:
             dfunc = dask.delayed(func, nout=nout)
             result = tuple(dfunc(*args, **kwargs))
-            return self._client.compute(result, workers=waddr)
+            return self._client.compute(result, workers=workers)
 
     def num_cores_total(self) -> int:
         return len(self._worker_addresses)
@@ -219,17 +231,16 @@ class DaskSystemStockScheduler(DaskSystem):
         self.init_devices()
 
     def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
-        func, nout = self._parse_call(name, options)
-        workers = self._node_to_worker[device_id.node_addr]["workers"]
-        worker_addr = workers[device_id.device_id]
-        assert isinstance(worker_addr, str)
-
-        if nout is None:
-            return self._client.submit(func, *args, **kwargs, workers=self._node_addresses, pure=False)
-        else:
-            dfunc = dask.delayed(func, nout=nout)
-            result = tuple(dfunc(*args, **kwargs))
-            return self._client.compute(result, workers=self._node_addresses, optimize_graph=False)
+        # We want this implementation to use Dask's scheduler.
+        # Invoking _call with workers=None is the default value for the
+        # workers parameter in Client.submit.
+        return self._call(
+            name,
+            args,
+            kwargs,
+            options,
+            workers=None,
+        )
 
     def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
         raise NotImplementedError("Dask actors are not supported.")

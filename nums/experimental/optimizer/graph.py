@@ -135,7 +135,11 @@ class Leaf(TreeNode):
 
     def __repr__(self):
         device_id: DeviceID = self.block.device_id()
-        return "Leaf(id=%s, bid=%s, device_id=%s)" % (str(self.tree_node_id), str(self.block.id), str(device_id))
+        return "Leaf(id=%s, bid=%s, device_id=%s)" % (
+            str(self.tree_node_id),
+            str(self.block.id),
+            str(device_id),
+        )
 
     def num_nodes(self):
         return 1
@@ -173,9 +177,11 @@ class UnaryOp(TreeNode):
         self.op_name = None
 
     def __repr__(self):
-        return "UnaryOp(name=%s, id=%s, child=%s)" % (self.op_name,
-                                                      str(self.tree_node_id),
-                                                      str(self.child.tree_node_id))
+        return "UnaryOp(name=%s, id=%s, child=%s)" % (
+            self.op_name,
+            str(self.tree_node_id),
+            str(self.child.tree_node_id),
+        )
 
     def get_children(self):
         return [self.child]

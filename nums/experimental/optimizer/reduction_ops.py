@@ -140,7 +140,9 @@ class TreeReductionOp(TreeNode):
         result = []
         for leaf in self.leafs_dict.values():
             assert isinstance(leaf, Leaf)
-            device_id: DeviceID = self.cluster_state.get_block_device_ids(leaf.block.id)[0]
+            device_id: DeviceID = self.cluster_state.get_block_device_ids(
+                leaf.block.id
+            )[0]
             result.append((leaf, device_id))
         result = sorted(result, key=lambda v: (v[1].node_id, v[1].device_id))
         leafs, _ = zip(*result)
@@ -225,12 +227,8 @@ class TreeReductionOp(TreeNode):
         # Update cluster state with new block.
         self.cluster_state.add_block(new_block.id, new_block.size(), [device_id])
         if not self.cluster_state.created_on_only:
-            assert self.cluster_state.blocks_local(
-                left.block.id, right.block.id
-            )
-            assert self.cluster_state.blocks_local(
-                left.block.id, new_leaf.block.id
-            )
+            assert self.cluster_state.blocks_local(left.block.id, right.block.id)
+            assert self.cluster_state.blocks_local(left.block.id, new_leaf.block.id)
         # The following are mutating operations.
         # Set the new leaf's parent to this node.
         new_leaf.parent = self

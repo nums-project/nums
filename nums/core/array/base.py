@@ -88,7 +88,9 @@ class Block(object):
     def device_id(self):
         if self._device_id is not None:
             return self._device_id
-        return self._cm.device_grid.get_device_id(self.true_grid_entry(), self.true_grid_shape())
+        return self._cm.device_grid.get_device_id(
+            self.true_grid_entry(), self.true_grid_shape()
+        )
 
     def transpose(self, defer=False, redistribute=False):
         # If defer is True, this operation does not modify the remote object.

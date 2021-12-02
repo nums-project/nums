@@ -123,11 +123,14 @@ def mock_dask_cluster(cluster_shape):
     workers_per_node = 4
     for dim in cluster_shape:
         assert dim == 1 or dim % workers_per_node == 0
-    system: MockMultiNodeDaskSystem = MockMultiNodeDaskSystem(num_devices=workers_per_node,
-                                                              num_cpus=workers_per_node)
+    system: MockMultiNodeDaskSystem = MockMultiNodeDaskSystem(
+        num_devices=workers_per_node, num_cpus=workers_per_node
+    )
     system.init()
     system.mock_devices(np.product(cluster_shape), workers_per_node=workers_per_node)
-    device_grid: DeviceGrid = MockCyclicDeviceGrid(cluster_shape, "cpu", system.devices())
+    device_grid: DeviceGrid = MockCyclicDeviceGrid(
+        cluster_shape, "cpu", system.devices()
+    )
     cm = ComputeManager.create(system, numpy_compute, device_grid)
     fs = FileSystem(cm)
     return ArrayApplication(cm, fs)
@@ -137,7 +140,9 @@ def mock_ray_cluster(cluster_shape):
     system: MockMultiNodeRaySystem = MockMultiNodeRaySystem(use_head=True)
     system.init()
     system.mock_devices(np.product(cluster_shape))
-    device_grid: DeviceGrid = MockCyclicDeviceGrid(cluster_shape, "cpu", system.devices())
+    device_grid: DeviceGrid = MockCyclicDeviceGrid(
+        cluster_shape, "cpu", system.devices()
+    )
     cm = ComputeManager.create(system, numpy_compute, device_grid)
     fs = FileSystem(cm)
     return ArrayApplication(cm, fs)
