@@ -168,7 +168,7 @@ class DaskSystem(SystemInterface):
 
         func, nout = self._parse_call(name, options)
         if nout is None:
-            return self._client.submit(func, *args, **kwargs, workers=worker_addr, pure=False)
+            return self._client.submit(func, *args, **kwargs, workers=worker_addr)
         else:
             dfunc = dask.delayed(func, nout=nout)
             result = tuple(dfunc(*args, **kwargs))
