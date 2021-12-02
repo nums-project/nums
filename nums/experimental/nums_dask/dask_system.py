@@ -231,14 +231,12 @@ class DaskSystemStockScheduler(DaskSystem):
         self.init_devices()
 
     def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
-        """
-        We want this implementation to use Dask's scheduler.
-        Invoking _call with workers=None is the default value for the
-        workers parameter in Client.submit.
-        """
         assert device_id is not None, (
             "Inconsistent usage of %s (device_id is None)."
             % DaskSystemStockScheduler.__name__
+        )
+        assert device_id.node_addr in self._node_to_worker, (
+            "Unexpected node address %s" % device_id.node_addr
         )
         return self._call(
             name,
