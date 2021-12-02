@@ -223,11 +223,13 @@ class DaskSystemStockScheduler(DaskSystem):
 
     def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
         func, nout = self._parse_call(name, options)
+        workers = self._node_to_worker[device_id.node_addr]["workers"]
+        worker_addr = workers[device_id.device_id]
         if nout is None:
-            return self._client.submit(func, *args, workers=self._node_addresses, pure=False, **kwargs)
+            return self._client.submit(func, *args, **kwargs, workers=worker_addr, pure=False)
         else:
             dfunc = dask.delayed(func, nout=nout)
-            result = tuple(dfunc(*args, **kwargs, optimize_graph=False))
+            result = tuple(dfunc(*args, **kwargs, workers=worker_addr, optimize_graph=False))
             return self._client.compute(result)
 
     def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
