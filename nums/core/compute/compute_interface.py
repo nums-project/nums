@@ -30,6 +30,9 @@ class ComputeInterface(object):
     def arange(self, start, stop, step, dtype, syskwargs: Dict):
         raise NotImplementedError()
 
+    def sum_reduce(self, *arrs, syskwargs: Dict):
+        raise NotImplementedError()
+
     def transpose(self, arr, syskwargs: Dict):
         raise NotImplementedError()
 
