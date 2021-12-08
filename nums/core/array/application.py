@@ -266,6 +266,7 @@ class ArrayApplication(object):
 
     def concatenate(self, arrays: List, axis: int, axis_block_size: int = None):
         num_arrs = len(arrays)
+        assert num_arrs > 0
         first_arr: BlockArray = arrays[0]
         if num_arrs == 1:
             return first_arr
