@@ -53,11 +53,24 @@ class GraphArray(object):
         return graphs
 
     @classmethod
+    def to_ga(cls, val, cluster_state, cm, copy_on_op=True):
+        if isinstance(val, GraphArray):
+            return val
+        elif isinstance(val, BlockArrayBase):
+            return GraphArray.from_ba(val, cluster_state, copy_on_op)
+        else:
+            from nums.core.array.blockarray import BlockArray
+
+            ba: BlockArrayBase = BlockArray.to_block_array(val, cm)
+            return GraphArray.from_ba(ba, cluster_state, copy_on_op)
+
+    @classmethod
     def from_ba(cls, ba: BlockArrayBase, cluster_state: ClusterState, copy_on_op=True):
         return GraphArray(
             ba.grid,
             cluster_state,
             GraphArray.graphs_from_ba(ba, cluster_state, copy_on_op),
+            ba.cm,
             copy_on_op=copy_on_op,
         )
 
@@ -66,6 +79,7 @@ class GraphArray(object):
         grid: ArrayGrid,
         cluster_state: ClusterState,
         graphs: np.ndarray,
+        cm: ComputeManager,
         copy_on_op=True,
     ):
         # The ArrayGrid corresponding to the output of this GraphArray.
@@ -79,6 +93,7 @@ class GraphArray(object):
         self.dtype = self.grid.dtype
         # The graphs this data structure is comprised of.
         self.graphs = graphs
+        self.cm = cm
         # Whether the graph array is copied whenever an operation is performed.
         # See _add_uop for example.
         self.copy_on_op = copy_on_op
@@ -96,7 +111,7 @@ class GraphArray(object):
             graphs_copy[grid_entry] = old_tree_node.copy(
                 cluster_state=new_cluster, new_ids=new_ids
             )
-        return GraphArray(self.grid, new_cluster, graphs_copy)
+        return GraphArray(self.grid, new_cluster, graphs_copy, self.cm)
 
     def iterator(self):
         # Yields a breadth first ordered list for each entry.
@@ -116,13 +131,11 @@ class GraphArray(object):
             blocks[grid_entry] = leaf.block
         return blocks
 
-    def other_to_ba(self, other):
-        if isinstance(other, GraphArray):
-            return other
-        return self.from_ba(other, self.cluster_state)
+    def other_to_ga(self, other):
+        return GraphArray.to_ga(other, self.cluster_state, self.cm, self.copy_on_op)
 
     def tensordot(self, other, axes=2):
-        other = self.other_to_ba(other)
+        other = self.other_to_ga(other)
         # TODO: Reuse BlockArrayBase tensordot operator.
         this_axes = self.grid.grid_shape[:-axes]
         this_sum_axes = self.grid.grid_shape[-axes:]
@@ -156,6 +169,8 @@ class GraphArray(object):
                     result_graphs[grid_entry] = dot_node
                 else:
                     rop = TreeReductionOp(self.cluster_state)
+                    rop.set_grid_entry(grid_entry)
+                    rop.set_grid_shape(result_grid.grid_shape)
                     rop.op_name = "sum"
                     rop.copy_on_op = self.copy_on_op
                     for k in sum_dims:
@@ -171,7 +186,11 @@ class GraphArray(object):
                     result_graphs[grid_entry] = rop
 
         return GraphArray(
-            result_grid, self.cluster_state, result_graphs, copy_on_op=self.copy_on_op
+            result_grid,
+            self.cluster_state,
+            result_graphs,
+            self.cm,
+            copy_on_op=self.copy_on_op,
         )
 
     def __matmul__(self, other):
@@ -190,39 +209,39 @@ class GraphArray(object):
         )
         assert arr.shape == result_grid.grid_shape
         return GraphArray(
-            result_grid, self.cluster_state, arr, copy_on_op=self.copy_on_op
+            result_grid, self.cluster_state, arr, self.cm, copy_on_op=self.copy_on_op
         )
 
     def __add__(self, other):
-        other = self.other_to_ba(other)
+        other = self.other_to_ga(other)
         return self.ga_from_arr(
             self.graphs + other.graphs,
             array_utils.broadcast_shape(self.shape, other.shape),
         )
 
     def __sub__(self, other):
-        other = self.other_to_ba(other)
+        other = self.other_to_ga(other)
         return self.ga_from_arr(
             self.graphs - other.graphs,
             array_utils.broadcast_shape(self.shape, other.shape),
         )
 
     def __mul__(self, other):
-        other = self.other_to_ba(other)
+        other = self.other_to_ga(other)
         return self.ga_from_arr(
             self.graphs * other.graphs,
             array_utils.broadcast_shape(self.shape, other.shape),
         )
 
     def __truediv__(self, other):
-        other = self.other_to_ba(other)
+        other = self.other_to_ga(other)
         return self.ga_from_arr(
             self.graphs / other.graphs,
             array_utils.broadcast_shape(self.shape, other.shape),
         )
 
     def __pow__(self, other):
-        other = self.other_to_ba(other)
+        other = self.other_to_ga(other)
         return self.ga_from_arr(
             self.graphs ** other.graphs,
             array_utils.broadcast_shape(self.shape, other.shape),
@@ -238,21 +257,21 @@ class GraphArray(object):
     __radd__ = __add__
 
     def __rsub__(self, other):
-        other = self.other_to_ba(other)
+        other = self.other_to_ga(other)
         return other - self
 
     __rmul__ = __mul__
 
     def __rmatmul__(self, other):
-        other = self.other_to_ba(other)
+        other = self.other_to_ga(other)
         return other @ self
 
     def __rtruediv__(self, other):
-        other = self.other_to_ba(other)
+        other = self.other_to_ga(other)
         return other / self
 
     def __rpow__(self, other):
-        other = self.other_to_ba(other)
+        other = self.other_to_ga(other)
         return other ** self
 
     # Unary operators.
@@ -268,7 +287,11 @@ class GraphArray(object):
         for grid_entry in self.grid.get_entry_iterator():
             self._add_uop(op_name, grid_entry, self.graphs, result_graphs)
         return GraphArray(
-            result_grid, self.cluster_state, result_graphs, copy_on_op=self.copy_on_op
+            result_grid,
+            self.cluster_state,
+            result_graphs,
+            self.cm,
+            copy_on_op=self.copy_on_op,
         )
 
     def __getattr__(self, item):
@@ -282,7 +305,11 @@ class GraphArray(object):
         for grid_entry in result_grid.get_entry_iterator():
             self._add_uop("transpose", grid_entry, result_graphs, result_graphs)
         return GraphArray(
-            result_grid, self.cluster_state, result_graphs, copy_on_op=self.copy_on_op
+            result_grid,
+            self.cluster_state,
+            result_graphs,
+            self.cm,
+            copy_on_op=self.copy_on_op,
         )
 
     def _add_uop(self, op_name, grid_entry, old_arr, new_arr):
@@ -359,12 +386,15 @@ class GraphArray(object):
                 grid=result_grid,
                 cluster_state=self.cluster_state,
                 graphs=result_graphs,
+                cm=self.cm,
                 copy_on_op=self.copy_on_op,
             )
 
         # Compute output GraphArray.
         if axis is None:
             rop = TreeReductionOp(self.cluster_state)
+            rop.set_grid_entry(tuple([0] * len(result_grid.grid_shape)))
+            rop.set_grid_shape(result_grid.grid_shape)
             rop.op_name = op_name
             rop.copy_on_op = self.copy_on_op
             for child in reduced_graphs.flatten().tolist():
@@ -380,6 +410,8 @@ class GraphArray(object):
         else:
             for result_grid_entry in result_grid.get_entry_iterator():
                 rop = TreeReductionOp(self.cluster_state)
+                rop.set_grid_entry(result_grid_entry)
+                rop.set_grid_shape(result_grid.grid_shape)
                 rop.op_name = op_name
                 rop.copy_on_op = self.copy_on_op
 
@@ -402,6 +434,7 @@ class GraphArray(object):
             grid=result_grid,
             cluster_state=self.cluster_state,
             graphs=result_graphs,
+            cm=self.cm,
             copy_on_op=self.copy_on_op,
         )
 

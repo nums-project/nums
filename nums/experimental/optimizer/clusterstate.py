@@ -174,3 +174,22 @@ class ClusterState(object):
         if device_id not in self.get_block_device_ids(block_id):
             self.commit_copy_block(block_id, device_id)
         self.resources[self.mem_idx][device_id.node_id] += op_mem
+
+    def simulate_nary_op(
+        self,
+        op_mem: int,
+        block_ids: List[int],
+        device_id: DeviceID,
+        resources: np.ndarray,
+    ):
+        for block_id in block_ids:
+            if device_id not in self.get_block_device_ids(block_id):
+                resources = self.simulate_copy_block(block_id, device_id, resources)
+        resources[self.mem_idx][device_id.node_id] += op_mem
+        return resources
+
+    def commit_nary_op(self, op_mem: int, block_ids: List[int], device_id: DeviceID):
+        for block_id in block_ids:
+            if device_id not in self.get_block_device_ids(block_id):
+                self.commit_copy_block(block_id, device_id)
+        self.resources[self.mem_idx][device_id.node_id] += op_mem

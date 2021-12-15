@@ -59,6 +59,7 @@ class ComputeManager(ComputeInterface):
         self.rng_cls = None
         self.methods: dict = {}
         self._block_shape_map = {}
+        self.fuseable_functions = {}
         self.init_compute(compute_module)
 
     def init_compute(self, compute_module):
@@ -83,6 +84,7 @@ class ComputeManager(ComputeInterface):
         for name, func in required_methods:
             function_signatures[name] = func
         for name, func in module_functions.items():
+            self.fuseable_functions[name] = func
             func_sig = function_signatures[name]
             try:
                 remote_params = func_sig.remote_params
@@ -276,6 +278,9 @@ class ComputeManager(ComputeInterface):
                 self.update_block_shape_map(shape_dim, block_shape_dim)
             final_block_shape.append(self._block_shape_map[shape_dim])
         return tuple(final_block_shape)
+
+    def get_fuseable(self, name):
+        return self.fuseable_functions[name]
 
 
 def instance() -> ComputeManager:

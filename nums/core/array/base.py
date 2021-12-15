@@ -32,7 +32,6 @@ class Block(object):
         self,
         grid_entry,
         grid_shape,
-        rect,
         shape,
         dtype,
         transposed,
@@ -42,11 +41,10 @@ class Block(object):
         self._cm = cm
         self.grid_entry: tuple = grid_entry
         self.grid_shape: tuple = grid_shape
-        self.rect: list = rect
         self.oid: np.object = None
         self.shape: tuple = shape
         self.dtype = dtype
-        self.num_dims = len(self.rect)
+        self.num_dims = len(self.shape)
         self.transposed = transposed
         self.id = id
         if self.id is None:
@@ -66,7 +64,6 @@ class Block(object):
         block = Block(
             self.grid_entry,
             self.grid_shape,
-            self.rect,
             self.shape,
             self.dtype,
             self.transposed,
@@ -91,11 +88,9 @@ class Block(object):
         # this operation does not move the remote object.
         grid_entryT = tuple(reversed(self.grid_entry))
         grid_shapeT = tuple(reversed(self.grid_shape))
-        rectT = list(reversed(self.rect))
         blockT = Block(
             grid_entry=grid_entryT,
             grid_shape=grid_shapeT,
-            rect=rectT,
             shape=tuple(reversed(self.shape)),
             dtype=self.dtype,
             transposed=not self.transposed,
@@ -119,17 +114,14 @@ class Block(object):
         grid_entry = list(block.grid_entry)
         grid_shape = list(block.grid_shape)
         shape = list(block.shape)
-        rect = block.rect
 
         grid_entry[axis1], grid_entry[axis2] = grid_entry[axis2], grid_entry[axis1]
         grid_shape[axis1], grid_shape[axis2] = grid_shape[axis2], grid_shape[axis1]
         shape[axis1], shape[axis2] = shape[axis2], shape[axis1]
-        rect[axis1], rect[axis2] = rect[axis2], rect[axis1]
 
         block.grid_entry = tuple(grid_entry)
         block.grid_shape = tuple(grid_shape)
         block.shape = tuple(shape)
-        block.rect = rect
 
         block.oid = self._cm.swapaxes(
             block.oid,
@@ -183,66 +175,63 @@ class Block(object):
         )
         return block
 
-    def bop(self, op, other, args: dict, device_id=None):
-        if not isinstance(other, Block):
-            other = self._block_from_other(other)
+    @staticmethod
+    def block_meta(op, block1, block2, args):
         if op == "tensordot":
-            axes = args["axes"]
-            result_grid_entry = tuple(
-                list(self.grid_entry[:-axes]) + list(other.grid_entry[axes:])
+            (
+                result_shape,
+                result_grid_entry,
+                result_grid_shape,
+            ) = array_utils.get_tensordot_block_params(
+                block1.shape,
+                block1.grid_entry,
+                block1.grid_shape,
+                block2.shape,
+                block2.grid_entry,
+                block2.grid_shape,
+                args["axes"],
             )
-            result_grid_shape = tuple(
-                list(self.grid_shape[:-axes]) + list(other.grid_shape[axes:])
-            )
-            result_rect = list(self.rect[:-axes] + other.rect[axes:])
-            result_shape = tuple(list(self.shape[:-axes]) + list(other.shape[axes:]))
         else:
-            # Broadcasting starts from trailing dimensions.
-            # Resulting shape is max of trailing shapes
-            result_grid_entry = []
-            result_grid_shape = []
-            result_rect = []
-            result_shape = []
-            for i in range(1, max(self.num_dims, other.num_dims) + 1):
-                other_i = other.num_dims - i
-                self_i = self.num_dims - i
-                if other_i < 0:
-                    is_self = True
-                elif self_i < 0:
-                    is_self = False
-                else:
-                    is_self = other.shape[other_i] < self.shape[self_i]
-                if is_self:
-                    result_grid_entry.append(self.grid_entry[self_i])
-                    result_grid_shape.append(self.grid_shape[self_i])
-                    result_rect.append(self.rect[self_i])
-                    result_shape.append(self.shape[self_i])
-                else:
-                    result_grid_entry.append(other.grid_entry[other_i])
-                    result_grid_shape.append(other.grid_shape[other_i])
-                    result_rect.append(other.rect[other_i])
-                    result_shape.append(other.shape[other_i])
-            result_grid_entry = tuple(reversed(result_grid_entry))
-            result_grid_shape = tuple(reversed(result_grid_shape))
-            result_rect = list(reversed(result_rect))
-            result_shape = tuple(reversed(result_shape))
+            (
+                result_shape,
+                result_grid_entry,
+                result_grid_shape,
+            ) = array_utils.get_elementwise_bop_block_params(
+                block1.shape,
+                block1.grid_entry,
+                block1.grid_shape,
+                block2.shape,
+                block2.grid_entry,
+                block2.grid_shape,
+            )
 
-        dtype = array_utils.get_bop_output_type(op, self.dtype, other.dtype)
+        dtype = array_utils.get_bop_output_type(op, block1.dtype, block2.dtype)
+        return result_grid_entry, result_grid_shape, result_shape, dtype
+
+    @staticmethod
+    def init_block(op, block1, block2, args, device_id=None):
+        result_grid_entry, result_grid_shape, result_shape, dtype = Block.block_meta(
+            op, block1, block2, args
+        )
         block = Block(
             grid_entry=result_grid_entry,
             grid_shape=result_grid_shape,
-            rect=result_rect,
             shape=result_shape,
             dtype=dtype,
             transposed=False,
-            cm=self._cm,
+            cm=block1._cm,
         )
+        block.device_id = device_id
+        return block
 
+    def bop(self, op, other, args: dict, device_id=None):
+        if not isinstance(other, Block):
+            other = self._block_from_other(other)
+        block: Block = self.init_block(op, self, other, args, device_id)
         if device_id is None:
             syskwargs = {"grid_entry": block.grid_entry, "grid_shape": block.grid_shape}
         else:
             syskwargs = {"device_id": device_id}
-        block.device_id = device_id
         block.oid = self._cm.bop(
             op,
             self.oid,
@@ -343,7 +332,6 @@ class BlockArrayBase(object):
                 self.blocks[grid_entry] = Block(
                     grid_entry=grid_entry,
                     grid_shape=self.grid.grid_shape,
-                    rect=self.grid.get_slice_tuples(grid_entry),
                     shape=self.grid.get_block_shape(grid_entry),
                     dtype=self.dtype,
                     transposed=False,

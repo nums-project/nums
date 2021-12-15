@@ -20,6 +20,7 @@ import numpy as np
 
 from nums.core.array.base import Block
 from nums.core.grid.grid import DeviceID
+from nums.core.compute.compute_manager import ComputeManager
 from nums.experimental.optimizer.clusterstate import ClusterState
 from nums.experimental.optimizer.graph import TreeNode, Leaf
 import nums.core.array.utils as array_utils
@@ -62,6 +63,10 @@ class TreeReductionOp(TreeNode):
         )
         rop.parent = parent
         rop.op_name = self.op_name
+        rop._shape = self._shape
+        rop._grid_entry = self._grid_entry
+        rop._grid_shape = self._grid_shape
+        rop._dtype = self._dtype
         rop.copy_on_op = self.copy_on_op
         # This is just a list ids (integers); copy it directly.
         rop.action_leaf_q = copy.deepcopy(self.action_leaf_q)
@@ -295,8 +300,49 @@ class TreeReductionOp(TreeNode):
         leaf_block: Block = leafs[0].block
         return leaf_block.size()
 
-    def shape(self):
+    def _sample_child(self) -> TreeNode:
         for _, leaf in self.leafs_dict.items():
-            return leaf.shape()
+            return leaf
         for _, tnode in self.children_dict.items():
-            return tnode.shape()
+            return tnode
+
+    def shape(self):
+        if self._shape is None:
+            self._shape = self._sample_child().shape()
+        return self._shape
+
+    def set_grid_entry(self, val):
+        self._grid_entry = val
+
+    def grid_entry(self):
+        return self._grid_entry
+
+    def set_grid_shape(self, val):
+        self._grid_shape = val
+
+    def grid_shape(self):
+        return self._grid_shape
+
+    def dtype(self):
+        if self._dtype is None:
+            self._dtype = array_utils.get_reduce_output_type(
+                self.op_name, self._sample_child().dtype()
+            )
+        return self._dtype
+
+    def expression(self):
+        if self._expression is None:
+            # Include id as part of expression string.
+            # This will force a different hash for large fused reductions,
+            # if this is, for whatever reason, needed.
+            size = len(self.children_dict)
+            self._expression = "TreeReductionOp(op=%s, size=%s, id=%s)" % (
+                self.op_name,
+                str(size),
+                self.tree_node_id,
+            )
+        return self._expression
+
+    def fuse(self, func_node, cm: ComputeManager):
+        # This is fuseable, but it seems impractical.
+        raise NotImplementedError()

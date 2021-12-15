@@ -14,7 +14,8 @@
 # limitations under the License.
 
 
-from typing import Union, Optional
+from typing import Union, Optional, List, Tuple, Set
+from functools import partial
 
 import numpy as np
 
@@ -22,6 +23,7 @@ from nums.core.array import utils as array_utils
 from nums.core.array.base import Block
 from nums.core.grid.grid import DeviceID
 from nums.experimental.optimizer.clusterstate import ClusterState
+from nums.core.compute.compute_manager import ComputeManager
 
 
 def subsample(total_items, max_items, rs: np.random.RandomState):
@@ -42,6 +44,11 @@ class TreeNode(object):
         )
         self.parent: TreeNode = None
         self.copy_on_op = True
+        self._shape = None
+        self._grid_entry = None
+        self._grid_shape = None
+        self._dtype = None
+        self._expression = None
 
     def get_root(self):
         if self.parent is None:
@@ -79,6 +86,21 @@ class TreeNode(object):
         raise NotImplementedError()
 
     def shape(self):
+        raise NotImplementedError()
+
+    def grid_entry(self):
+        raise NotImplementedError()
+
+    def grid_shape(self):
+        raise NotImplementedError()
+
+    def dtype(self):
+        raise NotImplementedError()
+
+    def expression(self):
+        raise NotImplementedError()
+
+    def fuse(self, func_node, cm: ComputeManager):
         raise NotImplementedError()
 
     def __repr__(self):
@@ -144,6 +166,10 @@ class Leaf(TreeNode):
         assert leaf.tree_node_id is not None and (
             new_ids or leaf.tree_node_id == self.tree_node_id
         )
+        leaf._shape = self._shape
+        leaf._grid_entry = self._grid_entry
+        leaf._grid_shape = self._grid_shape
+        leaf._dtype = self._dtype
         leaf.parent = parent
         leaf.block = self.block
         leaf.copy_on_op = self.copy_on_op
@@ -162,7 +188,36 @@ class Leaf(TreeNode):
         return []
 
     def shape(self):
-        return self.block.shape
+        if self._shape is None:
+            self._shape = self.block.shape
+        return self._shape
+
+    def grid_entry(self):
+        if self._grid_entry is None:
+            self._grid_entry = self.block.grid_entry
+        return self._grid_entry
+
+    def grid_shape(self):
+        if self._grid_shape is None:
+            self._grid_shape = self.block.grid_shape
+        return self._grid_shape
+
+    def dtype(self):
+        if self._dtype is None:
+            self._dtype = self.block.dtype
+        return self._dtype
+
+    def expression(self):
+        if self._expression is None:
+            self._expression = str(self.block)
+        return self._expression
+
+    def fuse(self, func_node, cm: ComputeManager):
+        f = cm.get_fuseable("identity")
+        return f, [self.copy(self.cluster_state, func_node)]
+
+    def is_scalar(self):
+        return self.block.size() == 1
 
 
 class UnaryOp(TreeNode):
@@ -179,6 +234,10 @@ class UnaryOp(TreeNode):
         assert uop.tree_node_id is not None and (
             new_ids or uop.tree_node_id == self.tree_node_id
         )
+        uop._shape = self._shape
+        uop._grid_entry = self._grid_entry
+        uop._grid_shape = self._grid_shape
+        uop._dtype = self._dtype
         uop.parent = parent
         uop.child = self.child.copy(cluster_state, parent=uop, new_ids=new_ids)
         uop.op_name = self.op_name
@@ -265,11 +324,59 @@ class UnaryOp(TreeNode):
         return np.product(block.shape)
 
     def shape(self):
-        child_shape = self.child.shape()
+        if self._shape is None:
+            child_shape = self.child.shape()
+            if self.op_name == "transpose":
+                self._shape = tuple(reversed(child_shape))
+            else:
+                self._shape = child_shape
+        return self._shape
+
+    def grid_entry(self):
+        if self._grid_entry is None:
+            child_grid_entry = self.child.grid_entry()
+            if self.op_name == "transpose":
+                self._grid_entry = tuple(reversed(child_grid_entry))
+            else:
+                self._grid_entry = child_grid_entry
+        return self._grid_entry
+
+    def grid_shape(self):
+        if self._grid_shape is None:
+            child_grid_shape = self.child.grid_shape()
+            if self.op_name == "transpose":
+                self._grid_shape = tuple(reversed(child_grid_shape))
+            else:
+                self._grid_shape = child_grid_shape
+        return self._grid_shape
+
+    def dtype(self):
+        if self._dtype is None:
+            self._dtype = array_utils.get_uop_output_type(
+                self.op_name, self.child.dtype()
+            )
+        return self._dtype
+
+    def expression(self):
+        if self._expression is None:
+            self._expression = "UnaryOp(op=%s, x=%s)" % (
+                self.op_name,
+                self.child.expression(),
+            )
+        return self._expression
+
+    def fuse(self, func_node, cm: ComputeManager):
+        child_op, child_args = self.child.fuse(func_node, cm)
         if self.op_name == "transpose":
-            return tuple(reversed(child_shape))
+            self_op = cm.get_fuseable("transpose")
         else:
-            return child_shape
+            self_op = cm.get_fuseable("map_uop")
+            self_op = partial(self_op, op_name=self.op_name, args=(), kwargs={})
+
+        def fused(*args):
+            return self_op(arr=child_op(*args))
+
+        return fused, child_args
 
 
 class ReduceAxis(UnaryOp):
@@ -278,8 +385,24 @@ class ReduceAxis(UnaryOp):
         self.axis = None
         self.keepdims = None
 
-        # Lazily computed.
-        self._shape = None
+    def copy(self, cluster_state, parent=None, new_ids=False):
+        ra: ReduceAxis = ReduceAxis(
+            cluster_state, None if new_ids else self.tree_node_id
+        )
+        assert ra.tree_node_id is not None and (
+            new_ids or ra.tree_node_id == self.tree_node_id
+        )
+        ra._shape = self._shape
+        ra._grid_entry = self._grid_entry
+        ra._grid_shape = self._grid_shape
+        ra._dtype = self._dtype
+        ra.parent = parent
+        ra.child = self.child.copy(cluster_state, parent=ra, new_ids=new_ids)
+        ra.op_name = self.op_name
+        ra.axis = self.axis
+        ra.keepdims = self.keepdims
+        ra.copy_on_op = self.copy_on_op
+        return ra
 
     def _collapse(self, device_id: DeviceID):
         assert isinstance(self.child, Leaf)
@@ -287,15 +410,10 @@ class ReduceAxis(UnaryOp):
         op_name, args = self.op_name, {}
 
         block = Block(
-            grid_entry=self.update_tuple_property(
-                child_block.grid_entry, keep_dim_val=0
-            ),
-            grid_shape=self.update_tuple_property(
-                child_block.grid_shape, keep_dim_val=1
-            ),
-            rect=self.update_tuple_property(child_block.rect, keep_dim_val=(0, 1)),
+            grid_entry=self.grid_entry(),
+            grid_shape=self.grid_shape(),
             shape=self.shape(),
-            dtype=array_utils.get_reduce_output_type(op_name, child_block.dtype),
+            dtype=self.dtype(),
             transposed=False,
             cm=child_block._cm,
         )
@@ -331,10 +449,57 @@ class ReduceAxis(UnaryOp):
 
     def shape(self):
         if self._shape is None:
-            # Check child is Leaf to ensure the computation is cheap.
-            assert isinstance(self.child, Leaf)
             self._shape = self.update_tuple_property(self.child.shape(), keep_dim_val=1)
         return self._shape
+
+    def grid_entry(self):
+        if self._grid_entry is None:
+            self._grid_entry = self.update_tuple_property(
+                self.child.grid_entry(), keep_dim_val=0
+            )
+        return self._grid_entry
+
+    def grid_shape(self):
+        if self._grid_shape is None:
+            self._grid_shape = self.update_tuple_property(
+                self.child.grid_shape(), keep_dim_val=1
+            )
+        return self._grid_shape
+
+    def dtype(self):
+        if self._dtype is None:
+            self._dtype = array_utils.get_reduce_output_type(
+                self.op_name, self.child.dtype()
+            )
+        return self._dtype
+
+    def expression(self):
+        if self._expression is None:
+            self._expression = "ReduceAxis(op=%s, x=%s, axis=%s, keepdims=%s)" % (
+                self.op_name,
+                self.child.expression(),
+                str(self.axis),
+                str(self.keepdims),
+            )
+        return self._expression
+
+    def fuse(self, func_node, cm: ComputeManager):
+        child_op, child_args = self.child.fuse(func_node, cm)
+
+        self_op = cm.get_fuseable("reduce_axis")
+        kwargs = {
+            "op_name": self.op_name,
+            "axis": self.axis,
+            "keepdims": self.keepdims,
+            # When fusing, transposed should always be False.
+            "transposed": False,
+        }
+        self_op = partial(self_op, **kwargs)
+
+        def fused(*args):
+            return self_op(arr=child_op(*args))
+
+        return fused, child_args
 
 
 class BinaryOp(TreeNode):
@@ -372,6 +537,10 @@ class BinaryOp(TreeNode):
         assert bop.tree_node_id is not None and (
             new_ids or bop.tree_node_id == self.tree_node_id
         )
+        bop._shape = self._shape
+        bop._grid_entry = self._grid_entry
+        bop._grid_shape = self._grid_shape
+        bop._dtype = self._dtype
         bop.parent = parent
         bop.op_name = self.op_name
         bop.args = None if self.args is None else self.args.copy()
@@ -489,31 +658,330 @@ class BinaryOp(TreeNode):
         leaf.copy_on_op = self.copy_on_op
         return leaf, block
 
-    def _tdop_shape(self, left_shape, right_shape):
-        assert isinstance(self.args, dict)
-        axes = self.args.get("axes", 1)
-        this_sum_axes = left_shape[-axes:]
-        other_sum_axes = right_shape[:axes]
-        assert this_sum_axes == other_sum_axes
-        return tuple(left_shape[:-axes] + right_shape[axes:])
-
     def _mem_cost(self):
         # Computes the memory required to perform this operation.
         # We approximate by just computing the memory required to store the result.
-        assert isinstance(self.left, Leaf) and isinstance(self.right, Leaf)
-        lblock: Block = self.left.block
-        rblock: Block = self.right.block
-        if self.op_name == "matmul" or self.op_name == "tensordot":
-            output_shape = self._tdop_shape(lblock.shape, rblock.shape)
-        else:
-            assert array_utils.can_broadcast_shapes(lblock.shape, rblock.shape)
-            output_shape = array_utils.broadcast_shape(lblock.shape, rblock.shape)
-        return np.product(output_shape)
+        return np.product(self.shape())
 
-    def shape(self):
+    def _compute_block_params(self):
         left_shape = self.left.shape()
         right_shape = self.right.shape()
+        left_grid_entry = self.left.grid_entry()
+        right_grid_entry = self.right.grid_entry()
+        left_grid_shape = self.left.grid_shape()
+        right_grid_shape = self.right.grid_shape()
         if self.op_name == "matmul" or self.op_name == "tensordot":
-            return self._tdop_shape(left_shape, right_shape)
+            assert isinstance(self.args, dict)
+            axes = self.args.get("axes", 1)
+            this_sum_axes = left_shape[-axes:]
+            other_sum_axes = right_shape[:axes]
+            assert this_sum_axes == other_sum_axes
+            (
+                self._shape,
+                self._grid_entry,
+                self._grid_shape,
+            ) = array_utils.get_tensordot_block_params(
+                left_shape,
+                left_grid_entry,
+                left_grid_shape,
+                right_shape,
+                right_grid_entry,
+                right_grid_shape,
+                axes,
+            )
         else:
-            return array_utils.broadcast_shape(left_shape, right_shape)
+            (
+                self._shape,
+                self._grid_entry,
+                self._grid_shape,
+            ) = array_utils.get_elementwise_bop_block_params(
+                left_shape,
+                left_grid_entry,
+                left_grid_shape,
+                right_shape,
+                right_grid_entry,
+                right_grid_shape,
+            )
+            assert self._shape == array_utils.broadcast_shape(left_shape, right_shape)
+
+    def shape(self):
+        if self._shape is None:
+            self._compute_block_params()
+        return self._shape
+
+    def grid_entry(self):
+        if self._grid_entry is None:
+            self._compute_block_params()
+        return self._grid_entry
+
+    def grid_shape(self):
+        if self._grid_shape is None:
+            self._compute_block_params()
+        return self._grid_shape
+
+    def dtype(self):
+        if self._dtype is None:
+            self._dtype = array_utils.get_bop_output_type(
+                self.op_name, self.left.dtype(), self.right.dtype()
+            )
+        return self._dtype
+
+    def expression(self):
+        if self._expression is None:
+            if self.op_name == "matmul" or self.op_name == "tensordot":
+                axes = self.args.get("axes", 1)
+                self._expression = "BinaryOp(op=%s, x=%s, y=%s, axes=%s)" % (
+                    self.op_name,
+                    self.left.expression(),
+                    self.right.expression(),
+                    axes,
+                )
+            self._expression = "BinaryOp(op=%s, x=%s, y=%s)" % (
+                self.op_name,
+                self.left.expression(),
+                self.right.expression(),
+            )
+        return self._expression
+
+    def fuse(self, func_node, cm: ComputeManager):
+        left_op, left_args = self.left.fuse(func_node, cm)
+        right_op, right_args = self.right.fuse(func_node, cm)
+
+        self_op = cm.get_fuseable("bop")
+
+        axes = 1 if self.args is None else self.args.get("axes", 1)
+        self_op = partial(self_op, op=self.op_name, a1_T=False, a2_T=False, axes=axes)
+        num_left = len(left_args)
+        # Combine the left and right args.
+        args = left_args + right_args
+
+        def fused(*args):
+            # The fused op returned splits the input args
+            # into the original args
+            # for the left and right operators.
+            # We can inductively prove that this is correct
+            # for arbitrary compositions of unary and binary operators.
+            args1 = args[:num_left]
+            args2 = args[num_left:]
+            return self_op(a1=left_op(*args1), a2=right_op(*args2))
+
+        return fused, args
+
+
+class FunctionNode(TreeNode):
+    """
+    A pure function of Leaf nodes.
+    No extra args or kwargs supported.
+    This is mainly used for fusion,
+    but we allow the child type to be something other than a Leaf node to
+    enable graphs of the form C = sum(X, axis=0); D = C + Y,
+    where X requires a reduction, but C + Y is element-wise at most 2 blocks.
+    """
+
+    def __init__(self, cluster_state: ClusterState, tree_node_id=None):
+        super().__init__(cluster_state, tree_node_id)
+        self.op_hash = None
+        self.op_func = None
+        self.children: List[TreeNode] = None
+
+    def finalize(self, cm: ComputeManager):
+        assert isinstance(self._shape, tuple)
+        assert isinstance(self._grid_entry, tuple)
+        assert isinstance(self._grid_shape, tuple)
+        assert self._dtype is not None
+        assert isinstance(self._expression, str)
+        assert isinstance(self.op_hash, str)
+        assert callable(self.op_func)
+        assert self.children is not None
+        cm.register(self.op_hash, self.op_func, {})
+
+    def __repr__(self):
+        return "Function(id=%s, op=%s, args=%s" % (
+            self.tree_node_id,
+            self.op_hash,
+            len(self.children),
+        )
+
+    def get_children(self):
+        return self.children
+
+    def num_nodes(self):
+        # Count self.
+        num_nodes = 1
+        for child in self.children:
+            num_nodes += child.num_nodes()
+        return num_nodes
+
+    def copy(self, cluster_state, parent=None, new_ids=False):
+        fnode = FunctionNode(cluster_state, None if new_ids else self.tree_node_id)
+        assert fnode.tree_node_id is not None and (
+            new_ids or fnode.tree_node_id == self.tree_node_id
+        )
+        fnode._shape = self._shape
+        fnode._grid_entry = self._grid_entry
+        fnode._grid_shape = self._grid_shape
+        fnode._dtype = self._dtype
+        fnode.parent = parent
+        fnode.op_hash = self.op_hash
+        fnode.op_func = self.op_func
+        fnode.op_expression = self.op_expression
+        fnode.children = [
+            child.copy(cluster_state, fnode, new_ids=new_ids) for child in self.children
+        ]
+        fnode.copy_on_op = self.copy_on_op
+        return fnode
+
+    def update_child(self, old_children, new_children):
+        assert len(old_children) == len(new_children) == 1
+        old_child, new_child = old_children[0], new_children[0]
+        new_children = []
+        for child in self.children:
+            if child.tree_node_id == old_child.tree_node_id:
+                new_children.append(new_children)
+            else:
+                new_children.append(child)
+        self.children = new_children
+
+    def get_leafs(self):
+        leafs = []
+        for child in self.children:
+            leafs += child.get_leafs()
+        return leafs
+
+    def is_frontier(self):
+        _is_frontier = True
+        for child in self.children:
+            _is_frontier &= isinstance(child, Leaf)
+        return _is_frontier
+
+    def get_frontier(self):
+        if self.is_frontier():
+            # This is a frontier node.
+            return [self]
+        frontier = []
+        for child in self.children:
+            frontier += child.get_frontier()
+        return frontier
+
+    def get_actions(self, **kwargs):
+        """
+        Returns a list of actions.
+        An action is a tuple: First entry is a function. Second entry is kwargs.
+        Invoked actions return a new node without mutating the tree,
+        which is always a leaf for BinaryOp.
+        """
+        actions = []
+        if self.is_frontier():
+            use_all_devices = kwargs.get("use_all_devices", False)
+            if use_all_devices:
+                device_ids = self.cluster_state.device_ids
+            else:
+                # Restrict node ids to the nodes on which the leafs already reside.
+                device_ids = set()
+                for child in self.children:
+                    leaf: Leaf = child
+                    device_ids |= set(
+                        self.cluster_state.get_block_device_ids(leaf.block.id)
+                    )
+            device_ids = list(device_ids)
+            for device_id in device_ids:
+                actions.append((self.tree_node_id, {"device_id": device_id}))
+        return actions
+
+    def simulate_on(self, device_id: DeviceID, leaf_ids=None) -> np.ndarray:
+        assert leaf_ids is None
+        assert self.is_frontier()
+        block_ids = [child.block.id for child in self.children]
+        resources = self.cluster_state.resources.copy()
+        resources = self.cluster_state.simulate_nary_op(
+            self._mem_cost(),
+            block_ids,
+            device_id,
+            resources,
+        )
+        return resources
+
+    def execute_on(self, device_id: DeviceID, leaf_ids=None) -> Leaf:
+        """
+        Update cluster state to reflect the cluster's load after computing this node.
+        We generate a leaf node for BinaryOp, updating the leaf node's computation
+        time based on object transfer costs, etc.
+        """
+        assert leaf_ids is None
+        assert self.is_frontier()
+        block_ids = [child.block.id for child in self.children]
+        result = self._collapse(device_id)
+        new_leaf: Leaf = result[0]
+        new_block: Block = result[1]
+        # This updates load on nodes and channels.
+        # This also updates block states to indicate that they now reside on the provided nodes.
+        # Update the cluster state after computing the leaf, so that transfer costs are properly
+        # captured by leaf node computations.
+        self.cluster_state.commit_nary_op(self._mem_cost(), block_ids, device_id)
+        # Update cluster state with new block.
+        self.cluster_state.add_block(new_block.id, new_block.size(), [device_id])
+        if not self.cluster_state.created_on_only:
+            for block_id in block_ids:
+                assert self.cluster_state.blocks_local(block_id, new_leaf.block.id)
+        # These are mutating operations.
+        # Eliminate references to this node and replace them with leaf.
+        new_leaf.parent = self.parent
+        if self.parent is not None:
+            self.parent.update_child([self], [new_leaf])
+        return new_leaf
+
+    def _collapse(self, device_id: DeviceID):
+        cm: ComputeManager = None
+        block_oids = []
+        for child in self.children:
+            assert isinstance(child, Leaf)
+            block_oids.append(child.block.oid)
+            if cm is None:
+                cm = child.block._cm
+        block: Block = Block(
+            self.grid_entry, self.grid_shape, self._shape, self.dtype, False, cm
+        )
+        block.device_id = device_id
+        block.oid = block._cm.call(
+            self.op_hash, *block_oids, syskwargs={"device_id": device_id}
+        )
+        leaf: Leaf = Leaf(self.cluster_state)
+        leaf.block = block
+        leaf.copy_on_op = self.copy_on_op
+        return leaf, block
+
+    def _mem_cost(self):
+        return np.product(self._shape)
+
+    def set_shape(self, val):
+        self._shape = val
+
+    def set_grid_entry(self, val):
+        self._grid_entry = val
+
+    def set_grid_shape(self, val):
+        self._grid_shape = val
+
+    def set_dtype(self, val):
+        self._dtype = val
+
+    def set_expression(self, val):
+        self._expression = val
+
+    def shape(self):
+        return self._shape
+
+    def grid_entry(self):
+        return self._grid_entry
+
+    def grid_shape(self):
+        return self._grid_shape
+
+    def dtype(self):
+        return self._dtype
+
+    def expression(self):
+        return self._expression
+
+    def fuse(self, func_node, cm: ComputeManager):
+        raise NotImplementedError()
