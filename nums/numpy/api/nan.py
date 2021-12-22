@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = redefined-builtin, too-many-lines, W1401, W0401, W0614
+
 from nums.core.application_manager import instance as _instance
 from nums.core.array.blockarray import BlockArray
 
