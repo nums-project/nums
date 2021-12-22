@@ -1,4 +1,5 @@
 import warnings
+
 # coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
@@ -13,11 +14,6 @@ import warnings
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from typing import Tuple, Optional, Union
-
-import numpy as np
-import scipy.stats
 
 from nums.core.application_manager import instance as _instance
 from nums.core.array.blockarray import BlockArray
