@@ -63,3 +63,19 @@ html_static_path = ["_static"]
 
 # Source files supported by Sphinx.
 source_suffix = [".rst", ".md"]
+
+
+# A way to automatically generate API documentation upon push to GitHub.
+# https://github.com/readthedocs/readthedocs.org/issues/1139
+def run_apidoc(_):
+    ignore_paths = []
+
+    argv = ["-f", "-T", "-e", "-M", "-o", ".", ".."] + ignore_paths
+
+    from sphinx.ext import apidoc
+
+    apidoc.main(argv)
+
+
+def setup(app):
+    app.connect("builder-inited", run_apidoc)
