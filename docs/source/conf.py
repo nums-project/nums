@@ -70,7 +70,7 @@ source_suffix = [".rst", ".md"]
 def run_apidoc(_):
     ignore_paths = []
 
-    argv = ["-f", "-T", "-e", "-M", "-o", ".", ".."] + ignore_paths
+    argv = ["-f", "-T", "-e", "-M", "-o", ".", "source/generated"] + ignore_paths
 
     try:
         # Sphinx 1.7+
