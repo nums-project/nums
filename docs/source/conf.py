@@ -29,8 +29,6 @@ author = "The NumS Team"
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "sphinx.ext.autodoc",
-    "autoapi.extension",
     "sphinx.ext.coverage",
     "sphinx.ext.napoleon",
     "sphinx.ext.mathjax",
@@ -65,11 +63,7 @@ html_static_path = ["_static"]
 # Source files supported by Sphinx.
 source_suffix = [".rst", ".md"]
 
-# Automatically generate API documentation
-autoapi_type = "python"
-autoapi_dirs = ["../../nums"]
-autoapi_ignore = ["conf.py"]
-
+autosummary_generate = True
 
 # A way to automatically generate API documentation upon push to GitHub.
 # https://github.com/readthedocs/readthedocs.org/issues/1139
