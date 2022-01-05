@@ -79,7 +79,7 @@ def test_read_csv():
     from nums.core import settings
 
     settings.system_name = "serial"
-    nps_app_inst = application_manager.instance()
+    _ = application_manager.instance()
 
     filename = settings.pj(
         settings.project_root, "tests", "core", "storage", "test.csv"
@@ -91,10 +91,6 @@ def test_read_csv():
 
 
 if __name__ == "__main__":
-    # pylint: disable=import-error
-    from nums.core import application_manager
-    from nums.core import settings
-
     test_rwd()
     test_rwd_s3()
     # test_read_csv()
