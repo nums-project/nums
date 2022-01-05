@@ -17,7 +17,6 @@
 import time
 
 import numpy as np
-import pytest
 
 from nums.core.array.application import ArrayApplication
 from nums.core.storage.storage import BimodalGaussian
