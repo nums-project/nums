@@ -36,9 +36,9 @@ def pytest_collection_modifyitems(config, items):
     if keywordexpr or markexpr:
         return  # let pytest handle this
 
-    skip_slow = pytest.mark.skip(reason='slow tests not selected.')
+    skip_slow = pytest.mark.skip(reason="slow tests not selected.")
     for item in items:
-        if 'slow' in item.keywords:
+        if "slow" in item.keywords:
             item.add_marker(skip_slow)
 
 
@@ -58,7 +58,9 @@ def nps_app_inst(request):
     import nums.numpy as nps
 
     settings.system_name = request.config.getoption("--system-name") or "serial"
-    settings.device_grid_name = request.config.getoption("--device-grid-name") or "cyclic"
+    settings.device_grid_name = (
+        request.config.getoption("--device-grid-name") or "cyclic"
+    )
 
     # Need to reset numpy random state.
     # It's the only stateful numpy API object.
