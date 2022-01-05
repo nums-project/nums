@@ -260,7 +260,6 @@ def test_poisson(nps_app_inst: ArrayApplication):
         assert nps_app_inst.allclose(real_model._beta0, model._beta0).get()
 
 
-@pytest.mark.skip
 def test_sklearn_linear_regression(nps_app_inst: ArrayApplication):
     from sklearn.linear_model import LinearRegression as SKLinearRegression
 
@@ -284,7 +283,6 @@ def test_sklearn_linear_regression(nps_app_inst: ArrayApplication):
         np.allclose(sk_y_pred, y_pred)
 
 
-@pytest.mark.skip
 def test_sklearn_logistic_regression(nps_app_inst: ArrayApplication):
     from sklearn.linear_model import LogisticRegression as SKLogisticRegression
 
@@ -316,7 +314,6 @@ def test_sklearn_logistic_regression(nps_app_inst: ArrayApplication):
         np.allclose(sk_y_pred, y_pred)
 
 
-@pytest.mark.skip
 def test_sklearn_poisson_regression(nps_app_inst: ArrayApplication):
     def dsqr(dev_func, y, _y_pred):
         dev = dev_func(y, _y_pred)

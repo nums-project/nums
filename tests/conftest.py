@@ -30,33 +30,54 @@ from nums.core.systems.systems import SystemInterface, SerialSystem, RaySystem
 # pylint: disable=protected-access, import-outside-toplevel
 
 
-@pytest.fixture(scope="module", params=[("dask", "cyclic"), ("ray", "packed")])
+def pytest_collection_modifyitems(config, items):
+    keywordexpr = config.option.keyword
+    markexpr = config.option.markexpr
+    if keywordexpr or markexpr:
+        return  # let pytest handle this
+
+    skip_slow = pytest.mark.skip(reason='slow tests not selected.')
+    for item in items:
+        if 'slow' in item.keywords:
+            item.add_marker(skip_slow)
+
+
+def pytest_addoption(parser):
+    parser.addoption("--system-name")
+    parser.addoption("--device-grid-name")
+
+
+@pytest.fixture(scope="module")
 def nps_app_inst(request):
     # This triggers initialization; it's not to be mixed with the app_inst fixture.
     # Observed (core dumped) after updating this fixture to run functions with "serial" backend.
-    # Last time this happened, it was due poor control over the
+    # Last time this happened, it was due to poor control over the
     # scope and duration of ray resources.
     from nums.core import settings
     from nums.core import application_manager
     import nums.numpy as nps
 
-    settings.system_name, settings.device_grid_name = request.param
+    settings.system_name = request.config.getoption("--system-name") or "serial"
+    settings.device_grid_name = request.config.getoption("--device-grid-name") or "cyclic"
 
     # Need to reset numpy random state.
     # It's the only stateful numpy API object.
     nps.random.reset()
     yield application_manager.instance()
-    if request.param[0] == "ray":
+    if settings.system_name == "ray":
         assert application_manager.instance().cm.system._manage_ray
     application_manager.destroy()
     time.sleep(2)
 
 
-@pytest.fixture(scope="module", params=[("dask", "cyclic"), ("ray", "packed")])
+@pytest.fixture(scope="module")
 def app_inst(request):
-    _app_inst = get_app(*request.param)
+    system_name = request.config.getoption("--system-name") or "serial"
+    device_grid_name = request.config.getoption("--device-grid-name") or "cyclic"
+
+    _app_inst = get_app(system_name, device_grid_name)
     yield _app_inst
-    if request.param[0] == "ray":
+    if system_name == "ray":
         assert _app_inst.cm.system._manage_ray
     _app_inst.cm.system.shutdown()
     _app_inst.cm.destroy()

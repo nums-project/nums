@@ -98,7 +98,7 @@ def test_basic_assign(app_inst: ArrayApplication):
         assert np.allclose(*to_res), str(to_res)
 
 
-@pytest.mark.skip
+@pytest.mark.slow
 def test_basic_assign_3axis(app_inst: ArrayApplication):
     def get_access_iterator(shape, block_shape, limit=None):
         num_axes = len(shape)

@@ -26,11 +26,15 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           pip3 install .[testing]
-      - name: Run tests
+      - name: Run serial tests
         run: |
-          coverage run -m pytest
+          coverage run --parallel-mode -m pytest
+      - name: Run Ray tests
+        run: |
+          coverage run --parallel-mode -m pytest --system-name ray
       - name: Generate coverage report
         run: |
+          coverage combine
           coverage report
           coverage xml
       - name: Upload coverage to Codecov
