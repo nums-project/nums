@@ -5,9 +5,8 @@ import subprocess
 
 __version__ = None
 
-
+# pylint: disable=unspecified-encoding, exec-used
 with open("nums/core/version.py") as f:
-    # pylint: disable=exec-used
     exec(f.read(), globals())
 
 

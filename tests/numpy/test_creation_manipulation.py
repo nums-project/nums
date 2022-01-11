@@ -167,6 +167,10 @@ def test_concatenate(nps_app_inst):
     np_arr = np.concatenate((np.arange(5), np.arange(6)))
     assert np.allclose(ba.get(), np_arr)
 
+    ba = nps.concatenate((ba1,))
+    np_arr = np.concatenate((np.arange(5),))
+    assert np.allclose(ba.get(), np_arr)
+
 
 def test_split(nps_app_inst):
     import nums.numpy as nps

@@ -266,8 +266,10 @@ class ArrayApplication(object):
 
     def concatenate(self, arrays: List, axis: int, axis_block_size: int = None):
         num_arrs = len(arrays)
-        assert num_arrs > 1
+        assert num_arrs > 0
         first_arr: BlockArray = arrays[0]
+        if num_arrs == 1:
+            return first_arr
         num_axes = len(first_arr.shape)
         # Check assumptions and define result shapes and block shapes.
         for i in range(num_arrs):
