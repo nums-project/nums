@@ -143,7 +143,7 @@ class ComputeManager(ComputeInterface):
             grid_shape = syskwargs["grid_shape"]
             device_id: DeviceID = self.device_grid.get_device_id(grid_entry, grid_shape)
         elif "device_id" in syskwargs:
-            assert "grid_entry" not in syskwargs and "grid_sape" not in syskwargs
+            assert "grid_entry" not in syskwargs and "grid_shape" not in syskwargs
             device_id: DeviceID = syskwargs["device_id"]
         else:
             raise Exception("All calls require device_id or grid_entry and grid_shape.")

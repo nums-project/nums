@@ -86,10 +86,12 @@ class RaySystem(SystemInterface):
 
     def __init__(
         self,
+        address: Optional[str] = None,
         use_head: bool = False,
         num_nodes: Optional[int] = None,
         num_cpus: Optional[int] = None,
     ):
+        self._address: str = address
         self._use_head = use_head
         self._num_nodes = num_nodes
         self.num_cpus = int(get_num_cores()) if num_cpus is None else num_cpus
@@ -107,7 +109,10 @@ class RaySystem(SystemInterface):
         if ray.is_initialized():
             self._manage_ray = False
         if self._manage_ray:
-            ray.init(num_cpus=self.num_cpus)
+            if self._address is None:
+                ray.init(num_cpus=self.num_cpus)
+            else:
+                ray.init(address=self._address)
         # Compute available nodes, based on CPU resource.
         if settings.head_ip is None:
             # TODO (hme): Have this be a class argument vs. using what's set in settings directly.
@@ -147,6 +152,7 @@ class RaySystem(SystemInterface):
 
     def init_devices(self):
         self._devices = []
+        self._device_to_node = {}
         for node_id in range(self._num_nodes):
             node = self._available_nodes[node_id]
             did = DeviceID(node_id, self._node_key(node), "cpu", 1)

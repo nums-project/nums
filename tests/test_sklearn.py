@@ -157,13 +157,18 @@ def exec_serial():
     )
 
 
-@pytest.mark.skip
+@pytest.mark.slow
 def test_parallel_sklearn(nps_app_inst: ArrayApplication):
     assert nps_app_inst is not None
     exec_parallel()
 
 
 def test_supervised(nps_app_inst: ArrayApplication):
+    from nums.core.systems.systems import RaySystem, SerialSystem
+
+    if not isinstance(nps_app_inst.cm.system, (RaySystem, SerialSystem)):
+        return
+
     assert nps_app_inst is not None
     import numpy as np
     from sklearn import svm
@@ -201,6 +206,11 @@ def test_train_test_split(nps_app_inst: ArrayApplication):
     import numpy as np
     from nums.sklearn import SVC, SVR, train_test_split
 
+    from nums.core.systems.systems import RaySystem, SerialSystem
+
+    if not isinstance(nps_app_inst.cm.system, (RaySystem, SerialSystem)):
+        return
+
     X, y = sample_Xy()
     assert not X.is_single_block(), not y.is_single_block()
     X_t, X_v, y_t, y_v = train_test_split(X, y, random_state=1337)
@@ -233,6 +243,11 @@ def test_train_test_split(nps_app_inst: ArrayApplication):
 
 
 def test_regressors(nps_app_inst: ArrayApplication):
+    from nums.core.systems.systems import RaySystem, SerialSystem
+
+    if not isinstance(nps_app_inst.cm.system, (RaySystem, SerialSystem)):
+        return
+
     assert nps_app_inst is not None
     from nums.sklearn import (
         DecisionTreeRegressor,
@@ -248,6 +263,11 @@ def test_regressors(nps_app_inst: ArrayApplication):
 
 
 def test_typing(nps_app_inst):
+    from nums.core.systems.systems import RaySystem, SerialSystem
+
+    if not isinstance(nps_app_inst.cm.system, (RaySystem, SerialSystem)):
+        return
+
     assert nps_app_inst is not None
     from nums import sklearn
     import numpy as np

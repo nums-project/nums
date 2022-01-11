@@ -135,7 +135,7 @@ def test_assign_dependencies(app_inst: ArrayApplication):
     assert np.allclose(D.get(), npD)
 
 
-@pytest.mark.skip
+@pytest.mark.slow
 def test_complete_3dim_slices(app_inst: ArrayApplication):
     # All combinations of axes of the following.
     # Index: [a]
@@ -187,7 +187,7 @@ def test_complete_3dim_slices(app_inst: ArrayApplication):
             pbar.update(1)
 
 
-@pytest.mark.skip
+@pytest.mark.slow
 def test_assign_complete_2dim_slices(app_inst: ArrayApplication):
     # All 2-dim slice assignments.
     # i_1:i_2 = k_1:k_2
@@ -263,7 +263,7 @@ def test_assign_complete_2dim_slices(app_inst: ArrayApplication):
                             assert np.allclose(B.get(), npB)
 
 
-@pytest.mark.skip
+@pytest.mark.slow
 def test_basic_assignment_broadcasting(app_inst: ArrayApplication):
     # Test mixed-length broadcasting.
     def get_sel(num_entries, shape):
