@@ -125,6 +125,29 @@ def test_inv(app_inst: ArrayApplication):
         assert np.allclose(np.linalg.cholesky(mat.get()), L, rtol=1e-4, atol=1e-4)
 
 
+def test_inv_uppertri(app_inst: ArrayApplication):
+    block_shape, shape = (3, 3), (20, 20)
+    R_matrices = []
+
+    # Create an upper-triangular matrix with sequential values.
+    R_np = np.arange(1, shape[0] ** 2 + 1, 1).reshape(*shape).astype(float)
+    R_matrices.append(np.triu(R_np))
+
+    # Create a random upper-triangular matrix
+    _, R_np = np.linalg.qr(np.random.rand(*shape))
+    R_matrices.append(R_np)
+
+    # Test the upper-triangular inversion algorithm on each of the above matrices.
+    for R_np in R_matrices:
+        R = app_inst.array(R_np, block_shape=block_shape)
+
+        R_inv_naive = np.linalg.inv(R_np)
+        R_inv = linalg.inv_uppertri(app_inst, R)
+
+        assert np.allclose(R_inv_naive, R_inv.get())
+        assert R_inv.block_shape == R.block_shape
+
+
 def test_qr(app_inst: ArrayApplication):
     real_X, _ = BimodalGaussian.get_dataset(2345, 9)
     X = app_inst.array(real_X, block_shape=(123, 4))
@@ -227,7 +250,8 @@ if __name__ == "__main__":
     app_inst = conftest.get_app("ray")
     # test_inv_assumptions(app_inst)
     # test_inv(app_inst)
-    test_qr(app_inst)
+    test_inv_uppertri(app_inst)
+    # test_qr(app_inst)
     # test_svd(app_inst)
     # test_lr(app_inst)
     # test_rr(app_inst)

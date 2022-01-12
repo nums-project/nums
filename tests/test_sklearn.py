@@ -157,7 +157,7 @@ def exec_serial():
     )
 
 
-@pytest.mark.skip
+@pytest.mark.slow
 def test_parallel_sklearn(nps_app_inst: ArrayApplication):
     assert nps_app_inst is not None
     exec_parallel()

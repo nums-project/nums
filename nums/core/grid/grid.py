@@ -166,7 +166,7 @@ class DeviceGrid(object):
             node_map[device_id.node_id] += 1
         assert len(node_addr_check) == len(node_map)
         devices_per_node = None
-        for node_id, device_count in node_map.items():
+        for _, device_count in node_map.items():
             if devices_per_node is None:
                 devices_per_node = device_count
             assert devices_per_node == device_count
@@ -222,7 +222,7 @@ class PackedDeviceGrid(DeviceGrid):
         )
 
     def _check_devices(self, device_ids: List[DeviceID]):
-        num_nodes, devices_per_node = super()._check_devices(device_ids)
+        _, devices_per_node = super()._check_devices(device_ids)
         assert devices_per_node == 1
 
     def get_device_id(self, agrid_entry, agrid_shape):

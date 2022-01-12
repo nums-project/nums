@@ -288,6 +288,9 @@ class ComputeCls(ComputeImp):
     def arange(self, start, stop, step, dtype):
         return np.arange(start, stop, step, dtype)
 
+    def sum_reduce(self, *arrs):
+        return np.add.reduce(arrs)
+
     def reduce_axis(self, op_name, arr, axis, keepdims, transposed):
         op_func = np.__getattribute__(op_name)
         if transposed:
@@ -353,6 +356,22 @@ class ComputeCls(ComputeImp):
 
     def size(self, arr):
         return arr.size
+
+    def tdigest_chunk(self, arr):
+        # pylint: disable = import-outside-toplevel
+        from crick import TDigest
+
+        t = TDigest()
+        t.update(arr)
+        return t
+
+    def percentiles_from_tdigest(self, q, *digests):
+        # pylint: disable = import-outside-toplevel
+        from crick import TDigest
+
+        t = TDigest()
+        t.merge(*digests)
+        return np.array(t.quantile(q))
 
     def select_median(self, arr):
         """Find value in `arr` closest to median as part of quickselect algorithm."""

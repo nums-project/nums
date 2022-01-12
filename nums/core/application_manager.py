@@ -31,6 +31,7 @@ from nums.core.grid.grid import (
 from nums.core.systems.filesystem import FileSystem
 from nums.core.systems.system_interface import SystemInterface
 from nums.core.systems.systems import SerialSystem, RaySystem, RaySystemStockScheduler
+from nums.core.systems import utils as systems_utils
 
 # pylint: disable=global-statement
 
@@ -70,47 +71,60 @@ def create():
     if _instance is not None:
         raise Exception("create() called more than once.")
 
+    num_cpus = (
+        int(systems_utils.get_num_cores())
+        if settings.num_cpus is None
+        else settings.num_cpus
+    )
+
     # Initialize compute interface and system.
     system_name = settings.system_name
+    cluster_shape = (1, 1) if settings.cluster_shape is None else settings.cluster_shape
     if system_name == "serial":
-        system: SystemInterface = SerialSystem(settings.num_cpus)
+        system: SystemInterface = SerialSystem(num_cpus)
     elif system_name == "ray":
         use_head = settings.use_head
-        num_devices = int(np.product(settings.cluster_shape))
+        num_devices = int(np.product(cluster_shape))
         system: SystemInterface = RaySystem(
             address=settings.address,
             use_head=use_head,
             num_devices=num_devices,
-            num_cpus=settings.num_cpus,
+            num_cpus=num_cpus,
         )
     elif system_name == "ray-scheduler":
         use_head = settings.use_head
-        num_devices = int(np.product(settings.cluster_shape))
+        num_devices = int(np.product(cluster_shape))
         system: SystemInterface = RaySystemStockScheduler(
             address=settings.address,
             use_head=use_head,
             num_devices=num_devices,
-            num_cpus=settings.num_cpus,
+            num_cpus=num_cpus,
         )
     elif system_name == "dask":
         # pylint: disable=import-outside-toplevel
         from nums.experimental.nums_dask.dask_system import DaskSystem
 
-        num_devices = int(np.product(settings.cluster_shape))
+        cluster_shape = (
+            (num_cpus,) if settings.cluster_shape is None else settings.cluster_shape
+        )
+        num_devices = int(np.product(cluster_shape))
         system: SystemInterface = DaskSystem(
             address=settings.address,
             num_devices=num_devices,
-            num_cpus=settings.num_cpus,
+            num_cpus=num_cpus,
         )
     elif system_name == "dask-scheduler":
         # pylint: disable=import-outside-toplevel
         from nums.experimental.nums_dask.dask_system import DaskSystemStockScheduler
 
-        num_devices = int(np.product(settings.cluster_shape))
+        cluster_shape = (
+            (num_cpus,) if settings.cluster_shape is None else settings.cluster_shape
+        )
+        num_devices = int(np.product(cluster_shape))
         system: SystemInterface = DaskSystemStockScheduler(
             address=settings.address,
             num_devices=num_devices,
-            num_cpus=settings.num_cpus,
+            num_cpus=num_cpus,
         )
     else:
         raise Exception("Unexpected system name %s" % settings.system_name)
@@ -120,11 +134,11 @@ def create():
 
     if settings.device_grid_name == "cyclic":
         device_grid: DeviceGrid = CyclicDeviceGrid(
-            settings.cluster_shape, "cpu", system.devices()
+            cluster_shape, "cpu", system.devices()
         )
     elif settings.device_grid_name == "packed":
         device_grid: DeviceGrid = PackedDeviceGrid(
-            settings.cluster_shape, "cpu", system.devices()
+            cluster_shape, "cpu", system.devices()
         )
     else:
         raise Exception("Unexpected device grid name %s" % settings.device_grid_name)

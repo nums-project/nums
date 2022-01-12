@@ -26,6 +26,11 @@ def test_dask_system():
     from nums.experimental.nums_dask.dask_system import DaskSystem
     from nums.core.systems.utils import get_num_cores
 
+    prev_settings = (
+        settings.system_name,
+        settings.device_grid_name,
+        settings.cluster_shape,
+    )
     settings.device_grid_name = "cyclic"
     settings.system_name = "dask"
     settings.cluster_shape = (get_num_cores(), 1)
@@ -51,6 +56,11 @@ def test_dask_system():
     Q, R = linalg.direct_tsqr(app, X)
     assert nps.allclose(Q @ R, X)
     application_manager.destroy()
+    (
+        settings.system_name,
+        settings.device_grid_name,
+        settings.cluster_shape,
+    ) = prev_settings
 
 
 if __name__ == "__main__":

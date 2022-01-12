@@ -105,7 +105,9 @@ def test_block_shape(nps_app_inst):
     assert grid.grid_shape == (1, 1)
 
     shape = (10 ** 4, 10 ** 4)
-    block_shape = app.compute_block_shape(shape=shape, dtype=dtype, num_cores=num_cores)
+    block_shape = app.compute_block_shape(
+        shape=shape, cluster_shape=cluster_shape, dtype=dtype, num_cores=num_cores
+    )
     grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype.__name__)
     assert grid.grid_shape == (int(num_cores ** 0.5), int(num_cores ** 0.5))
 

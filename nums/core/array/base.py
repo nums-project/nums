@@ -14,6 +14,9 @@
 # limitations under the License.
 
 
+# pylint: disable = protected-access
+
+
 import numpy as np
 
 from nums.core.array import utils as array_utils
