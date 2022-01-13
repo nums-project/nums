@@ -14,7 +14,11 @@
 # limitations under the License.
 
 
+import pytest
+
+
 # pylint: disable=import-outside-toplevel
+@pytest.mark.skip
 def test_dask_system():
     import numpy as np
     from nums.core import linalg
