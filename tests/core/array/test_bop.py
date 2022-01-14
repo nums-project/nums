@@ -87,7 +87,7 @@ def test_tensordot_large_shape(app_inst: ArrayApplication):
     common.check_block_integrity(block_c)
 
 
-@pytest.mark.skip
+@pytest.mark.slow
 def test_tensordot_all_shapes(app_inst: ArrayApplication):
     for axes in [0, 1, 2]:
         if axes == 2:

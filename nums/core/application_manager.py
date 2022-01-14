@@ -74,13 +74,35 @@ def create():
         use_head = settings.use_head
         num_nodes = int(np.product(settings.cluster_shape))
         system: SystemInterface = RaySystem(
-            use_head=use_head, num_nodes=num_nodes, num_cpus=settings.num_cpus
+            address=settings.address,
+            use_head=use_head,
+            num_nodes=num_nodes,
+            num_cpus=settings.num_cpus,
         )
     elif system_name == "ray-scheduler":
         use_head = settings.use_head
         num_nodes = int(np.product(settings.cluster_shape))
         system: SystemInterface = RaySystemStockScheduler(
-            use_head=use_head, num_nodes=num_nodes, num_cpus=settings.num_cpus
+            address=settings.address,
+            use_head=use_head,
+            num_nodes=num_nodes,
+            num_cpus=settings.num_cpus,
+        )
+    elif system_name == "dask":
+        # pylint: disable=import-outside-toplevel
+        from nums.experimental.nums_dask.dask_system import DaskSystem
+
+        num_nodes = int(np.product(settings.cluster_shape))
+        system: SystemInterface = DaskSystem(
+            address=settings.address, num_nodes=num_nodes, num_cpus=settings.num_cpus
+        )
+    elif system_name == "dask-scheduler":
+        # pylint: disable=import-outside-toplevel
+        from nums.experimental.nums_dask.dask_system import DaskSystemStockScheduler
+
+        num_nodes = int(np.product(settings.cluster_shape))
+        system: SystemInterface = DaskSystemStockScheduler(
+            address=settings.address, num_nodes=num_nodes, num_cpus=settings.num_cpus
         )
     else:
         raise Exception("Unexpected system name %s" % settings.system_name)
