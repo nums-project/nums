@@ -951,7 +951,7 @@ class FunctionNode(TreeNode):
             if cm is None:
                 cm = child.block._cm
         block: Block = Block(
-            self.grid_entry, self.grid_shape, self._shape, self.dtype, False, cm
+            self._grid_entry, self._grid_shape, self._shape, self._dtype, False, cm
         )
         block._device_id = device_id
         block.oid = block._cm.call(
