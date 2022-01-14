@@ -77,6 +77,12 @@ def test_fusion(app_inst_mock_none):
     opt_z: BlockArray = ga_op(app, fusion1, x, y)
     assert np.allclose(z.get(), fusion1(np, real_x, real_y))
     assert app.allclose(z, opt_z).get()
+    for grid_entry in opt_z.grid.get_entry_iterator():
+        block = opt_z.blocks[grid_entry]
+        assert block.grid_entry == grid_entry
+        assert block.grid_shape == opt_z.grid_shape
+        assert block.shape == opt_z.grid.get_block_shape(grid_entry)
+        assert block.dtype == opt_z.dtype
 
 
 def test_graph_properties():
