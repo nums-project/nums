@@ -19,14 +19,14 @@ from typing import List, Union
 import numpy as np
 from nums.core.array.application import ArrayApplication
 from nums.core.application_manager import instance as _instance
-from nums.models.glms import GLM
+from nums.models.glms import Model
 
 
 # Based on Nocedal and Wright, chapters 2, 3, 6 and 7.
 
 
 class BackTrackingLineSearch(object):
-    def __init__(self, model: GLM):
+    def __init__(self, model: Model):
         self.app = _instance()
         self.model = model
 
@@ -64,9 +64,9 @@ class LBFGSMemory(object):
 
 
 class LBFGS(object):
-    def __init__(self, model: GLM, m=10, max_iter=100, thresh=1e-4, dtype=np.float64):
+    def __init__(self, model: Model, m=10, max_iter=100, thresh=1e-4, dtype=np.float64):
         self.app: ArrayApplication = _instance()
-        self.model: GLM = model
+        self.model: Model = model
         self.m = m
         self.max_iter = max_iter
         self.thresh = thresh

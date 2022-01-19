@@ -33,7 +33,7 @@ from nums.core import linalg
 #
 # The link function is expressed as follows.
 # E(Y | X) = mu
-# Define the linear predictor eta = X.T @ beta
+# Define the linear predictor eta = X @ beta
 # Define g as the link function, so that g(mu) = eta
 # E(Y | X) = g^{-1}(eta)
 #
@@ -62,7 +62,35 @@ from nums.core import linalg
 #   g(mu) = (b')^{-1}(mu) = ln(mu/(1-mu)) = ln(p/(1-p)) = theta(p)
 
 
-class GLM(object):
+class Model(object):
+    def forward(self, X, beta=None):
+        raise NotImplementedError()
+
+    def objective(
+        self,
+        X: BlockArray,
+        y: BlockArray,
+        beta: BlockArray = None,
+        mu: BlockArray = None,
+    ):
+        raise NotImplementedError()
+
+    def gradient(
+        self,
+        X: BlockArray,
+        y: BlockArray,
+        mu: BlockArray = None,
+        beta: BlockArray = None,
+    ):
+        # gradient w.r.t. beta.
+        raise NotImplementedError()
+
+    def hessian(self, X: BlockArray, y: BlockArray, mu: BlockArray = None):
+        # Hessian w.r.t. beta.
+        raise NotImplementedError()
+
+
+class GLM(Model):
     def __init__(
         self,
         penalty="none",
@@ -205,29 +233,6 @@ class GLM(object):
         raise NotImplementedError()
 
     def link_inv(self, eta: BlockArray):
-        raise NotImplementedError()
-
-    def objective(
-        self,
-        X: BlockArray,
-        y: BlockArray,
-        beta: BlockArray = None,
-        mu: BlockArray = None,
-    ):
-        raise NotImplementedError()
-
-    def gradient(
-        self,
-        X: BlockArray,
-        y: BlockArray,
-        mu: BlockArray = None,
-        beta: BlockArray = None,
-    ):
-        # gradient w.r.t. beta.
-        raise NotImplementedError()
-
-    def hessian(self, X: BlockArray, y: BlockArray, mu: BlockArray = None):
-        # Hessian w.r.t. beta.
         raise NotImplementedError()
 
     def deviance(self, y, y_pred):
