@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pylint: disable = redefined-builtin, too-many-lines, W1401, W0401, W0614, W0611
+# pylint: disable = redefined-builtin, too-many-lines, anomalous-backslash-in-string, unused-wildcard-import, wildcard-import, unused-import
 
 from typing import Tuple, Optional, Union
 
