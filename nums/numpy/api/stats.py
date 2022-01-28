@@ -14,6 +14,7 @@
 # limitations under the License.
 
 # pylint: disable = redefined-builtin, too-many-lines, anomalous-backslash-in-string, unused-wildcard-import, wildcard-import
+from typing import Tuple, Optional, Union
 
 from nums.core.application_manager import instance as _instance
 from nums.core.array.blockarray import BlockArray
