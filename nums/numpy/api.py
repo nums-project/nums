@@ -24,7 +24,7 @@ import scipy.stats
 from nums.core.application_manager import instance as _instance
 from nums.core.array.blockarray import BlockArray
 from nums.numpy import numpy_utils
-
+from nums.core.systems import utils as systems_utils
 
 # pylint: disable = redefined-builtin, too-many-lines
 
@@ -735,6 +735,36 @@ def top_k(
         raise NotImplementedError("'sorted' is currently not supported.")
     return _instance().top_k(a, k, largest=largest)
 
+def sort(arr: BlockArray, axis=-1, kind=None, order=None)->BlockArray:
+    if axis is not -1:
+        raise NotImplementedError("'axis' is currently not supported.")
+    if kind is not None:
+        raise NotImplementedError()
+    if order is not None:
+        raise NotImplementedError()
+
+    input_blocks = systems_utils.get_num_cores()
+    output_blocks = systems_utils.get_num_cores()
+
+    a_oids = arr.flattened_oids()
+
+    # TODO (bcp): A hack for now, figure out how to randomly sample using NumS API
+    partitions = np.random.choice(arr.get(), size=output_blocks - 1, replace=False)
+    partitions.sort()
+
+    pids = np.empty([input_blocks, output_blocks], dtype=object)
+    outids = []
+
+    for i in range(input_blocks):
+        pids[i] = np.array(
+            _instance().map_sort(a_oids[i], partitions), dtype=object
+        )
+
+    for j in range(output_blocks):
+        outids.append(_instance().reduce_sort(*pids[:, j]))
+
+    result = np.concatenate(outids)
+    return _instance().array(result, block_shape=arr.block_shape)
 
 ############################################
 # NaN Ops
