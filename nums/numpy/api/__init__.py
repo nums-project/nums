@@ -21,7 +21,6 @@ from nums.numpy.api.creation import *
 from nums.numpy.api.generated import *
 from nums.numpy.api.la import *
 from nums.numpy.api.manipulation import *
-from nums.numpy.api.misc import *
 from nums.numpy.api.nan import *
 from nums.numpy.api.reduction import *
 from nums.numpy.api.shape import *
