@@ -735,7 +735,8 @@ def top_k(
         raise NotImplementedError("'sorted' is currently not supported.")
     return _instance().top_k(a, k, largest=largest)
 
-def sort(arr: BlockArray, axis=-1, kind=None, order=None)->BlockArray:
+
+def sort(arr: BlockArray, axis=-1, kind=None, order=None) -> BlockArray:
     if axis is not -1:
         raise NotImplementedError("'axis' is currently not supported.")
     if kind is not None:
@@ -743,6 +744,7 @@ def sort(arr: BlockArray, axis=-1, kind=None, order=None)->BlockArray:
     if order is not None:
         raise NotImplementedError()
 
+    # TODO (bcp): Figure out what the optimal parameters are for input/output blocks in mapreduce phases
     input_blocks = systems_utils.get_num_cores()
     output_blocks = systems_utils.get_num_cores()
 
@@ -752,19 +754,19 @@ def sort(arr: BlockArray, axis=-1, kind=None, order=None)->BlockArray:
     partitions = np.random.choice(arr.get(), size=output_blocks - 1, replace=False)
     partitions.sort()
 
+    # TODO (bcp): Figure out how to do this without explicitly using NumPy
     pids = np.empty([input_blocks, output_blocks], dtype=object)
     outids = []
 
     for i in range(input_blocks):
-        pids[i] = np.array(
-            _instance().map_sort(a_oids[i], partitions), dtype=object
-        )
+        pids[i] = np.array(_instance().map_sort(a_oids[i], partitions), dtype=object)
 
     for j in range(output_blocks):
         outids.append(_instance().reduce_sort(*pids[:, j]))
 
     result = np.concatenate(outids)
     return _instance().array(result, block_shape=arr.block_shape)
+
 
 ############################################
 # NaN Ops

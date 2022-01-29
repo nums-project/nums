@@ -15,12 +15,10 @@
 
 
 from typing import List, Tuple, Dict, Union
-from nums.core.systems.utils import method_meta
-from nums.core import settings
-from nums.core.systems import utils as systems_utils
-
 import numpy as np
 
+from nums.core.systems.utils import method_meta
+from nums.core.systems import utils as systems_utils
 from nums.core.array import utils as array_utils
 from nums.core.array.blockarray import BlockArray, Block
 from nums.core.array.random import NumsRandomState
@@ -1211,18 +1209,16 @@ class ArrayApplication(object):
                 arrays.append(self.atleast_2d(arr))
         return self.concatenate(arrays, 1, axis_block_size=axis_block_size)
 
+    # TODO (bcp): See if we can use BlockArrays/ObjectRefs instead
     @method_meta(num_returns=systems_utils.get_num_cores())
     def map_sort(self, _block, partitions: np.ndarray):
         block = self.cm.get(_block).copy()
         block.sort()
 
-        # Finds indices  where they need to be sorted
         partition_indices = block.searchsorted(partitions)
         return np.split(block, partition_indices)
 
-
     def reduce_sort(self, *blocks):
-        # In the reduce phase, merge partitions and sort again
         merged_partitions = np.concatenate(blocks)
         merged_partitions.sort()
         return merged_partitions
