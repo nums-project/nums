@@ -55,6 +55,26 @@ def test_stats_1d(nps_app_inst):
             assert np.allclose(ba_result.get(), np_result)
 
 
+def test_sort(nps_app_inst):
+    from nums import numpy as nps
+    from nums.numpy import BlockArray
+
+    assert nps_app_inst is not None
+
+    ba: BlockArray = nps.random.permutation(2 * 5)
+    nd: np.ndarray = ba.get()
+
+    algorithms = ["quicksort", "mergesort", "heapsort", "stable"]
+
+    for algorithm in algorithms:
+        nd_sorted = nd.copy()
+
+        ba_sorted = nps.sort(ba, kind=algorithm)
+        nd_sorted.sort(kind=algorithm)
+
+        assert np.allclose(ba_sorted.get(), nd_sorted)
+
+
 if __name__ == "__main__":
     from nums.core import application_manager
     import nums.core.settings
