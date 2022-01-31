@@ -1209,16 +1209,24 @@ class ArrayApplication(object):
                 arrays.append(self.atleast_2d(arr))
         return self.concatenate(arrays, 1, axis_block_size=axis_block_size)
 
+    def sample_pivots(self, arr: BlockArray):
+        pivots = []
+        # grab the first element in n - 1 blocks
+        for i in range(arr.grid_shape[0] - 1):
+             pivots.append(self.cm.get(arr.blocks[0].oid)[0])
+        pivots = np.array(pivots)
+        pivots.sort()
+        return pivots
+
     # TODO (bcp): See if we can use BlockArrays/ObjectRefs instead
-    @method_meta(num_returns=systems_utils.get_num_cores())
-    def map_sort(self, _block, partitions: np.ndarray):
-        block = self.cm.get(_block).copy()
-        block.sort()
+    @method_meta(num_returns=systems_utils.get_num_cores()) # figure out how to set the number upon function call
+    def map_sort(self, _block, pivots: np.ndarray, kind=None):
+        block = self.cm.get(_block.oid).copy()
+        block.sort(kind=kind)
+        idx = block.searchsorted(pivots)
+        return np.array(np.split(block, idx), dtype=object)
 
-        partition_indices = block.searchsorted(partitions)
-        return np.split(block, partition_indices)
-
-    def reduce_sort(self, *blocks):
+    def reduce_sort(self, *blocks, kind=None):
         merged_partitions = np.concatenate(blocks)
         merged_partitions.sort()
         return merged_partitions

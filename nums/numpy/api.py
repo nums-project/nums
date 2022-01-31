@@ -739,32 +739,29 @@ def top_k(
 def sort(arr: BlockArray, axis=-1, kind=None, order=None) -> BlockArray:
     if axis is not -1:
         raise NotImplementedError("'axis' is currently not supported.")
-    if kind is not None:
-        raise NotImplementedError()
     if order is not None:
         raise NotImplementedError()
 
     # TODO (bcp): Figure out what the optimal parameters are for input/output blocks in mapreduce phases
-    input_blocks = systems_utils.get_num_cores()
-    output_blocks = systems_utils.get_num_cores()
+    num_blocks = arr.grid_shape[0]
+
+    pivots = _instance().sample_pivots(arr)
 
     a_oids = arr.flattened_oids()
 
-    # TODO (bcp): A hack for now, figure out how to randomly sample using NumS API
-    partitions = np.random.choice(arr.get(), size=output_blocks - 1, replace=False)
-    partitions.sort()
-
     # TODO (bcp): Figure out how to do this without explicitly using NumPy
-    pids = np.empty([input_blocks, output_blocks], dtype=object)
-    outids = []
+    mapped_sorted = np.empty([num_blocks, num_blocks], dtype=object) # n x n matrix that holds the sorted bucket partiitons
+    reduce_sorted = [] # this holds the result
 
-    for i in range(input_blocks):
-        pids[i] = np.array(_instance().map_sort(a_oids[i], partitions), dtype=object)
+    # map phase
+    for i in range(num_blocks):
+        mapped_sorted[i] = _instance().map_sort(arr.blocks[i], pivots, kind=kind)
 
-    for j in range(output_blocks):
-        outids.append(_instance().reduce_sort(*pids[:, j]))
+    # reduce phase
+    for j in range(num_blocks):
+        reduce_sorted.append(_instance().reduce_sort(*mapped_sorted[:, j], kind=kind))
 
-    result = np.concatenate(outids)
+    result = np.concatenate(reduce_sorted)
     return _instance().array(result, block_shape=arr.block_shape)
 
 
