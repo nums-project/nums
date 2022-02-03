@@ -20,7 +20,7 @@ from typing import List
 import numpy as np
 
 
-class Batch(object):
+class Batch:
 
     """
     Simple object for creating an object that can

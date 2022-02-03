@@ -21,7 +21,7 @@ from nums.core.compute.compute_manager import ComputeManager
 from nums.core.grid.grid import ArrayGrid
 
 
-class Block(object):
+class Block:
     # pylint: disable=redefined-builtin, global-statement
     # TODO(hme): Create a base class, and move this concrete class into blockarray.py.
     #  Do this when we implement a SparseBlock object.
@@ -320,7 +320,7 @@ class Block(object):
         return self._cm.get(self.oid)
 
 
-class BlockArrayBase(object):
+class BlockArrayBase:
     def __init__(self, grid: ArrayGrid, cm: ComputeManager, blocks: np.ndarray = None):
         self.grid = grid
         self.cm = cm
