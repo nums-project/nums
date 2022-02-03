@@ -14,6 +14,7 @@
 # limitations under the License.
 
 
+from dataclasses import dataclass
 import itertools
 import logging
 from typing import Tuple, Iterator, List
@@ -106,36 +107,12 @@ class ArrayGrid(object):
         return nbytes
 
 
-class DeviceID(object):
-    @classmethod
-    def from_str(cls, s: str):
-        a, b = s.split("/")
-        node_id, node_addr = a.split("=")
-        device_type, device_id = b.split(":")
-        return DeviceID(int(node_id), node_addr, device_type, int(device_id))
-
-    def __init__(self, node_id: int, node_addr: str, device_type: str, device_id: int):
-        self.node_id: int = node_id
-        self.node_addr: str = node_addr
-        self.device_type: str = device_type
-        self.device_id: int = device_id
-
-    def __str__(self):
-        return self.__repr__()
-
-    def __hash__(self):
-        return hash(self.__repr__())
-
-    def __repr__(self):
-        return "%s=%s/%s:%s" % (
-            self.node_id,
-            self.node_addr,
-            self.device_type,
-            self.device_id,
-        )
-
-    def __eq__(self, other):
-        return str(self) == str(other)
+@dataclass
+class Device:
+    node_id: int
+    node_addr: str
+    device_type: str
+    device_id: int
 
 
 class DeviceGrid(object):
