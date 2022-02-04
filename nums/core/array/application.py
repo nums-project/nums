@@ -17,8 +17,6 @@
 from typing import List, Tuple, Dict, Union
 import numpy as np
 
-from nums.core.systems.utils import method_meta
-from nums.core.systems import utils as systems_utils
 from nums.core.array import utils as array_utils
 from nums.core.array.blockarray import BlockArray, Block
 from nums.core.array.random import NumsRandomState
@@ -1209,24 +1207,65 @@ class ArrayApplication(object):
                 arrays.append(self.atleast_2d(arr))
         return self.concatenate(arrays, 1, axis_block_size=axis_block_size)
 
-    def sample_pivots(self, arr: BlockArray):
+    def sort(self, arr):
+        arr_oids = arr.flattened_oids()
+        num_blocks = len(arr_oids)
+        arr_oids.pop()
+        num_arrs = len(arr_oids)
         pivots = []
-        # grab the first element in n - 1 blocks
-        for i in range(arr.grid_shape[0] - 1):
-             pivots.append(self.cm.get(arr.blocks[0].oid)[0])
-        pivots = np.array(pivots)
-        pivots.sort()
-        return pivots
+        for i, arr_oid in enumerate(arr_oids):
 
-    # TODO (bcp): See if we can use BlockArrays/ObjectRefs instead
-    @method_meta(num_returns=systems_utils.get_num_cores()) # figure out how to set the number upon function call
-    def map_sort(self, _block, pivots: np.ndarray, kind=None):
-        block = self.cm.get(_block.oid).copy()
-        block.sort(kind=kind)
-        idx = block.searchsorted(pivots)
-        return np.array(np.split(block, idx), dtype=object)
+            _oid = self.cm.sample_pivots(
+                arr_oid,
+                syskwargs={
+                    "grid_entry": (i,),
+                    "grid_shape": (num_arrs,),
+                    "options": {"num_returns": 1},
+                },
+            )
 
-    def reduce_sort(self, *blocks, kind=None):
-        merged_partitions = np.concatenate(blocks)
-        merged_partitions.sort()
-        return merged_partitions
+            pivots.append(BlockArray.from_oid(_oid, (1,), arr.dtype, self.cm))
+
+        new_pivots = self.concatenate(pivots, 0, axis_block_size=len(pivots))
+
+        # assume that the block is small enough to fit single block
+        sorted_pivots_oid = self.cm.sort(
+            new_pivots.blocks[0].oid,
+            syskwargs={
+                "grid_entry": (0,),
+                "grid_shape": (1,),
+                "options": {"num_returns": 1},
+            },
+        )
+
+        mapped_sorted = np.empty([num_blocks, num_blocks], dtype=object)
+        reduce_sorted = []
+
+        oids = arr.flattened_oids()
+        for i in range(num_blocks):
+            mapped_sorted[i] = self.cm.map_sort(
+                oids[i],
+                sorted_pivots_oid,
+                syskwargs={
+                    "grid_entry": (0,),
+                    "grid_shape": (1,),
+                    "options": {"num_returns": num_blocks},
+                },
+            )
+
+        for j in range(num_blocks):
+            oid = self.cm.reduce_sort(
+                *mapped_sorted[:, j],
+                syskwargs={
+                    "grid_entry": (0,),
+                    "grid_shape": (1,),
+                    "options": {"num_returns": 1},
+                },
+            )
+            bs = self.cm.get(oid).shape
+            _ba = BlockArray.from_oid(oid, bs, arr.dtype, self.cm)
+            reduce_sorted.append(_ba)
+
+        return self.concatenate(
+            reduce_sorted, axis=0, axis_block_size=arr.block_shape[0]
+        )

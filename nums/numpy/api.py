@@ -24,7 +24,6 @@ import scipy.stats
 from nums.core.application_manager import instance as _instance
 from nums.core.array.blockarray import BlockArray
 from nums.numpy import numpy_utils
-from nums.core.systems import utils as systems_utils
 
 # pylint: disable = redefined-builtin, too-many-lines
 
@@ -741,28 +740,10 @@ def sort(arr: BlockArray, axis=-1, kind=None, order=None) -> BlockArray:
         raise NotImplementedError("'axis' is currently not supported.")
     if order is not None:
         raise NotImplementedError()
+    if kind is not None:
+        raise NotImplementedError()
 
-    # TODO (bcp): Figure out what the optimal parameters are for input/output blocks in mapreduce phases
-    num_blocks = arr.grid_shape[0]
-
-    pivots = _instance().sample_pivots(arr)
-
-    a_oids = arr.flattened_oids()
-
-    # TODO (bcp): Figure out how to do this without explicitly using NumPy
-    mapped_sorted = np.empty([num_blocks, num_blocks], dtype=object) # n x n matrix that holds the sorted bucket partiitons
-    reduce_sorted = [] # this holds the result
-
-    # map phase
-    for i in range(num_blocks):
-        mapped_sorted[i] = _instance().map_sort(arr.blocks[i], pivots, kind=kind)
-
-    # reduce phase
-    for j in range(num_blocks):
-        reduce_sorted.append(_instance().reduce_sort(*mapped_sorted[:, j], kind=kind))
-
-    result = np.concatenate(reduce_sorted)
-    return _instance().array(result, block_shape=arr.block_shape)
+    return _instance().sort(arr)
 
 
 ############################################
