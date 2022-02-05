@@ -1208,14 +1208,13 @@ class ArrayApplication(object):
         return self.concatenate(arrays, 1, axis_block_size=axis_block_size)
 
     def sort(self, arr):
-        pivot_oids = arr.flattened_oids()
-        num_blocks = len(pivot_oids)
+        block_oids = arr.flattened_oids()
+        num_blocks = len(block_oids)
 
         # If the BlockArray to be sorted is small enough, default to serial sort
         if num_blocks == 1:
-            first_oid = self.cm.get(pivot_oids[0])
             oid = self.cm.sort(
-                first_oid,
+                block_oids,
                 syskwargs={
                     "grid_entry": (0,),
                     "grid_shape": (1,),
@@ -1224,26 +1223,26 @@ class ArrayApplication(object):
             )
             return BlockArray.from_oid(oid, arr.block_shape, arr.dtype, self.cm)
 
-        pivot_oids.pop()
+        block_oids.pop()
 
         # Sample the pivots to sort buckets around
-        pivots = []
-        for i, arr_oid in enumerate(pivot_oids):
+        pivot_oids = []
+        for i, arr_oid in enumerate(block_oids):
             oid = self.cm.sample_pivots(
                 arr_oid,
                 syskwargs={
-                    "grid_entry": (i,),
-                    "grid_shape": (num_blocks - 1,),
+                    "grid_entry": (0,),
+                    "grid_shape": (1,),
                     "options": {"num_returns": 1},
                 },
             )
-            pivots.append(BlockArray.from_oid(oid, (1,), arr.dtype, self.cm))
+            pivot_oids.append(BlockArray.from_oid(oid, (1,), arr.dtype, self.cm))
 
-        new_pivots = self.concatenate(pivots, 0, axis_block_size=num_blocks - 1)
+        pivot_oid = self.concatenate(pivot_oids, 0, axis_block_size=len(pivot_oids))
 
         # Assume that the number of pivots is small enough to fit within a single BlockArray
         sorted_pivots_oid = self.cm.sort(
-            new_pivots.blocks[0].oid,
+            pivot_oid.blocks[0].oid,
             syskwargs={
                 "grid_entry": (0,),
                 "grid_shape": (1,),
@@ -1260,8 +1259,8 @@ class ArrayApplication(object):
                 arr_oids[i],
                 sorted_pivots_oid,
                 syskwargs={
-                    "grid_entry": (0,),
-                    "grid_shape": (1,),
+                    "grid_entry": (i,),
+                    "grid_shape": arr.grid.grid_shape,
                     "options": {"num_returns": num_blocks},
                 },
             )
@@ -1270,8 +1269,8 @@ class ArrayApplication(object):
             oid = self.cm.reduce_sort(
                 *mapped_sorted[:, j],
                 syskwargs={
-                    "grid_entry": (0,),
-                    "grid_shape": (1,),
+                    "grid_entry": (j,),
+                    "grid_shape": arr.grid.grid_shape,
                     "options": {"num_returns": 1},
                 },
             )
