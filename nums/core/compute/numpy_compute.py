@@ -513,22 +513,18 @@ class ComputeCls(ComputeImp):
     def identity(self, value):
         return value
 
-    # Experiment with random later
+    # TODO: (bcp) Experiment with random later
     def sample_pivots(self, arr):
-        return arr[:1]
+        return arr[0]
 
     def sort(self, arr):
-        copied = arr.copy()
-        copied.sort()
-        return copied
+        return np.sort(arr)
 
     def map_sort(self, arr, pivots):
-        copied = arr.copy()
-        copied.sort()
-        idx = copied.searchsorted(pivots)
-        return np.array(np.split(copied, idx), dtype=object)
+        arr = np.sort(arr)
+        idx = arr.searchsorted(pivots)
+        return np.array(np.split(arr, idx), dtype=object)
 
     def reduce_sort(self, *arr):
         merged_arr = np.concatenate(arr)
-        merged_arr.sort()
-        return merged_arr
+        return np.sort(merged_arr)
