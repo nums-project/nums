@@ -1210,6 +1210,20 @@ class ArrayApplication(object):
     def sort(self, arr):
         pivot_oids = arr.flattened_oids()
         num_blocks = len(pivot_oids)
+
+        # If the BlockArray to be sorted is small enough, default to serial sort
+        if num_blocks == 1:
+            first_oid = self.cm.get(pivot_oids[0])
+            oid = self.cm.sort(
+                first_oid,
+                syskwargs={
+                    "grid_entry": (0,),
+                    "grid_shape": (1,),
+                    "options": {"num_returns": 1},
+                },
+            )
+            return BlockArray.from_oid(oid, arr.block_shape, arr.dtype, self.cm)
+
         pivot_oids.pop()
 
         # Sample the pivots to sort buckets around
@@ -1227,7 +1241,7 @@ class ArrayApplication(object):
 
         new_pivots = self.concatenate(pivots, 0, axis_block_size=num_blocks - 1)
 
-        # assume that the block is small enough to fit single block
+        # Assume that the number of pivots is small enough to fit within a single BlockArray
         sorted_pivots_oid = self.cm.sort(
             new_pivots.blocks[0].oid,
             syskwargs={

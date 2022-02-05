@@ -56,7 +56,18 @@ def test_stats_1d(nps_app_inst):
 
 
 def test_sort_small(nps_app_inst):
-    pass
+    from nums import numpy as nps
+    from nums.numpy import BlockArray
+
+    assert nps_app_inst is not None
+
+    ba: BlockArray = nps.random.permutation(1000)
+    na: np.ndarray = ba.get()
+
+    ba_sorted = nps.sort(ba)
+    na_sorted = np.sort(na)
+
+    assert np.allclose(ba_sorted.get(), na_sorted)
 
 
 def test_sort_large(nps_app_inst):
@@ -66,9 +77,7 @@ def test_sort_large(nps_app_inst):
     assert nps_app_inst is not None
 
     ba: BlockArray = nps.random.permutation(2 ** 27)
-    nd: np.ndarray = ba.get()
-
-    na = nd.copy()
+    na: np.ndarray = ba.get()
 
     ba_sorted = nps.sort(ba)
     na_sorted = np.sort(na)
