@@ -159,6 +159,17 @@ class ComputeInterface(object):
     def identity(self, value):
         raise NotImplementedError()
 
+    def any(self, arr, syskwargs: Dict):
+        raise NotImplementedError()
+
+    # Sparse
+
+    def dense_to_sparse(self, arr, fill_value, syskwargs: Dict):
+        raise NotImplementedError()
+
+    def sparse_to_dense(self, arr, syskwargs: Dict):
+        raise NotImplementedError()
+
 
 class ComputeImp(object):
     pass

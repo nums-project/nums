@@ -22,6 +22,7 @@ import scipy.linalg
 import scipy.special
 from numpy.random import Generator
 from numpy.random import PCG64
+from sparse import GCXS
 
 from nums.core.compute.compute_interface import ComputeImp, RNGInterface
 from nums.core.grid.grid import ArrayGrid
@@ -512,3 +513,14 @@ class ComputeCls(ComputeImp):
 
     def identity(self, value):
         return value
+
+    def any(self, arr):
+        return np.any(arr)
+
+    # Sparse
+
+    def dense_to_sparse(self, arr, fill_value):
+        return GCXS.from_numpy(arr, fill_value=fill_value)
+
+    def sparse_to_dense(self, arr):
+        return arr.todense()
