@@ -78,7 +78,7 @@ class ArrayIndex(ArrayGrid):
                 return 1
             elif coord1[i] < coord2[i]:
                 return -1
-            return 0
+        return 0
 
     def insert_block(self, coord, block):
         """
@@ -110,11 +110,11 @@ class SparseBlockArray(object):
     def from_ba(cls, ba: BlockArrayBase, fill_value=0):
         index = ArrayIndex(ba.shape, ba.block_shape, ba.dtype.__name__)
         sp_ba = SparseBlockArray(index, ba.cm, fill_value)
+        mask = ba != fill_value
         oids = []
-        # Only works for fill_value = 0 right now
-        for grid_entry in ba.grid.get_entry_iterator():
-            block: Block = ba.blocks[grid_entry]
-            oid = ba.cm.any(
+        for grid_entry in mask.grid.get_entry_iterator():
+            block: Block = mask.blocks[grid_entry]
+            oid = mask.cm.any(
                 block.oid,
                 syskwargs={
                     "grid_entry": block.grid_entry,
@@ -124,7 +124,6 @@ class SparseBlockArray(object):
             oids.append((grid_entry, oid))
         for grid_entry, oid in oids:
             if sp_ba.cm.get(oid):
-                print(grid_entry)
                 block: Block = ba.blocks[grid_entry]
                 oid = sp_ba.cm.dense_to_sparse(
                     block.oid,

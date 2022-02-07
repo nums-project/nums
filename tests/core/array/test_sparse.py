@@ -15,6 +15,11 @@ def test_sparse_init(app_inst: ArrayApplication):
     Y_ba = X_sp.to_ba()
     assert np.array_equal(X_np, Y_ba.get())
 
+    X_sp = SparseBlockArray.from_ba(X_ba, fill_value=1)
+    assert len(X_sp.index.blocks) == 3
+    Y_ba = X_sp.to_ba()
+    assert np.array_equal(X_np, Y_ba.get())
+
 
 if __name__ == "__main__":
     # pylint disable=import-error, no-member
