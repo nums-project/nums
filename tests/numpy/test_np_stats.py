@@ -92,3 +92,5 @@ if __name__ == "__main__":
     nums.core.settings.system_name = "serial"
     nps_app_inst = application_manager.instance()
     test_stats_1d(nps_app_inst)
+    test_sort_small(nps_app_inst)
+    test_sort_large(nps_app_inst)
