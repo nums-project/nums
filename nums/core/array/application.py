@@ -1276,8 +1276,8 @@ class ArrayApplication(object):
                 *mapped_sorted[:, j],
                 kind=kind,
                 syskwargs={
-                    "grid_entry": (0,),
-                    "grid_shape": (1,),
+                    "grid_entry": (j,),
+                    "grid_shape": arr.grid.grid_shape,
                     "options": {"num_returns": 1},
                 },
             )
