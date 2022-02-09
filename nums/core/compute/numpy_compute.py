@@ -513,11 +513,12 @@ class ComputeCls(ComputeImp):
     def identity(self, value):
         return value
 
-    # TODO: (bcp) Experiment with random later
     def sample_pivots(self, arr):
         return arr[0]
 
     def sort(self, arr):
+        if arr.size == 1:
+            return arr
         return np.sort(arr, axis=-1)
 
     def map_sort(self, arr, pivots):
