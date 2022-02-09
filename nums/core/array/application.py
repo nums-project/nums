@@ -1207,7 +1207,7 @@ class ArrayApplication(object):
                 arrays.append(self.atleast_2d(arr))
         return self.concatenate(arrays, 1, axis_block_size=axis_block_size)
 
-    def sort(self, arr):
+    def sort(self, arr, kind):
         block_oids = arr.flattened_oids()
         num_blocks = len(block_oids)
 
@@ -1215,6 +1215,7 @@ class ArrayApplication(object):
         if num_blocks == 1:
             oid = self.cm.sort(
                 block_oids[0],
+                kind,
                 syskwargs={
                     "grid_entry": (0,),
                     "grid_shape": (1,),
@@ -1246,6 +1247,7 @@ class ArrayApplication(object):
         else:
             sorted_pivots_oid = self.cm.sort(
                 pivot_oid.blocks[0].oid,
+                kind,
                 syskwargs={
                     "grid_entry": (0,),
                     "grid_shape": (1,),
@@ -1261,6 +1263,7 @@ class ArrayApplication(object):
             mapped_sorted[i] = self.cm.map_sort(
                 arr_oids[i],
                 sorted_pivots_oid,
+                kind,
                 syskwargs={
                     "grid_entry": (i,),
                     "grid_shape": arr.grid.grid_shape,
@@ -1271,9 +1274,10 @@ class ArrayApplication(object):
         for j in range(num_blocks):
             oid = self.cm.reduce_sort(
                 *mapped_sorted[:, j],
+                kind=kind,
                 syskwargs={
-                    "grid_entry": (j,),
-                    "grid_shape": arr.grid.grid_shape,
+                    "grid_entry": (0,),
+                    "grid_shape": (1,),
                     "options": {"num_returns": 1},
                 },
             )

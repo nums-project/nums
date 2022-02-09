@@ -162,13 +162,13 @@ class ComputeInterface(object):
     def sample_pivots(self, arr, syskwargs: Dict):
         raise NotImplementedError()
 
-    def sort(self, arr, syskwargs: Dict):
+    def sort(self, arr, kind, syskwargs: Dict):
         raise NotImplementedError()
 
-    def map_sort(self, arr, pivots, syskwargs: Dict):
+    def map_sort(self, arr, pivots, kind, syskwargs: Dict):
         raise NotImplementedError()
 
-    def reduce_sort(self, *arr, syskwargs: Dict):
+    def reduce_sort(self, *arr, kind=None, syskwargs: Dict):
         raise NotImplementedError()
 
 

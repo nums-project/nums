@@ -516,14 +516,14 @@ class ComputeCls(ComputeImp):
     def sample_pivots(self, arr):
         return arr[0]
 
-    def sort(self, arr):
-        return np.sort(arr, axis=-1)
+    def sort(self, arr, kind):
+        return np.sort(arr, kind=kind)
 
-    def map_sort(self, arr, pivots):
-        arr = np.sort(arr, axis=-1)
+    def map_sort(self, arr, pivots, kind):
+        arr = np.sort(arr, kind=kind)
         idx = arr.searchsorted(pivots)
         return np.array(np.split(arr, idx), dtype=object)
 
-    def reduce_sort(self, *arr):
+    def reduce_sort(self, *arr, kind):
         merged_arr = np.concatenate(arr)
-        return np.sort(merged_arr, axis=-1)
+        return np.sort(merged_arr, kind=kind)

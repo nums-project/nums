@@ -740,10 +740,8 @@ def sort(arr: BlockArray, axis=-1, kind=None, order=None) -> BlockArray:
         raise NotImplementedError("'axis' is currently not supported.")
     if order is not None:
         raise NotImplementedError()
-    if kind is not None:
-        raise NotImplementedError()
 
-    return _instance().sort(arr)
+    return _instance().sort(arr, kind=kind)
 
 
 ############################################
