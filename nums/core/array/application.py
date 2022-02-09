@@ -1212,7 +1212,7 @@ class ArrayApplication(object):
         num_blocks = len(block_oids)
 
         # If the BlockArray to be sorted is small enough, default to serial sort
-        if num_blocks <= 2:
+        if num_blocks == 1:
             oid = self.cm.sort(
                 block_oids,
                 syskwargs={
@@ -1241,14 +1241,17 @@ class ArrayApplication(object):
         pivot_oid = self.concatenate(pivot_oids, 0, axis_block_size=len(pivot_oids))
 
         # Assume that the number of pivots is small enough to fit within a single BlockArray
-        sorted_pivots_oid = self.cm.sort(
-            pivot_oid.blocks[0].oid,
-            syskwargs={
-                "grid_entry": (0,),
-                "grid_shape": (1,),
-                "options": {"num_returns": 1},
-            },
-        )
+        if pivot_oid.block_shape[0] == 1:
+            sorted_pivots_oid = np.array(self.cm.get(pivot_oid.flattened_oids()))
+        else:
+            sorted_pivots_oid = self.cm.sort(
+                pivot_oid.blocks[0].oid,
+                syskwargs={
+                    "grid_entry": (0,),
+                    "grid_shape": (1,),
+                    "options": {"num_returns": 1},
+                },
+            )
 
         mapped_sorted = np.empty([num_blocks, num_blocks], dtype=object)
         reduce_sorted = []
