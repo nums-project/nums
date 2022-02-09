@@ -517,7 +517,7 @@ class ComputeCls(ComputeImp):
         return arr[0]
 
     def sort(self, arr):
-        if arr.size == 1:
+        if len(arr) == 0 and arr.size == 1:
             return arr
         return np.sort(arr, axis=-1)
 
