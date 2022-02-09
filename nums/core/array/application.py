@@ -1212,7 +1212,7 @@ class ArrayApplication(object):
         num_blocks = len(block_oids)
 
         # If the BlockArray to be sorted is small enough, default to serial sort
-        if num_blocks == 1:
+        if num_blocks <= 2:
             oid = self.cm.sort(
                 block_oids,
                 syskwargs={
