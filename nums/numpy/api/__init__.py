@@ -23,7 +23,7 @@ from nums.numpy.api.generated import *
 from nums.numpy.api.manipulation import *
 from nums.numpy.api.nan import *
 from nums.numpy.api.reduction import *
-from nums.numpy.api.shape import *
+from nums.numpy.api.properties import *
 from nums.numpy.api.stats import *
 from nums.numpy.api.utility import *
 
