@@ -21,7 +21,7 @@ from nums.core.application_manager import instance as _instance
 from nums.core.array.blockarray import BlockArray
 
 from nums.numpy.api.creation import *
-from nums.numpy.api.la import *
+from nums.numpy.api.algebra import *
 from nums.numpy.api.utility import *
 
 ############################################
