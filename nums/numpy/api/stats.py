@@ -820,27 +820,3 @@ def median(a: BlockArray, axis=None, out=None, keepdims=False) -> BlockArray:
     if keepdims:
         raise NotImplementedError("'keepdims' is currently not supported.")
     return _instance().median(a)
-
-
-def top_k(
-    a: BlockArray, k: int, largest=True, sorted=False
-) -> Tuple[BlockArray, BlockArray]:
-    """Find the `k` largest or smallest elements of a BlockArray.
-
-    If there are multiple kth elements that are equal in value, then no guarantees are made as
-    to which ones are included in the top k.
-
-    Args:
-        a: A BlockArray.
-        k: Number of top elements to return.
-        largest: Whether to return largest or smallest elements.
-
-    Returns:
-        A tuple containing two BlockArrays, (`values`, `indices`).
-        values: Values of the top k elements, unsorted.
-        indices: Indices of the top k elements, ordered by their corresponding values.
-    """
-    if sorted:
-        # The result can be sorted when sorting is implemented.
-        raise NotImplementedError("'sorted' is currently not supported.")
-    return _instance().top_k(a, k, largest=largest)

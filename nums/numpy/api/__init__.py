@@ -24,8 +24,9 @@ from nums.numpy.api.manipulation import *
 from nums.numpy.api.nan import *
 from nums.numpy.api.reduction import *
 from nums.numpy.api.properties import *
+from nums.numpy.api.special import *
 from nums.numpy.api.stats import *
-from nums.numpy.api.utility import *
+from nums.numpy.api.equality import *
 
 
 def _not_implemented(func):

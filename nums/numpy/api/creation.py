@@ -22,7 +22,7 @@ from nums.core.application_manager import instance as _instance
 from nums.core.array.blockarray import BlockArray
 
 from nums.numpy.api.stats import *
-from nums.numpy.api.utility import *
+from nums.numpy.api.equality import *
 
 ############################################
 # Creation and I/O Ops

@@ -21,7 +21,7 @@ from nums.core.array.blockarray import BlockArray
 from nums.numpy.api.creation import *
 from nums.numpy.api.generated import *
 from nums.numpy.api.manipulation import *
-from nums.numpy.api.utility import *
+from nums.numpy.api.equality import *
 
 ############################################
 # Linear Algebra Ops

@@ -17,7 +17,7 @@
 
 from nums.core.array.blockarray import BlockArray
 
-from nums.numpy.api.utility import *
+from nums.numpy.api.equality import *
 
 ############################################
 # Shape Ops
