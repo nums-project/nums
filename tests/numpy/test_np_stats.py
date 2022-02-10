@@ -55,7 +55,7 @@ def test_stats_1d(nps_app_inst):
             assert np.allclose(ba_result.get(), np_result)
 
 
-def test_sort_serial_kind(nps_app_inst):
+def test_sort_serial(nps_app_inst):
     from nums import numpy as nps
     from nums.numpy import BlockArray
 
