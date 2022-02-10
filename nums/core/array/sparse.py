@@ -103,6 +103,15 @@ class ArrayIndex(ArrayGrid):
             if c == coord:
                 return self.blocks[i]
         return None
+    
+    def copy(self):
+        index = self.from_meta(self.to_meta())
+        index.coordinates = []
+        index.blocks = []
+        for grid_entry in self.get_sparse_entry_iterator():
+            index.coordinates.append(tuple(c))
+            index.blocks[grid_entry] = self.blocks[grid_entry].copy()
+        return index
 
 
 class SparseBlockArray(object):
@@ -166,6 +175,11 @@ class SparseBlockArray(object):
 
     def get(self):
         pass
+
+    def copy(self):
+        index_copy = self.index.copy()
+        rarr_copy = SparseBlockArray(index_copy, self.cm)
+        return rarr_copy
 
     def to_ba(self):
         grid = ArrayGrid(self.shape, self.block_shape, self.dtype.__name__)
