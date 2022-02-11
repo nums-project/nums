@@ -26,7 +26,7 @@ except Exception as e:
     raise Exception(
         "Unable to import dask. Install dask with command 'pip install dask[complete]'"
     ) from e
-from nums.core.grid.grid import DeviceID
+from nums.core.grid.grid import Device
 from nums.core.systems.system_interface import SystemInterface
 from nums.core.systems.utils import get_num_cores
 
@@ -52,7 +52,7 @@ class DaskSystem(SystemInterface):
         self._worker_addresses = []
         self._node_addresses = []
         self._devices = []
-        self._device_to_node: Dict[DeviceID, Dict] = {}
+        self._device_to_node: Dict[Device, Dict] = {}
 
     def init(self):
         if self._address is None:
@@ -81,7 +81,7 @@ class DaskSystem(SystemInterface):
         for node_id in range(self._num_nodes):
             node_addr = self._node_addresses[node_id]
             logging.getLogger(__name__).info("worker node %s", node_addr)
-            did = DeviceID(node_id, node_addr, "cpu", 1)
+            did = Device(node_id, node_addr, "cpu", 1)
             self._devices.append(did)
             self._device_to_node[did] = node_addr
         logging.getLogger(__name__).info("total cpus %s", len(self._worker_addresses))
@@ -96,9 +96,9 @@ class DaskSystem(SystemInterface):
         del self._client
         self._client = None
 
-    def put(self, value: Any, device_id: DeviceID):
-        assert device_id is not None
-        node_addr = self._device_to_node[device_id]
+    def put(self, value: Any, device: Device):
+        assert device is not None
+        node_addr = self._device_to_node[device]
         return self._client.submit(lambda x: x, value, workers=node_addr)
 
     def get(self, object_ids: Union[Any, List]):
@@ -110,7 +110,7 @@ class DaskSystem(SystemInterface):
     def remote(self, function: FunctionType, remote_params: dict):
         return function, remote_params
 
-    def devices(self) -> List[DeviceID]:
+    def devices(self) -> List[Device]:
         return self._devices
 
     def register(self, name: str, func: callable, remote_params: dict = None):
@@ -131,9 +131,9 @@ class DaskSystem(SystemInterface):
             nout = remote_params["num_returns"]
         return func, nout
 
-    def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
-        assert device_id is not None
-        node_addr = self._device_to_node[device_id]
+    def call(self, name: str, args, kwargs, device: Device, options: Dict):
+        assert device is not None
+        node_addr = self._device_to_node[device]
         func, nout = self._parse_call(name, options)
         if nout is None:
             return self._client.submit(func, *args, **kwargs, workers=node_addr)
@@ -159,14 +159,14 @@ class DaskSystem(SystemInterface):
             return
         self._actors[name] = cls
 
-    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+    def make_actor(self, name: str, *args, device: Device = None, **kwargs):
         raise NotImplementedError("Dask actors are not supported.")
         # Distribute actors round-robin over devices.
-        if device_id is None:
-            device_id = self._devices[self._actor_node_index]
+        if device is None:
+            device = self._devices[self._actor_node_index]
             self._actor_node_index = (self._actor_node_index + 1) % len(self._devices)
         actor = self._actors[name]
-        node_addr = self._device_to_node[device_id]
+        node_addr = self._device_to_node[device]
         future = self._client.submit(actor, actor=True, workers=node_addr)
         actor = future.result()
         return actor
@@ -184,7 +184,7 @@ class DaskSystemStockScheduler(DaskSystem):
     by the caller. For testing only.
     """
 
-    def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
+    def call(self, name: str, args, kwargs, device: Device, options: Dict):
         func, nout = self._parse_call(name, options)
         if nout is None:
             return self._client.submit(func, *args, **kwargs)
@@ -193,12 +193,12 @@ class DaskSystemStockScheduler(DaskSystem):
             result = tuple(dfunc(*args, **kwargs))
             return self._client.compute(result)
 
-    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+    def make_actor(self, name: str, *args, device: Device = None, **kwargs):
         raise NotImplementedError("Dask actors are not supported.")
         actor = self._actors[name]
         future = self._client.submit(actor, actor=True)
         actor_handle = future.result()
         return actor_handle
 
-    def put(self, value: Any, device_id: DeviceID):
+    def put(self, value: Any, device: Device):
         return self._client.submit(lambda x: x, value)

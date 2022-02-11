@@ -17,7 +17,7 @@
 from types import FunctionType
 from typing import Any, Union, List, Dict
 
-from nums.core.grid.grid import DeviceID
+from nums.core.grid.grid import Device
 
 
 class SystemInterface(object):
@@ -27,7 +27,7 @@ class SystemInterface(object):
     def shutdown(self):
         raise NotImplementedError()
 
-    def put(self, value: Any, device_id: DeviceID):
+    def put(self, value: Any, device: Device):
         """
         Put object into system storage and force placement on the relevant node.
         """
@@ -51,7 +51,7 @@ class SystemInterface(object):
     def register(self, name: str, func: callable, remote_params: Dict = None):
         raise NotImplementedError("Implements a way to register new remote functions.")
 
-    def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
+    def call(self, name: str, args, kwargs, device: Device, options: Dict):
         raise NotImplementedError(
             "Implement RPC as e.g. " "self.remote_functions[name](*args, **new_kwargs)"
         )
@@ -64,11 +64,11 @@ class SystemInterface(object):
         """
         raise NotImplementedError()
 
-    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+    def make_actor(self, name: str, *args, device: Device = None, **kwargs):
         """
         :param name: The name of the actor.
         :param args: args to pass to __init__.
-        :param device_id: A device id. This is captured by the system and not passed to __init__.
+        :param device: A device id. This is captured by the system and not passed to __init__.
         :param kwargs: kwargs to pass to __init__.
         :return: An Actor.
         """

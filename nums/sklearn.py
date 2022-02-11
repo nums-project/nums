@@ -169,12 +169,10 @@ def build_sklearn_actor(cls: type):
 
     class NumsModel(object):
         def __init__(self, *args, **kwargs):
-            device_id = None
+            device = None
             if self.__class__ in _place_on_node_0:
-                device_id = instance().cm.devices()[0]
-            self.actor = instance().cm.make_actor(
-                name, *args, device_id=device_id, **kwargs
-            )
+                device = instance().cm.devices()[0]
+            self.actor = instance().cm.make_actor(name, *args, device=device, **kwargs)
 
         # TODO: (all functions) test inputs are single block, if not warn about performance
         def fit(self, X: BlockArray, y: BlockArray):

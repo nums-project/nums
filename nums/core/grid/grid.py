@@ -112,27 +112,27 @@ class Device:
     node_id: int
     node_addr: str
     device_type: str
-    device_id: int
+    device: int
 
 
 class DeviceGrid(object):
-    def __init__(self, grid_shape, device_type, device_ids):
+    def __init__(self, grid_shape, device_type, devices):
         # TODO (hme): Work out what this becomes in the multi-node multi-device setting.
         self.grid_shape = grid_shape
         self.device_type = device_type
-        self.device_ids: List[DeviceID] = device_ids
+        self.devices: List[Device] = devices
         self.device_grid: np.ndarray = np.empty(shape=self.grid_shape, dtype=object)
 
         for i, cluster_entry in enumerate(self.get_cluster_entry_iterator()):
-            self.device_grid[cluster_entry] = self.device_ids[i]
+            self.device_grid[cluster_entry] = self.devices[i]
             logging.getLogger(__name__).info(
-                "device_grid %s %s", cluster_entry, str(self.device_ids[i])
+                "device_grid %s %s", cluster_entry, str(self.devices[i])
             )
 
     def get_cluster_entry_iterator(self):
         return itertools.product(*map(range, self.grid_shape))
 
-    def get_device_id(self, agrid_entry, agrid_shape):
+    def get_device(self, agrid_entry, agrid_shape):
         raise NotImplementedError()
 
     def get_entry_iterator(self) -> Iterator[Tuple]:
@@ -140,7 +140,7 @@ class DeviceGrid(object):
 
 
 class CyclicDeviceGrid(DeviceGrid):
-    def get_device_id(self, agrid_entry, agrid_shape):
+    def get_device(self, agrid_entry, agrid_shape):
         cluster_entry = self.get_cluster_entry(agrid_entry, agrid_shape)
         return self.device_grid[cluster_entry]
 
@@ -163,7 +163,7 @@ class CyclicDeviceGrid(DeviceGrid):
 
 
 class PackedDeviceGrid(DeviceGrid):
-    def get_device_id(self, agrid_entry, agrid_shape):
+    def get_device(self, agrid_entry, agrid_shape):
         cluster_entry = self.get_cluster_entry(agrid_entry, agrid_shape)
         return self.device_grid[cluster_entry]
 
