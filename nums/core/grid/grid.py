@@ -106,7 +106,7 @@ class ArrayGrid:
         return nbytes
 
 
-@dataclass
+@dataclass(frozen=True)
 class Device:
     node_id: int
     node_addr: str
