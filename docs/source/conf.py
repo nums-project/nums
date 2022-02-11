@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.abspath("../.."))
 # -- Project information -----------------------------------------------------
 
 project = "NumS"
-copyright = "2021, The NumS Team"  # pylint: disable=redefined-builtin
+copyright = "2022, The NumS Team"  # pylint: disable=redefined-builtin
 author = "The NumS Team"
 
 
@@ -34,8 +34,8 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
+    "sphinx_panels",
     "sphinx_autodoc_typehints",
-    "sphinx_rtd_theme",
     "m2r2",
 ]
 
