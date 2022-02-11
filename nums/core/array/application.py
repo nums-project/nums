@@ -28,7 +28,7 @@ from nums.core.systems.filesystem import FileSystem
 # pylint: disable = too-many-lines
 
 
-class ArrayApplication(object):
+class ArrayApplication:
     def __init__(self, cm: ComputeManager, fs: FileSystem):
         self.cm: ComputeManager = cm
         self._fs: FileSystem = fs

@@ -25,7 +25,7 @@ from nums.models.glms import GLM
 # Based on Nocedal and Wright, chapters 2, 3, 6 and 7.
 
 
-class BackTrackingLineSearch(object):
+class BackTrackingLineSearch:
     def __init__(self, model: GLM):
         self.app = _instance()
         self.model = model
@@ -53,7 +53,7 @@ class BackTrackingLineSearch(object):
         return max(alpha, min_alpha)
 
 
-class LBFGSMemory(object):
+class LBFGSMemory:
     def __init__(self, k, s, y):
         self.k = k
         self.s = s
@@ -63,7 +63,7 @@ class LBFGSMemory(object):
         self.gamma = ys_inner / (y.transpose(defer=True) @ y + 1e-30)
 
 
-class LBFGS(object):
+class LBFGS:
     def __init__(self, model: GLM, m=10, max_iter=100, thresh=1e-4, dtype=np.float64):
         self.app: ArrayApplication = _instance()
         self.model: GLM = model
