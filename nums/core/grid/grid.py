@@ -113,9 +113,9 @@ class Device:
     device_type: str
     device: int
 
-      
+
 class DeviceGrid:
-    def __init__(self, grid_shape, device_type, device_ids):
+    def __init__(self, grid_shape, device_type, devices):
         # TODO (hme): Work out what this becomes in the multi-node multi-device setting.
         self.grid_shape = grid_shape
         self.device_type = device_type
