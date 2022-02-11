@@ -151,7 +151,7 @@ def build_sklearn_actor(cls: type):
     # LinearClassifierMixin: add decision_function()
     # BaseEstimator: add get_params(), set_params()
 
-    class ModelActor(object):
+    class ModelActor:
         def __init__(self, *args, **kwargs):
             self.instance = cls(*args, **kwargs)
 
@@ -167,7 +167,7 @@ def build_sklearn_actor(cls: type):
         def score(self, X, y, sample_weight=None):
             return np.array(self.instance.score(X, y, sample_weight))
 
-    class NumsModel(object):
+    class NumsModel:
         def __init__(self, *args, **kwargs):
             device = None
             if self.__class__ in _place_on_node_0:

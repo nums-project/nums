@@ -159,7 +159,7 @@ def train(params: Dict, data: NumsDMatrix, *args, evals=(), **kwargs):
     return result
 
 
-class XGBClassifier(object):
+class XGBClassifier:
     def __init__(
         self,
         n_estimators=100,

@@ -20,7 +20,7 @@ from typing import Any, Union, List, Dict
 from nums.core.grid.grid import Device
 
 
-class SystemInterface(object):
+class SystemInterface:
     def init(self):
         raise NotImplementedError()
 

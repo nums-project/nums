@@ -25,7 +25,7 @@ from nums.core.array import utils as array_utils
 from nums.core.storage.utils import Batch
 
 
-class ArrayGrid(object):
+class ArrayGrid:
     @classmethod
     def from_meta(cls, d: dict):
         return cls(**d)
@@ -114,9 +114,9 @@ class Device:
     device_type: str
     device: int
 
-
-class DeviceGrid(object):
-    def __init__(self, grid_shape, device_type, devices):
+      
+class DeviceGrid:
+    def __init__(self, grid_shape, device_type, device_ids):
         # TODO (hme): Work out what this becomes in the multi-node multi-device setting.
         self.grid_shape = grid_shape
         self.device_type = device_type

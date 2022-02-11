@@ -260,7 +260,7 @@ def read_csv_block(filename, file_start, file_end, dtype, delimiter, has_header)
     return array, array.shape
 
 
-class FileSystem(object):
+class FileSystem:
     # pylint: disable=unused-argument
     # TODO (hme):
     #  - Idempotency for write/delete.

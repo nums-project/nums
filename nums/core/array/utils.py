@@ -250,7 +250,7 @@ def get_slices(total_size, batch_size, order, reverse_blocks=False):
         return list(map(lambda s: slice(*s, order), zip(*(result[:-1], result[1:]))))
 
 
-class OrderedGrid(object):
+class OrderedGrid:
     def __init__(
         self, shape: Tuple, block_shape: Tuple, order: Tuple, block_order=None
     ):
