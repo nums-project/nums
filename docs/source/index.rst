@@ -1,19 +1,14 @@
-NumS Reference Documentation
+NumS documentation
 ============================
 
-
-.. mdinclude:: ../../README.md
-
-
-API Documentation
-=================
-
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
+   :hidden:
 
-   api.rst
-   application.rst
-
+   Get Started <get_started/index>
+   User Guide <user_guide/index>
+   API Reference <reference/index>
+   Development <development/index>
 
 Indices and Tables
 ==================

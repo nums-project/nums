@@ -53,12 +53,48 @@ exclude_patterns = []
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "sphinx_rtd_theme"
+html_theme = "pydata_sphinx_theme"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
+
+html_logo = "_static/logo.svg"
+
+html_favicon = "_static/favicon.ico"
+
+html_theme_options = {
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/nums-project/nums",
+            "icon": "fab fa-github-square",
+            "type": "fontawesome",
+        },
+        {
+            "name": "Twitter",
+            "url": "https://twitter.com/kanyewest",
+            "icon": "fab fa-twitter-square",
+            "type": "fontawesome",
+        },
+    ],
+    "favicons": [
+        {"rel": "icon", "sizes": "16x16", "href": "icon.svg"},
+        {
+            "rel": "icon",
+            "sizes": "32x32",
+            "href": "icon.svg",
+        },
+        {
+            "rel": "apple-touch-icon",
+            "sizes": "180x180",
+            "href": "apple-touch-icon-180x180.png",
+        },
+    ],
+}
+
+http_favicon = "_static/logo.jpeg"
 
 # Source files supported by Sphinx.
 source_suffix = [".rst", ".md"]
