@@ -62,7 +62,7 @@ from nums.core import linalg
 #   g(mu) = (b')^{-1}(mu) = ln(mu/(1-mu)) = ln(p/(1-p)) = theta(p)
 
 
-class GLM(object):
+class GLM:
     def __init__(
         self,
         penalty="none",
