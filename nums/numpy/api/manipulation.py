@@ -19,241 +19,11 @@ import scipy
 from nums.core.application_manager import instance as _instance
 from nums.core.array.blockarray import BlockArray
 
-from nums.numpy.api.equality import *
+from nums.numpy.api.logic import *
 
 ############################################
 # Manipulation Ops
 ############################################
-
-
-def concatenate(arrays, axis=0, out=None):
-    """Join a sequence of arrays along an existing axis.
-
-    This docstring was copied from numpy.concatenate.
-
-    Some inconsistencies with the NumS version may exist.
-
-    Parameters
-    ----------
-    a1, a2, ... : sequence of array_like
-        The arrays must have the same shape, except in the dimension
-        corresponding to `axis` (the first, by default).
-    axis : int, optional
-        The axis along which the arrays will be joined.  If axis is None,
-        arrays are flattened before use.  Default is 0.
-    out : BlockArray, optional
-        If provided, the destination to place the result. The shape must be
-        correct, matching that of what concatenate would have returned if no
-        out argument were specified.
-
-    Returns
-    -------
-    res : BlockArray
-        The concatenated array.
-
-    See Also
-    --------
-    ma.concatenate : Concatenate function that preserves input masks.
-    array_split : Split an array into multiple sub-arrays of equal or
-                  near-equal size.
-    split : Split array into a list of multiple sub-arrays of equal size.
-    hsplit : Split array into multiple sub-arrays horizontally (column wise).
-    vsplit : Split array into multiple sub-arrays vertically (row wise).
-    dsplit : Split array into multiple sub-arrays along the 3rd axis (depth).
-    stack : Stack a sequence of arrays along a new axis.
-    block : Assemble arrays from blocks.
-    hstack : Stack arrays in sequence horizontally (column wise).
-    vstack : Stack arrays in sequence vertically (row wise).
-    dstack : Stack arrays in sequence depth wise (along third dimension).
-    column_stack : Stack 1-D arrays as columns into a 2-D array.
-
-    Notes
-    -----
-    When one or more of the arrays to be concatenated is a MaskedArray,
-    this function will return a MaskedArray object instead of an BlockArray,
-    but the input masks are *not* preserved. In cases where a MaskedArray
-    is expected as input, use the ma.concatenate function from the masked
-    array module instead.
-
-    out is currently not supported for concatenate.
-
-    Examples
-    --------
-    The doctests shown below are copied from NumPy.
-    They won’t show the correct result until you operate ``get()``.
-
-    >>> a = nps.array([[1, 2], [3, 4]])  # doctest: +SKIP
-    >>> b = nps.array([[5, 6]])  # doctest: +SKIP
-    >>> nps.concatenate((a, b), axis=0).get()  # doctest: +SKIP
-    array([[1, 2],
-           [3, 4],
-           [5, 6]])
-    >>> nps.concatenate((a, b.T), axis=1).get()  # doctest: +SKIP
-    array([[1, 2, 5],
-           [3, 4, 6]])
-    """
-    if out is not None:
-        raise NotImplementedError("out is currently not supported for concatenate.")
-    # Pick the mode along specified axis.
-    axis_block_size = scipy.stats.mode(
-        list(map(lambda arr: arr.block_shape[axis], arrays))
-    ).mode.item()
-    return _instance().concatenate(arrays, axis=axis, axis_block_size=axis_block_size)
-
-
-def split(ary: BlockArray, indices_or_sections, axis=0):
-    """Split an array into multiple sub-arrays as views into `ary`.
-
-    This docstring was copied from numpy.split.
-
-    Some inconsistencies with the NumS version may exist.
-
-    Parameters
-    ----------
-    ary : BlockArray
-        Array to be divided into sub-arrays.
-    indices_or_sections : int or 1-D array
-        If `indices_or_sections` is an integer, N, the array will be divided
-        into N equal arrays along `axis`.  If such a split is not possible,
-        an error is raised.
-
-        If `indices_or_sections` is a 1-D array of sorted integers, the entries
-        indicate where along `axis` the array is split.  For example,
-        ``[2, 3]`` would, for ``axis=0``, result in
-
-          - ary[:2]
-          - ary[2:3]
-          - ary[3:]
-
-        If an index exceeds the dimension of the array along `axis`,
-        an empty sub-array is returned correspondingly.
-    axis : int, optional
-        The axis along which to split, default is 0.
-
-    Returns
-    -------
-    sub-arrays : list of BlockArrays
-        A list of sub-arrays as views into `ary`.
-
-    Raises
-    ------
-    ValueError
-        If `indices_or_sections` is given as an integer, but
-        a split does not result in equal division.
-
-    See Also
-    --------
-    array_split : Split an array into multiple sub-arrays of equal or
-                  near-equal size.  Does not raise an exception if
-                  an equal division cannot be made.
-    hsplit : Split array into multiple sub-arrays horizontally (column-wise).
-    vsplit : Split array into multiple sub-arrays vertically (row wise).
-    dsplit : Split array into multiple sub-arrays along the 3rd axis (depth).
-    concatenate : Join a sequence of arrays along an existing axis.
-    stack : Join a sequence of arrays along a new axis.
-    hstack : Stack arrays in sequence horizontally (column wise).
-    vstack : Stack arrays in sequence vertically (row wise).
-    dstack : Stack arrays in sequence depth wise (along third dimension).
-
-    Notes
-    -----
-    Split currently supports integers only.
-
-    Examples
-    --------
-    The doctests shown below are copied from NumPy.
-    They won’t show the correct result until you operate ``get()``.
-
-    >>> x = nps.arange(9.0)  # doctest: +SKIP
-    >>> [a.get() for a in  nps.split(x, 3)]  # doctest: +SKIP
-    [array([0.,  1.,  2.]), array([3.,  4.,  5.]), array([6.,  7.,  8.])]
-    """
-    if not isinstance(indices_or_sections, int):
-        raise NotImplementedError("Split currently supports integers only.")
-    dim_total = ary.shape[axis]
-    # Splits into N equal arrays, and raise if this is not possible.
-    if dim_total % indices_or_sections != 0:
-        raise ValueError(
-            "ary axis %s cannot be split into %s equal arrays."
-            % (axis, indices_or_sections)
-        )
-    dim_partial = dim_total // indices_or_sections
-    results = []
-    ss_op = [slice(None, None, 1) for _ in ary.shape]
-    for i in range(0, dim_total, dim_partial):
-        start = i
-        stop = i + dim_partial
-        ss_op[axis] = slice(start, stop, 1)
-        ary_part = ary[tuple(ss_op)]
-        results.append(ary_part)
-    return tuple(results)
-
-
-def diag(v: BlockArray, k=0) -> BlockArray:
-    """Extract a diagonal or construct a diagonal array.
-
-    This docstring was copied from numpy.diag.
-
-    Some inconsistencies with the NumS version may exist.
-
-    See the more detailed documentation for ``numpy.diagonal`` if you use this
-    function to extract a diagonal and wish to write to the resulting array;
-    whether it returns a copy or a view depends on what version of numpy you
-    are using.
-
-    Parameters
-    ----------
-    v : BlockArray
-        If `v` is a 2-D array, return a copy of its `k`-th diagonal.
-        If `v` is a 1-D array, return a 2-D array with `v` on the `k`-th
-        diagonal.
-    k : int, optional
-        Diagonal in question. The default is 0. Use `k>0` for diagonals
-        above the main diagonal, and `k<0` for diagonals below the main
-        diagonal.
-
-    Returns
-    -------
-    out : BlockArray
-        The extracted diagonal or constructed diagonal array.
-
-    See Also
-    --------
-    diagonal : Return specified diagonals.
-    trace : Sum along diagonals.
-    triu : Upper triangle of an array.
-
-    Notes
-    -----
-    offset != 0 is currently not supported.
-
-    out is currently not supported.
-
-    axis1 != 0 or axis2 != 1 is currently not supported.
-
-    Examples
-    --------
-    The doctests shown below are copied from NumPy.
-    They won’t show the correct result until you operate ``get()``.
-
-    >>> x = nps.arange(9).reshape((3,3))  # doctest: +SKIP
-    >>> x.get()  # doctest: +SKIP
-    array([[0, 1, 2],
-           [3, 4, 5],
-           [6, 7, 8]])
-
-    >>> nps.diag(x).get()  # doctest: +SKIP
-    array([0, 4, 8])
-
-    >>> nps.diag(nps.diag(x)).get()  # doctest: +SKIP
-    array([[0, 0, 0],
-           [0, 4, 0],
-           [0, 0, 8]])
-    """
-    app = _instance()
-    if k != 0:
-        raise NotImplementedError("Only k==0 is currently supported.")
-    return app.diag(v)
 
 
 def atleast_1d(*arys):
@@ -399,42 +169,31 @@ def atleast_3d(*arys):
     return _instance().atleast_3d(*arys)
 
 
-def hstack(tup):
-    """Stack arrays in sequence horizontally (column wise).
+def column_stack(tup):
+    """Stack 1-D arrays as columns into a 2-D array.
 
-    This docstring was copied from numpy.hstack.
+    This docstring was copied from numpy.column_stack.
 
     Some inconsistencies with the NumS version may exist.
 
-    This is equivalent to concatenation along the second axis, except for 1-D
-    arrays where it concatenates along the first axis. Rebuilds arrays divided
-    by `hsplit`.
-
-    This function makes most sense for arrays with up to 3 dimensions. For
-    instance, for pixel-data with a height (first axis), width (second axis),
-    and r/g/b channels (third axis). The functions `concatenate`, `stack` and
-    `block` provide more general stacking and concatenation operations.
+    Take a sequence of 1-D arrays and stack them as columns
+    to make a single 2-D array. 2-D arrays are stacked as-is,
+    just like with `hstack`.  1-D arrays are turned into 2-D columns
+    first.
 
     Parameters
     ----------
-    tup : sequence of BlockArray
-        The arrays must have the same shape along all but the second axis,
-        except 1-D arrays which can be any length.
+    tup : sequence of 1-D or 2-D arrays.
+        Arrays to stack. All of them must have the same first dimension.
 
     Returns
     -------
-    stacked : BlockArray
+    stacked : 2-D array
         The array formed by stacking the given arrays.
 
     See Also
     --------
-    concatenate : Join a sequence of arrays along an existing axis.
-    stack : Join a sequence of arrays along a new axis.
-    block : Assemble an nd-array from nested lists of blocks.
-    vstack : Stack arrays in sequence vertically (row wise).
-    dstack : Stack arrays in sequence depth wise (along third axis).
-    column_stack : Stack 1-D arrays as columns into a 2-D array.
-    hsplit : Split an array into multiple sub-arrays horizontally (column-wise).
+    stack, hstack, vstack, concatenate
 
     Examples
     --------
@@ -443,77 +202,87 @@ def hstack(tup):
 
     >>> a = nps.array((1,2,3))  # doctest: +SKIP
     >>> b = nps.array((2,3,4))  # doctest: +SKIP
-    >>> nps.hstack((a,b)).get()  # doctest: +SKIP
-    array([1, 2, 3, 2, 3, 4])
-    >>> a = nps.array([[1],[2],[3]])  # doctest: +SKIP
-    >>> b = nps.array([[2],[3],[4]])  # doctest: +SKIP
-    >>> nps.hstack((a,b)).get()  # doctest: +SKIP
+    >>> nps.column_stack((a,b)).get()  # doctest: +SKIP
     array([[1, 2],
            [2, 3],
            [3, 4]])
     """
-    return _instance().hstack(tup)
+    return _instance().column_stack(tup)
 
 
-def vstack(tup):
-    """Stack arrays in sequence vertically (row wise).
+def concatenate(arrays, axis=0, out=None):
+    """Join a sequence of arrays along an existing axis.
 
-    This docstring was copied from numpy.vstack.
+    This docstring was copied from numpy.concatenate.
 
     Some inconsistencies with the NumS version may exist.
 
-    This is equivalent to concatenation along the first axis after 1-D arrays
-    of shape `(N,)` have been reshaped to `(1,N)`. Rebuilds arrays divided by
-    `vsplit`.
-
-    This function makes most sense for arrays with up to 3 dimensions. For
-    instance, for pixel-data with a height (first axis), width (second axis),
-    and r/g/b channels (third axis). The functions `concatenate`, `stack` and
-    `block` provide more general stacking and concatenation operations.
-
     Parameters
     ----------
-    tup : sequence of BlockArrays
-        The arrays must have the same shape along all but the first axis.
-        1-D arrays must have the same length.
+    a1, a2, ... : sequence of array_like
+        The arrays must have the same shape, except in the dimension
+        corresponding to `axis` (the first, by default).
+    axis : int, optional
+        The axis along which the arrays will be joined.  If axis is None,
+        arrays are flattened before use.  Default is 0.
+    out : BlockArray, optional
+        If provided, the destination to place the result. The shape must be
+        correct, matching that of what concatenate would have returned if no
+        out argument were specified.
 
     Returns
     -------
-    stacked : BlockArray
-        The array formed by stacking the given arrays, will be at least 2-D.
+    res : BlockArray
+        The concatenated array.
 
     See Also
     --------
-    concatenate : Join a sequence of arrays along an existing axis.
-    stack : Join a sequence of arrays along a new axis.
-    block : Assemble an nd-array from nested lists of blocks.
+    ma.concatenate : Concatenate function that preserves input masks.
+    array_split : Split an array into multiple sub-arrays of equal or
+                  near-equal size.
+    split : Split array into a list of multiple sub-arrays of equal size.
+    hsplit : Split array into multiple sub-arrays horizontally (column wise).
+    vsplit : Split array into multiple sub-arrays vertically (row wise).
+    dsplit : Split array into multiple sub-arrays along the 3rd axis (depth).
+    stack : Stack a sequence of arrays along a new axis.
+    block : Assemble arrays from blocks.
     hstack : Stack arrays in sequence horizontally (column wise).
-    dstack : Stack arrays in sequence depth wise (along third axis).
+    vstack : Stack arrays in sequence vertically (row wise).
+    dstack : Stack arrays in sequence depth wise (along third dimension).
     column_stack : Stack 1-D arrays as columns into a 2-D array.
-    vsplit : Split an array into multiple sub-arrays vertically (row-wise).
+
+    Notes
+    -----
+    When one or more of the arrays to be concatenated is a MaskedArray,
+    this function will return a MaskedArray object instead of an BlockArray,
+    but the input masks are *not* preserved. In cases where a MaskedArray
+    is expected as input, use the ma.concatenate function from the masked
+    array module instead.
+
+    out is currently not supported for concatenate.
 
     Examples
     --------
     The doctests shown below are copied from NumPy.
     They won’t show the correct result until you operate ``get()``.
 
-    >>> a = nps.array([1, 2, 3])  # doctest: +SKIP
-    >>> b = nps.array([2, 3, 4])  # doctest: +SKIP
-    >>> nps.vstack((a,b)).get()  # doctest: +SKIP
-    array([[1, 2, 3],
-           [2, 3, 4]])
-
-    >>> a = nps.array([[1], [2], [3]])  # doctest: +SKIP
-    >>> b = nps.array([[2], [3], [4]])  # doctest: +SKIP
-    >>> nps.vstack((a,b)).get()  # doctest: +SKIP
-    array([[1],
-           [2],
-           [3],
-           [2],
-           [3],
-           [4]])
+    >>> a = nps.array([[1, 2], [3, 4]])  # doctest: +SKIP
+    >>> b = nps.array([[5, 6]])  # doctest: +SKIP
+    >>> nps.concatenate((a, b), axis=0).get()  # doctest: +SKIP
+    array([[1, 2],
+           [3, 4],
+           [5, 6]])
+    >>> nps.concatenate((a, b.T), axis=1).get()  # doctest: +SKIP
+    array([[1, 2, 5],
+           [3, 4, 6]])
     """
-    return _instance().vstack(tup)
+    if out is not None:
+        raise NotImplementedError("out is currently not supported for concatenate.")
+    # Pick the mode along specified axis.
+    axis_block_size = scipy.stats.mode(
+        list(map(lambda arr: arr.block_shape[axis], arrays))
+    ).mode.item()
+    return _instance().concatenate(arrays, axis=axis, axis_block_size=axis_block_size)
 
 
 def dstack(tup):
@@ -574,130 +343,6 @@ def dstack(tup):
            [[3, 4]]])
     """
     return _instance().dstack(tup)
-
-
-def row_stack(tup):
-    """Stack arrays in sequence vertically (row wise).
-
-    This docstring was copied from numpy.row_stack.
-
-    Some inconsistencies with the NumS version may exist.
-
-    This is equivalent to concatenation along the first axis after 1-D arrays
-    of shape `(N,)` have been reshaped to `(1,N)`. Rebuilds arrays divided by
-    `vsplit`.
-
-    This function makes most sense for arrays with up to 3 dimensions. For
-    instance, for pixel-data with a height (first axis), width (second axis),
-    and r/g/b channels (third axis). The functions `concatenate`, `stack` and
-    `block` provide more general stacking and concatenation operations.
-
-    Parameters
-    ----------
-    tup : sequence of BlockArrays
-        The arrays must have the same shape along all but the first axis.
-        1-D arrays must have the same length.
-
-    Returns
-    -------
-    stacked : BlockArray
-        The array formed by stacking the given arrays, will be at least 2-D.
-
-    See Also
-    --------
-    concatenate : Join a sequence of arrays along an existing axis.
-    stack : Join a sequence of arrays along a new axis.
-    block : Assemble an nd-array from nested lists of blocks.
-    hstack : Stack arrays in sequence horizontally (column wise).
-    dstack : Stack arrays in sequence depth wise (along third axis).
-    column_stack : Stack 1-D arrays as columns into a 2-D array.
-    vsplit : Split an array into multiple sub-arrays vertically (row-wise).
-
-    Examples
-    --------
-    The doctests shown below are copied from NumPy.
-    They won’t show the correct result until you operate ``get()``.
-
-    >>> a = nps.array([1, 2, 3])  # doctest: +SKIP
-    >>> b = nps.array([2, 3, 4])  # doctest: +SKIP
-    >>> nps.vstack((a,b)).get()  # doctest: +SKIP
-    array([[1, 2, 3],
-           [2, 3, 4]])
-
-    >>> a = nps.array([[1], [2], [3]])  # doctest: +SKIP
-    >>> b = nps.array([[2], [3], [4]])  # doctest: +SKIP
-    >>> nps.vstack((a,b)).get()  # doctest: +SKIP
-    array([[1],
-           [2],
-           [3],
-           [2],
-           [3],
-           [4]])
-    """
-    return _instance().row_stack(tup)
-
-
-def column_stack(tup):
-    """Stack 1-D arrays as columns into a 2-D array.
-
-    This docstring was copied from numpy.column_stack.
-
-    Some inconsistencies with the NumS version may exist.
-
-    Take a sequence of 1-D arrays and stack them as columns
-    to make a single 2-D array. 2-D arrays are stacked as-is,
-    just like with `hstack`.  1-D arrays are turned into 2-D columns
-    first.
-
-    Parameters
-    ----------
-    tup : sequence of 1-D or 2-D arrays.
-        Arrays to stack. All of them must have the same first dimension.
-
-    Returns
-    -------
-    stacked : 2-D array
-        The array formed by stacking the given arrays.
-
-    See Also
-    --------
-    stack, hstack, vstack, concatenate
-
-    Examples
-    --------
-    The doctests shown below are copied from NumPy.
-    They won’t show the correct result until you operate ``get()``.
-
-    >>> a = nps.array((1,2,3))  # doctest: +SKIP
-    >>> b = nps.array((2,3,4))  # doctest: +SKIP
-    >>> nps.column_stack((a,b)).get()  # doctest: +SKIP
-    array([[1, 2],
-           [2, 3],
-           [3, 4]])
-    """
-    return _instance().column_stack(tup)
-
-
-def reshape(a: BlockArray, shape):
-    """Gives a new shape to an array without changing its data.
-
-    This docstring was copied from numpy.reshape.
-
-    Some inconsistencies with the NumS version may exist.
-
-    Parameters
-    ----------
-    a : BlockArray
-        Array to be reshaped.
-
-    Returns
-    -------
-    reshaped_array : BlockArray
-        This will be a new view object if possible; otherwise, it will
-        be a copy.
-    """
-    block_shape = _instance().compute_block_shape(shape, a.dtype)
-    return a.reshape(shape, block_shape=block_shape)
 
 
 def expand_dims(a: BlockArray, axis):
@@ -768,6 +413,145 @@ def expand_dims(a: BlockArray, axis):
     return a.expand_dims(axis)
 
 
+def hstack(tup):
+    """Stack arrays in sequence horizontally (column wise).
+
+    This docstring was copied from numpy.hstack.
+
+    Some inconsistencies with the NumS version may exist.
+
+    This is equivalent to concatenation along the second axis, except for 1-D
+    arrays where it concatenates along the first axis. Rebuilds arrays divided
+    by `hsplit`.
+
+    This function makes most sense for arrays with up to 3 dimensions. For
+    instance, for pixel-data with a height (first axis), width (second axis),
+    and r/g/b channels (third axis). The functions `concatenate`, `stack` and
+    `block` provide more general stacking and concatenation operations.
+
+    Parameters
+    ----------
+    tup : sequence of BlockArray
+        The arrays must have the same shape along all but the second axis,
+        except 1-D arrays which can be any length.
+
+    Returns
+    -------
+    stacked : BlockArray
+        The array formed by stacking the given arrays.
+
+    See Also
+    --------
+    concatenate : Join a sequence of arrays along an existing axis.
+    stack : Join a sequence of arrays along a new axis.
+    block : Assemble an nd-array from nested lists of blocks.
+    vstack : Stack arrays in sequence vertically (row wise).
+    dstack : Stack arrays in sequence depth wise (along third axis).
+    column_stack : Stack 1-D arrays as columns into a 2-D array.
+    hsplit : Split an array into multiple sub-arrays horizontally (column-wise).
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> a = nps.array((1,2,3))  # doctest: +SKIP
+    >>> b = nps.array((2,3,4))  # doctest: +SKIP
+    >>> nps.hstack((a,b)).get()  # doctest: +SKIP
+    array([1, 2, 3, 2, 3, 4])
+    >>> a = nps.array([[1],[2],[3]])  # doctest: +SKIP
+    >>> b = nps.array([[2],[3],[4]])  # doctest: +SKIP
+    >>> nps.hstack((a,b)).get()  # doctest: +SKIP
+    array([[1, 2],
+           [2, 3],
+           [3, 4]])
+    """
+    return _instance().hstack(tup)
+
+
+def reshape(a: BlockArray, shape):
+    """Gives a new shape to an array without changing its data.
+
+    This docstring was copied from numpy.reshape.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Parameters
+    ----------
+    a : BlockArray
+        Array to be reshaped.
+
+    Returns
+    -------
+    reshaped_array : BlockArray
+        This will be a new view object if possible; otherwise, it will
+        be a copy.
+    """
+    block_shape = _instance().compute_block_shape(shape, a.dtype)
+    return a.reshape(shape, block_shape=block_shape)
+
+
+def row_stack(tup):
+    """Stack arrays in sequence vertically (row wise).
+
+    This docstring was copied from numpy.row_stack.
+
+    Some inconsistencies with the NumS version may exist.
+
+    This is equivalent to concatenation along the first axis after 1-D arrays
+    of shape `(N,)` have been reshaped to `(1,N)`. Rebuilds arrays divided by
+    `vsplit`.
+
+    This function makes most sense for arrays with up to 3 dimensions. For
+    instance, for pixel-data with a height (first axis), width (second axis),
+    and r/g/b channels (third axis). The functions `concatenate`, `stack` and
+    `block` provide more general stacking and concatenation operations.
+
+    Parameters
+    ----------
+    tup : sequence of BlockArrays
+        The arrays must have the same shape along all but the first axis.
+        1-D arrays must have the same length.
+
+    Returns
+    -------
+    stacked : BlockArray
+        The array formed by stacking the given arrays, will be at least 2-D.
+
+    See Also
+    --------
+    concatenate : Join a sequence of arrays along an existing axis.
+    stack : Join a sequence of arrays along a new axis.
+    block : Assemble an nd-array from nested lists of blocks.
+    hstack : Stack arrays in sequence horizontally (column wise).
+    dstack : Stack arrays in sequence depth wise (along third axis).
+    column_stack : Stack 1-D arrays as columns into a 2-D array.
+    vsplit : Split an array into multiple sub-arrays vertically (row-wise).
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> a = nps.array([1, 2, 3])  # doctest: +SKIP
+    >>> b = nps.array([2, 3, 4])  # doctest: +SKIP
+    >>> nps.vstack((a,b)).get()  # doctest: +SKIP
+    array([[1, 2, 3],
+           [2, 3, 4]])
+
+    >>> a = nps.array([[1], [2], [3]])  # doctest: +SKIP
+    >>> b = nps.array([[2], [3], [4]])  # doctest: +SKIP
+    >>> nps.vstack((a,b)).get()  # doctest: +SKIP
+    array([[1],
+           [2],
+           [3],
+           [2],
+           [3],
+           [4]])
+    """
+    return _instance().row_stack(tup)
+
+
 def squeeze(a: BlockArray, axis=None):
     """Remove single-dimensional entries from the shape of an array.
 
@@ -818,6 +602,94 @@ def squeeze(a: BlockArray, axis=None):
     """
     assert axis is None, "axis not supported."
     return a.squeeze()
+
+
+def split(ary: BlockArray, indices_or_sections, axis=0):
+    """Split an array into multiple sub-arrays as views into `ary`.
+
+    This docstring was copied from numpy.split.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Parameters
+    ----------
+    ary : BlockArray
+        Array to be divided into sub-arrays.
+    indices_or_sections : int or 1-D array
+        If `indices_or_sections` is an integer, N, the array will be divided
+        into N equal arrays along `axis`.  If such a split is not possible,
+        an error is raised.
+
+        If `indices_or_sections` is a 1-D array of sorted integers, the entries
+        indicate where along `axis` the array is split.  For example,
+        ``[2, 3]`` would, for ``axis=0``, result in
+
+          - ary[:2]
+          - ary[2:3]
+          - ary[3:]
+
+        If an index exceeds the dimension of the array along `axis`,
+        an empty sub-array is returned correspondingly.
+    axis : int, optional
+        The axis along which to split, default is 0.
+
+    Returns
+    -------
+    sub-arrays : list of BlockArrays
+        A list of sub-arrays as views into `ary`.
+
+    Raises
+    ------
+    ValueError
+        If `indices_or_sections` is given as an integer, but
+        a split does not result in equal division.
+
+    See Also
+    --------
+    array_split : Split an array into multiple sub-arrays of equal or
+                  near-equal size.  Does not raise an exception if
+                  an equal division cannot be made.
+    hsplit : Split array into multiple sub-arrays horizontally (column-wise).
+    vsplit : Split array into multiple sub-arrays vertically (row wise).
+    dsplit : Split array into multiple sub-arrays along the 3rd axis (depth).
+    concatenate : Join a sequence of arrays along an existing axis.
+    stack : Join a sequence of arrays along a new axis.
+    hstack : Stack arrays in sequence horizontally (column wise).
+    vstack : Stack arrays in sequence vertically (row wise).
+    dstack : Stack arrays in sequence depth wise (along third dimension).
+
+    Notes
+    -----
+    Split currently supports integers only.
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> x = nps.arange(9.0)  # doctest: +SKIP
+    >>> [a.get() for a in  nps.split(x, 3)]  # doctest: +SKIP
+    [array([0.,  1.,  2.]), array([3.,  4.,  5.]), array([6.,  7.,  8.])]
+    """
+    if not isinstance(indices_or_sections, int):
+        raise NotImplementedError("Split currently supports integers only.")
+    dim_total = ary.shape[axis]
+    # Splits into N equal arrays, and raise if this is not possible.
+    if dim_total % indices_or_sections != 0:
+        raise ValueError(
+            "ary axis %s cannot be split into %s equal arrays."
+            % (axis, indices_or_sections)
+        )
+    dim_partial = dim_total // indices_or_sections
+    results = []
+    ss_op = [slice(None, None, 1) for _ in ary.shape]
+    for i in range(0, dim_total, dim_partial):
+        start = i
+        stop = i + dim_partial
+        ss_op[axis] = slice(start, stop, 1)
+        ary_part = ary[tuple(ss_op)]
+        results.append(ary_part)
+    return tuple(results)
 
 
 def swapaxes(a: BlockArray, axis1: int, axis2: int):
@@ -913,3 +785,64 @@ def transpose(a: BlockArray, axes=None):
     """
     assert axes is None, "axes not supported."
     return a.T
+
+
+def vstack(tup):
+    """Stack arrays in sequence vertically (row wise).
+
+    This docstring was copied from numpy.vstack.
+
+    Some inconsistencies with the NumS version may exist.
+
+    This is equivalent to concatenation along the first axis after 1-D arrays
+    of shape `(N,)` have been reshaped to `(1,N)`. Rebuilds arrays divided by
+    `vsplit`.
+
+    This function makes most sense for arrays with up to 3 dimensions. For
+    instance, for pixel-data with a height (first axis), width (second axis),
+    and r/g/b channels (third axis). The functions `concatenate`, `stack` and
+    `block` provide more general stacking and concatenation operations.
+
+    Parameters
+    ----------
+    tup : sequence of BlockArrays
+        The arrays must have the same shape along all but the first axis.
+        1-D arrays must have the same length.
+
+    Returns
+    -------
+    stacked : BlockArray
+        The array formed by stacking the given arrays, will be at least 2-D.
+
+    See Also
+    --------
+    concatenate : Join a sequence of arrays along an existing axis.
+    stack : Join a sequence of arrays along a new axis.
+    block : Assemble an nd-array from nested lists of blocks.
+    hstack : Stack arrays in sequence horizontally (column wise).
+    dstack : Stack arrays in sequence depth wise (along third axis).
+    column_stack : Stack 1-D arrays as columns into a 2-D array.
+    vsplit : Split an array into multiple sub-arrays vertically (row-wise).
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> a = nps.array([1, 2, 3])  # doctest: +SKIP
+    >>> b = nps.array([2, 3, 4])  # doctest: +SKIP
+    >>> nps.vstack((a,b)).get()  # doctest: +SKIP
+    array([[1, 2, 3],
+           [2, 3, 4]])
+
+    >>> a = nps.array([[1], [2], [3]])  # doctest: +SKIP
+    >>> b = nps.array([[2], [3], [4]])  # doctest: +SKIP
+    >>> nps.vstack((a,b)).get()  # doctest: +SKIP
+    array([[1],
+           [2],
+           [3],
+           [2],
+           [3],
+           [4]])
+    """
+    return _instance().vstack(tup)

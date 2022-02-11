@@ -106,176 +106,6 @@ def nanmax(a: BlockArray, axis=None, out=None, keepdims=False):
     return _instance().reduce("nanmax", a, axis=axis, keepdims=keepdims)
 
 
-def nanmin(a: BlockArray, axis=None, out=None, keepdims=False):
-    """Return minimum of an array or minimum along an axis, ignoring any NaNs.
-    When all-NaN slices are encountered a ``RuntimeWarning`` is raised and
-    Nan is returned for that slice.
-
-    This docstring was copied from numpy.nanmin.
-
-    Some inconsistencies with the NumS version may exist.
-
-    Parameters
-    ----------
-    a : BlockArray
-        Array containing numbers whose minimum is desired. If `a` is not an
-        array, a conversion is attempted.
-    axis : {int, tuple of int, None}, optional
-        Axis or axes along which the minimum is computed. The default is to compute
-        the minimum of the flattened array.
-    out : BlockArray, optional
-        Alternate output array in which to place the result.  The default
-        is ``None``; if provided, it must have the same shape as the
-        expected output, but the type will be cast if necessary.
-    keepdims : bool, optional
-        If this is set to True, the axes which are reduced are left
-        in the result as dimensions with size one. With this option,
-        the result will broadcast correctly against the original `a`.
-
-        If the value is anything but the default, then
-        `keepdims` will be passed through to the `min` method
-        of sub-classes of `BlockArray`.  If the sub-classes methods
-        does not implement `keepdims` any exceptions will be raised.
-
-    Returns
-    -------
-    nanmin : BlockArray
-        An array with the same shape as `a`, with the specified axis
-        removed.  If `a` is a 0-d array, or if axis is None, an BlockArray
-        scalar is returned.  The same dtype as `a` is returned.
-
-    See Also
-    --------
-    nanmax :
-        The maximum value of an array along a given axis, ignoring any NaNs.
-    amin :
-        The minimum value of an array along a given axis, propagating any NaNs.
-    fmin :
-        Element-wise minimum of two arrays, ignoring any NaNs.
-    minimum :
-        Element-wise minimum of two arrays, propagating any NaNs.
-    isnan :
-        Shows which elements are Not a Number (NaN).
-    isfinite:
-        Shows which elements are neither NaN nor infinity.
-
-    amax, fmax, maximum
-
-    Notes
-    -----
-    NumPy uses the IEEE Standard for Binary Floating-Point for Arithmetic
-    (IEEE 754). This means that Not a Number is not equivalent to infinity.
-    Positive infinity is treated as a very large number and negative
-    infinity is treated as a very small (i.e. negative) number.
-
-    If the input has a integer type the function is equivalent to nps.min.
-
-    'out' is currently not supported.
-
-    Examples
-    --------
-    The doctests shown below are copied from NumPy.
-    They won’t show the correct result until you operate ``get()``.
-
-    >>> a = nps.array([[1, 2], [3, nps.nan]])  # doctest: +SKIP
-    >>> nps.nanmin(a).get()  # doctest: +SKIP
-    arary(1.)
-    >>> nps.nanmin(a, axis=0).get()  # doctest: +SKIP
-    array([1.,  2.])
-    >>> nps.nanmin(a, axis=1).get()  # doctest: +SKIP
-    array([1.,  3.])
-    """
-    if out is not None:
-        raise NotImplementedError("'out' is currently not supported.")
-    return _instance().reduce("nanmin", a, axis=axis, keepdims=keepdims)
-
-
-def nansum(a: BlockArray, axis=None, dtype=None, out=None, keepdims=False):
-    """Return the sum of array elements over a given axis treating Not a
-    Numbers (NaNs) as zero.
-
-    This docstring was copied from numpy.nansum.
-
-    Some inconsistencies with the NumS version may exist.
-
-    In NumPy versions <= 1.9.0 Nan is returned for slices that are all-NaN or
-    empty. In later versions zero is returned.
-
-    Parameters
-    ----------
-    a : BlockArray
-        Array containing numbers whose sum is desired. If `a` is not an
-        array, a conversion is attempted.
-    axis : {int, tuple of int, None}, optional
-        Axis or axes along which the sum is computed. The default is to compute the
-        sum of the flattened array.
-    dtype : data-type, optional
-        The type of the returned array and of the accumulator in which the
-        elements are summed.  By default, the dtype of `a` is used.  An
-        exception is when `a` has an integer type with less precision than
-        the platform (u)intp. In that case, the default will be either
-        (u)int32 or (u)int64 depending on whether the platform is 32 or 64
-        bits. For inexact inputs, dtype must be inexact.
-    out : BlockArray, optional
-        Alternate output array in which to place the result.  The default
-        is ``None``. If provided, it must have the same shape as the
-        expected output, but the type will be cast if necessary.  See
-        `ufuncs-output-type` for more details. The casting of NaN to integer
-        can yield unexpected results.
-    keepdims : bool, optional
-        If this is set to True, the axes which are reduced are left
-        in the result as dimensions with size one. With this option,
-        the result will broadcast correctly against the original `a`.
-        If the value is anything but the default, then
-        `keepdims` will be passed through to the `mean` or `sum` methods
-        of sub-classes of `BlockArray`.  If the sub-classes methods
-        does not implement `keepdims` any exceptions will be raised.
-
-    Returns
-    -------
-    nansum : BlockArray.
-        A new array holding the result is returned unless `out` is
-        specified, in which it is returned. The result has the same
-        size as `a`, and the same shape as `a` if `axis` is not None
-        or `a` is a 1-d array.
-
-    See Also
-    --------
-    numpy.sum : Sum across array propagating NaNs.
-    isnan : Show which elements are NaN.
-    isfinite: Show which elements are not NaN or +/-inf.
-
-    Notes
-    -----
-    If both positive and negative infinity are present, the sum will be Not
-    A Number (NaN).
-
-    'out' is currently not supported.
-
-    Examples
-    --------
-    The doctests shown below are copied from NumPy.
-    They won’t show the correct result until you operate ``get()``.
-
-    >>> nps.nansum(nps.array([1])).get()  # doctest: +SKIP
-    array(1)
-    >>> nps.nansum(nps.array([1, nps.nan])).get()  # doctest: +SKIP
-    array(1.)
-    >>> a = nps.array([[1, 1], [1, nps.nan]])  # doctest: +SKIP
-    >>> nps.nansum(a).get()  # doctest: +SKIP
-    array(3.)
-    >>> nps.nansum(a, axis=0).get()  # doctest: +SKIP
-    array([2.,  1.])
-    >>> nps.nansum(nps.array([1, nps.nan, nps.inf])).get()  # doctest: +SKIP
-    array(inf)
-    >>> nps.nansum(nps.array([1, nps.nan, nps.NINF])).get()  # doctest: +SKIP
-    array(-inf)
-    """
-    if out is not None:
-        raise NotImplementedError("'out' is currently not supported.")
-    return _instance().reduce("nansum", a, axis=axis, dtype=dtype, keepdims=keepdims)
-
-
 def nanmean(a: BlockArray, axis=None, dtype=None, out=None, keepdims=False):
     """Compute the arithmetic mean along the specified axis, ignoring NaNs.
 
@@ -358,84 +188,69 @@ def nanmean(a: BlockArray, axis=None, dtype=None, out=None, keepdims=False):
     return _instance().nanmean(a, axis=axis, dtype=dtype, keepdims=keepdims)
 
 
-def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
-    """Compute the variance along the specified axis, while ignoring NaNs.
+def nanmin(a: BlockArray, axis=None, out=None, keepdims=False):
+    """Return minimum of an array or minimum along an axis, ignoring any NaNs.
+    When all-NaN slices are encountered a ``RuntimeWarning`` is raised and
+    Nan is returned for that slice.
 
-    This docstring was copied from numpy.nanvar.
+    This docstring was copied from numpy.nanmin.
 
     Some inconsistencies with the NumS version may exist.
-
-    Returns the variance of the array elements, a measure of the spread of
-    a distribution.  The variance is computed for the flattened array by
-    default, otherwise over the specified axis.
-
-    For all-NaN slices or slices with zero degrees of freedom, NaN is
-    returned and a `RuntimeWarning` is raised.
 
     Parameters
     ----------
     a : BlockArray
-        Array containing numbers whose variance is desired.  If `a` is not an
+        Array containing numbers whose minimum is desired. If `a` is not an
         array, a conversion is attempted.
     axis : {int, tuple of int, None}, optional
-        Axis or axes along which the variance is computed.  The default is to compute
-        the variance of the flattened array.
-    dtype : data-type, optional
-        Type to use in computing the variance.  For arrays of integer type
-        the default is `float64`; for arrays of float types it is the same as
-        the array type.
+        Axis or axes along which the minimum is computed. The default is to compute
+        the minimum of the flattened array.
     out : BlockArray, optional
-        Alternate output array in which to place the result.  It must have
-        the same shape as the expected output, but the type is cast if
-        necessary.
-    ddof : int, optional
-        "Delta Degrees of Freedom": the divisor used in the calculation is
-        ``N - ddof``, where ``N`` represents the number of non-NaN
-        elements. By default `ddof` is zero.
+        Alternate output array in which to place the result.  The default
+        is ``None``; if provided, it must have the same shape as the
+        expected output, but the type will be cast if necessary.
     keepdims : bool, optional
         If this is set to True, the axes which are reduced are left
         in the result as dimensions with size one. With this option,
         the result will broadcast correctly against the original `a`.
 
+        If the value is anything but the default, then
+        `keepdims` will be passed through to the `min` method
+        of sub-classes of `BlockArray`.  If the sub-classes methods
+        does not implement `keepdims` any exceptions will be raised.
 
     Returns
     -------
-    variance : BlockArray, see dtype parameter above
-        If `out` is None, return a new array containing the variance,
-        otherwise return a reference to the output array. If ddof is >= the
-        number of non-NaN elements in a slice or the slice contains only
-        NaNs, then the result for that slice is NaN.
+    nanmin : BlockArray
+        An array with the same shape as `a`, with the specified axis
+        removed.  If `a` is a 0-d array, or if axis is None, an BlockArray
+        scalar is returned.  The same dtype as `a` is returned.
 
     See Also
     --------
-    std : Standard deviation
-    mean : Average
-    var : Variance while not ignoring NaNs
-    nanstd, nanmean
+    nanmax :
+        The maximum value of an array along a given axis, ignoring any NaNs.
+    amin :
+        The minimum value of an array along a given axis, propagating any NaNs.
+    fmin :
+        Element-wise minimum of two arrays, ignoring any NaNs.
+    minimum :
+        Element-wise minimum of two arrays, propagating any NaNs.
+    isnan :
+        Shows which elements are Not a Number (NaN).
+    isfinite:
+        Shows which elements are neither NaN nor infinity.
+
+    amax, fmax, maximum
 
     Notes
     -----
-    The variance is the average of the squared deviations from the mean,
-    i.e.,  ``var = mean(abs(x - x.mean())**2)``.
+    NumPy uses the IEEE Standard for Binary Floating-Point for Arithmetic
+    (IEEE 754). This means that Not a Number is not equivalent to infinity.
+    Positive infinity is treated as a very large number and negative
+    infinity is treated as a very small (i.e. negative) number.
 
-    The mean is normally calculated as ``x.sum() / N``, where ``N = len(x)``.
-    If, however, `ddof` is specified, the divisor ``N - ddof`` is used
-    instead.  In standard statistical practice, ``ddof=1`` provides an
-    unbiased estimator of the variance of a hypothetical infinite
-    population.  ``ddof=0`` provides a maximum likelihood estimate of the
-    variance for normally distributed variables.
-
-    Note that for complex numbers, the absolute value is taken before
-    squaring, so that the result is always real and nonnegative.
-
-    For floating-point input, the variance is computed using the same
-    precision the input has.  Depending on the input data, this can cause
-    the results to be inaccurate, especially for `float32` (see example
-    below).  Specifying a higher-accuracy accumulator using the ``dtype``
-    keyword can alleviate this issue.
-
-    For this function to work on sub-classes of BlockArray, they must define
-    `sum` with the kwarg `keepdims`
+    If the input has a integer type the function is equivalent to nps.min.
 
     'out' is currently not supported.
 
@@ -444,17 +259,17 @@ def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     The doctests shown below are copied from NumPy.
     They won’t show the correct result until you operate ``get()``.
 
-    >>> a = nps.array([[1, nps.nan], [3, 4]])  # doctest: +SKIP
-    >>> nps.nanvar(a).get()  # doctest: +SKIP
-    array(1.55555556)
-    >>> nps.nanvar(a, axis=0).get()  # doctest: +SKIP
-    array([1.,  0.])
-    >>> nps.nanvar(a, axis=1).get()  # doctest: +SKIP
-    array([0.,  0.25])  # may vary
+    >>> a = nps.array([[1, 2], [3, nps.nan]])  # doctest: +SKIP
+    >>> nps.nanmin(a).get()  # doctest: +SKIP
+    arary(1.)
+    >>> nps.nanmin(a, axis=0).get()  # doctest: +SKIP
+    array([1.,  2.])
+    >>> nps.nanmin(a, axis=1).get()  # doctest: +SKIP
+    array([1.,  3.])
     """
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
-    return _instance().nanvar(a, axis=axis, dtype=dtype, ddof=ddof, keepdims=keepdims)
+    return _instance().reduce("nanmin", a, axis=axis, keepdims=keepdims)
 
 
 def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
@@ -556,3 +371,188 @@ def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     if out is not None:
         raise NotImplementedError("'out' is currently not supported.")
     return _instance().nanstd(a, axis=axis, dtype=dtype, ddof=ddof, keepdims=keepdims)
+
+
+def nansum(a: BlockArray, axis=None, dtype=None, out=None, keepdims=False):
+    """Return the sum of array elements over a given axis treating Not a
+    Numbers (NaNs) as zero.
+
+    This docstring was copied from numpy.nansum.
+
+    Some inconsistencies with the NumS version may exist.
+
+    In NumPy versions <= 1.9.0 Nan is returned for slices that are all-NaN or
+    empty. In later versions zero is returned.
+
+    Parameters
+    ----------
+    a : BlockArray
+        Array containing numbers whose sum is desired. If `a` is not an
+        array, a conversion is attempted.
+    axis : {int, tuple of int, None}, optional
+        Axis or axes along which the sum is computed. The default is to compute the
+        sum of the flattened array.
+    dtype : data-type, optional
+        The type of the returned array and of the accumulator in which the
+        elements are summed.  By default, the dtype of `a` is used.  An
+        exception is when `a` has an integer type with less precision than
+        the platform (u)intp. In that case, the default will be either
+        (u)int32 or (u)int64 depending on whether the platform is 32 or 64
+        bits. For inexact inputs, dtype must be inexact.
+    out : BlockArray, optional
+        Alternate output array in which to place the result.  The default
+        is ``None``. If provided, it must have the same shape as the
+        expected output, but the type will be cast if necessary.  See
+        `ufuncs-output-type` for more details. The casting of NaN to integer
+        can yield unexpected results.
+    keepdims : bool, optional
+        If this is set to True, the axes which are reduced are left
+        in the result as dimensions with size one. With this option,
+        the result will broadcast correctly against the original `a`.
+        If the value is anything but the default, then
+        `keepdims` will be passed through to the `mean` or `sum` methods
+        of sub-classes of `BlockArray`.  If the sub-classes methods
+        does not implement `keepdims` any exceptions will be raised.
+
+    Returns
+    -------
+    nansum : BlockArray.
+        A new array holding the result is returned unless `out` is
+        specified, in which it is returned. The result has the same
+        size as `a`, and the same shape as `a` if `axis` is not None
+        or `a` is a 1-d array.
+
+    See Also
+    --------
+    numpy.sum : Sum across array propagating NaNs.
+    isnan : Show which elements are NaN.
+    isfinite: Show which elements are not NaN or +/-inf.
+
+    Notes
+    -----
+    If both positive and negative infinity are present, the sum will be Not
+    A Number (NaN).
+
+    'out' is currently not supported.
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> nps.nansum(nps.array([1])).get()  # doctest: +SKIP
+    array(1)
+    >>> nps.nansum(nps.array([1, nps.nan])).get()  # doctest: +SKIP
+    array(1.)
+    >>> a = nps.array([[1, 1], [1, nps.nan]])  # doctest: +SKIP
+    >>> nps.nansum(a).get()  # doctest: +SKIP
+    array(3.)
+    >>> nps.nansum(a, axis=0).get()  # doctest: +SKIP
+    array([2.,  1.])
+    >>> nps.nansum(nps.array([1, nps.nan, nps.inf])).get()  # doctest: +SKIP
+    array(inf)
+    >>> nps.nansum(nps.array([1, nps.nan, nps.NINF])).get()  # doctest: +SKIP
+    array(-inf)
+    """
+    if out is not None:
+        raise NotImplementedError("'out' is currently not supported.")
+    return _instance().reduce("nansum", a, axis=axis, dtype=dtype, keepdims=keepdims)
+
+
+def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+    """Compute the variance along the specified axis, while ignoring NaNs.
+
+    This docstring was copied from numpy.nanvar.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Returns the variance of the array elements, a measure of the spread of
+    a distribution.  The variance is computed for the flattened array by
+    default, otherwise over the specified axis.
+
+    For all-NaN slices or slices with zero degrees of freedom, NaN is
+    returned and a `RuntimeWarning` is raised.
+
+    Parameters
+    ----------
+    a : BlockArray
+        Array containing numbers whose variance is desired.  If `a` is not an
+        array, a conversion is attempted.
+    axis : {int, tuple of int, None}, optional
+        Axis or axes along which the variance is computed.  The default is to compute
+        the variance of the flattened array.
+    dtype : data-type, optional
+        Type to use in computing the variance.  For arrays of integer type
+        the default is `float64`; for arrays of float types it is the same as
+        the array type.
+    out : BlockArray, optional
+        Alternate output array in which to place the result.  It must have
+        the same shape as the expected output, but the type is cast if
+        necessary.
+    ddof : int, optional
+        "Delta Degrees of Freedom": the divisor used in the calculation is
+        ``N - ddof``, where ``N`` represents the number of non-NaN
+        elements. By default `ddof` is zero.
+    keepdims : bool, optional
+        If this is set to True, the axes which are reduced are left
+        in the result as dimensions with size one. With this option,
+        the result will broadcast correctly against the original `a`.
+
+
+    Returns
+    -------
+    variance : BlockArray, see dtype parameter above
+        If `out` is None, return a new array containing the variance,
+        otherwise return a reference to the output array. If ddof is >= the
+        number of non-NaN elements in a slice or the slice contains only
+        NaNs, then the result for that slice is NaN.
+
+    See Also
+    --------
+    std : Standard deviation
+    mean : Average
+    var : Variance while not ignoring NaNs
+    nanstd, nanmean
+
+    Notes
+    -----
+    The variance is the average of the squared deviations from the mean,
+    i.e.,  ``var = mean(abs(x - x.mean())**2)``.
+
+    The mean is normally calculated as ``x.sum() / N``, where ``N = len(x)``.
+    If, however, `ddof` is specified, the divisor ``N - ddof`` is used
+    instead.  In standard statistical practice, ``ddof=1`` provides an
+    unbiased estimator of the variance of a hypothetical infinite
+    population.  ``ddof=0`` provides a maximum likelihood estimate of the
+    variance for normally distributed variables.
+
+    Note that for complex numbers, the absolute value is taken before
+    squaring, so that the result is always real and nonnegative.
+
+    For floating-point input, the variance is computed using the same
+    precision the input has.  Depending on the input data, this can cause
+    the results to be inaccurate, especially for `float32` (see example
+    below).  Specifying a higher-accuracy accumulator using the ``dtype``
+    keyword can alleviate this issue.
+
+    For this function to work on sub-classes of BlockArray, they must define
+    `sum` with the kwarg `keepdims`
+
+    'out' is currently not supported.
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+
+    >>> a = nps.array([[1, nps.nan], [3, 4]])  # doctest: +SKIP
+    >>> nps.nanvar(a).get()  # doctest: +SKIP
+    array(1.55555556)
+    >>> nps.nanvar(a, axis=0).get()  # doctest: +SKIP
+    array([1.,  0.])
+    >>> nps.nanvar(a, axis=1).get()  # doctest: +SKIP
+    array([0.,  0.25])  # may vary
+    """
+    if out is not None:
+        raise NotImplementedError("'out' is currently not supported.")
+    return _instance().nanvar(a, axis=axis, dtype=dtype, ddof=ddof, keepdims=keepdims)
