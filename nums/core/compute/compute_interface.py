@@ -3,7 +3,7 @@ from typing import Tuple, Dict
 from nums.core.systems.utils import method_meta
 
 
-class ComputeInterface(object):
+class ComputeInterface:
     def touch(self, arr, syskwargs: Dict):
         """
         "Touch" the given array. This returns nothing and can be used to wait for
@@ -160,10 +160,10 @@ class ComputeInterface(object):
         raise NotImplementedError()
 
 
-class ComputeImp(object):
+class ComputeImp:
     pass
 
 
-class RNGInterface(object):
+class RNGInterface:
     def new_block_rng_params(self):
         raise NotImplementedError()
