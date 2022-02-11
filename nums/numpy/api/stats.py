@@ -20,7 +20,7 @@ from nums.core.application_manager import instance as _instance
 from nums.core.array.blockarray import BlockArray
 
 from nums.numpy.api.reduction import *
-from nums.numpy.api.generated import *
+from nums.numpy.api.arithmetic import *
 
 
 ############################################
