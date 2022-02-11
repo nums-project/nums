@@ -14,7 +14,6 @@
 
 # pylint: disable = redefined-builtin, too-many-lines, anomalous-backslash-in-string, unused-wildcard-import, wildcard-import
 
-import warnings
 import numpy as np
 
 from nums.core.application_manager import instance as _instance
@@ -587,134 +586,79 @@ def loadtxt(
 ) -> BlockArray:
     """Load data from a text file.
 
-    This docstring was copied from numpy.loadtxt.
+    This docstring was copied from numpy.arange.
 
     Some inconsistencies with the NumS version may exist.
 
-    Each row in the text file must have the same number of values.
+    Values are generated within the half-open interval ``[start, stop)``
+    (in other words, the interval including `start` but excluding `stop`).
+    For integer arguments the function is equivalent to the Python built-in
+    `range` function, but returns an BlockArray rather than a list.
+
+    When using a non-integer step, such as 0.1, the results will often not
+    be consistent.  It is better to use `nums.linspace` for these cases.
 
     Parameters
     ----------
-    fname : file, str, or pathlib.Path
-        File, filename, or generator to read.  If the filename extension is
-        ``.gz`` or ``.bz2``, the file is first decompressed. Note that
-        generators should return byte strings.
-    dtype : data-type, optional
-        Data-type of the resulting array; default: float.  If this is a
-        structured data-type, the resulting array will be 1-dimensional, and
-        each row will be interpreted as an element of the array.  In this
-        case, the number of columns used must match the number of fields in
-        the data-type.
-    comments : str or sequence of str, optional
-        The characters or list of characters used to indicate the start of a
-        comment. None implies no comments. For backwards compatibility, byte
-        strings will be decoded as 'latin1'. The default is '#'.
-    delimiter : str, optional
-        The string used to separate values. For backwards compatibility, byte
-        strings will be decoded as 'latin1'. The default is whitespace.
-    converters : dict, optional
-        A dictionary mapping column number to a function that will parse the
-        column string into the desired value.  E.g., if column 0 is a date
-        string: ``converters = {0: datestr2num}``.  Converters can also be
-        used to provide a default value for missing data (but see also
-        `genfromtxt`): ``converters = {3: lambda s: float(s.strip() or 0)}``.
-        Default: None.
-    skiprows : int, optional
-        Skip the first `skiprows` lines, including comments; default: 0.
-    usecols : int or sequence, optional
-        Which columns to read, with 0 being the first. For example,
-        ``usecols = (1,4,5)`` will extract the 2nd, 5th and 6th columns.
-        The default, None, results in all columns being read.
-
-            When a single column has to be read it is possible to use
-            an integer instead of a tuple. E.g ``usecols = 3`` reads the
-            fourth column the same way as ``usecols = (3,)`` would.
-    unpack : bool, optional
-        If True, the returned array is transposed, so that arguments may be
-        unpacked using ``x, y, z = loadtxt(...)``.  When used with a structured
-        data-type, arrays are returned for each field.  Default is False.
-    ndmin : int, optional
-        The returned array will have at least `ndmin` dimensions.
-        Otherwise mono-dimensional axes will be squeezed.
-        Legal values: 0 (default), 1 or 2.
-    encoding : str, optional
-        Encoding used to decode the inputfile. Does not apply to input streams.
-        The special value 'bytes' enables backward compatibility workarounds
-        that ensures you receive byte arrays as results if possible and passes
-        'latin1' encoded strings to converters. Override this value to receive
-        unicode arrays and pass strings as input to converters.  If set to None
-        the system default is used. The default value is 'bytes'.
-    max_rows : int, optional
-        Read `max_rows` lines of content after `skiprows` lines. The default
-        is to read all the lines.
+    start : number, optional
+        Start of interval.  The interval includes this value.  The default
+        start value is 0.
+    stop : number
+        End of interval.  The interval does not include this value, except
+        in some cases where `step` is not an integer and floating point
+        round-off affects the length of `out`.
+    step : number, optional
+        Spacing between values.  For any output `out`, this is the distance
+        between two adjacent values, ``out[i+1] - out[i]``.  The default
+        step size is 1.  If `step` is specified as a position argument,
+        `start` must also be given.
+    dtype : dtype
+        The type of the output array.  If `dtype` is not given, infer the data
+        type from the other input arguments.
 
     Returns
     -------
-    out : BlockArray
-        Data read from the text file.
+    arange : BlockArray
+        Array of evenly spaced values.
+
+        For floating point arguments, the length of the result is
+        ``ceil((stop - start)/step)``.  Because of floating point overflow,
+        this rule may result in the last element of `out` being greater
+        than `stop`.
+
+    See Also
+    --------
+    linspace : Evenly spaced numbers with careful handling of endpoints.
 
     Notes
     -----
-    This function aims to be a fast reader for simply formatted files.  The
-    `genfromtxt` function provides more sophisticated handling of, e.g.,
-    lines with missing values.
+    Only step size of 1 is currently supported.
 
     Examples
     --------
     The doctests shown below are copied from NumPy.
     They won’t show the correct result until you operate ``get()``.
 
-    >>> from io import StringIO  # doctest: +SKIP
-    >>> c = StringIO("0 1\\n2 3")  # doctest: +SKIP
-    >>> nps.loadtxt(c).get()  # doctest: +SKIP
-    array([[0., 1.],
-           [2., 3.]])
-
-    >>> c = StringIO("1,0,2\\n3,0,4")  # doctest: +SKIP
-    >>> x, y = nps.loadtxt(c, delimiter=',', usecols=(0, 2), unpack=True)  # doctest: +SKIP
-    >>> x.get()  # doctest: +SKIP
-    array([1., 3.])
-    >>> y.get()  # doctest: +SKIP
-    array([2., 4.])
+    >>> nps.arange(3).get()  # doctest: +SKIP
+    array([0, 1, 2])
+    >>> nps.arange(3.0).get()  # doctest: +SKIP
+    array([ 0.,  1.,  2.])
+    >>> nps.arange(3,7).get()  # doctest: +SKIP
+    array([3, 4, 5, 6])
     """
+    if start is None:
+        raise TypeError("Missing required argument start")
+    if stop is None:
+        stop = start
+        start = 0
+    if step != 1:
+        raise NotImplementedError("Only step size of 1 is currently supported.")
+    if dtype is None:
+        dtype = np.__getattribute__(str(np.result_type(start, stop)))
+    shape = (int(np.ceil(stop - start)),)
     app = _instance()
-    num_rows = app.cm.num_cores_total()
-    try:
-        ba: BlockArray = app.loadtxt(
-            fname,
-            dtype=dtype,
-            comments=comments,
-            delimiter=delimiter,
-            converters=converters,
-            skiprows=skiprows,
-            usecols=usecols,
-            unpack=unpack,
-            ndmin=ndmin,
-            encoding=encoding,
-            max_rows=max_rows,
-            num_workers=num_rows,
-        )
-        shape = ba.shape
-        block_shape = app.compute_block_shape(shape, dtype)
-        return ba.reshape(block_shape=block_shape)
-    except Exception as _:
-        warnings.warn("Failed to load text data in parallel; using np.loadtxt locally.")
-        np_arr = np.loadtxt(
-            fname,
-            dtype=dtype,
-            comments=comments,
-            delimiter=delimiter,
-            converters=converters,
-            skiprows=skiprows,
-            usecols=usecols,
-            unpack=unpack,
-            ndmin=ndmin,
-            encoding=encoding,
-            max_rows=max_rows,
-        )
-        shape = np_arr.shape
-        block_shape = app.compute_block_shape(shape, dtype)
-        return app.array(np_arr, block_shape=block_shape)
+    block_shape = app.get_block_shape(shape, dtype)
+    return app.arange(start, shape, block_shape, step, dtype)
 
 
 def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None, axis=0):
