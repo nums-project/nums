@@ -18,7 +18,7 @@ from nums.core.application_manager import instance as _instance
 from nums.core.array.blockarray import BlockArray
 
 from nums.numpy.api.creation import *
-from nums.numpy.api.generated import *
+from nums.numpy.api.arithmetic import *
 from nums.numpy.api.manipulation import *
 from nums.numpy.api.logic import *
 
