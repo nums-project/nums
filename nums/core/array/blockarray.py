@@ -1127,7 +1127,7 @@ class BlockArray(BlockArrayBase):
         return oids
 
 
-class Reshape(object):
+class Reshape:
     @staticmethod
     def compute_shape(shape, input_shape):
         size = np.product(shape)

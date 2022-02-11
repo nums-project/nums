@@ -20,7 +20,7 @@ from nums.core.array import utils as _array_utils
 from nums.core.array.blockarray import BlockArray
 
 
-class RandomState(object):
+class RandomState:
     def __init__(self, seed=None):
         self._seed = seed
         self._rs = None

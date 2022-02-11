@@ -25,7 +25,7 @@ import numpy as np
 from nums.core.grid.grid import ArrayGrid
 
 
-class StoredArray(object):
+class StoredArray:
     # TODO (hme): This is no longer a useful abstraction.
 
     def __init__(self, filename: str, grid: ArrayGrid):
@@ -185,7 +185,7 @@ class StoredArrayS3(StoredArray):
         return response
 
 
-class BimodalGaussian(object):
+class BimodalGaussian:
     @classmethod
     def get_dataset(cls, n, d, p=0.9, seed=1, dtype=np.float64, theta=None):
         return cls(10, 2, 30, 4, dim=d, seed=seed, dtype=dtype).sample(

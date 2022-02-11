@@ -20,7 +20,7 @@ from nums.core.compute.compute_manager import ComputeManager
 from nums.core.grid.grid import ArrayGrid
 
 
-class NumsRandomState(object):
+class NumsRandomState:
     def __init__(self, cm: ComputeManager, seed):
         self._cm = cm
         self._rng = self._cm.get_rng(seed)

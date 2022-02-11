@@ -25,7 +25,7 @@ from nums.core.compute.compute_manager import ComputeManager
 from nums.core.grid.grid import ArrayGrid
 
 
-class ArrayView(object):
+class ArrayView:
     @classmethod
     def from_block_array(cls, bab):
         assert isinstance(bab, BlockArrayBase)

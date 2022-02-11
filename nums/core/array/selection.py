@@ -123,7 +123,7 @@ def slice_to_range(s: slice, size: int):
     return np.arange(st.start, st.stop, st.step)
 
 
-class AxisSelection(object):
+class AxisSelection:
     def is_empty(self):
         raise NotImplementedError()
 
@@ -261,7 +261,7 @@ class AxisEmpty(AxisSelection):
         return 0
 
 
-class BasicSelection(object):
+class BasicSelection:
     @classmethod
     def from_shape(cls, shape: Tuple):
         return cls.from_subscript(shape, (...,))
@@ -648,7 +648,7 @@ class BasicSelection(object):
             ]
 
 
-class AdvancedSelection(object):
+class AdvancedSelection:
     # Allow mixture of slices and advanced indexing.
     # Will require some basic intersection operations,
     # but not as general as BasicSelection.
@@ -656,7 +656,7 @@ class AdvancedSelection(object):
         raise NotImplementedError()
 
 
-class Position(object):
+class Position:
     @classmethod
     def from_selection(cls, sel: BasicSelection, compute_stop=False):
         shape_dim = len(sel.shape)
