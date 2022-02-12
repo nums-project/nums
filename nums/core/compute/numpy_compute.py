@@ -516,6 +516,8 @@ class ComputeCls(ComputeImp):
         return arr[0]
 
     def sort(self, arr, kind):
+        if arr.size == 1:
+            return arr
         return np.sort(arr, kind=kind)
 
     def map_sort(self, arr, pivots, kind):

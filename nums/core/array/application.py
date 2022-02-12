@@ -1242,18 +1242,16 @@ class ArrayApplication:
         )
 
         # Assume that the number of pivots is small enough to fit within a single BlockArray
-        if ba_pivots.block_shape[0] == 1:
-            sorted_pivots_oid = np.array(self.cm.get(ba_pivots.flattened_oids()))
-        else:
-            sorted_pivots_oid = self.cm.sort(
-                ba_pivots.blocks[0].oid,
-                kind,
-                syskwargs={
-                    "grid_entry": (0,),
-                    "grid_shape": (1,),
-                    "options": {"num_returns": 1},
-                },
-            )
+
+        sorted_pivots_oid = self.cm.sort(
+            ba_pivots.blocks[0].oid,
+            kind,
+            syskwargs={
+                "grid_entry": (0,),
+                "grid_shape": (1,),
+                "options": {"num_returns": 1},
+            },
+        )
 
         mapped_sorted = np.empty([num_blocks, num_blocks], dtype=object)
         reduce_sorted = []
