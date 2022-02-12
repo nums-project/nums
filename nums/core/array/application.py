@@ -1208,13 +1208,10 @@ class ArrayApplication(object):
         return self.concatenate(arrays, 1, axis_block_size=axis_block_size)
 
     def sort(self, arr, kind):
-        block_oids = arr.flattened_oids()
-        num_blocks = len(block_oids)
-
         # If the BlockArray to be sorted is small enough, default to serial sort
-        if num_blocks == 1:
+        if arr.blocks.size == 1:
             oid = self.cm.sort(
-                block_oids[0],
+                arr.flattened_oids(),
                 kind,
                 syskwargs={
                     "grid_entry": (0,),
@@ -1224,29 +1221,33 @@ class ArrayApplication(object):
             )
             return BlockArray.from_oid(oid, arr.block_shape, arr.dtype, self.cm)
 
-        block_oids.pop()
-
-        # Sample the pivots to sort buckets around
+        num_blocks = arr.grid.grid_shape[0]
         pivot_oids = []
-        for i, arr_oid in enumerate(block_oids):
+
+        # Sample n - 1 pivots to sort buckets around
+        for i, grid_entry in enumerate(arr.grid.get_entry_iterator()):
+            if i == 0:
+                continue
             oid = self.cm.sample_pivots(
-                arr_oid,
+                arr.blocks[i].oid,
                 syskwargs={
-                    "grid_entry": (0,),
-                    "grid_shape": (1,),
+                    "grid_entry": grid_entry,
+                    "grid_shape": arr.grid.grid_shape,
                     "options": {"num_returns": 1},
                 },
             )
             pivot_oids.append(BlockArray.from_oid(oid, (1,), arr.dtype, self.cm))
 
-        pivot_oid = self.concatenate(pivot_oids, 0, axis_block_size=len(pivot_oids))
+        ba_pivots = self.concatenate(
+            pivot_oids, axis=0, axis_block_size=len(pivot_oids)
+        )
 
         # Assume that the number of pivots is small enough to fit within a single BlockArray
-        if pivot_oid.block_shape[0] == 1:
-            sorted_pivots_oid = np.array(self.cm.get(pivot_oid.flattened_oids()))
+        if ba_pivots.block_shape[0] == 1:
+            sorted_pivots_oid = np.array(self.cm.get(ba_pivots.flattened_oids()))
         else:
             sorted_pivots_oid = self.cm.sort(
-                pivot_oid.blocks[0].oid,
+                ba_pivots.blocks[0].oid,
                 kind,
                 syskwargs={
                     "grid_entry": (0,),
@@ -1258,31 +1259,36 @@ class ArrayApplication(object):
         mapped_sorted = np.empty([num_blocks, num_blocks], dtype=object)
         reduce_sorted = []
 
-        arr_oids = arr.flattened_oids()
-        for i in range(num_blocks):
+        for i, grid_entry in enumerate(arr.grid.get_entry_iterator()):
             mapped_sorted[i] = self.cm.map_sort(
-                arr_oids[i],
+                arr.blocks[i].oid,
                 sorted_pivots_oid,
                 kind,
                 syskwargs={
-                    "grid_entry": (i,),
+                    "grid_entry": grid_entry,
                     "grid_shape": arr.grid.grid_shape,
                     "options": {"num_returns": num_blocks},
                 },
             )
 
-        for j in range(num_blocks):
-            oid = self.cm.reduce_sort(
-                *mapped_sorted[:, j],
-                kind=kind,
-                syskwargs={
-                    "grid_entry": (j,),
-                    "grid_shape": arr.grid.grid_shape,
-                    "options": {"num_returns": 1},
-                },
+        oids = []
+
+        for j, grid_entry in enumerate(arr.grid.get_entry_iterator()):
+            oids.append(
+                self.cm.reduce_sort(
+                    *mapped_sorted[:, j],
+                    kind=kind,
+                    syskwargs={
+                        "grid_entry": grid_entry,
+                        "grid_shape": arr.grid.grid_shape,
+                        "options": {"num_returns": 1},
+                    },
+                )
             )
-            block_shape = self.cm.get(oid).shape
-            ba = BlockArray.from_oid(oid, block_shape, arr.dtype, self.cm)
+
+        for oid in oids:
+            shape = self.cm.get(oid).shape
+            ba = BlockArray.from_oid(oid, shape, arr.dtype, self.cm)
             reduce_sorted.append(ba)
 
         return self.concatenate(
