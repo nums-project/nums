@@ -18,7 +18,7 @@ import itertools
 import numpy as np
 
 from nums.core.grid.grid import ArrayGrid
-from nums.core.systems import utils as systems_utils
+from nums.core.backends import utils as backend_utils
 
 
 # pylint: disable=import-outside-toplevel
@@ -109,7 +109,7 @@ def test_block_shape(nps_app_inst):
     assert grid.grid_shape == (int(num_cores ** 0.5), int(num_cores ** 0.5))
 
     cluster_shape = (12, 1)
-    num_cores = systems_utils.get_num_cores()
+    num_cores = backend_utils.get_num_cores()
     block_shape = app.compute_block_shape(
         shape=shape, dtype=dtype, cluster_shape=cluster_shape
     )

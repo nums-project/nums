@@ -20,17 +20,17 @@ import pytest
 from nums.core import application_manager
 from nums.core import settings
 from nums.core.array.application import ArrayApplication
-from nums.core.systems.utils import get_num_cores
+from nums.core.backends.utils import get_num_cores
 
 
 @pytest.mark.parametrize("compute_name", ["numpy"])
-@pytest.mark.parametrize("system_name", ["serial", "ray", "ray-scheduler"])
+@pytest.mark.parametrize("backend_name", ["serial", "ray", "ray-scheduler"])
 @pytest.mark.parametrize("device_grid_name", ["cyclic", "packed"])
 @pytest.mark.parametrize("num_cpus", [2, 1, None])
-def test_app_manager(compute_name, system_name, device_grid_name, num_cpus):
+def test_app_manager(compute_name, backend_name, device_grid_name, num_cpus):
     settings.use_head = True
     settings.compute_name = compute_name
-    settings.system_name = system_name
+    settings.backend_name = backend_name
     settings.device_grid_name = device_grid_name
     settings.num_cpus = num_cpus
 
@@ -48,7 +48,7 @@ def test_app_manager(compute_name, system_name, device_grid_name, num_cpus):
 
     # Revert for other tests.
     settings.compute_name = "numpy"
-    settings.system_name = "ray"
+    settings.backend_name = "ray"
     settings.device_grid_name = "cyclic"
     settings.num_cpus = None
 

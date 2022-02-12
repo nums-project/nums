@@ -346,7 +346,7 @@ if __name__ == "__main__":
     from nums.core import application_manager
     from nums.core import settings
 
-    settings.system_name = "serial"
+    settings.backend_name = "serial"
     nps_app_inst = application_manager.instance()
     # test_logistic(nps_app_inst)
     # test_logistic_cv(nps_app_inst)

@@ -16,7 +16,7 @@
 import argparse
 
 from nums.core import settings
-from nums.core.systems import utils as systems_utils
+from nums.core.backends import utils as backend_utils
 
 
 # pylint: disable = import-outside-toplevel
@@ -44,7 +44,7 @@ def module_coverage(
     print(module_name)
     print("-" * 75)
 
-    for name, func in systems_utils.get_module_functions(nums_module).items():
+    for name, func in backend_utils.get_module_functions(nums_module).items():
         if name in ("_not_implemented", "_instance", "_default_to_numpy", "reset"):
             continue
         if getattr(numpy_module, name, None) is None:
@@ -56,7 +56,7 @@ def module_coverage(
     total = 0.0
     fallback_coverage = 0.0
     missing = []
-    for name, func in systems_utils.get_module_functions(numpy_module).items():
+    for name, func in backend_utils.get_module_functions(numpy_module).items():
         if name in ignore:
             continue
         total += 1.0

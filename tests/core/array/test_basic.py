@@ -21,7 +21,7 @@ from nums.core.array.blockarray import BlockArray
 from nums.core.grid.grid import ArrayGrid
 from nums.core.grid.grid import DeviceID
 from nums.core.storage.storage import BimodalGaussian
-from nums.core.systems import utils as systems_utils
+from nums.core.backends import utils as backend_utils
 
 import common  # pylint: disable=import-error, wrong-import-order
 
@@ -122,7 +122,7 @@ def test_touch(app_inst: ArrayApplication):
 
 
 def test_num_cores(app_inst: ArrayApplication):
-    assert np.allclose(app_inst.cm.num_cores_total(), systems_utils.get_num_cores())
+    assert np.allclose(app_inst.cm.num_cores_total(), backend_utils.get_num_cores())
 
 
 def ideal_tall_skinny_shapes(size, dtype):
