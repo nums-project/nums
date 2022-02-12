@@ -24,7 +24,7 @@ from nums.core.systems.utils import get_num_cores
 
 
 @pytest.mark.parametrize("compute_name", ["numpy"])
-@pytest.mark.parametrize("system_name", ["serial", "ray", "ray-scheduler"])
+@pytest.mark.parametrize("system_name", ["serial", "ray", "ray-scheduler", "mpi"])
 @pytest.mark.parametrize("device_grid_name", ["cyclic", "packed"])
 @pytest.mark.parametrize("num_cpus", [2, 1, None])
 def test_app_manager(compute_name, system_name, device_grid_name, num_cpus):
@@ -54,4 +54,4 @@ def test_app_manager(compute_name, system_name, device_grid_name, num_cpus):
 
 
 if __name__ == "__main__":
-    test_app_manager("numpy", "mpi", "cyclic", 1)
+    test_app_manager("numpy", "mpi", "cyclic", 2)
