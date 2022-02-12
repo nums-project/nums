@@ -262,12 +262,25 @@ def test_compute_block_shape(app_inst: ArrayApplication):
 
 if __name__ == "__main__":
     # pylint: disable=import-error, no-member
-    import conftest
+    from nums.core import application_manager
+    import nums.core.settings
 
-    app_inst = conftest.get_app("serial")
-    test_scalar_op(app_inst)
-    test_array_integrity(app_inst)
+    # from mpi4py import MPI
+    # size = MPI.COMM_WORLD.Get_size()
+    # rank = MPI.COMM_WORLD.Get_rank()
+    # import pydevd_pycharm
+    # port_mapping = [58544, 58545]
+    # pydevd_pycharm.settrace('localhost', port=port_mapping[rank], stdoutToServer=True,
+    #                         stderrToServer=True)
+
+    np.random.seed(1331)
+
+    nums.core.settings.system_name = "mpi"
+    app_inst = application_manager.instance()
+
+    # test_scalar_op(app_inst)
+    # test_array_integrity(app_inst)
     test_concatenate(app_inst)
     test_touch(app_inst)
-    test_split(app_inst)
-    test_compute_block_shape(app_inst)
+    # test_split(app_inst)
+    # test_compute_block_shape(app_inst)

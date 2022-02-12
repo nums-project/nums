@@ -119,7 +119,21 @@ def test_block_shape(nps_app_inst):
 
 if __name__ == "__main__":
     from nums.core import application_manager
+    from nums.core import settings
 
+    from mpi4py import MPI
+    import os
+    size = MPI.COMM_WORLD.Get_size()
+    rank = MPI.COMM_WORLD.Get_rank()
+    import pydevd_pycharm
+    port_mapping = [57261, 57315]
+    pydevd_pycharm.settrace('localhost', port=port_mapping[rank], stdoutToServer=True,
+                            stderrToServer=True)
+
+    np.random.seed(1331)
+
+    settings.system_name = "mpi"
     nps_app_inst = application_manager.instance()
+
     _inspect_block_shape(nps_app_inst)
     test_block_shape(nps_app_inst)

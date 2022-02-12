@@ -268,10 +268,21 @@ if __name__ == "__main__":
     from nums.core import application_manager
     from nums.core import settings
 
-    settings.system_name = "serial"
+    # from mpi4py import MPI
+    # import os
+    # size = MPI.COMM_WORLD.Get_size()
+    # rank = MPI.COMM_WORLD.Get_rank()
+    # import pydevd_pycharm
+    # port_mapping = [56482, 56483]
+    # pydevd_pycharm.settrace('localhost', port=port_mapping[rank], stdoutToServer=True,
+    #                         stderrToServer=True)
+
+    settings.system_name = "mpi"
     nps_app_inst = application_manager.instance()
-    # test_where(nps_app_inst)
-    test_transpose(nps_app_inst)
+    np.random.seed(1331)
+
+    test_where(nps_app_inst)
+    # test_transpose(nps_app_inst)
     # test_loadtxt(nps_app_inst)
     # test_reshape(nps_app_inst)
     # test_all_alltrue_any(nps_app_inst)

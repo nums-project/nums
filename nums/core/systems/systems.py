@@ -17,6 +17,7 @@ import warnings
 import logging
 from types import FunctionType
 from typing import Any, Union, List, Dict, Optional
+from itertools import repeat
 
 import ray
 
@@ -64,7 +65,12 @@ class SerialSystem(SystemInterface):
         return self._remote_functions[name](*args, **kwargs)
 
     def register_actor(self, name: str, cls: type):
-        assert name not in self._actors
+        if name in self._actors:
+            warnings.warn(
+                "Actor %s has already been registered. "
+                "Overwriting with %s." % (name, cls.__name__)
+            )
+            return
         self._actors[name] = cls
 
     def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
@@ -72,6 +78,168 @@ class SerialSystem(SystemInterface):
 
     def call_actor_method(self, actor, method: str, *args, **kwargs):
         return getattr(actor, method)(*args, **kwargs)
+
+    def num_cores_total(self) -> int:
+        return self.num_cpus
+
+
+class MPIDestRank(object):
+    def __init__(self, rank: int):
+        self._dest_rank = rank
+
+    def set_dest_rank(self, rank: int):
+        self._dest_rank = rank
+
+    def get_dest_rank(self):
+        return self._dest_rank
+
+
+class MPISystem(SystemInterface):
+    """
+    Implements SystemInterface for MPI.
+    """
+
+    def __init__(self):
+        # pylint: disable=import-outside-toplevel c-extension-no-member
+        from mpi4py import MPI
+        import collections
+
+        self.comm = MPI.COMM_WORLD
+        self.size = self.comm.Get_size()
+        self.rank = self.comm.Get_rank()
+        self.proc_name: str = get_private_ip()
+
+        self._devices: List[DeviceID] = []
+
+        self._remote_functions: dict = {}
+        self._actors: dict = {}
+
+        # This is same as number of mpi processes.
+        self.num_cpus = self.size
+        self._num_devices: int = 0
+        self._devices = []
+
+        # self._device_to_node: Dict[DeviceID, int] = {}
+        self._device_to_rank: Dict[DeviceID, int] = {}
+        self._actor_to_rank: dict = {}
+        self.node_ranks_dict: Dict[str, list] = collections.defaultdict(list)
+        self._actor_node_index = 0
+
+    def init(self):
+        self.init_devices()
+
+    def init_devices(self):
+        proc_names = list(set(self.comm.allgather(self.proc_name)))
+        did = DeviceID(proc_names.index(self.proc_name), self.proc_name, "cpu", self.rank)
+        self._device_to_rank[did] = self.rank
+        self._devices = self.comm.allgather(did)
+        self._device_to_rank = self.comm.allgather({did: self.rank})
+        self._device_to_rank = dict((key, val) for k in self._device_to_rank for key, val in k.items())
+
+    def shutdown(self):
+        pass
+
+    def put(self, value: Any, device_id: DeviceID):
+        dest_rank = self._device_to_rank[device_id]
+        if self.rank == dest_rank:
+            return value
+        else:
+            return MPIDestRank(dest_rank)
+
+    def get(self, object_ids: Union[Any, List]):
+        resolved_object_ids = []
+        for obj in object_ids:
+            if isinstance(obj, MPIDestRank):
+                dest_rank = obj.get_dest_rank()
+            # This should be true for just one rank which has the data.
+            else:
+                dest_rank = self.rank
+            # TODO: see if all-2-all might be more efficient.
+            obj = self.comm.bcast(obj, root=dest_rank)
+            resolved_object_ids.append(obj)
+        return resolved_object_ids
+
+    def remote(self, function: FunctionType, remote_params: dict):
+        return function
+
+    def devices(self) -> List[DeviceID]:
+        return self._devices
+
+    def register(self, name: str, func: callable, remote_params: dict = None):
+        if name in self._remote_functions:
+            return
+        if remote_params is None:
+            remote_params = {}
+        self._remote_functions[name] = self.remote(func, remote_params)
+
+    def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
+        dest_rank = self._device_to_rank[device_id]
+        resolved_args = self._resolve_args(args, dest_rank)
+        if dest_rank == self.rank:
+            return self._remote_functions[name](*resolved_args, **kwargs)
+        elif "num_returns" in options and options["num_returns"] > 1:
+            return tuple(repeat(MPIDestRank(dest_rank),options["num_returns"]))
+        else:
+            return MPIDestRank(dest_rank)
+
+    def _resolve_args(self, args, device_rank):
+        # Resolve dependencies: iterate over args and figure out which ones need fetching.
+        resolved_args = []
+        for arg in args:
+            arg_type_MPI = isinstance(arg, MPIDestRank)
+            status = self.comm.bcast(arg_type_MPI, device_rank)
+            if not status:
+                pass
+            # Check if arg is remote.
+            elif arg_type_MPI:
+                if device_rank == self.rank:
+                    dest_rank = arg.get_dest_rank()
+                    # TODO: Try Isend and Irecv and have a switch for sync and async.
+                    arg = self.comm.recv(dest_rank)
+            elif device_rank == self.rank:
+                # The arg is local.
+                pass
+            else:
+                self.comm.send(arg, device_rank)
+            resolved_args.append(arg)
+        self.comm.barrier()
+        return resolved_args
+
+    def register_actor(self, name: str, cls: type):
+        if name in self._actors:
+            warnings.warn(
+                "Actor %s has already been registered. "
+                "Overwriting with %s." % (name, cls.__name__)
+            )
+            return
+        self._actors[name] = cls
+
+    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+        # Distribute actors round-robin over devices.
+        if device_id is None:
+            device_id = self._devices[self._actor_node_index]
+            self._actor_node_index = (self._actor_node_index + 1) % len(self._devices)
+        actor = self._actors[name]
+        dest_rank = self._device_to_rank[device_id]
+        resolved_args = self._resolve_args(args, dest_rank)
+        if dest_rank == self.rank:
+            actor_obj = actor(*resolved_args, **kwargs)
+            actor_id = id(actor_obj)
+            self._actor_to_rank[actor_id] = dest_rank
+            return actor_obj
+        else:
+            actor_obj = MPIDestRank(dest_rank)
+            actor_id = id(actor_obj)
+            self._actor_to_rank[actor_id] = dest_rank
+            return actor_obj
+
+    def call_actor_method(self, actor, method: str, *args, **kwargs):
+        dest_rank = self._actor_to_rank[id(actor)]
+        # Resolve args.
+        resolved_args = self._resolve_args(args, dest_rank)
+        # Make sure it gets called on the correct rank.
+        if not isinstance(actor, MPIDestRank):
+            return getattr(actor, method)(*resolved_args, **kwargs)
 
     def num_cores_total(self) -> int:
         return self.num_cpus
@@ -85,12 +253,10 @@ class RaySystem(SystemInterface):
 
     def __init__(
         self,
-        address: Optional[str] = None,
         use_head: bool = False,
         num_nodes: Optional[int] = None,
         num_cpus: Optional[int] = None,
     ):
-        self._address: str = address
         self._use_head = use_head
         self._num_nodes = num_nodes
         self.num_cpus = int(get_num_cores()) if num_cpus is None else num_cpus
@@ -151,7 +317,6 @@ class RaySystem(SystemInterface):
 
     def init_devices(self):
         self._devices = []
-        self._device_to_node = {}
         for node_id in range(self._num_nodes):
             node = self._available_nodes[node_id]
             did = DeviceID(node_id, self._node_key(node), "cpu", 1)
@@ -222,7 +387,7 @@ class RaySystem(SystemInterface):
             node = self._device_to_node[device_id]
             node_key = self._node_key(node)
             if "resources" in options:
-                assert node_key not in options
+                assert node_key not in options  # should it be options["resources"]?
             options["resources"] = {node_key: 1.0 / 10 ** 4}
         return self._remote_functions[name].options(**options).remote(*args, **kwargs)
 

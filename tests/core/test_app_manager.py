@@ -53,5 +53,5 @@ def test_app_manager(compute_name, system_name, device_grid_name, num_cpus):
     settings.num_cpus = None
 
 
-# if __name__ == "__main__":
-#     test_app_manager("numpy", "serial", "cyclic", 1)
+if __name__ == "__main__":
+    test_app_manager("numpy", "mpi", "cyclic", 1)
