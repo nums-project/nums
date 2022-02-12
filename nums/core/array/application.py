@@ -1210,7 +1210,7 @@ class ArrayApplication:
         # If the BlockArray to be sorted is small enough, default to serial sort
         if arr.blocks.size == 1:
             oid = self.cm.sort(
-                arr.flattened_oids(),
+                arr.flattened_oids()[0],
                 kind,
                 syskwargs={
                     "grid_entry": (0,),
