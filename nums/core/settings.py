@@ -24,8 +24,8 @@ data_dir = pj(project_root, "data")
 Path(data_dir).mkdir(parents=True, exist_ok=True)
 
 
-# System settings.
-backend_name = os.environ.get("NUMS_SYSTEM", "ray")
+# Backend settings.
+backend_name = os.environ.get("NUMS_BACKEND", "ray")
 # TODO (hme):
 #  - Make cluster shape an environment variable.
 #  - use_head should be an environment variable.
