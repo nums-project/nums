@@ -33,7 +33,7 @@ jobs:
           coverage run --parallel-mode -m pytest
       - name: Run Ray tests
         run: |
-          coverage run --parallel-mode -m pytest --system-name ray
+          coverage run --parallel-mode -m pytest --backend-name ray
       - name: Generate coverage report
         run: |
           coverage combine

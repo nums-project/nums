@@ -107,7 +107,7 @@ class ComputeManager(ComputeInterface):
         return object.__getattribute__(self, name)
 
     ####################
-    # System Interface
+    # Backend Interface
     ####################
 
     def put(self, value: Any, **kwargs):
