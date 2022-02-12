@@ -17,7 +17,7 @@ import numpy as np
 
 from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray, Block
-from nums.core.backends.backends import RayBackend
+from nums.core.backends import RayBackend
 
 
 # pylint: disable=protected-access

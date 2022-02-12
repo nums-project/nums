@@ -23,7 +23,7 @@ from nums.core.compute.compute_manager import ComputeManager
 from nums.core.grid.grid import DeviceGrid, CyclicDeviceGrid, PackedDeviceGrid
 from nums.core.backends import utils as backend_utils
 from nums.core.backends.filesystem import FileSystem
-from nums.core.backends.backends import Backend, SerialBackend, RayBackend
+from nums.core.backends import Backend, SerialBackend, RayBackend
 
 
 # pylint: disable=protected-access, import-outside-toplevel

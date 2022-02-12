@@ -11,42 +11,48 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
+import abc
 from types import FunctionType
-from typing import Any, Union, List, Dict
+from typing import Any, Dict, List, Union
 
 from nums.core.grid.grid import DeviceID
 
 
 class Backend:
+    @abc.abstractmethod
     def init(self):
         raise NotImplementedError()
 
+    @abc.abstractmethod
     def shutdown(self):
         raise NotImplementedError()
 
+    @abc.abstractmethod
     def put(self, value: Any, device_id: DeviceID):
         """
         Put object into backend storage and force placement on the relevant node.
         """
         raise NotImplementedError()
 
+    @abc.abstractmethod
     def get(self, object_ids: Union[Any, List]):
         """
         Get object from backend storage.
         """
         raise NotImplementedError()
 
+    @abc.abstractmethod
     def remote(self, function: FunctionType, remote_params: Dict):
         """
         Return a callable remote function with remote_params.
         """
         raise NotImplementedError()
 
+    @abc.abstractmethod
     def devices(self):
         raise NotImplementedError()
 
+    @abc.abstractmethod
     def register(self, name: str, func: callable, remote_params: Dict = None):
         raise NotImplementedError("Implements a way to register new remote functions.")
 

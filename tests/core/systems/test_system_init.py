@@ -15,7 +15,7 @@
 
 import ray
 
-from nums.core.backends.backends import RayBackend
+from nums.core.backends import RayBackend
 from nums.core.backends import utils as backend_utils
 from nums.core import settings
 

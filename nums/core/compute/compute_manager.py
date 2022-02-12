@@ -24,7 +24,7 @@ from nums.core.array import utils as array_utils
 from nums.core.compute.compute_interface import ComputeInterface, RNGInterface
 from nums.core.grid.grid import DeviceGrid, DeviceID
 from nums.core.backends import utils as backend_utils
-from nums.core.backends.backend_interface import Backend
+from nums.core.backends import Backend
 
 
 class ComputeManager(ComputeInterface):
