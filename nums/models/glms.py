@@ -24,42 +24,6 @@ from nums.core.array.blockarray import BlockArray
 from nums.core.array.random import NumsRandomState
 from nums.core import linalg
 
-# The GLMs are expressed in the following notation.
-# f(y) = exp((y.T @ theta - b(theta))/phi + c(y, phi))
-# phi is the dispersion parameter.
-# theta is the parameter of a model in canonical form.
-# b is the cumulant generating function.
-#
-# The link function is expressed as follows.
-# E(Y | X) = mu
-# Define the linear predictor eta = X.T @ beta
-# Define g as the link function, so that g(mu) = eta
-# E(Y | X) = g^{-1}(eta)
-#
-# The canonical link is given by g(mu) = (b')^{-1}(mu) = theta
-#
-# Note, for GLMs, the mean mu is some function of the model's parameter.
-# Normal: mu(mu) = mu
-# Bernoulli: mu(p) = p
-# Exponential: mu(lambda) = 1 / lambda
-# Poisson: mu(lambda) = lambda
-# Dirichlet: mu_i(a) = a_i / sum(a)
-#
-# Theta is generally a function of the model parameter:
-# Normal: theta(mu) = mu
-# Bernoulli: theta(p) = ln(p/(1-p))
-# Exponential: theta(lambda) = -lambda
-# Poisson: theta(lambda) = ln(lambda)
-# ...
-#
-# The canonical link maps mu to theta
-# Normal: mu(mu) = mu, theta(mu) = mu, b(theta) = theta^2/2, g(mu) = mu
-# Bernoulli:
-#   mu(p) = p, p(mu) = mu
-#   theta(p) = ln(p/(1-p)) = theta(mu) = ln(mu/(1-mu))
-#   b(theta) = log(1 + exp(theta))
-#   g(mu) = (b')^{-1}(mu) = ln(mu/(1-mu)) = ln(p/(1-p)) = theta(p)
-
 
 class GLM:
     def __init__(
