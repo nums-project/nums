@@ -116,19 +116,18 @@ class MPISystem(SystemInterface):
 
         # This is same as number of mpi processes.
         self.num_cpus = self.size
-        self._num_devices: int = 0
-        self._devices = []
+        # self._devices = []
 
         # self._device_to_node: Dict[DeviceID, int] = {}
         self._device_to_rank: Dict[DeviceID, int] = {}
         self._actor_to_rank: dict = {}
-        self.node_ranks_dict: Dict[str, list] = collections.defaultdict(list)
         self._actor_node_index = 0
 
     def init(self):
         self.init_devices()
 
     def init_devices(self):
+        #TODO: sort proc_names and dont do a all gather for did. construct them locally
         proc_names = list(set(self.comm.allgather(self.proc_name)))
         did = DeviceID(proc_names.index(self.proc_name), self.proc_name, "cpu", self.rank)
         self._device_to_rank[did] = self.rank
@@ -139,6 +138,7 @@ class MPISystem(SystemInterface):
     def shutdown(self):
         pass
 
+    # TODO: this is scatter. (Document this)
     def put(self, value: Any, device_id: DeviceID):
         dest_rank = self._device_to_rank[device_id]
         if self.rank == dest_rank:
@@ -148,7 +148,19 @@ class MPISystem(SystemInterface):
 
     def get(self, object_ids: Union[Any, List]):
         resolved_object_ids = []
-        for obj in object_ids:
+        if hasattr(object_ids, '__iter__'):
+            for obj in object_ids:
+                if isinstance(obj, MPIDestRank):
+                    dest_rank = obj.get_dest_rank()
+                # This should be true for just one rank which has the data.
+                else:
+                    dest_rank = self.rank
+                # TODO: see if all-2-all might be more efficient.
+                obj = self.comm.bcast(obj, root=dest_rank)
+                resolved_object_ids.append(obj)
+            return resolved_object_ids
+        else:
+            obj = object_ids
             if isinstance(obj, MPIDestRank):
                 dest_rank = obj.get_dest_rank()
             # This should be true for just one rank which has the data.
@@ -156,8 +168,8 @@ class MPISystem(SystemInterface):
                 dest_rank = self.rank
             # TODO: see if all-2-all might be more efficient.
             obj = self.comm.bcast(obj, root=dest_rank)
-            resolved_object_ids.append(obj)
-        return resolved_object_ids
+            return obj
+
 
     def remote(self, function: FunctionType, remote_params: dict):
         return function
@@ -186,20 +198,25 @@ class MPISystem(SystemInterface):
         # Resolve dependencies: iterate over args and figure out which ones need fetching.
         resolved_args = []
         for arg in args:
-            arg_type_MPI = isinstance(arg, MPIDestRank)
-            status = self.comm.bcast(arg_type_MPI, device_rank)
-            if not status:
+            is_remote = isinstance(arg, MPIDestRank)
+            device_rank_object_is_remote = self.comm.bcast(is_remote, device_rank)
+            if not device_rank_object_is_remote:
                 pass
             # Check if arg is remote.
-            elif arg_type_MPI:
+            elif is_remote:
                 if device_rank == self.rank:
                     dest_rank = arg.get_dest_rank()
                     # TODO: Try Isend and Irecv and have a switch for sync and async.
                     arg = self.comm.recv(dest_rank)
+                else:
+                    # The arg is remote and this is not the device on which we want to invoke the op.
+                    # Because the arg is remote, this is not the sender.
+                    pass
             elif device_rank == self.rank:
                 # The arg is local.
                 pass
             else:
+                # The arg is stored on this rank, so send it to the device on which the op will be executed.
                 self.comm.send(arg, device_rank)
             resolved_args.append(arg)
         self.comm.barrier()
@@ -240,6 +257,9 @@ class MPISystem(SystemInterface):
         # Make sure it gets called on the correct rank.
         if not isinstance(actor, MPIDestRank):
             return getattr(actor, method)(*resolved_args, **kwargs)
+        else:
+            # Return an MPIDestRank corresponding to result of actor method call?
+            return None
 
     def num_cores_total(self) -> int:
         return self.num_cpus

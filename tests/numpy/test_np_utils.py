@@ -89,6 +89,7 @@ def test_block_shape(nps_app_inst):
     grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype.__name__)
     assert grid.grid_shape == (int(num_cores ** 0.5), int(num_cores ** 0.5))
 
+    # Here we are testing the behaviour for objects size == and < 100 MB.
     shape = (10 ** 4, 10 ** 4 // dtype(0).nbytes)
     block_shape = app.compute_block_shape(
         shape=shape, dtype=dtype, cluster_shape=cluster_shape, num_cores=num_cores
@@ -104,14 +105,10 @@ def test_block_shape(nps_app_inst):
     assert grid.grid_shape == (1, 1)
 
     shape = (10 ** 4, 10 ** 4)
-    block_shape = app.compute_block_shape(shape=shape, dtype=dtype, num_cores=num_cores)
-    grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype.__name__)
-    assert grid.grid_shape == (int(num_cores ** 0.5), int(num_cores ** 0.5))
-
     cluster_shape = (12, 1)
     num_cores = systems_utils.get_num_cores()
     block_shape = app.compute_block_shape(
-        shape=shape, dtype=dtype, cluster_shape=cluster_shape
+        shape=shape, dtype=dtype, cluster_shape=cluster_shape, num_cores=num_cores
     )
     grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype.__name__)
     assert grid.grid_shape == (num_cores, 1)
@@ -121,14 +118,14 @@ if __name__ == "__main__":
     from nums.core import application_manager
     from nums.core import settings
 
-    from mpi4py import MPI
-    import os
-    size = MPI.COMM_WORLD.Get_size()
-    rank = MPI.COMM_WORLD.Get_rank()
-    import pydevd_pycharm
-    port_mapping = [57261, 57315]
-    pydevd_pycharm.settrace('localhost', port=port_mapping[rank], stdoutToServer=True,
-                            stderrToServer=True)
+    # from mpi4py import MPI
+    # import os
+    # size = MPI.COMM_WORLD.Get_size()
+    # rank = MPI.COMM_WORLD.Get_rank()
+    # import pydevd_pycharm
+    # port_mapping = [57261, 57315]
+    # pydevd_pycharm.settrace('localhost', port=port_mapping[rank], stdoutToServer=True,
+    #                         stderrToServer=True)
 
     np.random.seed(1331)
 

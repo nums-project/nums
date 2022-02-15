@@ -33,12 +33,14 @@ def test_app_manager(compute_name, system_name, device_grid_name, num_cpus):
     settings.system_name = system_name
     settings.device_grid_name = device_grid_name
     settings.num_cpus = num_cpus
-
     app: ArrayApplication = application_manager.instance()
     print(settings.num_cpus, num_cpus, app.cm.num_cores_total())
     app_arange = app.arange(0, shape=(10,), block_shape=(10,))
     assert np.allclose(np.arange(10), app_arange.get())
-    if num_cpus is None:
+    # TODO: add an if condition for MPI system and document this
+    if system_name == "mpi":
+        pass
+    elif num_cpus is None:
         assert app.cm.num_cores_total() == get_num_cores()
     else:
         assert app.cm.num_cores_total() == num_cpus
@@ -54,4 +56,4 @@ def test_app_manager(compute_name, system_name, device_grid_name, num_cpus):
 
 
 if __name__ == "__main__":
-    test_app_manager("numpy", "mpi", "cyclic", 2)
+    test_app_manager("numpy", "serial", "cyclic", 2)
