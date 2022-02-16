@@ -13,9 +13,11 @@ jobs:
     strategy:
       matrix:
         python-version: [3.7, 3.8, 3.9]
+        backend-name: [serial, ray]
     env:
       OS: 'ubuntu'
       PYTHON: ${{ matrix.python-version }}
+      BACKEND: ${{ matrix.backend-name }}
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
@@ -28,12 +30,9 @@ jobs:
           pip3 install .[testing]
           pip install cython
           pip install crick
-      - name: Run serial tests
+      - name: Run tests
         run: |
-          coverage run --parallel-mode -m pytest
-      - name: Run Ray tests
-        run: |
-          coverage run --parallel-mode -m pytest --system-name ray
+          coverage run --parallel-mode -m pytest --backend-name ${{ matrix.backend-name }}
       - name: Generate coverage report
         run: |
           coverage combine
