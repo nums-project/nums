@@ -39,10 +39,9 @@ extensions = [
     "m2r2",
 ]
 
-# autodoc_default_options = {
-#     'undoc-members': False,
-#     'exclude-members': '__init__'
-# }
+autodoc_default_options = {
+    'exclude-members': '%init%'
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -90,7 +89,7 @@ def run_apidoc(_):
         apidoc.main(argv)
 
 def init_skip_member(app, what, name, obj, skip, options):
-    if name == '__init__':
+    if name == '__init__' and what == "function":
         return True
 
 def setup(app):

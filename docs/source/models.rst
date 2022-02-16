@@ -5,6 +5,13 @@ Classes in the ``nums.models`` module.
 
 .. currentmodule:: nums.models.glms
 
+
+.. autosummary::
+   :toctree: generated/
+
+   LinearRegressionBase
+   
+
 Generalized Linear Models (GLMs)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The GLMs are expressed in the following notation.
