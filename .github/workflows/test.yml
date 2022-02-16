@@ -12,8 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9]
         backend-name: [serial, ray]
+        python-version: [3.7, 3.8, 3.9]
     env:
       OS: 'ubuntu'
       PYTHON: ${{ matrix.python-version }}
