@@ -20,7 +20,7 @@ import numpy as np
 from nums.core.array import utils as array_utils
 from nums.core.array.blockarray import BlockArray, Block
 from nums.core.array.random import NumsRandomState
-from nums.core.compute.compute_manager import ComputeManager
+from nums.core.kernel.kernel_manager import KernelManager
 from nums.core.grid.grid import ArrayGrid
 from nums.core.storage.storage import StoredArray, StoredArrayS3
 from nums.core.backends.filesystem import FileSystem
@@ -29,8 +29,8 @@ from nums.core.backends.filesystem import FileSystem
 
 
 class ArrayApplication:
-    def __init__(self, cm: ComputeManager, fs: FileSystem):
-        self.cm: ComputeManager = cm
+    def __init__(self, cm: KernelManager, fs: FileSystem):
+        self.cm: KernelManager = cm
         self._fs: FileSystem = fs
         self._array_grids: Dict[str, ArrayGrid] = {}
         self.random = self.random_state()
@@ -47,10 +47,10 @@ class ArrayApplication:
         cluster_shape=None,
         num_cores=None,
     ):
-        return self.cm.compute_block_shape(shape, dtype, cluster_shape, num_cores)
+        return self.km.compute_block_shape(shape, dtype, cluster_shape, num_cores)
 
     def get_block_shape(self, shape, dtype):
-        return self.cm.get_block_shape(shape, dtype)
+        return self.km.get_block_shape(shape, dtype)
 
     def _get_array_grid(self, filename: str, stored_array_cls) -> ArrayGrid:
         if filename not in self._array_grids:
@@ -72,12 +72,12 @@ class ArrayApplication:
 
     def delete_fs(self, filename: str) -> bool:
         results = []
-        for device_id in self.cm.devices():
+        for device_id in self.km.devices():
             result = self._fs.delete_file_fs(
                 filename, syskwargs={"device_id": device_id}
             )
             results.append(result)
-        results = self.cm.get(results)
+        results = self.km.get(results)
         # Were files deleted anywhere?
         return np.any(results)
 
@@ -88,7 +88,7 @@ class ArrayApplication:
             grid_meta=ba.grid.to_meta(),
             syskwargs={"grid_entry": grid_entry, "grid_shape": ba.grid.grid_shape},
         )
-        assert "ETag" in self.cm.get(result).item(), "Metadata write failed."
+        assert "ETag" in self.km.get(result).item(), "Metadata write failed."
         return self._write(ba, filename, self._fs.write_block_s3)
 
     def _write(self, ba: BlockArray, filename, remote_func):
@@ -131,7 +131,7 @@ class ArrayApplication:
             filename,
             syskwargs={"grid_entry": grid_entry, "grid_shape": grid.grid_shape},
         )
-        deleted_key = self.cm.get(result).item()["Deleted"][0]["Key"]
+        deleted_key = self.km.get(result).item()["Deleted"][0]["Key"]
         assert deleted_key == StoredArrayS3(filename, grid).get_meta_key()
         results: BlockArray = self._delete(
             filename, StoredArrayS3, self._fs.delete_block_s3
@@ -168,7 +168,7 @@ class ArrayApplication:
         self, filename, dtype=float, delimiter=",", has_header=False, num_workers=None
     ):
         if num_workers is None:
-            num_workers = self.cm.num_cores_total()
+            num_workers = self.km.num_cores_total()
         arrays: list = self._fs.read_csv(
             filename, dtype, delimiter, has_header, num_workers
         )
@@ -176,7 +176,7 @@ class ArrayApplication:
         for array in arrays:
             shape += np.array(array.shape, dtype=int)
         shape = tuple(shape)
-        block_shape = self.cm.get_block_shape(shape, dtype)
+        block_shape = self.km.get_block_shape(shape, dtype)
         result = self.concatenate(arrays, axis=0, axis_block_size=block_shape[0])
         # Release references immediately, in case we need to do another reshape.
         del arrays
@@ -200,7 +200,7 @@ class ArrayApplication:
         num_workers=None,
     ) -> BlockArray:
         if num_workers is None:
-            num_workers = self.cm.num_cores_total()
+            num_workers = self.km.num_cores_total()
         return self._fs.loadtxt(
             fname,
             dtype=dtype,
@@ -233,7 +233,7 @@ class ArrayApplication:
                 )
         assert len(array.shape) == len(block_shape)
         return BlockArray.from_np(
-            array, block_shape=block_shape, copy=False, cm=self.cm
+            array, block_shape=block_shape, copy=False, km=self.cm
         )
 
     def zeros(self, shape: tuple, block_shape: tuple, dtype: np.dtype = None):
@@ -255,7 +255,7 @@ class ArrayApplication:
         grid_meta = grid.to_meta()
         rarr = BlockArray(grid, self.cm)
         for grid_entry in grid.get_entry_iterator():
-            rarr.blocks[grid_entry].oid = self.cm.new_block(
+            rarr.blocks[grid_entry].oid = self.km.new_block(
                 op_name,
                 grid_entry,
                 grid_meta,
@@ -340,11 +340,11 @@ class ArrayApplication:
             syskwargs = {"grid_entry": grid_entry, "grid_shape": grid.grid_shape}
             if np.all(np.diff(grid_entry) == 0):
                 # This is a diagonal block.
-                rarr.blocks[grid_entry].oid = self.cm.new_block(
+                rarr.blocks[grid_entry].oid = self.km.new_block(
                     "eye", grid_entry, grid_meta, syskwargs=syskwargs
                 )
             else:
-                rarr.blocks[grid_entry].oid = self.cm.new_block(
+                rarr.blocks[grid_entry].oid = self.km.new_block(
                     "zeros", grid_entry, grid_meta, syskwargs=syskwargs
                 )
         return rarr
@@ -399,11 +399,11 @@ class ArrayApplication:
                 syskwargs = {"grid_entry": grid_entry, "grid_shape": grid.grid_shape}
                 if np.all(np.diff(grid_entry) == 0):
                     # This is a diagonal block.
-                    rarr.blocks[grid_entry].oid = self.cm.diag(
+                    rarr.blocks[grid_entry].oid = self.km.diag(
                         X.blocks[grid_entry[0]].oid, 0, syskwargs=syskwargs
                     )
                 else:
-                    rarr.blocks[grid_entry].oid = self.cm.new_block(
+                    rarr.blocks[grid_entry].oid = self.km.new_block(
                         "zeros", grid_entry, grid_meta, syskwargs=syskwargs
                     )
         elif len(X.shape) == 2:
@@ -425,7 +425,7 @@ class ArrayApplication:
                     X.blocks[block_indices].dtype.__name__,
                 )
                 block_array = BlockArray(block_grid, self.cm)
-                block_array.blocks[0].oid = self.cm.diag(
+                block_array.blocks[0].oid = self.km.diag(
                     X.blocks[block_indices].oid, offset, syskwargs=syskwargs
                 )
                 output_block_arrays.append(block_array)
@@ -455,7 +455,7 @@ class ArrayApplication:
             start = start_in + block_shape[0] * grid_entry[0]
             entry_shape = grid.get_block_shape(grid_entry)
             stop = start + entry_shape[0]
-            rarr.blocks[grid_entry].oid = self.cm.arange(
+            rarr.blocks[grid_entry].oid = self.km.arange(
                 start, stop, step, dtype, syskwargs=syskwargs
             )
         return rarr
@@ -553,7 +553,7 @@ class ArrayApplication:
                 "grid_shape": arr.grid.grid_shape,
                 "options": {"num_returns": 2},
             }
-            reduction_result = self.cm.arg_op(
+            reduction_result = self.km.arg_op(
                 op_name, block.oid, block_slice, *reduction_result, syskwargs=syskwargs
             )
         argoptima, _ = reduction_result
@@ -595,7 +595,7 @@ class ArrayApplication:
                 cond_oid = condition.blocks[grid_entry].oid
                 x_oid = x.blocks[grid_entry].oid
                 y_oid = y.blocks[grid_entry].oid
-                r_oid = self.cm.where(
+                r_oid = self.km.where(
                     cond_oid,
                     x_oid,
                     y_oid,
@@ -612,7 +612,7 @@ class ArrayApplication:
             for grid_entry in condition.grid.get_entry_iterator():
                 block: Block = condition.blocks[grid_entry]
                 block_slice_tuples = condition.grid.get_slice_tuples(grid_entry)
-                roids = self.cm.where(
+                roids = self.km.where(
                     block.oid,
                     None,
                     None,
@@ -626,7 +626,7 @@ class ArrayApplication:
                 block_oids, shape_oid = roids[:-1], roids[-1]
                 shape_oids.append(shape_oid)
                 result_oids.append(block_oids)
-            shapes = self.cm.get(shape_oids)
+            shapes = self.km.get(shape_oids)
             result_shape = (np.sum(shapes),)
             if result_shape == (0,):
                 return (self.array(np.array([], dtype=np.int64), block_shape=(0,)),)
@@ -635,7 +635,7 @@ class ArrayApplication:
             for i, shape in enumerate(shapes):
                 if np.sum(shape) > 0:
                     result_shape_pair.append((result_oids[i], shape))
-            result_block_shape = self.cm.compute_block_shape(result_shape, np.int64)
+            result_block_shape = self.km.compute_block_shape(result_shape, np.int64)
             result_arrays = []
             for axis in range(num_axes):
                 block_arrays = []
@@ -699,9 +699,9 @@ class ArrayApplication:
                 "grid_shape": (num_arrs,),
                 "options": {"num_returns": 1},
             }
-            t_oids.append(self.cm.tdigest_chunk(arr_oid, syskwargs=syskwargs))
+            t_oids.append(self.km.tdigest_chunk(arr_oid, syskwargs=syskwargs))
 
-        p_oid = self.cm.percentiles_from_tdigest(q, *t_oids, syskwargs=syskwargs)
+        p_oid = self.km.percentiles_from_tdigest(q, *t_oids, syskwargs=syskwargs)
         return BlockArray.from_oid(p_oid, (1,), np.float64, self.cm)
 
     def percentile(
@@ -750,12 +750,12 @@ class ArrayApplication:
                 "grid_shape": (num_arrs,),
                 "options": {"num_returns": 1},
             }
-            m_oids.append(self.cm.select_median(arr_oid, syskwargs=syskwargs))
-            s_oids.append(self.cm.size(arr_oid, syskwargs=syskwargs))
+            m_oids.append(self.km.select_median(arr_oid, syskwargs=syskwargs))
+            s_oids.append(self.km.size(arr_oid, syskwargs=syskwargs))
         ms_oids = m_oids + s_oids
-        device_0 = self.cm.devices()[0]
-        wmm_oid = self.cm.backend.call("weighted_median", ms_oids, {}, device_0, {})
-        total_size = sum(self.cm.get(s) for s in s_oids)
+        device_0 = self.km.devices()[0]
+        wmm_oid = self.km.backend.call("weighted_median", ms_oids, {}, device_0, {})
+        total_size = sum(self.km.get(s) for s in s_oids)
         if kth < 0:
             kth += total_size
         if kth < 0 or total_size <= kth:
@@ -764,7 +764,7 @@ class ArrayApplication:
         # Compute "greater than" partition using wmm as pivot, recurse if kth is in range.
         gr_size_oids, gr_oids = [], []
         for i, arr_oid in enumerate(arr_oids):
-            gr_size_oid, gr_oid = self.cm.pivot_partition(
+            gr_size_oid, gr_oid = self.km.pivot_partition(
                 arr_oid,
                 wmm_oid,
                 "gt",
@@ -776,7 +776,7 @@ class ArrayApplication:
             )
             gr_size_oids.append(gr_size_oid)
             gr_oids.append(gr_oid)
-        gr_size = sum(self.cm.get(s) for s in gr_size_oids)
+        gr_size = sum(self.km.get(s) for s in gr_size_oids)
         if kth < gr_size:
             del arr_oids
             return self._quickselect(gr_oids, kth)
@@ -784,7 +784,7 @@ class ArrayApplication:
         # Compute "less than" partition using wmm as pivot, recurse if kth is in range.
         ls_size_oids, ls_oids = [], []
         for i, arr_oid in enumerate(arr_oids):
-            ls_size_oid, ls_oid = self.cm.pivot_partition(
+            ls_size_oid, ls_oid = self.km.pivot_partition(
                 arr_oid,
                 wmm_oid,
                 "lt",
@@ -796,7 +796,7 @@ class ArrayApplication:
             )
             ls_size_oids.append(ls_size_oid)
             ls_oids.append(ls_oid)
-        ls_size = sum(self.cm.get(s) for s in ls_size_oids)
+        ls_size = sum(self.km.get(s) for s in ls_size_oids)
         if kth >= total_size - ls_size:
             del arr_oids
             return self._quickselect(ls_oids, kth - (total_size - ls_size))
@@ -967,7 +967,7 @@ class ArrayApplication:
             else:
                 result_blocks: np.ndarray = ufunc(arr_1.blocks, arr_2.blocks)
                 rarr = BlockArray.from_blocks(
-                    result_blocks, result_shape=None, cm=self.cm
+                    result_blocks, result_shape=None, km=self.cm
                 )
         except Exception as _:
             rarr = self._broadcast_bop(op_name, arr_1, arr_2)
@@ -1027,7 +1027,7 @@ class ArrayApplication:
         for grid_entry in a.grid.get_entry_iterator():
             a_block, b_block = a.blocks[grid_entry].oid, b.blocks[grid_entry].oid
             bool_list.append(
-                self.cm.array_compare(
+                self.km.array_compare(
                     func_name,
                     a_block,
                     b_block,
@@ -1035,7 +1035,7 @@ class ArrayApplication:
                     syskwargs={"grid_entry": grid_entry, "grid_shape": grid_shape},
                 )
             )
-        oid = self.cm.logical_and(
+        oid = self.km.logical_and(
             *bool_list, syskwargs={"grid_entry": (0, 0), "grid_shape": (1, 1)}
         )
         return BlockArray.from_oid(oid, (), np.bool, self.cm)

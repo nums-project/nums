@@ -24,7 +24,7 @@ from numpy.compat import asbytes, asstr, asunicode
 
 from nums.core import settings
 from nums.core.array.blockarray import BlockArray
-from nums.core.compute.compute_manager import ComputeManager
+from nums.core.kernel.kernel_manager import KernelManager
 from nums.core.grid.grid import ArrayGrid
 from nums.core.grid.grid import DeviceID
 from nums.core.storage import utils as storage_utils
@@ -268,8 +268,8 @@ class FileSystem:
     #  - Less stringent replication of meta-data.
     #  - Journaling?
 
-    def __init__(self, cm: ComputeManager):
-        self.cm: ComputeManager = cm
+    def __init__(self, cm: KernelManager):
+        self.cm: KernelManager = cm
         for func in [
             write_meta_s3,
             delete_meta_s3,
@@ -285,17 +285,17 @@ class FileSystem:
             loadtxt_block,
             read_csv_block,
         ]:
-            self.cm.register(func.__name__, func, {})
+            self.km.register(func.__name__, func, {})
 
     ##################################################
     # Block-level (remote) operations
     ##################################################
 
     def write_meta_s3(self, filename: AnyStr, grid_meta: Dict, syskwargs: Dict):
-        return self.cm.call("write_meta_s3", filename, grid_meta, syskwargs=syskwargs)
+        return self.km.call("write_meta_s3", filename, grid_meta, syskwargs=syskwargs)
 
     def delete_meta_s3(self, filename: AnyStr, syskwargs: Dict):
-        return self.cm.call("delete_meta_s3", filename, syskwargs=syskwargs)
+        return self.km.call("delete_meta_s3", filename, syskwargs=syskwargs)
 
     def write_block_s3(
         self,
@@ -305,7 +305,7 @@ class FileSystem:
         grid_meta: Dict,
         syskwargs: Dict,
     ):
-        return self.cm.call(
+        return self.km.call(
             "write_block_s3",
             block,
             filename,
@@ -317,14 +317,14 @@ class FileSystem:
     def read_block_s3(
         self, filename: AnyStr, grid_entry: Tuple, grid_meta: Dict, syskwargs: Dict
     ):
-        return self.cm.call(
+        return self.km.call(
             "read_block_s3", filename, grid_entry, grid_meta, syskwargs=syskwargs
         )
 
     def delete_block_s3(
         self, filename: AnyStr, grid_entry: Tuple, grid_meta: Dict, syskwargs: Dict
     ):
-        return self.cm.call(
+        return self.km.call(
             "delete_block_s3", filename, grid_entry, grid_meta, syskwargs=syskwargs
         )
 
@@ -344,7 +344,7 @@ class FileSystem:
         syskwargs: Dict,
     ):
         # TODO (hme): Invoke file_exists with options to determine which nodes to pull from.
-        return self.cm.call(
+        return self.km.call(
             "loadtxt_block",
             fname,
             dtype,
@@ -368,17 +368,17 @@ class FileSystem:
         grid_meta: Dict,
         syskwargs: Dict,
     ):
-        return self.cm.call(
+        return self.km.call(
             "write_block_fs", block, filename, grid_entry, syskwargs=syskwargs
         )
 
     def read_block_fs(
         self, filename: AnyStr, grid_entry: Tuple, grid_meta: Dict, syskwargs: Dict
     ):
-        return self.cm.call("read_block_fs", filename, grid_entry, syskwargs=syskwargs)
+        return self.km.call("read_block_fs", filename, grid_entry, syskwargs=syskwargs)
 
     def delete_file_fs(self, filename: AnyStr, syskwargs: Dict):
-        return self.cm.call("delete_file_fs", filename, syskwargs=syskwargs)
+        return self.km.call("delete_file_fs", filename, syskwargs=syskwargs)
 
     ##################################################
     # Array-level operations
@@ -388,23 +388,23 @@ class FileSystem:
         # Currently, no need for anything more than the array grid.
         meta = {"grid": ba.grid.to_meta()}
         nodes_written_to = set()
-        for device_id in self.cm.devices():
+        for device_id in self.km.devices():
             device_id: DeviceID = device_id
             if device_id.node_id in nodes_written_to:
                 continue
             nodes_written_to.add(device_id.node_id)
-            oid = self.cm.call(
+            oid = self.km.call(
                 "write_meta_fs", meta, filename, syskwargs={"device_id": device_id}
             )
-            result = self.cm.get(oid)
+            result = self.km.get(oid)
             assert isinstance(result, np.ndarray) and result.item() is None
 
     def read_meta_fs(self, filename: str):
-        for device_id in self.cm.devices():
-            oid = self.cm.call(
+        for device_id in self.km.devices():
+            oid = self.km.call(
                 "read_meta_fs", filename, syskwargs={"device_id": device_id}
             )
-            result = self.cm.get(oid)
+            result = self.km.get(oid)
             if result is not None:
                 return result
         raise FileNotFoundError("Unable to load meta data for file %s" % filename)
@@ -423,15 +423,15 @@ class FileSystem:
         grid: ArrayGrid = ArrayGrid.from_meta(file_meta["grid"])
         # First, let's identify which nodes actually contain the data we need.
         result_oids = []
-        for device_id in self.cm.devices():
-            oid = self.cm.call(
+        for device_id in self.km.devices():
+            oid = self.km.call(
                 "get_parts_fs",
                 filename,
                 file_meta["grid"],
                 syskwargs={"device_id": device_id},
             )
             result_oids.append(oid)
-        file_results = self.cm.backend.get(result_oids)
+        file_results = self.km.backend.get(result_oids)
 
         # Check if all the nodes have all the data.
         all_has_all = True
@@ -444,7 +444,7 @@ class FileSystem:
             # Load via device grid ordering.
             ba: BlockArray = BlockArray(grid, self.cm)
             for grid_entry in grid.get_entry_iterator():
-                device_id: DeviceID = self.cm.device_grid.get_device_id(
+                device_id: DeviceID = self.km.device_grid.get_device_id(
                     grid_entry, grid.grid_shape
                 )
                 ba.blocks[grid_entry].oid = self.read_block_fs(
@@ -461,14 +461,14 @@ class FileSystem:
             node_grid_entries: Union[None, np.ndarray] = file_results[i]
             if node_grid_entries is None:
                 continue
-            device_id = self.cm.devices()[i]
+            device_id = self.km.devices()[i]
             grid_entry_sets[device_id] = set(map(tuple, node_grid_entries.tolist()))
 
         # The data may be partitioned according to the grid layout for this cluster.
         # Test this and load accordingly if it is.
         aligned = True
         for grid_entry in grid.get_entry_iterator():
-            device_id = self.cm.device_grid.get_device_id(grid_entry, grid.grid_shape)
+            device_id = self.km.device_grid.get_device_id(grid_entry, grid.grid_shape)
             if not (
                 device_id in grid_entry_sets
                 and grid_entry in grid_entry_sets[device_id]
@@ -479,7 +479,7 @@ class FileSystem:
             # If data is partitioning aligned, then just load it using device grid ordering.
             ba: BlockArray = BlockArray(grid, self.cm)
             for grid_entry in grid.get_entry_iterator():
-                device_id: DeviceID = self.cm.device_grid.get_device_id(
+                device_id: DeviceID = self.km.device_grid.get_device_id(
                     grid_entry, grid.grid_shape
                 )
                 ba.blocks[grid_entry].oid = self.read_block_fs(
@@ -570,7 +570,7 @@ class FileSystem:
             block_shape=(row_batches.batch_size, num_cols),
             dtype=np.float64.__name__ if dtype is float else dtype.__name__,
         )
-        result: BlockArray = BlockArray(grid, cm=self.cm)
+        result: BlockArray = BlockArray(grid, km=self.cm)
         for i, grid_entry in enumerate(grid.get_entry_iterator()):
             row_start, row_end = row_batches.batches[i]
             batch_skiprows = skiprows + row_start
@@ -603,7 +603,7 @@ class FileSystem:
         shape_oids = []
         for i, batch in enumerate(file_batches.batches):
             file_start, file_end = batch
-            block_oid, shape_oid = self.cm.call(
+            block_oid, shape_oid = self.km.call(
                 "read_csv_block",
                 filename,
                 file_start,
@@ -619,7 +619,7 @@ class FileSystem:
             )
             blocks.append(block_oid)
             shape_oids.append(shape_oid)
-        shapes = self.cm.get(shape_oids)
+        shapes = self.km.get(shape_oids)
         arrays = []
         for i in range(len(shapes)):
             shape = shapes[i]

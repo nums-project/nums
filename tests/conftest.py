@@ -18,8 +18,8 @@ import pytest
 import ray
 
 from nums.core.array.application import ArrayApplication
-from nums.core.compute import numpy_compute
-from nums.core.compute.compute_manager import ComputeManager
+from nums.core.kernel import numpy_kernel
+from nums.core.kernel.kernel_manager import KernelManager
 from nums.core.grid.grid import DeviceGrid, CyclicDeviceGrid, PackedDeviceGrid
 from nums.core.backends import utils as backend_utils
 from nums.core.backends.filesystem import FileSystem
@@ -66,7 +66,7 @@ def nps_app_inst(request):
     nps.random.reset()
     yield application_manager.instance()
     if settings.backend_name == "ray":
-        assert application_manager.instance().cm.backend._manage_ray
+        assert application_manager.instance().km.backend._manage_ray
     application_manager.destroy()
     time.sleep(2)
 
@@ -79,19 +79,19 @@ def app_inst(request):
     _app_inst = get_app(backend_name, device_grid_name)
     yield _app_inst
     if backend_name == "ray":
-        assert _app_inst.cm.backend._manage_ray
-    _app_inst.cm.backend.shutdown()
-    _app_inst.cm.destroy()
+        assert _app_inst.km.backend._manage_ray
+    _app_inst.km.backend.shutdown()
+    _app_inst.km.destroy()
     time.sleep(2)
 
 
 @pytest.fixture(scope="module", params=[("serial", "cyclic")])
 def app_inst_s3(request):
     _app_inst = get_app(*request.param)
-    assert isinstance(_app_inst.cm.backend, SerialBackend)
+    assert isinstance(_app_inst.km.backend, SerialBackend)
     yield _app_inst
-    _app_inst.cm.backend.shutdown()
-    _app_inst.cm.destroy()
+    _app_inst.km.backend.shutdown()
+    _app_inst.km.destroy()
     time.sleep(2)
 
 
@@ -108,9 +108,9 @@ def app_inst_all(request):
     _app_inst = get_app(*request.param)
     yield _app_inst
     if request.param[0] == "ray":
-        assert _app_inst.cm.backend._manage_ray
-    _app_inst.cm.backend.shutdown()
-    _app_inst.cm.destroy()
+        assert _app_inst.km.backend._manage_ray
+    _app_inst.km.backend.shutdown()
+    _app_inst.km.destroy()
     time.sleep(2)
 
 
@@ -144,6 +144,6 @@ def get_app(backend_name, device_grid_name="cyclic"):
     else:
         raise Exception("Unexpected device grid name %s" % device_grid_name)
 
-    cm = ComputeManager.create(backend, numpy_compute, device_grid)
+    km = KernelManager.create(backend, numpy_kernel, device_grid)
     fs = FileSystem(cm)
     return ArrayApplication(cm, fs)

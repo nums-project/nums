@@ -16,7 +16,7 @@
 import numpy as np
 
 from nums.core.array import utils as array_utils
-from nums.core.compute.compute_manager import ComputeManager
+from nums.core.kernel.kernel_manager import KernelManager
 from nums.core.grid.grid import ArrayGrid
 
 
@@ -35,10 +35,10 @@ class Block:
         shape,
         dtype,
         transposed,
-        cm: ComputeManager,
+        cm: KernelManager,
         id=None,
     ):
-        self._cm = cm
+        self._km = cm
         self.grid_entry: tuple = grid_entry
         self.grid_shape: tuple = grid_shape
         self.rect: list = rect
@@ -69,7 +69,7 @@ class Block:
             self.shape,
             self.dtype,
             self.transposed,
-            self._cm,
+            self._km,
         )
         block.oid = self.oid
         return block
@@ -98,7 +98,7 @@ class Block:
             shape=tuple(reversed(self.shape)),
             dtype=self.dtype,
             transposed=not self.transposed,
-            cm=self._cm,
+            km=self._km,
         )
         blockT.oid = self.oid
         if not defer:
@@ -110,7 +110,7 @@ class Block:
                     "grid_entry": self.grid_entry,
                     "grid_shape": self.grid_shape,
                 }
-            blockT.oid = self._cm.transpose(self.oid, syskwargs=syskwargs)
+            blockT.oid = self._km.transpose(self.oid, syskwargs=syskwargs)
         return blockT
 
     def swapaxes(self, axis1, axis2):
@@ -130,7 +130,7 @@ class Block:
         block.shape = tuple(shape)
         block.rect = rect
 
-        block.oid = self._cm.swapaxes(
+        block.oid = self._km.swapaxes(
             block.oid,
             axis1,
             axis2,
@@ -152,7 +152,7 @@ class Block:
         else:
             syskwargs = {"device_id": device_id}
         block.device_id = device_id
-        block.oid = self._cm.map_uop(
+        block.oid = self._km.map_uop(
             op_name, self.oid, args, kwargs, syskwargs=syskwargs
         )
         return block
@@ -169,11 +169,11 @@ class Block:
             (1,),
             self.dtype,
             False,
-            self._cm,
+            self._km,
         )
         # We pass syskwargs here for correct node placement for `other`,
         # which should be local to self.
-        block.oid = self._cm.put(
+        block.oid = self._km.put(
             np.array(other, dtype=self.dtype),
             syskwargs={
                 "grid_entry": self.grid_entry,
@@ -234,7 +234,7 @@ class Block:
             shape=result_shape,
             dtype=dtype,
             transposed=False,
-            cm=self._cm,
+            km=self._km,
         )
 
         if device_id is None:
@@ -242,7 +242,7 @@ class Block:
         else:
             syskwargs = {"device_id": device_id}
         block.device_id = device_id
-        block.oid = self._cm.bop(
+        block.oid = self._km.bop(
             op,
             self.oid,
             other.oid,
@@ -302,7 +302,7 @@ class Block:
     def astype(self, dtype):
         block = self.copy()
         block.dtype = dtype
-        block.oid = self._cm.astype(
+        block.oid = self._km.astype(
             self.oid,
             dtype.__name__,
             syskwargs={"grid_entry": block.grid_entry, "grid_shape": block.grid_shape},
@@ -316,13 +316,13 @@ class Block:
         return self.ufunc("sqrt")
 
     def get(self):
-        return self._cm.get(self.oid)
+        return self._km.get(self.oid)
 
 
 class BlockArrayBase:
-    def __init__(self, grid: ArrayGrid, cm: ComputeManager, blocks: np.ndarray = None):
+    def __init__(self, grid: ArrayGrid, cm: KernelManager, blocks: np.ndarray = None):
         self.grid = grid
-        self.cm = cm
+        self.km = cm
         self.shape = self.grid.shape
         self.block_shape = self.grid.block_shape
         self.grid_shape = self.grid.grid_shape
@@ -346,7 +346,7 @@ class BlockArrayBase:
                     shape=self.grid.get_block_shape(grid_entry),
                     dtype=self.dtype,
                     transposed=False,
-                    cm=self.cm,
+                    km=self.cm,
                 )
 
     def __repr__(self):
@@ -355,7 +355,7 @@ class BlockArrayBase:
     def get(self) -> np.ndarray:
         result: np.ndarray = np.zeros(shape=self.grid.shape, dtype=self.grid.dtype)
         block_shape: np.ndarray = np.array(self.grid.block_shape, dtype=np.int)
-        arrays: list = self.cm.get(
+        arrays: list = self.km.get(
             [
                 self.blocks[grid_entry].oid
                 for grid_entry in self.grid.get_entry_iterator()

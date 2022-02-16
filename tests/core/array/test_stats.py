@@ -56,7 +56,7 @@ def test_quickselect(app_inst: ArrayApplication):
     correct = [7, 6, 5, 5, 4, 3, 2, 1]
     for i in range(-8, 8):
         value_oid = app_inst._quickselect(ba_oids, i)
-        value = app_inst.cm.get(value_oid)
+        value = app_inst.km.get(value_oid)
         assert value == correct[i]
 
     # Randomized tests
@@ -67,7 +67,7 @@ def test_quickselect(app_inst: ArrayApplication):
         ba_x = app_inst.random.random(shape=shape, block_shape=block_shape)
         ba_oids = ba_x.flattened_oids()
         value_oid = app_inst._quickselect(ba_oids, k)
-        value = app_inst.cm.get(value_oid)
+        value = app_inst.km.get(value_oid)
         assert value == np.partition(ba_x.get(), -k - 1)[-k - 1]
 
 

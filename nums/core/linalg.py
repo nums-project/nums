@@ -34,7 +34,7 @@ def _qr_tree_reduce(
         a_oid, a_ge, a_gs = q.pop(0)
         b_oid, _, _ = q.pop(0)
         ge, gs = (result_grid_entry, result_grid_shape) if len(q) == 0 else (a_ge, a_gs)
-        c_oid = app.cm.qr(
+        c_oid = app.km.qr(
             a_oid,
             b_oid,
             mode="r",
@@ -70,7 +70,7 @@ def indirect_tsr(app: ArrayApplication, X: BlockArray, reshape_output=True):
         for j in range(grid_shape[1]):
             row.append(X.blocks[i, j].oid)
         ge, gs = (i, 0), (grid_shape[0], 1)
-        oid = app.cm.qr(
+        oid = app.km.qr(
             *row,
             mode="r",
             axis=1,
@@ -151,7 +151,7 @@ def direct_tsqr(app: ArrayApplication, X, reshape_output=True):
         Q2_shape[0] += K
         # Run each row on separate nodes along first axis.
         # This maintains some data locality.
-        Q_oid, R_oid = app.cm.qr(
+        Q_oid, R_oid = app.km.qr(
             *row,
             mode="reduced",
             axis=1,
@@ -166,7 +166,7 @@ def direct_tsqr(app: ArrayApplication, X, reshape_output=True):
 
     # TODO (hme): This pulls several order N^2 R matrices on a single node.
     #  A solution is the recursive extension to direct TSQR.
-    Q2_oid, R2_oid = app.cm.qr(
+    Q2_oid, R2_oid = app.km.qr(
         *R_oids,
         mode="reduced",
         axis=0,
@@ -188,7 +188,7 @@ def direct_tsqr(app: ArrayApplication, X, reshape_output=True):
     # Construct Q.
     Q = app.zeros(shape=shape, block_shape=(block_shape[0], shape[1]), dtype=X.dtype)
     for i, grid_entry in enumerate(Q.grid.get_entry_iterator()):
-        Q.blocks[grid_entry].oid = app.cm.bop(
+        Q.blocks[grid_entry].oid = app.km.bop(
             "tensordot",
             Q_oids[i],
             Q2_oids[i],
@@ -216,7 +216,7 @@ def direct_tsqr(app: ArrayApplication, X, reshape_output=True):
 
 
 def svd(app: ArrayApplication, X):
-    # TODO(hme): Optimize by merging with direct qr to compute U directly,
+    # TODO(hme): Optimize by merging with direct qr to kernel U directly,
     #  to avoid wasting space storing intermediate Q.
     #  This may not really help until we have operator fusion.
     assert len(X.shape) == 2
@@ -226,7 +226,7 @@ def svd(app: ArrayApplication, X):
     R_block_shape = (block_shape[1], block_shape[1])
     Q, R = direct_tsqr(app, X, reshape_output=False)
     assert R.shape == R.block_shape
-    R_U, S, VT = app.cm.svd(
+    R_U, S, VT = app.km.svd(
         R.blocks[(0, 0)].oid, syskwargs={"grid_entry": (0, 0), "grid_shape": (1, 1)}
     )
     R_U: BlockArray = app.vec_from_oids([R_U], R_shape, R_block_shape, X.dtype)
@@ -253,7 +253,7 @@ def inv(app: ArrayApplication, X: BlockArray):
         result = X.copy()
     else:
         result = X.reshape(block_shape=X.shape)
-    result.blocks[0, 0].oid = app.cm.inv(
+    result.blocks[0, 0].oid = app.km.inv(
         result.blocks[0, 0].oid, syskwargs={"grid_entry": (0, 0), "grid_shape": (1, 1)}
     )
     if not single_block:
@@ -301,7 +301,7 @@ def inv_uppertri(app: ArrayApplication, X: BlockArray):
 
     # Calculate the inverse for block R_11.
     r11_oid = R.blocks[(0, 0)].oid
-    r11_inv_oid = app.cm.inv(
+    r11_inv_oid = app.km.inv(
         r11_oid, syskwargs={"grid_entry": (0, 0), "grid_shape": grid_shape}
     )
     R.blocks[(0, 0)].oid = r11_inv_oid
@@ -319,7 +319,7 @@ def inv_uppertri(app: ArrayApplication, X: BlockArray):
         R11_shape = R.blocks[R11_block].shape
 
         # Calculate the inverse for block R_11.
-        R11_inv_oid = app.cm.inv(
+        R11_inv_oid = app.km.inv(
             R11_oid, syskwargs={"grid_entry": R11_block, "grid_shape": grid_shape}
         )
 
@@ -351,7 +351,7 @@ def inv_uppertri(app: ArrayApplication, X: BlockArray):
                 Z_oid = Zs.blocks[(row_block, col_block)].oid
 
                 # Calculate -R_00 by subtracting R_00 from zero.
-                neg_R00_oid = app.cm.bop(
+                neg_R00_oid = app.km.bop(
                     "subtract",
                     Z_oid,
                     R00_oid,
@@ -366,7 +366,7 @@ def inv_uppertri(app: ArrayApplication, X: BlockArray):
 
                 # Calculate -R00 @ R01.
                 sub_oids.append(
-                    app.cm.bop(
+                    app.km.bop(
                         "tensordot",
                         neg_R00_oid,
                         R01_oids[col_block],
@@ -382,7 +382,7 @@ def inv_uppertri(app: ArrayApplication, X: BlockArray):
 
             # Perform the summation step over all column blocks.
             R01_1_oids.append(
-                app.cm.sum_reduce(
+                app.km.sum_reduce(
                     *sub_oids,
                     syskwargs={
                         "grid_entry": R01_grid_entries[row_block],
@@ -395,7 +395,7 @@ def inv_uppertri(app: ArrayApplication, X: BlockArray):
         R01_2_oids = []
         for row_block in range(R01_num_blocks):
             R01_2_oids.append(
-                app.cm.bop(
+                app.km.bop(
                     "tensordot",
                     R01_1_oids[row_block],
                     R11_inv_oid,
@@ -438,7 +438,7 @@ def cholesky(app: ArrayApplication, X: BlockArray):
         result = X.copy()
     else:
         result = X.reshape(block_shape=X.shape)
-    result.blocks[0, 0].oid = app.cm.cholesky(
+    result.blocks[0, 0].oid = app.km.cholesky(
         result.blocks[0, 0].oid, syskwargs={"grid_entry": (0, 0), "grid_shape": (1, 1)}
     )
     if not single_block:

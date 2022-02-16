@@ -86,7 +86,7 @@ class GLM:
             self.rs: NumsRandomState = self._app.random
         elif array_utils.is_int(random_state):
             self.rs: NumsRandomState = NumsRandomState(
-                cm=self._app.cm, seed=random_state
+                km=self._app.cm, seed=random_state
             )
         elif isinstance(random_state, NumsRandomState):
             self.rs: NumsRandomState = random_state

@@ -122,7 +122,7 @@ def loadtxt(
     max_rows=None,
 ) -> BlockArray:
     app = _instance()
-    num_rows = app.cm.num_cores_total()
+    num_rows = app.km.num_cores_total()
     try:
         ba: BlockArray = app.loadtxt(
             fname,
