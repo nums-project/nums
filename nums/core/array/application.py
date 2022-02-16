@@ -1283,9 +1283,23 @@ class ArrayApplication:
                 )
             )
 
+        shape_dtypes = []
+
         for oid in oids:
-            shape = self.cm.get(oid).shape
-            ba = BlockArray.from_oid(oid, shape, arr.dtype, self.cm)
+            shape_dtypes.append(
+                self.cm.shape_dtype(
+                    oid,
+                    syskwargs={
+                        "grid_entry": grid_entry,
+                        "grid_shape": arr.grid.grid_shape,
+                    },
+                )
+            )
+
+        shapes, dtypes = zip(*self.cm.get(shape_dtypes))
+
+        for i in range(len(oids)):
+            ba = BlockArray.from_oid(oids[i], shapes[i], dtypes[i], self.cm)
             reduce_sorted.append(ba)
 
         return self.concatenate(
