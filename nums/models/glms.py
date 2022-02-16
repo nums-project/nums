@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -62,7 +61,7 @@ from nums.core import linalg
 #   g(mu) = (b')^{-1}(mu) = ln(mu/(1-mu)) = ln(p/(1-p)) = theta(p)
 
 
-class GLM(object):
+class GLM:
     def __init__(
         self,
         penalty="none",

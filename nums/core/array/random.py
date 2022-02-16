@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,7 +20,7 @@ from nums.core.compute.compute_manager import ComputeManager
 from nums.core.grid.grid import ArrayGrid
 
 
-class NumsRandomState(object):
+class NumsRandomState:
     def __init__(self, cm: ComputeManager, seed):
         self._cm = cm
         self._rng = self._cm.get_rng(seed)

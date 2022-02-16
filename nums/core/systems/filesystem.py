@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -260,7 +259,7 @@ def read_csv_block(filename, file_start, file_end, dtype, delimiter, has_header)
     return array, array.shape
 
 
-class FileSystem(object):
+class FileSystem:
     # pylint: disable=unused-argument
     # TODO (hme):
     #  - Idempotency for write/delete.

@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +25,7 @@ from nums.core.compute.compute_manager import ComputeManager
 from nums.core.grid.grid import ArrayGrid
 
 
-class ArrayView(object):
+class ArrayView:
     @classmethod
     def from_block_array(cls, bab):
         assert isinstance(bab, BlockArrayBase)

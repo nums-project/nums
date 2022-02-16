@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,7 +19,7 @@ from typing import List
 import numpy as np
 
 
-class Batch(object):
+class Batch:
 
     """
     Simple object for creating an object that can
