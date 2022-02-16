@@ -17,8 +17,9 @@ import pytest
 from nums.core.array.blockarray import BlockArray
 
 
+# pylint: disable=import-outside-toplevel
 @pytest.mark.skip(reason="This test occasionally times out. See issue #263.")
-def test_modin(nps_app_inst):  # pylint: disable=import-outside-toplevel
+def test_modin(nps_app_inst):
     import nums
     import nums.numpy as nps
     import modin.pandas as mpd
