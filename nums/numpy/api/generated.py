@@ -14,7 +14,6 @@
 
 # pylint: disable = redefined-builtin, too-many-lines, anomalous-backslash-in-string, unused-wildcard-import, wildcard-import
 
-
 from nums.core.application_manager import instance as _instance
 from nums.core.array.blockarray import BlockArray
 from nums.numpy import numpy_utils

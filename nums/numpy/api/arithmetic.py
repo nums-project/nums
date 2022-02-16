@@ -20,7 +20,7 @@ from nums.core.array.blockarray import BlockArray
 from nums.numpy.api.logic import *
 
 ############################################
-# Reduction Ops
+# Arithmetic Ops
 ############################################
 
 
