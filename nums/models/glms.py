@@ -237,57 +237,6 @@ class GLM:
 
 
 class LinearRegressionBase(GLM):
-    """
-    Ordinary least squares Linear Regression.
-    LinearRegression fits a linear model with coefficients w = (w1, ..., wp)
-    to minimize the residual sum of squares between the observed targets in
-    the dataset, and the targets predicted by the linear approximation.
-    Parameters
-    ----------
-    fit_intercept : bool, default=True
-        Whether to calculate the intercept for this model. If set
-        to False, no intercept will be used in calculations
-        (i.e. data is expected to be centered).
-    normalize : bool, default=False
-        This parameter is ignored when ``fit_intercept`` is set to False.
-        If True, the regressors X will be normalized before regression by
-        subtracting the mean and dividing by the l2-norm.
-        If you wish to standardize, please use
-        :class:`~sklearn.preprocessing.StandardScaler` before calling ``fit``
-        on an estimator with ``normalize=False``.
-        .. deprecated:: 1.0
-           `normalize` was deprecated in version 1.0 and will be
-           removed in 1.2.
-    copy_X : bool, default=True
-        If True, X will be copied; else, it may be overwritten.
-    n_jobs : int, default=None
-        The number of jobs to use for the computation. This will only provide
-        speedup in case of sufficiently large problems, that is if firstly
-        `n_targets > 1` and secondly `X` is sparse or if `positive` is set
-        to `True`. ``None`` means 1 unless in a
-        :obj:`joblib.parallel_backend` context. ``-1`` means using all
-        processors. See :term:`Glossary <n_jobs>` for more details.
-    positive : bool, default=False
-        When set to ``True``, forces the coefficients to be positive. This
-        option is only supported for dense arrays.
-        .. versionadded:: 0.24
-    Attributes
-    ----------
-    coef_ : array of shape (n_features, ) or (n_targets, n_features)
-        Estimated coefficients for the linear regression problem.
-        If multiple targets are passed during the fit (y 2D), this
-        is a 2D array of shape (n_targets, n_features), while if only
-        one target is passed, this is a 1D array of length n_features.
-    rank_ : int
-        Rank of matrix `X`. Only available when `X` is dense.
-    singular_ : array of shape (min(X, y),)
-        Singular values of `X`. Only available when `X` is dense.
-    intercept_ : float or array of shape (n_targets,)
-        Independent term in the linear model. Set to 0.0 if
-        `fit_intercept = False`.
-    n_features_in_ : int
-        Number of features seen during :term:`fit`.
-    """
 
     # Assume Sigma = I
     # canonical parameter: theta = mu
@@ -343,6 +292,56 @@ class LinearRegressionBase(GLM):
 
 
 class LinearRegression(LinearRegressionBase):
+    """
+    Ordinary least squares Linear Regression.
+    LinearRegression fits a linear model with coefficients w = (w1, ..., wp)
+    to minimize the residual sum of squares between the observed targets in
+    the dataset, and the targets predicted by the linear approximation.
+
+    Parameters
+    ----------
+    tol : float, default=0.0001
+        The threshhold under which a gradient is considered to be 0. Used by the solver.
+
+    max_iter : int, default=100
+        The maximum iteration used by the solver. 
+
+    solver : string, default="newton
+        function to obtain the beta coefficients of the model.
+
+    lr : float, default=0.01
+        Learning Rate. Used in the optimization of the model.
+
+    random_state : NumsRandomState, default=None
+        Seeds for randomness in model.
+
+    fit_intercept : bool, default=True
+        The intercept of regression is calculated for this model.
+        When data is centered, the intercept is calculated to 0.
+        Setting this option to False is unsupported.
+
+    normalize : bool, default=False
+        Normalizes the regressors before regression. 
+        Setting this option to True is not yet supported.
+
+    Attributes
+    ----------
+    _app : global singleton instance of the application. Used internally.
+    _penalty
+    _lambda
+    _l1penalty
+    _l1penalty_vec
+    _l2penalty
+    _l2penalty_vec
+    _l2penalty_diag
+    alpha
+    _tol : corresponds to the parameter tol
+    _max_iter: corresponds to the parameter max_iter
+    _opt: corresponds to the parameter solver
+    _lr: corresponds to the paramter lr
+    _beta: BlockArray used internally for the optimizer to solve for the beta coefficients of the model
+    _beta0
+    """
     def __init__(
         self,
         tol=0.0001,

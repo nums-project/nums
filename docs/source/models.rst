@@ -9,7 +9,7 @@ Classes in the ``nums.models`` module.
 .. autosummary::
    :toctree: generated/
 
-   LinearRegressionBase
+   LinearRegression
    
 
 Generalized Linear Models (GLMs)
