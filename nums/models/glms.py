@@ -204,6 +204,9 @@ class GLM:
         return 1 - dev / dev_null
 
     def obj_penalty(self, beta):
+        """
+        Returns the penalty term for the object function used in regularization.
+        """
         if self._penalty == "l1":
             return self._l1penalty * self._app.norm(beta, order=1)
         elif self._penalty == "l2":
@@ -216,6 +219,9 @@ class GLM:
             raise ValueError("Unexpected call to objective term, penalty=None.")
 
     def grad_penalty(self, beta):
+        """
+        Returns the penalty for the gradient used in regularization.
+        """
         if self._penalty == "l1":
             return self._l1penalty_vec * self._app.map_uop("sign", beta)
         elif self._penalty == "l2":
@@ -228,6 +234,9 @@ class GLM:
             raise ValueError("Unexpected call to objective term, penalty=None.")
 
     def hessian_penalty(self):
+        """
+        Returns the norm penalty for the hessian used in regularization.
+        """
         if self._penalty == "l1":
             return 0.0
         elif self._penalty == "l2" or self._penalty == "elasticnet":
@@ -270,6 +279,9 @@ class LinearRegressionBase(GLM):
         mu: BlockArray = None,
         beta: BlockArray = None,
     ):
+        """
+        Computes the gradient with regards to beta.
+        """
         if mu is None:
             mu = self.forward(X)
         r = X.transpose(defer=True) @ (mu - y)
@@ -279,15 +291,24 @@ class LinearRegressionBase(GLM):
         return r
 
     def hessian(self, X: BlockArray, y: BlockArray, mu: BlockArray = None):
+        """
+        Computes the hessian with regards to the hessian penalty.
+        """
         r = X.transpose(defer=True) @ X
         if self._penalty is not None:
             r += self.hessian_penalty()
         return r
 
     def deviance(self, y, y_pred):
+        """
+        Computes the deviance of the model with regards to y_pred.
+        """
         return self._app.sum((y - y_pred) ** self._app.two)
 
     def predict(self, X: BlockArray) -> BlockArray:
+        """
+        Predict using the Linear Regression model. Calls foward internally.
+        """
         return self.forward(X)
 
 
