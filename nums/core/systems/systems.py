@@ -463,7 +463,7 @@ class RaySystem(SystemInterface):
             node = self._device_to_node[device_id]
             node_key = self._node_key(node)
             if "resources" in options:
-                assert node_key not in options  # should it be options["resources"]?
+                assert node_key not in options["resources"]
             options["resources"] = {node_key: 1.0 / 10 ** 4}
         return self._remote_functions[name].options(**options).remote(*args, **kwargs)
 
@@ -511,7 +511,7 @@ class RaySystemStockScheduler(RaySystem):
             node = self._device_to_node[device_id]
             node_key = self._node_key(node)
             if "resources" in options:
-                assert node_key not in options
+                assert node_key not in options["resources"]
         return self._remote_functions[name].options(**options).remote(*args, **kwargs)
 
     def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
