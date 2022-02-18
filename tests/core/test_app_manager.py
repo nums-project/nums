@@ -44,7 +44,7 @@ def test_app_manager(compute_name, system_name, device_grid_name, num_cpus):
             from mpi4py import MPI
 
             assert app.cm.num_cores_total() == MPI.COMM_WORLD.Get_size()
-        except exception as _:
+        except Exception as _:
             pass
     elif num_cpus is None:
         assert app.cm.num_cores_total() == get_num_cores()
