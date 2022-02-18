@@ -43,9 +43,11 @@ def fusion1(app, x, y):
 
 def fuse_ga(app, r: GraphArray) -> GraphArray:
     result_graphs = np.empty_like(r.graphs, dtype=r.graphs.dtype)
+    t = time.time()
     for grid_entry in r.grid.get_entry_iterator():
         graph = r.graphs[grid_entry]
         result_graphs[grid_entry] = FuseGraph(graph, app.cm)()
+    print("fusion time", time.time() - t)
     return GraphArray(r.grid.copy(), r.cluster_state, result_graphs, r.cm)
 
 
@@ -55,13 +57,14 @@ def ga_op(app, func, x: BlockArray, y: BlockArray, copy_on_op=True) -> BlockArra
     y_ga: GraphArray = GraphArray.from_ba(y, cluster_state, copy_on_op=copy_on_op)
     op_ga: GraphArray = func(app, x_ga, y_ga)
     fused_ga: GraphArray = fuse_ga(app, op_ga)
+    t = time.time()
     result_ga: GraphArray = RandomTS(
         seed=conftest.rs,
         max_samples_per_step=1,
         max_reduction_pairs=1,
         force_final_action=True,
     ).solve(fused_ga)
-
+    print("tree search time", time.time() - t)
     return BlockArray(result_ga.grid, x.cm, result_ga.to_blocks())
 
 
@@ -85,8 +88,23 @@ def test_fusion(app_inst_mock_none):
         assert block.dtype == opt_z.dtype
 
 
-def test_graph_properties():
-    pass
+def test_fusion_time(app_inst_mock_none):
+    app = app_inst_mock_none
+    x_shape, x_block_shape = (1024,), (1,)
+    y_shape, y_block_shape = (1024,), (1,)
+    real_x = np.random.random(np.product(x_shape)).reshape(x_shape)
+    real_y = np.random.random(np.product(y_shape)).reshape(y_shape)
+    x: BlockArray = app.array(real_x, x_block_shape)
+    y: BlockArray = app.array(real_y, y_block_shape)
+    t = time.time()
+    opt_z: BlockArray = ga_op(app, fusion1, x, y)
+    print("schedule time", time.time() - t)
+    for grid_entry in opt_z.grid.get_entry_iterator():
+        block = opt_z.blocks[grid_entry]
+        assert block.grid_entry == grid_entry
+        assert block.grid_shape == opt_z.grid_shape
+        assert block.shape == opt_z.grid.get_block_shape(grid_entry)
+        assert block.dtype == opt_z.dtype
 
 
 def test_fused_placement():
@@ -96,8 +114,9 @@ def test_fused_placement():
 if __name__ == "__main__":
     import conftest
 
-    app = conftest.mock_cluster((1, 1))
-    test_fusion(app)
+    app = conftest.mock_ray_cluster((1, 1))
+    # test_fusion(app)
+    test_fusion_time(app)
     conftest.destroy_mock_cluster(app)
 
     # app = conftest.mock_cluster((10, 1))
