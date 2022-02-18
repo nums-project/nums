@@ -37,16 +37,7 @@ def test_app_manager(compute_name, system_name, device_grid_name, num_cpus):
     print(settings.num_cpus, num_cpus, app.cm.num_cores_total())
     app_arange = app.arange(0, shape=(10,), block_shape=(10,))
     assert np.allclose(np.arange(10), app_arange.get())
-    # TODO: add an if condition for MPI system and document this
-    if system_name == "mpi":
-        # pylint: disable=import-outside-toplevel, c-extension-no-member import-error
-        try:
-            from mpi4py import MPI
-
-            assert app.cm.num_cores_total() == MPI.COMM_WORLD.Get_size()
-        except Exception as _:
-            pass
-    elif num_cpus is None:
+    if num_cpus is None:
         assert app.cm.num_cores_total() == get_num_cores()
     else:
         assert app.cm.num_cores_total() == num_cpus
