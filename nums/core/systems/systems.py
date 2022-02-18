@@ -291,9 +291,10 @@ class MPISystem(SystemInterface):
             self._actor_node_index = (self._actor_node_index + 1) % len(self._devices)
         actor = self._actors[name]
         dest_rank = self._device_to_rank[device_id]
-        resolved_args = self._resolve_args_or_kwargs(args, dest_rank)
+        resolved_args = self._resolve_args(args, dest_rank)
+        resolved_kwargs = self._resolve_kwargs(kwargs, dest_rank)
         if dest_rank == self.rank:
-            actor_obj = actor(*resolved_args, **kwargs)
+            actor_obj = actor(*resolved_args, **resolved_kwargs)
             actor_id = id(actor_obj)
             self._actor_to_rank[actor_id] = dest_rank
             return actor_obj
@@ -306,10 +307,11 @@ class MPISystem(SystemInterface):
     def call_actor_method(self, actor, method: str, *args, **kwargs):
         dest_rank = self._actor_to_rank[id(actor)]
         # Resolve args.
-        resolved_args = self._resolve_args_or_kwargs(args, dest_rank)
+        resolved_args = self._resolve_args(args, dest_rank)
+        resolved_kwargs = self._resolve_kwargs(kwargs, dest_rank)
         # Make sure it gets called on the correct rank.
         if not isinstance(actor, MPIRemoteObj):
-            return getattr(actor, method)(*resolved_args, **kwargs)
+            return getattr(actor, method)(*resolved_args, **resolved_kwargs)
         else:
             # Return an MPIRemoteObj corresponding to result of actor method call?
             return None
