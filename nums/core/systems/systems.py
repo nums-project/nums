@@ -83,25 +83,15 @@ class SerialSystem(SystemInterface):
     def num_cores_total(self) -> int:
         return self.num_cpus
 
+
 @dataclass
 class MPIRemoteObj(object):
-    _rank: int
+    rank: int
 
-    def set_rank(self, rank: int):
-        self._rank = rank
-
-    def get_rank(self):
-        return self._rank
 
 @dataclass
 class MPILocalObj(object):
     value: Any
-
-    def set_value(self, value):
-        self.value = value
-
-    def get_value(self):
-        return self.value
 
 
 class MPISystem(SystemInterface):
