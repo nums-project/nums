@@ -237,7 +237,7 @@ class MPISystem(SystemInterface):
         assert isinstance(kwargs, dict), str(type(kwargs))
         resolved_args = {}
         for k, v in kwargs.items():
-            resolved_args[k] = self._resolve_arg(v, device_rank)
+            resolved_args[k] = self._resolve_object(v, device_rank)
         return resolved_args
 
     def _resolve_args(self, args: Union[list, tuple], device_rank):
@@ -245,36 +245,36 @@ class MPISystem(SystemInterface):
         assert isinstance(args, (list, tuple)), str(type(args))
         resolved_args = []
         for arg in args:
-            resolved_arg = self._resolve_arg(arg, device_rank)
+            resolved_arg = self._resolve_object(arg, device_rank)
             resolved_args.append(resolved_arg)
         return resolved_args
 
-    def _resolve_arg(self, arg, device_rank):
-        if not isinstance(arg, (MPIRemoteObj, MPILocalObj)):
-            return arg
-        is_remote = isinstance(arg, MPIRemoteObj)
+    def _resolve_object(self, obj, device_rank):
+        if not isinstance(obj, (MPIRemoteObj, MPILocalObj)):
+            return obj
+        is_remote = isinstance(obj, MPIRemoteObj)
         device_rank_object_is_remote = self.comm.bcast(is_remote, device_rank)
         if not device_rank_object_is_remote:
             if device_rank == self.rank:
-                return arg.value
+                return obj.value
             else:
                 # No need to do anything on other ranks when object is already on device rank.
-                return arg
-        # Check if arg is remote.
+                return obj
+        # Check if obj is remote.
         elif device_rank == self.rank:
-            sender_rank = arg.get_dest_rank()
+            sender_rank = obj.get_dest_rank()
             # TODO: Try Isend and Irecv and have a switch for sync and async.
             arg_value = self.comm.recv(sender_rank)
             return arg_value
-        elif isinstance(arg, MPILocalObj):
-            # The arg is stored on this rank, so send it to the device on which the op will be
+        elif isinstance(obj, MPILocalObj):
+            # The obj is stored on this rank, so send it to the device on which the op will be
             # executed.
-            self.comm.send(arg.value, device_rank)
-            return arg
+            self.comm.send(obj.value, device_rank)
+            return obj
         else:
-            # The arg is remote and this is not the device on which we want to invoke the op.
-            # Because the arg is remote, this is not the sender.
-            return arg
+            # The obj is remote and this is not the device on which we want to invoke the op.
+            # Because the obj is remote, this is not the sender.
+            return obj
 
     def register_actor(self, name: str, cls: type):
         if name in self._actors:
