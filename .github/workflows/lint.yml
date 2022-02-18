@@ -36,6 +36,8 @@ jobs:
       - name: Install NumS
         run: |
           python3 -m pip install --upgrade pip
+          sudo apt update
+          sudo apt install mpich
           pip3 install .[testing]
       - name: Run black
         run: |
