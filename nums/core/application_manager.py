@@ -25,7 +25,12 @@ from nums.core.compute.compute_manager import ComputeManager
 from nums.core.grid.grid import DeviceGrid, CyclicDeviceGrid, PackedDeviceGrid
 from nums.core.systems.filesystem import FileSystem
 from nums.core.systems.system_interface import SystemInterface
-from nums.core.systems.systems import SerialSystem, RaySystem, MPISystem, RaySystemStockScheduler
+from nums.core.systems.systems import (
+    SerialSystem,
+    RaySystem,
+    MPISystem,
+    RaySystemStockScheduler,
+)
 
 # pylint: disable=global-statement
 

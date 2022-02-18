@@ -44,6 +44,7 @@ def sample_sym_pd_mat(shape):
     w += 1.0
     return (v * w) @ np.linalg.inv(v)
 
+
 @pytest.mark.skip
 def test_inv_assumptions(app_inst: ArrayApplication):
     # pylint: disable=no-member, unused-variable

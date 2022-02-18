@@ -113,7 +113,6 @@ class MPISystem(SystemInterface):
     def __init__(self):
         # pylint: disable=import-outside-toplevel c-extension-no-member
         from mpi4py import MPI
-        import collections
 
         self.comm = MPI.COMM_WORLD
         self.size = self.comm.Get_size()
@@ -138,13 +137,17 @@ class MPISystem(SystemInterface):
         self.init_devices()
 
     def init_devices(self):
-        #TODO: sort proc_names and dont do a all gather for did. construct them locally
+        # TODO: sort proc_names and dont do a all gather for did. construct them locally
         proc_names = list(set(self.comm.allgather(self.proc_name)))
-        did = DeviceID(proc_names.index(self.proc_name), self.proc_name, "cpu", self.rank)
+        did = DeviceID(
+            proc_names.index(self.proc_name), self.proc_name, "cpu", self.rank
+        )
         self._device_to_rank[did] = self.rank
         self._devices = self.comm.allgather(did)
         self._device_to_rank = self.comm.allgather({did: self.rank})
-        self._device_to_rank = dict((key, val) for k in self._device_to_rank for key, val in k.items())
+        self._device_to_rank = dict(
+            (key, val) for k in self._device_to_rank for key, val in k.items()
+        )
 
     def shutdown(self):
         pass
@@ -152,7 +155,7 @@ class MPISystem(SystemInterface):
     # TODO: this is scatter. (Document this)
     def put(self, value: Any, device_id: DeviceID):
         dest_rank = self._device_to_rank[device_id]
-        assert (not isinstance(value, (MPILocalObj, MPIRemoteObj)))
+        assert not isinstance(value, (MPILocalObj, MPIRemoteObj))
         if self.rank == dest_rank:
             return MPILocalObj(value)
         else:
@@ -170,7 +173,7 @@ class MPISystem(SystemInterface):
                 # TODO: see if all-2-all might be more efficient.
                 obj = self.comm.bcast(obj, root=dest_rank)
                 obj_value = obj.value
-                assert (not isinstance(obj_value, (MPILocalObj, MPIRemoteObj)))
+                assert not isinstance(obj_value, (MPILocalObj, MPIRemoteObj))
                 resolved_object_ids.append(obj_value)
             return resolved_object_ids
         else:
@@ -182,7 +185,7 @@ class MPISystem(SystemInterface):
                 dest_rank = self.rank
             # TODO: see if all-2-all might be more efficient.
             obj = self.comm.bcast(obj, root=dest_rank)
-            assert (not isinstance(obj.value, (MPILocalObj, MPIRemoteObj)))
+            assert not isinstance(obj.value, (MPILocalObj, MPIRemoteObj))
             return obj.value
 
     def remote(self, function: FunctionType, remote_params: dict):
@@ -254,7 +257,8 @@ class MPISystem(SystemInterface):
             arg_value = self.comm.recv(sender_rank)
             return arg_value
         elif isinstance(arg, MPILocalObj):
-            # The arg is stored on this rank, so send it to the device on which the op will be executed.
+            # The arg is stored on this rank, so send it to the device on which the op will be
+            # executed.
             self.comm.send(arg.value, device_rank)
             return arg
         else:
@@ -262,12 +266,16 @@ class MPISystem(SystemInterface):
             # Because the arg is remote, this is not the sender.
             return arg
 
-    def _resolve_args_or_kwargs(self, args_or_kwargs: Union[list, tuple, dict], device_rank):
+    def _resolve_args_or_kwargs(
+        self, args_or_kwargs: Union[list, tuple, dict], device_rank
+    ):
         # Resolve dependencies: iterate over args_or_kwargs and figure out which ones need fetching.
-        assert isinstance(args_or_kwargs, (list, tuple, dict)), str(type(args_or_kwargs))
+        assert isinstance(args_or_kwargs, (list, tuple, dict)), str(
+            type(args_or_kwargs)
+        )
         if isinstance(args_or_kwargs, dict):
             resolved_args = {}
-            for k,v in args_or_kwargs.items():
+            for k, v in args_or_kwargs.items():
                 resolved_args[k] = self._resolve_arg(v, device_rank)
         else:
             resolved_args = []
