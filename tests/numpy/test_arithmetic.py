@@ -464,21 +464,11 @@ if __name__ == "__main__":
     from nums.core import application_manager
     from nums.core import settings
 
-    # from mpi4py import MPI
-    # import os
-    # size = MPI.COMM_WORLD.Get_size()
-    # rank = MPI.COMM_WORLD.Get_rank()
-    # import pydevd_pycharm
-    # port_mapping = [49646, 49647]
-    # pydevd_pycharm.settrace('localhost', port=port_mapping[rank], stdoutToServer=True,
-    #                         stderrToServer=True)
-    # print(os.getpid())
-
     settings.system_name = "mpi"
     nps_app_inst = application_manager.instance()
 
     np.random.seed(1331)
-    test_inner_outer(nps_app_inst)
-    test_dot(nps_app_inst)
-    test_overloads(nps_app_inst)
+    # test_inner_outer(nps_app_inst)
+    # test_dot(nps_app_inst)
+    # test_overloads(nps_app_inst)
     test_ams_metric(nps_app_inst)
