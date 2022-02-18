@@ -15,6 +15,7 @@
 # pylint: disable = redefined-builtin, too-many-lines, anomalous-backslash-in-string, unused-wildcard-import, wildcard-import
 
 import scipy
+from scipy import stats
 
 from nums.core.application_manager import instance as _instance
 from nums.core.array.blockarray import BlockArray
@@ -279,7 +280,7 @@ def concatenate(arrays, axis=0, out=None):
     if out is not None:
         raise NotImplementedError("out is currently not supported for concatenate.")
     # Pick the mode along specified axis.
-    axis_block_size = scipy.stats.mode(
+    axis_block_size = stats.mode(
         list(map(lambda arr: arr.block_shape[axis], arrays))
     ).mode.item()
     return _instance().concatenate(arrays, axis=axis, axis_block_size=axis_block_size)
