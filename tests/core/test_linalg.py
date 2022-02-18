@@ -18,6 +18,7 @@ import time
 import numpy as np
 import scipy.linalg
 from scipy.linalg import lapack
+import pytest
 
 from nums.core.array.application import ArrayApplication
 from nums.core.storage.storage import BimodalGaussian
@@ -43,7 +44,7 @@ def sample_sym_pd_mat(shape):
     w += 1.0
     return (v * w) @ np.linalg.inv(v)
 
-
+@pytest.mark.skip
 def test_inv_assumptions(app_inst: ArrayApplication):
     # pylint: disable=no-member, unused-variable
     np_Z = sample_sym_pd_mat(shape=(10, 10))
@@ -128,12 +129,14 @@ def test_inv_uppertri(app_inst: ArrayApplication):
     block_shape, shape = (3, 3), (20, 20)
     R_matrices = []
 
+    rs = np.random.RandomState(1337)
+
     # Create an upper-triangular matrix with sequential values.
     R_np = np.arange(1, shape[0] ** 2 + 1, 1).reshape(*shape).astype(float)
     R_matrices.append(np.triu(R_np))
 
     # Create a random upper-triangular matrix
-    _, R_np = np.linalg.qr(np.random.rand(*shape))
+    _, R_np = np.linalg.qr(rs.rand(*shape))
     R_matrices.append(R_np)
 
     # Test the upper-triangular inversion algorithm on each of the above matrices.

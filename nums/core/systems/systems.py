@@ -83,7 +83,7 @@ class SerialSystem(SystemInterface):
         return self.num_cpus
 
 
-class MPIDestRank(object):
+class MPIRemoteObj(object):
     def __init__(self, rank: int):
         self._dest_rank = rank
 
@@ -92,6 +92,17 @@ class MPIDestRank(object):
 
     def get_dest_rank(self):
         return self._dest_rank
+
+
+class MPILocalObj(object):
+    def __init__(self, value):
+        self.value = value
+
+    def set_value(self, value):
+        self.value = value
+
+    def get_value(self):
+        return self.value
 
 
 class MPISystem(SystemInterface):
@@ -141,38 +152,41 @@ class MPISystem(SystemInterface):
     # TODO: this is scatter. (Document this)
     def put(self, value: Any, device_id: DeviceID):
         dest_rank = self._device_to_rank[device_id]
+        assert (not isinstance(value, (MPILocalObj, MPIRemoteObj)))
         if self.rank == dest_rank:
-            return value
+            return MPILocalObj(value)
         else:
-            return MPIDestRank(dest_rank)
+            return MPIRemoteObj(dest_rank)
 
     def get(self, object_ids: Union[Any, List]):
         resolved_object_ids = []
-        if hasattr(object_ids, '__iter__'):
+        if not isinstance(object_ids, (MPIRemoteObj, MPILocalObj)):
             for obj in object_ids:
-                if isinstance(obj, MPIDestRank):
+                if isinstance(obj, MPIRemoteObj):
                     dest_rank = obj.get_dest_rank()
                 # This should be true for just one rank which has the data.
                 else:
                     dest_rank = self.rank
                 # TODO: see if all-2-all might be more efficient.
                 obj = self.comm.bcast(obj, root=dest_rank)
-                resolved_object_ids.append(obj)
+                obj_value = obj.value
+                assert (not isinstance(obj_value, (MPILocalObj, MPIRemoteObj)))
+                resolved_object_ids.append(obj_value)
             return resolved_object_ids
         else:
             obj = object_ids
-            if isinstance(obj, MPIDestRank):
+            if isinstance(obj, MPIRemoteObj):
                 dest_rank = obj.get_dest_rank()
             # This should be true for just one rank which has the data.
             else:
                 dest_rank = self.rank
             # TODO: see if all-2-all might be more efficient.
             obj = self.comm.bcast(obj, root=dest_rank)
-            return obj
-
+            assert (not isinstance(obj.value, (MPILocalObj, MPIRemoteObj)))
+            return obj.value
 
     def remote(self, function: FunctionType, remote_params: dict):
-        return function
+        return function, remote_params
 
     def devices(self) -> List[DeviceID]:
         return self._devices
@@ -184,42 +198,82 @@ class MPISystem(SystemInterface):
             remote_params = {}
         self._remote_functions[name] = self.remote(func, remote_params)
 
+    def _parse_call(self, name: str, options: Dict):
+        func, remote_params = self._remote_functions[name]
+        nout = 1
+        if "num_returns" in options:
+            # options has higher priority than remote_params.
+            if options["num_returns"] > 1:
+                nout = options["num_returns"]
+        elif "num_returns" in remote_params and remote_params["num_returns"] > 1:
+            nout = remote_params["num_returns"]
+        return func, nout
+
     def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
         dest_rank = self._device_to_rank[device_id]
-        resolved_args = self._resolve_args(args, dest_rank)
-        if dest_rank == self.rank:
-            return self._remote_functions[name](*resolved_args, **kwargs)
-        elif "num_returns" in options and options["num_returns"] > 1:
-            return tuple(repeat(MPIDestRank(dest_rank),options["num_returns"]))
-        else:
-            return MPIDestRank(dest_rank)
-
-    def _resolve_args(self, args, device_rank):
-        # Resolve dependencies: iterate over args and figure out which ones need fetching.
-        resolved_args = []
         for arg in args:
-            is_remote = isinstance(arg, MPIDestRank)
-            device_rank_object_is_remote = self.comm.bcast(is_remote, device_rank)
-            if not device_rank_object_is_remote:
-                pass
-            # Check if arg is remote.
-            elif is_remote:
-                if device_rank == self.rank:
-                    dest_rank = arg.get_dest_rank()
-                    # TODO: Try Isend and Irecv and have a switch for sync and async.
-                    arg = self.comm.recv(dest_rank)
-                else:
-                    # The arg is remote and this is not the device on which we want to invoke the op.
-                    # Because the arg is remote, this is not the sender.
-                    pass
-            elif device_rank == self.rank:
-                # The arg is local.
-                pass
+            if isinstance(arg, MPILocalObj):
+                assert not isinstance(arg.value, MPILocalObj)
+        resolved_args = self._resolve_args_or_kwargs(args, dest_rank)
+        resolved_kwargs = self._resolve_args_or_kwargs(kwargs, dest_rank)
+        func, nout = self._parse_call(name, options)
+        if dest_rank == self.rank:
+            result = func(*resolved_args, **resolved_kwargs)
+            if nout > 1:
+                return tuple([MPILocalObj(result[i]) for i in range(nout)])
             else:
-                # The arg is stored on this rank, so send it to the device on which the op will be executed.
-                self.comm.send(arg, device_rank)
-            resolved_args.append(arg)
-        self.comm.barrier()
+                return MPILocalObj(result)
+            # func_return = []
+            # for result in results:
+            #     func_return.append(MPILocalObj(result))
+            # if nout > 1:
+            #     return tuple(func_return)
+            # else:
+            #     return func_return[0]
+        else:
+            if nout > 1:
+                return tuple(repeat(MPIRemoteObj(dest_rank), nout))
+            else:
+                return MPIRemoteObj(dest_rank)
+
+    def _resolve_arg(self, arg, device_rank):
+        if not isinstance(arg, (MPIRemoteObj, MPILocalObj)):
+            return arg
+        is_remote = isinstance(arg, MPIRemoteObj)
+        device_rank_object_is_remote = self.comm.bcast(is_remote, device_rank)
+        if not device_rank_object_is_remote:
+            if device_rank == self.rank:
+                return arg.value
+            else:
+                # No need to do anything on other ranks when object is already on device rank.
+                return arg
+        # Check if arg is remote.
+        elif device_rank == self.rank:
+            sender_rank = arg.get_dest_rank()
+            # TODO: Try Isend and Irecv and have a switch for sync and async.
+            arg_value = self.comm.recv(sender_rank)
+            return arg_value
+        elif isinstance(arg, MPILocalObj):
+            # The arg is stored on this rank, so send it to the device on which the op will be executed.
+            self.comm.send(arg.value, device_rank)
+            return arg
+        else:
+            # The arg is remote and this is not the device on which we want to invoke the op.
+            # Because the arg is remote, this is not the sender.
+            return arg
+
+    def _resolve_args_or_kwargs(self, args_or_kwargs: Union[list, tuple, dict], device_rank):
+        # Resolve dependencies: iterate over args_or_kwargs and figure out which ones need fetching.
+        assert isinstance(args_or_kwargs, (list, tuple, dict)), str(type(args_or_kwargs))
+        if isinstance(args_or_kwargs, dict):
+            resolved_args = {}
+            for k,v in args_or_kwargs.items():
+                resolved_args[k] = self._resolve_arg(v, device_rank)
+        else:
+            resolved_args = []
+            for arg in args_or_kwargs:
+                resolved_arg = self._resolve_arg(arg, device_rank)
+                resolved_args.append(resolved_arg)
         return resolved_args
 
     def register_actor(self, name: str, cls: type):
@@ -238,27 +292,27 @@ class MPISystem(SystemInterface):
             self._actor_node_index = (self._actor_node_index + 1) % len(self._devices)
         actor = self._actors[name]
         dest_rank = self._device_to_rank[device_id]
-        resolved_args = self._resolve_args(args, dest_rank)
+        resolved_args = self._resolve_args_or_kwargs(args, dest_rank)
         if dest_rank == self.rank:
             actor_obj = actor(*resolved_args, **kwargs)
             actor_id = id(actor_obj)
             self._actor_to_rank[actor_id] = dest_rank
             return actor_obj
         else:
-            actor_obj = MPIDestRank(dest_rank)
+            actor_obj = MPIRemoteObj(dest_rank)
             actor_id = id(actor_obj)
             self._actor_to_rank[actor_id] = dest_rank
             return actor_obj
 
     def call_actor_method(self, actor, method: str, *args, **kwargs):
         dest_rank = self._actor_to_rank[id(actor)]
-        # Resolve args.
-        resolved_args = self._resolve_args(args, dest_rank)
+        # Resolve args_or_kwargs.
+        resolved_args = self._resolve_args_or_kwargs(args, dest_rank)
         # Make sure it gets called on the correct rank.
-        if not isinstance(actor, MPIDestRank):
+        if not isinstance(actor, MPIRemoteObj):
             return getattr(actor, method)(*resolved_args, **kwargs)
         else:
-            # Return an MPIDestRank corresponding to result of actor method call?
+            # Return an MPIRemoteObj corresponding to result of actor method call?
             return None
 
     def num_cores_total(self) -> int:
@@ -273,10 +327,12 @@ class RaySystem(SystemInterface):
 
     def __init__(
         self,
+        address: Optional[str] = None,
         use_head: bool = False,
         num_nodes: Optional[int] = None,
         num_cpus: Optional[int] = None,
     ):
+        self._address: str = address
         self._use_head = use_head
         self._num_nodes = num_nodes
         self.num_cpus = int(get_num_cores()) if num_cpus is None else num_cpus
@@ -337,6 +393,7 @@ class RaySystem(SystemInterface):
 
     def init_devices(self):
         self._devices = []
+        self._device_to_node = {}
         for node_id in range(self._num_nodes):
             node = self._available_nodes[node_id]
             did = DeviceID(node_id, self._node_key(node), "cpu", 1)

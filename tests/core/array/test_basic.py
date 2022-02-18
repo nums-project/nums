@@ -84,7 +84,8 @@ def test_concatenate(app_inst: ArrayApplication):
     real_X_concated = np.concatenate([real_X, real_ones], axis=axis)
     assert np.allclose(X_concated.get(), real_X_concated)
 
-    real_X2 = np.random.random_sample(1000 * 17).reshape(1000, 17)
+    rs = np.random.RandomState(1337)
+    real_X2 = rs.random_sample(1000 * 17).reshape(1000, 17)
     X2 = app_inst.array(real_X2, block_shape=(X.block_shape[0], 3))
     X_concated = app_inst.concatenate(
         [X, ones, X2], axis=axis, axis_block_size=X.block_shape[axis]
@@ -119,10 +120,6 @@ def test_split(app_inst: ArrayApplication):
 def test_touch(app_inst: ArrayApplication):
     ones = app_inst.ones((123, 456), (12, 34))
     assert ones.touch() is ones
-
-
-def test_num_cores(app_inst: ArrayApplication):
-    assert np.allclose(app_inst.cm.num_cores_total(), systems_utils.get_num_cores())
 
 
 def ideal_tall_skinny_shapes(size, dtype):
