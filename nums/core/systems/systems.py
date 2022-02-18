@@ -155,7 +155,7 @@ class MPISystem(SystemInterface):
         if not isinstance(object_ids, (MPIRemoteObj, MPILocalObj)):
             for obj in object_ids:
                 if isinstance(obj, MPIRemoteObj):
-                    dest_rank = obj.get_dest_rank()
+                    dest_rank = obj.rank
                 # This should be true for just one rank which has the data.
                 else:
                     dest_rank = self.rank
@@ -168,7 +168,7 @@ class MPISystem(SystemInterface):
         else:
             obj = object_ids
             if isinstance(obj, MPIRemoteObj):
-                dest_rank = obj.get_dest_rank()
+                dest_rank = obj.rank
             # This should be true for just one rank which has the data.
             else:
                 dest_rank = self.rank
@@ -251,7 +251,7 @@ class MPISystem(SystemInterface):
                 return obj
         # Check if obj is remote.
         elif device_rank == self.rank:
-            sender_rank = obj.get_dest_rank()
+            sender_rank = obj.rank
             # TODO: Try Isend and Irecv and have a switch for sync and async.
             arg_value = self.comm.recv(sender_rank)
             return arg_value
