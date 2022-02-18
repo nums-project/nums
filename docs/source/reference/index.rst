@@ -7,3 +7,4 @@ API Reference
    :hidden:
 
    api.rst
+   numpy.rst
