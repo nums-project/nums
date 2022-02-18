@@ -9,10 +9,11 @@ API Documentation
 =================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
    api.rst
    numpy.rst
+   models.rst
 
 
 Indices and Tables

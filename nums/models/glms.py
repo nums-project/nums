@@ -24,42 +24,6 @@ from nums.core.array.blockarray import BlockArray
 from nums.core.array.random import NumsRandomState
 from nums.core import linalg
 
-# The GLMs are expressed in the following notation.
-# f(y) = exp((y.T @ theta - b(theta))/phi + c(y, phi))
-# phi is the dispersion parameter.
-# theta is the parameter of a model in canonical form.
-# b is the cumulant generating function.
-#
-# The link function is expressed as follows.
-# E(Y | X) = mu
-# Define the linear predictor eta = X.T @ beta
-# Define g as the link function, so that g(mu) = eta
-# E(Y | X) = g^{-1}(eta)
-#
-# The canonical link is given by g(mu) = (b')^{-1}(mu) = theta
-#
-# Note, for GLMs, the mean mu is some function of the model's parameter.
-# Normal: mu(mu) = mu
-# Bernoulli: mu(p) = p
-# Exponential: mu(lambda) = 1 / lambda
-# Poisson: mu(lambda) = lambda
-# Dirichlet: mu_i(a) = a_i / sum(a)
-#
-# Theta is generally a function of the model parameter:
-# Normal: theta(mu) = mu
-# Bernoulli: theta(p) = ln(p/(1-p))
-# Exponential: theta(lambda) = -lambda
-# Poisson: theta(lambda) = ln(lambda)
-# ...
-#
-# The canonical link maps mu to theta
-# Normal: mu(mu) = mu, theta(mu) = mu, b(theta) = theta^2/2, g(mu) = mu
-# Bernoulli:
-#   mu(p) = p, p(mu) = mu
-#   theta(p) = ln(p/(1-p)) = theta(mu) = ln(mu/(1-mu))
-#   b(theta) = log(1 + exp(theta))
-#   g(mu) = (b')^{-1}(mu) = ln(mu/(1-mu)) = ln(p/(1-p)) = theta(p)
-
 
 class GLM:
     def __init__(
@@ -240,6 +204,9 @@ class GLM:
         return 1 - dev / dev_null
 
     def obj_penalty(self, beta):
+        """
+        Returns the penalty term for the object function used in regularization.
+        """
         if self._penalty == "l1":
             return self._l1penalty * self._app.norm(beta, order=1)
         elif self._penalty == "l2":
@@ -252,6 +219,9 @@ class GLM:
             raise ValueError("Unexpected call to objective term, penalty=None.")
 
     def grad_penalty(self, beta):
+        """
+        Returns the penalty for the gradient used in regularization.
+        """
         if self._penalty == "l1":
             return self._l1penalty_vec * self._app.map_uop("sign", beta)
         elif self._penalty == "l2":
@@ -264,6 +234,9 @@ class GLM:
             raise ValueError("Unexpected call to objective term, penalty=None.")
 
     def hessian_penalty(self):
+        """
+        Returns the norm penalty for the hessian used in regularization.
+        """
         if self._penalty == "l1":
             return 0.0
         elif self._penalty == "l2" or self._penalty == "elasticnet":
@@ -306,6 +279,9 @@ class LinearRegressionBase(GLM):
         mu: BlockArray = None,
         beta: BlockArray = None,
     ):
+        """
+        Computes the gradient with regards to beta.
+        """
         if mu is None:
             mu = self.forward(X)
         r = X.transpose(defer=True) @ (mu - y)
@@ -315,19 +291,91 @@ class LinearRegressionBase(GLM):
         return r
 
     def hessian(self, X: BlockArray, y: BlockArray, mu: BlockArray = None):
+        """
+        Computes the hessian with regards to the hessian penalty.
+        """
         r = X.transpose(defer=True) @ X
         if self._penalty is not None:
             r += self.hessian_penalty()
         return r
 
     def deviance(self, y, y_pred):
+        """
+        Computes the deviance of the model with regards to y_pred.
+        """
         return self._app.sum((y - y_pred) ** self._app.two)
 
     def predict(self, X: BlockArray) -> BlockArray:
+        """
+        Predict using the Linear Regression model. Calls foward internally.
+        """
         return self.forward(X)
 
 
 class LinearRegression(LinearRegressionBase):
+    """Ordinary least squares Linear Regression.
+
+    LinearRegression fits a linear model with coefficients w = (w1, ..., wp)
+    to minimize the residual sum of squares between the observed targets in
+    the dataset, and the targets predicted by the linear approximation.
+
+    Parameters
+    ----------
+    tol : float, default=0.0001
+        The threshhold under which a gradient is considered to be 0. Used by the solver.
+
+    max_iter : int, default=100
+        The maximum iteration used by the solver.
+
+    solver : string, default="newton
+        function to obtain the beta coefficients of the model.
+
+    lr : float, default=0.01
+        Learning Rate. Used in the optimization of the model.
+
+    random_state : NumsRandomState, default=None
+        Seeds for randomness in model.
+
+    fit_intercept : bool, default=True
+        The intercept of regression is calculated for this model.
+        When data is centered, the intercept is calculated to 0.
+        Setting this option to False is unsupported.
+
+    normalize : bool, default=False
+        Normalizes the regressors before regression.
+        Setting this option to True is not yet supported.
+
+    Attributes
+    ----------
+    _app : global singleton instance of the application. Used internally.
+    _penalty
+    _lambda
+    _l1penalty
+    _l1penalty_vec
+    _l2penalty
+    _l2penalty_vec
+    _l2penalty_diag
+    alpha
+    _tol : corresponds to the parameter tol
+    _max_iter: corresponds to the parameter max_iter
+    _opt: corresponds to the parameter solver
+    _lr: corresponds to the paramter lr
+    _beta: BlockArray used internally for the optimizer to solve for the beta coefficients of the model
+    _beta0
+
+    See Also
+    --------
+    Ridge : Ridge regression addresses some of the
+        problems of Ordinary Least Squares by imposing a penalty on the
+        size of the coefficients with l2 regularization.
+    Lasso : The Lasso is a linear model that estimates
+        sparse coefficients with l1 regularization.
+    ElasticNet : Elastic-Net is a linear regression
+        model trained with both l1 and l2 -norm regularization of the
+        coefficients.
+    Notes
+    -----
+    """
     def __init__(
         self,
         tol=0.0001,
