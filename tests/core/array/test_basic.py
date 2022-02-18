@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+# pylint: disable=import-error, wrong-import-order, unused-import
 import numpy as np
 import pytest
 
@@ -23,7 +23,7 @@ from nums.core.grid.grid import DeviceID
 from nums.core.storage.storage import BimodalGaussian
 from nums.core.systems import utils as systems_utils
 
-import common  # pylint: disable=import-error, wrong-import-order
+import common
 
 
 def test_scalar_op(app_inst: ArrayApplication):
@@ -259,12 +259,12 @@ def test_compute_block_shape(app_inst: ArrayApplication):
 
 if __name__ == "__main__":
     # pylint: disable=import-error, no-member
-    from nums.core import application_manager
-    import nums.core.settings
+    import nums
+    from nums.core import application_manager, settings
 
     np.random.seed(1331)
 
-    nums.core.settings.system_name = "mpi"
+    settings.system_name = "mpi"
     app_inst = application_manager.instance()
 
     # test_scalar_op(app_inst)
