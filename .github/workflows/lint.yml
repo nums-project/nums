@@ -16,8 +16,7 @@ jobs:
       - name: Install NumS
         run: |
           python3 -m pip install --upgrade pip
-          sudo apt-get update
-          sudo apt install mpich
+          sudo apt install --fix-missing mpich
           pip3 install .[testing]
           pip install cython
           pip install crick
