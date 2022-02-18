@@ -18,9 +18,10 @@ import operator
 import random
 
 import numpy as np
+import sparse
 import scipy.linalg
 import scipy.special
-from numpy.random import Generator
+from numpy.random import Generator, RandomState
 from numpy.random import PCG64
 from sparse import GCXS
 
@@ -31,6 +32,9 @@ from nums.core.settings import np_ufunc_map
 
 def block_rng(seed, jump_index):
     return Generator(PCG64(seed).jumped(jump_index))
+
+def block_rng_legacy(seed, jump_index):
+    return RandomState(PCG64(seed).jumped(jump_index))
 
 
 class RNG(RNGInterface):
@@ -524,3 +528,40 @@ class ComputeCls(ComputeImp):
 
     def sparse_to_dense(self, arr):
         return arr.todense()
+
+    def sparse_random_block(
+        self,
+        rng_params,
+        rfunc_name,
+        rfunc_args,
+        shape,
+        dtype,
+        density,
+        fill_value,
+    ):
+        rng = block_rng_legacy(*rng_params)
+        op_func = rng.__getattribute__(rfunc_name)
+        result = sparse.random(
+            shape,
+            density = density,
+            random_state = rng,
+            data_rvs = lambda s: op_func(**rfunc_args, size=s),
+            format = "gcxs",
+            fill_value = fill_value,
+        )
+        if rfunc_name != "randint":
+            # Only random and integer supports sampling of a specific type.
+            result = result.astype(dtype)
+        return result
+    
+    def sparse_uop_map(self, op_name, arr, args, kwargs):
+        """
+        Args:
+            func: types.Callable
+            arrs: Tuple[Union[SparseArray, ndarray, scipy.sparse.spmatrix]]
+            kwargs: Dict
+        """
+        assert args is None, "pydata.sparse.elemwise only supports array positional args"
+        func = np.__getattribute__(op_name)
+        assert isinstance(func, np.ufunc)
+        return sparse.elemwise(func, arr, **kwargs)

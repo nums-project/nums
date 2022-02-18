@@ -170,6 +170,9 @@ class ComputeInterface(object):
     def sparse_to_dense(self, arr, syskwargs: Dict):
         raise NotImplementedError()
 
+    def sparse_random_block(self, rng_params, rfunc_name, rfunc_args, shape, density, fill_value, syskwargs: Dict):
+        raise NotImplementedError()
+
 
 class ComputeImp(object):
     pass

@@ -80,6 +80,19 @@ class RandomState(object):
             arr_perm = self.rs().permutation(shape[0], block_shape[0]).get()
             return x[arr_perm]
 
+    def sparse_randn(self, density, fill_value, *shape):
+        shape, block_shape = self._get_shapes(shape, _np.float64)
+        return self.rs().sparse_normal(
+            shape=shape, block_shape=block_shape, density=density, fill_value=fill_value,
+        )
+
+    def sparse_randint(self, low, high=None, size=None, dtype=int, density=0.01, fill_value=0):
+        if high is None:
+            high = low
+            low = 0
+        shape, block_shape = self._get_shapes(size, dtype)
+        return self.rs().sparse_randint(low, high, dtype, shape, block_shape, density, fill_value)
+
 
 # Default imp.
 def reset():
@@ -91,6 +104,8 @@ def reset():
     global randn
     global randint
     global permutation
+    global sparse_randn
+    global sparse_randint
 
     _default_random = RandomState()
     seed = _default_random.seed
@@ -99,6 +114,8 @@ def reset():
     randn = _default_random.randn
     randint = _default_random.randint
     permutation = _default_random.permutation
+    sparse_randn = _default_random.sparse_randn
+    sparse_randint = _default_random.sparse_randint
 
 
 _default_random = None
