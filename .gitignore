@@ -145,3 +145,5 @@ notebooks
 
 *.lock
 **/dask-worker-space
+
+docs/source/generated
