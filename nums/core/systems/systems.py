@@ -226,13 +226,6 @@ class MPISystem(SystemInterface):
                 return tuple([MPILocalObj(result[i]) for i in range(nout)])
             else:
                 return MPILocalObj(result)
-            # func_return = []
-            # for result in results:
-            #     func_return.append(MPILocalObj(result))
-            # if nout > 1:
-            #     return tuple(func_return)
-            # else:
-            #     return func_return[0]
         else:
             if nout > 1:
                 return tuple(repeat(MPIRemoteObj(dest_rank), nout))
