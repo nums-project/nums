@@ -118,7 +118,6 @@ if __name__ == "__main__":
     from nums.core import application_manager
     from nums.core import settings
 
-
     np.random.seed(1331)
 
     settings.system_name = "serial"
