@@ -217,8 +217,8 @@ class MPISystem(SystemInterface):
         for arg in args:
             if isinstance(arg, MPILocalObj):
                 assert not isinstance(arg.value, MPILocalObj)
-        resolved_args = self._resolve_args_or_kwargs(args, dest_rank)
-        resolved_kwargs = self._resolve_args_or_kwargs(kwargs, dest_rank)
+        resolved_args = self._resolve_args(args, dest_rank)
+        resolved_kwargs = self._resolve_kwargs(kwargs, dest_rank)
         func, nout = self._parse_call(name, options)
         if dest_rank == self.rank:
             result = func(*resolved_args, **resolved_kwargs)
@@ -231,6 +231,23 @@ class MPISystem(SystemInterface):
                 return tuple(repeat(MPIRemoteObj(dest_rank), nout))
             else:
                 return MPIRemoteObj(dest_rank)
+
+    def _resolve_kwargs(self, kwargs: dict, device_rank):
+        # Resolve dependencies: iterate over kwargs and figure out which ones need fetching.
+        assert isinstance(kwargs, dict), str(type(kwargs))
+        resolved_args = {}
+        for k, v in kwargs.items():
+            resolved_args[k] = self._resolve_arg(v, device_rank)
+        return resolved_args
+
+    def _resolve_args(self, args: Union[list, tuple], device_rank):
+        # Resolve dependencies: iterate over args and figure out which ones need fetching.
+        assert isinstance(args, (list, tuple)), str(type(args))
+        resolved_args = []
+        for arg in args:
+            resolved_arg = self._resolve_arg(arg, device_rank)
+            resolved_args.append(resolved_arg)
+        return resolved_args
 
     def _resolve_arg(self, arg, device_rank):
         if not isinstance(arg, (MPIRemoteObj, MPILocalObj)):
@@ -258,24 +275,6 @@ class MPISystem(SystemInterface):
             # The arg is remote and this is not the device on which we want to invoke the op.
             # Because the arg is remote, this is not the sender.
             return arg
-
-    def _resolve_args_or_kwargs(
-        self, args_or_kwargs: Union[list, tuple, dict], device_rank
-    ):
-        # Resolve dependencies: iterate over args_or_kwargs and figure out which ones need fetching.
-        assert isinstance(args_or_kwargs, (list, tuple, dict)), str(
-            type(args_or_kwargs)
-        )
-        if isinstance(args_or_kwargs, dict):
-            resolved_args = {}
-            for k, v in args_or_kwargs.items():
-                resolved_args[k] = self._resolve_arg(v, device_rank)
-        else:
-            resolved_args = []
-            for arg in args_or_kwargs:
-                resolved_arg = self._resolve_arg(arg, device_rank)
-                resolved_args.append(resolved_arg)
-        return resolved_args
 
     def register_actor(self, name: str, cls: type):
         if name in self._actors:
@@ -307,7 +306,7 @@ class MPISystem(SystemInterface):
 
     def call_actor_method(self, actor, method: str, *args, **kwargs):
         dest_rank = self._actor_to_rank[id(actor)]
-        # Resolve args_or_kwargs.
+        # Resolve args.
         resolved_args = self._resolve_args_or_kwargs(args, dest_rank)
         # Make sure it gets called on the correct rank.
         if not isinstance(actor, MPIRemoteObj):

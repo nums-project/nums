@@ -41,6 +41,7 @@ def test_app_manager(compute_name, system_name, device_grid_name, num_cpus):
     if system_name == "mpi":
         # pylint: disable=import-outside-toplevel, c-extension-no-member
         from mpi4py import MPI
+
         assert app.cm.num_cores_total() == MPI.COMM_WORLD.Get_size()
     elif num_cpus is None:
         assert app.cm.num_cores_total() == get_num_cores()
