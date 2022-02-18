@@ -100,7 +100,7 @@ class MPISystem(SystemInterface):
     """
 
     def __init__(self):
-        # pylint: disable=import-outside-toplevel c-extension-no-member
+        # pylint: disable=import-outside-toplevel c-extension-no-member import-error
         from mpi4py import MPI
 
         self.comm = MPI.COMM_WORLD
