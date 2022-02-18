@@ -241,16 +241,11 @@ class MPISystem(SystemInterface):
     def _resolve_object(self, obj, device_rank):
         if not isinstance(obj, (MPIRemoteObj, MPILocalObj)):
             return obj
-        is_remote = isinstance(obj, MPIRemoteObj)
-        device_rank_object_is_remote = self.comm.bcast(is_remote, device_rank)
-        if not device_rank_object_is_remote:
-            if device_rank == self.rank:
+        if device_rank == self.rank:
+            if isinstance(obj, MPILocalObj):
+                # If the obj is local then just return the value.
                 return obj.value
-            else:
-                # No need to do anything on other ranks when object is already on device rank.
-                return obj
-        # Check if obj is remote.
-        elif device_rank == self.rank:
+            # If the object is not local then execute a receive.
             sender_rank = obj.rank
             # TODO: Try Isend and Irecv and have a switch for sync and async.
             arg_value = self.comm.recv(sender_rank)
