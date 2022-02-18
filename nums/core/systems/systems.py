@@ -18,6 +18,7 @@ import logging
 from types import FunctionType
 from typing import Any, Union, List, Dict, Optional
 from itertools import repeat
+from dataclasses import dataclass
 
 import ray
 
@@ -82,21 +83,19 @@ class SerialSystem(SystemInterface):
     def num_cores_total(self) -> int:
         return self.num_cpus
 
-
+@dataclass
 class MPIRemoteObj(object):
-    def __init__(self, rank: int):
-        self._dest_rank = rank
+    _rank: int
 
-    def set_dest_rank(self, rank: int):
-        self._dest_rank = rank
+    def set_rank(self, rank: int):
+        self._rank = rank
 
-    def get_dest_rank(self):
-        return self._dest_rank
+    def get_rank(self):
+        return self._rank
 
-
+@dataclass
 class MPILocalObj(object):
-    def __init__(self, value):
-        self.value = value
+    value: Any
 
     def set_value(self, value):
         self.value = value
