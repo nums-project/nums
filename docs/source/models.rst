@@ -5,13 +5,6 @@ Classes in the ``nums.models`` module.
 
 .. currentmodule:: nums.models.glms
 
-
-.. autosummary::
-   :toctree: generated/
-
-   LinearRegression
-   
-
 Generalized Linear Models (GLMs)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The GLMs are expressed in the following notation.
@@ -20,7 +13,7 @@ The GLMs are expressed in the following notation.
 
 * :math:`\phi` is the dispersion parameter.
 * :math:`\theta` is the parameter of a model in canonical form.
-* :math:`\b` is the cumulant generating function.
+* :math:`b` is the cumulant generating function.
 
 
 The link function is expressed as follows.
@@ -65,9 +58,19 @@ The canonical link maps :math:`\mu` to :math:`\theta`
     * :math:`g(\mu) = (b')^{-1}(\mu) = ln(\frac{\mu}{1-\mu}) = ln(\frac{p}{1 - p}) = \theta(p)`
 
 
-.. autoclass:: GLM
-    :members:
-    :undoc-members:
+
+.. autosummary::
+   :toctree: generated/
+
+   LinearRegression
+   Ridge
+   ElasticNet
+   Lasso
+   LogisticRegression
+   PoissonRegression
+   ExponentialRegression
+
+
 
 
 Limited-memory BFGS

@@ -313,8 +313,8 @@ class LinearRegressionBase(GLM):
 
 
 class LinearRegression(LinearRegressionBase):
-    """
-    Ordinary least squares Linear Regression.
+    """Ordinary least squares Linear Regression.
+
     LinearRegression fits a linear model with coefficients w = (w1, ..., wp)
     to minimize the residual sum of squares between the observed targets in
     the dataset, and the targets predicted by the linear approximation.
@@ -362,6 +362,19 @@ class LinearRegression(LinearRegressionBase):
     _lr: corresponds to the paramter lr
     _beta: BlockArray used internally for the optimizer to solve for the beta coefficients of the model
     _beta0
+
+    See Also
+    --------
+    Ridge : Ridge regression addresses some of the
+        problems of Ordinary Least Squares by imposing a penalty on the
+        size of the coefficients with l2 regularization.
+    Lasso : The Lasso is a linear model that estimates
+        sparse coefficients with l1 regularization.
+    ElasticNet : Elastic-Net is a linear regression
+        model trained with both l1 and l2 -norm regularization of the
+        coefficients.
+    Notes
+    -----
     """
     def __init__(
         self,
