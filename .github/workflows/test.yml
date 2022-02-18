@@ -36,6 +36,9 @@ jobs:
       - name: Run Ray tests
         run: |
           coverage run --parallel-mode -m pytest --system-name ray
+      - name: Run MPI tests
+          run: |
+            coverage run --parallel-mode -m pytest --system-name mpi
       - name: Generate coverage report
         run: |
           coverage combine
