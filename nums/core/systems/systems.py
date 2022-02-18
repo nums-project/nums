@@ -136,7 +136,7 @@ class MPISystem(SystemInterface):
         self.init_devices()
 
     def init_devices(self):
-        # TODO: sort proc_names and dont do a all gather for did. construct them locally
+        # TODO: sort proc_names and don't do an all-gather for `did`. Construct `did` locally.
         proc_names = list(set(self.comm.allgather(self.proc_name)))
         did = DeviceID(
             proc_names.index(self.proc_name), self.proc_name, "cpu", self.rank
