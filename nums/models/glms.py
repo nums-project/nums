@@ -319,16 +319,18 @@ class LinearRegression(LinearRegressionBase):
     to minimize the residual sum of squares between the observed targets in
     the dataset, and the targets predicted by the linear approximation.
 
+    This docstring was copied from sklearn.linear_model.LinearRegression.
+
     Parameters
     ----------
     tol : float, default=0.0001
-        The threshhold under which a gradient is considered to be 0. Used by the solver.
+        Tolerance for stopping criteria.
 
     max_iter : int, default=100
-        The maximum iteration used by the solver.
+        Maximum number of iterations taken for the solvers to converge.
 
-    solver : string, default="newton
-        function to obtain the beta coefficients of the model.
+    solver : {'newton'}, default='newton'
+        Algorithm to use in the optimization problem. Default is ‘newton’.
 
     lr : float, default=0.01
         Learning Rate. Used in the optimization of the model.
@@ -347,7 +349,6 @@ class LinearRegression(LinearRegressionBase):
 
     Attributes
     ----------
-    _app : global singleton instance of the application. Used internally.
     _penalty
     _lambda
     _l1penalty
@@ -359,7 +360,7 @@ class LinearRegression(LinearRegressionBase):
     _tol : corresponds to the parameter tol
     _max_iter: corresponds to the parameter max_iter
     _opt: corresponds to the parameter solver
-    _lr: corresponds to the paramter lr
+    _lr: corresponds to the parameter lr
     _beta: BlockArray used internally for the optimizer to solve for the beta coefficients of the model
     _beta0
 
@@ -398,6 +399,73 @@ class LinearRegression(LinearRegressionBase):
 
 
 class Ridge(LinearRegressionBase):
+    """Linear least squares with l2 regularization.
+
+    Minimizes the objective function::
+
+    ||y - Xw||^2_2 + alpha * ||w||^2_2
+
+    This model solves a regression model where the loss function is
+    the linear least squares function and regularization is given by
+    the l2-norm. Also known as Ridge Regression or Tikhonov regularization.
+    This estimator has built-in support for multi-variate regression
+    (i.e., when y is a 2d BlockArray of shape (n_samples, n_targets)).
+
+    This docstring was copied from sklearn.linear_model.ridge_regression.
+
+    Parameters
+    ----------
+    alpha : float or array-like of shape (n_targets,)
+        Regularization strength; must be a positive float. Regularization
+        improves the conditioning of the problem and reduces the variance of
+        the estimates. Larger values specify stronger regularization.
+        Alpha corresponds to ``1 / (2C)`` in other linear models such as
+        :class:`~sklearn.linear_model.LogisticRegression` or
+        :class:`~sklearn.svm.LinearSVC`. If an array is passed, penalties are
+        assumed to be specific to the targets. Hence they must correspond in
+        number.
+
+    tol : float, default=0.0001
+        Tolerance for stopping criteria.
+
+    max_iter : int, default=100
+        Maximum number of iterations taken for the solvers to converge.
+
+    solver : {'newton'}, default='newton'
+        Algorithm to use in the optimization problem. Default is ‘newton’.
+
+    lr : float, default=0.01
+        Learning Rate. Used in the optimization of the model.
+
+    random_state : NumsRandomState, default=None
+        Seeds for randomness in model.
+
+    fit_intercept : bool, default=True
+        The intercept of regression is calculated for this model.
+        When data is centered, the intercept is calculated to 0.
+        Setting this option to False is unsupported.
+
+    normalize : bool, default=False
+        Normalizes the regressors before regression.
+        Setting this option to True is not yet supported.
+
+    Attributes
+    ----------
+    _penalty
+    _lambda
+    _l1penalty
+    _l1penalty_vec
+    _l2penalty
+    _l2penalty_vec
+    _l2penalty_diag
+    alpha
+    _tol : corresponds to the parameter tol
+    _max_iter: corresponds to the parameter max_iter
+    _opt: corresponds to the parameter solver
+    _lr: corresponds to the parameter lr
+    _beta: BlockArray used internally for the optimizer to solve for the beta coefficients of the model
+    _beta0
+    """
     def __init__(
         self,
         alpha=1.0,
@@ -423,6 +491,83 @@ class Ridge(LinearRegressionBase):
 
 
 class ElasticNet(LinearRegressionBase):
+    """Linear regression with combined L1 and L2 priors as regularizer.
+
+    Minimizes the objective function::
+
+            1 / (2 * n_samples) * ||y - Xw||^2_2
+            + alpha * l1_ratio * ||w||_1
+            + 0.5 * alpha * (1 - l1_ratio) * ||w||^2_2
+
+    If you are interested in controlling the L1 and L2 penalty
+    separately, keep in mind that this is equivalent to::
+
+            a * ||w||_1 + 0.5 * b * ||w||_2^2
+
+    where::
+
+            alpha = a + b and l1_ratio = a / (a + b)
+
+    The parameter l1_ratio corresponds to alpha in the glmnet R package while
+    alpha corresponds to the lambda parameter in glmnet. Specifically, l1_ratio
+    = 1 is the lasso penalty. Currently, l1_ratio <= 0.01 is not reliable,
+    unless you supply your own sequence of alpha.
+
+    This docstring was copied from sklearn.linear_model.ElasticNet.
+
+   Parameters
+   ----------
+   alpha : float or array-like of shape (n_targets,)
+       Regularization strength; must be a positive float. Regularization
+       improves the conditioning of the problem and reduces the variance of
+       the estimates. Larger values specify stronger regularization.
+       Alpha corresponds to ``1 / (2C)`` in other linear models such as
+       :class:`~sklearn.linear_model.LogisticRegression` or
+       :class:`~sklearn.svm.LinearSVC`. If an array is passed, penalties are
+       assumed to be specific to the targets. Hence they must correspond in
+       number.
+
+   tol : float, default=0.0001
+       Tolerance for stopping criteria.
+
+   max_iter : int, default=100
+       Maximum number of iterations taken for the solvers to converge.
+
+   solver : {'newton'}, default='newton'
+       Algorithm to use in the optimization problem. Default is ‘newton’.
+
+   lr : float, default=0.01
+       Learning Rate. Used in the optimization of the model.
+
+   random_state : NumsRandomState, default=None
+       Seeds for randomness in model.
+
+   fit_intercept : bool, default=True
+       The intercept of regression is calculated for this model.
+       When data is centered, the intercept is calculated to 0.
+       Setting this option to False is unsupported.
+
+   normalize : bool, default=False
+       Normalizes the regressors before regression.
+       Setting this option to True is not yet supported.
+
+   Attributes
+   ----------
+   _penalty
+   _lambda
+   _l1penalty
+   _l1penalty_vec
+   _l2penalty
+   _l2penalty_vec
+   _l2penalty_diag
+   alpha
+   _tol : corresponds to the parameter tol
+   _max_iter: corresponds to the parameter max_iter
+   _opt: corresponds to the parameter solver
+   _lr: corresponds to the parameter lr
+   _beta: BlockArray used internally for the optimizer to solve for the beta coefficients of the model
+   _beta0
+   """
     # Reference: https://glm-tools.github.io/pyglmnet/tutorial.html
     # sklearn documentation suggests lasso and elastic net have different coefficients
     # than linear regression, but this does not appear to be the case in any other source.
