@@ -12,17 +12,16 @@ NumS documentation
 
 **Date**: |today| **Version**: |version|
 
-**Download documentation**: `PDF Version <pandas.pdf>`__ | `Zipped HTML <pandas.zip>`__
+**Download documentation**: `PDF Version <nums.pdf>`__ | `Zipped HTML <nums.zip>`__
 
 **Useful links**:
-`Binary Installers <https://pypi.org/project/pandas>`__ |
-`Source Repository <https://github.com/pandas-dev/pandas>`__ |
-`Issues & Ideas <https://github.com/pandas-dev/pandas/issues>`__ |
-`Q&A Support <https://stackoverflow.com/questions/tagged/pandas>`__ |
+`Binary Installers <https://pypi.org/project/nums>`__ |
+`Source Repository <https://github.com/nums-project/nums>`__ |
+`Issues & Ideas <https://github.com/nums-project/nums/issues>`__ |
+`Q&A Support <https://stackoverflow.com/questions/tagged/nums>`__ |
 
-:mod:`pandas` is an open source, BSD-licensed library providing high-performance,
-easy-to-use data structures and data analysis tools for the `Python <https://www.python.org/>`__
-programming language.
+:mod:`NumS` is an open source, Apache-licensed library that translates Python and NumPy 
+to optimized distributed systems code.
 
 .. panels::
     :card: + intro-card text-center
@@ -34,12 +33,12 @@ programming language.
     Getting started
     ^^^^^^^^^^^^^^^
 
-    New to *pandas*? Check out the getting started guides. They contain an
-    introduction to *pandas'* main concepts and links to additional tutorials.
+    New to *NumS*? Check out the getting started guides. They contain an
+    introduction to *NumS'* main concepts and links to additional tutorials.
 
     +++
 
-    .. link-button:: getting_started
+    .. link-button:: get_started
             :type: ref
             :text: To the getting started guides
             :classes: btn-block btn-secondary stretched-link
@@ -51,7 +50,7 @@ programming language.
     ^^^^^^^^^^
 
     The user guide provides in-depth information on the
-    key concepts of pandas with useful background information and explanation.
+    key concepts of NumS with useful background information and explanation.
 
     +++
 
@@ -67,12 +66,12 @@ programming language.
     ^^^^^^^^^^^^^
 
     The reference guide contains a detailed description of
-    the pandas API. The reference describes how the methods work and which parameters can
+    the NumS API. The reference describes how the methods work and which parameters can
     be used. It assumes that you have an understanding of the key concepts.
 
     +++
 
-    .. link-button:: api
+    .. link-button:: reference
             :type: ref
             :text: To the reference guide
             :classes: btn-block btn-secondary stretched-link

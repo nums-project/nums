@@ -13,6 +13,8 @@
 import os
 import sys
 
+import nums
+
 sys.path.insert(0, os.path.abspath("../.."))
 
 
@@ -48,6 +50,11 @@ templates_path = ["_templates"]
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
 
+# sphinx-panels shouldn't add bootstrap css since the pydata-sphinx-theme
+# already loads it
+panels_add_bootstrap_css = False
+
+version = str(nums.__version__)
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -60,6 +67,10 @@ html_theme = "pydata_sphinx_theme"
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
+
+html_css_files = [
+    "css/nums.css",
+]
 
 html_logo = "_static/logo.svg"
 
