@@ -33,7 +33,7 @@ def test_rwd():
 
     array: np.ndarray = np.random.random(35).reshape(7, 5)
     ba: BlockArray = nps_app_inst.array(array, block_shape=(3, 4))
-    filename = "/tmp/darrays/read_write_delete_array_test"
+    filename = "/tmp/darrays/read_write_delete_array_test_" +  str(np.random.randint(0,99,1)[0])
     write_result_ba: BlockArray = nums.write(filename, ba)
     write_result_np = write_result_ba.get()
     for grid_entry in write_result_ba.grid.get_entry_iterator():
