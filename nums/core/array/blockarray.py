@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -1128,7 +1127,7 @@ class BlockArray(BlockArrayBase):
         return oids
 
 
-class Reshape(object):
+class Reshape:
     @staticmethod
     def compute_shape(shape, input_shape):
         size = np.product(shape)

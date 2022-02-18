@@ -29,13 +29,14 @@ author = "The NumS Team"
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "sphinx.ext.autodoc",
     "sphinx.ext.coverage",
     "sphinx.ext.napoleon",
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
     "sphinx_panels",
     "sphinx_autodoc_typehints",
+    "sphinx_rtd_theme",
+    "sphinx.ext.autosummary",
     "m2r2",
 ]
 
@@ -98,3 +99,28 @@ http_favicon = "_static/logo.jpeg"
 
 # Source files supported by Sphinx.
 source_suffix = [".rst", ".md"]
+
+autosummary_generate = True
+
+# A way to automatically generate API documentation upon push to GitHub.
+# https://github.com/readthedocs/readthedocs.org/issues/1139
+def run_apidoc(_):
+    ignore_paths = []
+
+    argv = ["-f", "-T", "-e", "-M", "-o", "source/generated", ".."] + ignore_paths
+
+    try:
+        # Sphinx 1.7+
+        from sphinx.ext import apidoc
+
+        apidoc.main(argv)
+    except ImportError:
+        # Sphinx 1.6 (and earlier)
+        from sphinx import apidoc
+
+        argv.insert(0, apidoc.__file__)
+        apidoc.main(argv)
+
+
+def setup(app):
+    app.connect("builder-inited", run_apidoc)

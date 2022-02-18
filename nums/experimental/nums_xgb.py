@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -159,7 +158,7 @@ def train(params: Dict, data: NumsDMatrix, *args, evals=(), **kwargs):
     return result
 
 
-class XGBClassifier(object):
+class XGBClassifier:
     def __init__(
         self,
         n_estimators=100,
