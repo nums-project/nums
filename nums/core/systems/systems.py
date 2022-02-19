@@ -450,7 +450,7 @@ class RaySystem(SystemInterface):
             node = self._device_to_node[device_id]
             node_key = self._node_key(node)
             if "resources" in options:
-                assert node_key not in options["resources"]
+                assert node_key not in options
             options["resources"] = {node_key: 1.0 / 10 ** 4}
         return self._remote_functions[name].options(**options).remote(*args, **kwargs)
 
