@@ -86,7 +86,7 @@ html_theme_options = {
         },
         {
             "name": "Twitter",
-            "url": "https://twitter.com/kanyewest",
+            "url": "https://twitter.com/nums_project",
             "icon": "fab fa-twitter-square",
             "type": "fontawesome",
         },
