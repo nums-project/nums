@@ -109,7 +109,6 @@ def app_inst_s3(request):
         ("dask", "cyclic"),
         ("ray", "cyclic"),
         ("ray", "packed"),
-        ("mpi", "packed"),
     ],
 )
 def app_inst_all(request):
