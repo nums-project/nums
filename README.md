@@ -205,3 +205,16 @@ https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html
 #### Cluster Setup
 NumS programs can run on a single machine, and can also seamlessly scale to large clusters. \
 Read more about [launching clusters](https://github.com/nums-project/nums/tree/master/cluster-setup).
+
+#### MPI Backend for HPC Clusters
+* NumS also supports cross-platform execution via it's MPI backend that can be used to run NumS on HPC clusters.
+* The following dependencies need to be installed in order to use the MPI backend: an MPI implementation like `MPICH` and the MPI for Python package `mpi4py`.
+```sh
+sudo apt update
+sudo apt-get mpich
+pip install mpi4py
+```
+* To run a program with mpi, make sure to select `mpi` as the backend in the nums script and run it either locally or submit it via a slurm based script on a cluster.
+```sh
+mpiexec -n <num_mpi_processes> python <nums_program>.py
+```
