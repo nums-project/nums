@@ -175,6 +175,54 @@ y_pred = model.predict(X)
 print("accuracy", (nps.sum(y == y_pred) / X.shape[0]).get())
 ```
 
+# Running NumS on Dask or MPI
+
+NumS can be configured to run on Dask and MPI.
+
+#### Dask Backend
+Install Dask using `pip install dask[complete]`.
+The following snippet runs a basic computation using the Dask backend.
+
+```
+import nums.numpy as nps
+from nums.core import settings
+settings.system_name = "dask"
+
+x = nps.array([1, 2, 3])
+y = nps.array([4, 5, 6])
+z = x + y
+print(z.get())
+...
+
+#### MPI Backend for HPC Clusters
+NumS also supports cross-platform execution via it's MPI backend that can be used to run NumS on HPC clusters.
+The following dependencies need to be installed (on Ubuntu or related Linux machine) in order to use the MPI backend: An MPI implementation like `MPICH` and the MPI for Python package `mpi4py`.
+
+```sh
+sudo apt update
+sudo apt-get mpich
+pip install mpi4py
+```
+
+The following snippet runs a basic computation using MPI.
+
+```
+import nums.numpy as nps
+from nums.core import settings
+settings.system_name = "mpi"
+
+x = nps.array([1, 2, 3])
+y = nps.array([4, 5, 6])
+z = x + y
+print(z.get())
+```
+
+Finally, to execute the above script on MPI using two processes, run the following command:
+
+```
+mpiexec -n 2 python example.py
+```
+
 # Installation
 NumS releases are tested on Linux-based systems running Python 3.7, 3.8, and 3.9.
 
@@ -205,16 +253,3 @@ https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html
 #### Cluster Setup
 NumS programs can run on a single machine, and can also seamlessly scale to large clusters. \
 Read more about [launching clusters](https://github.com/nums-project/nums/tree/master/cluster-setup).
-
-#### MPI Backend for HPC Clusters
-* NumS also supports cross-platform execution via it's MPI backend that can be used to run NumS on HPC clusters.
-* The following dependencies need to be installed in order to use the MPI backend: an MPI implementation like `MPICH` and the MPI for Python package `mpi4py`.
-```sh
-sudo apt update
-sudo apt-get mpich
-pip install mpi4py
-```
-* To run a program with mpi, make sure to select `mpi` as the backend in the nums script and run it either locally or submit it via a slurm based script on a cluster.
-```sh
-mpiexec -n <num_mpi_processes> python <nums_program>.py
-```
