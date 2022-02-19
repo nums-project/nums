@@ -15,6 +15,7 @@
 
 import os
 import time
+import random
 
 import numpy as np
 import pytest
@@ -28,7 +29,7 @@ def test_loadtxt(app_inst: ArrayApplication):
     seed = 1337
     rs = np.random.RandomState(seed)
 
-    fname = "test_text.out" + str(np.random.randint(0, 99, 1)[0])
+    fname = "test_text_%032x.out" % random.getrandbits(128)
     header = ["field1", "field2", "field3"]
     data = rs.random_sample(99).reshape(33, 3)
 
@@ -83,8 +84,8 @@ def test_loadtxt(app_inst: ArrayApplication):
 def test_rwd(app_inst: ArrayApplication):
     array: np.ndarray = np.random.random(35).reshape(7, 5)
     ba: BlockArray = app_inst.array(array, block_shape=(3, 4))
-    filename = "/tmp/darrays/read_write_delete_array_test" + str(
-        np.random.randint(0, 99, 1)[0]
+    filename = "/tmp/darrays/read_write_delete_array_test_%032x" % random.getrandbits(
+        128
     )
     write_result_ba: BlockArray = app_inst.write_fs(ba, filename)
     write_result_np = write_result_ba.get()
