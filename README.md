@@ -192,9 +192,9 @@ x = nps.array([1, 2, 3])
 y = nps.array([4, 5, 6])
 z = x + y
 print(z.get())
-...
+```
 
-#### MPI Backend for HPC Clusters
+#### MPI Backend
 NumS also supports cross-platform execution via it's MPI backend that can be used to run NumS on HPC clusters.
 The following dependencies need to be installed (on Ubuntu or related Linux machine) in order to use the MPI backend: An MPI implementation like `MPICH` and the MPI for Python package `mpi4py`.
 
