@@ -49,7 +49,7 @@ def test_loadtxt(nps_app_inst):
     seed = 1337
     rs = np.random.RandomState(seed)
 
-    fname = "test_text.out"
+    fname = "test_text.out" + str(np.random.randint(0, 99, 1)[0])
     # TODO (hme): There's a reshape issue that causes this method to currently fallback to numpy.
     #  Using a nice shape for now.
     data = rs.random_sample(99).reshape(33, 3)
