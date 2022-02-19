@@ -1285,10 +1285,10 @@ class ArrayApplication:
 
         shape_dtypes = []
 
-        for oid in oids:
+        for i, grid_entry in enumerate(arr.grid.get_entry_iterator()):
             shape_dtypes.append(
                 self.cm.shape_dtype(
-                    oid,
+                    oids[i],
                     syskwargs={
                         "grid_entry": grid_entry,
                         "grid_shape": arr.grid.grid_shape,
