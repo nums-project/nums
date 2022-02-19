@@ -13,6 +13,8 @@
 # limitations under the License.
 
 
+import random
+
 import boto3
 import numpy as np
 from moto import mock_s3
@@ -35,7 +37,7 @@ def test_rwd(app_inst_s3: ArrayApplication):
 
     array: np.ndarray = np.random.random(35).reshape(7, 5)
     ba: BlockArray = app_inst_s3.array(array, block_shape=(3, 4))
-    filename = "darrays/read_write_delete_array_test"
+    filename = "darrays/read_write_delete_array_test_%032x" % random.getrandbits(128)
     write_result: BlockArray = app_inst_s3.write_s3(ba, filename)
     write_result_arr = app_inst_s3.get(write_result)
     for grid_entry in write_result.grid.get_entry_iterator():

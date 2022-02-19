@@ -175,6 +175,54 @@ y_pred = model.predict(X)
 print("accuracy", (nps.sum(y == y_pred) / X.shape[0]).get())
 ```
 
+# Running NumS on Dask or MPI
+
+NumS can be configured to run on Dask and MPI.
+
+#### Dask Backend
+Install Dask using `pip install dask[complete]`.
+The following snippet runs a basic computation using the Dask backend.
+
+```
+import nums.numpy as nps
+from nums.core import settings
+settings.system_name = "dask"
+
+x = nps.array([1, 2, 3])
+y = nps.array([4, 5, 6])
+z = x + y
+print(z.get())
+```
+
+#### MPI Backend
+NumS also supports cross-platform execution via it's MPI backend, which can be used to run NumS on HPC clusters.
+The following dependencies need to be installed (on Ubuntu or related Linux machine) in order to use the MPI backend: An MPI implementation like `MPICH` and the MPI for Python package `mpi4py`.
+
+```sh
+sudo apt update
+sudo apt-get mpich
+pip install mpi4py
+```
+
+The following snippet runs a basic computation using MPI.
+
+```
+import nums.numpy as nps
+from nums.core import settings
+settings.system_name = "mpi"
+
+x = nps.array([1, 2, 3])
+y = nps.array([4, 5, 6])
+z = x + y
+print(z.get())
+```
+
+Finally, to execute the above script on MPI using two processes, run the following command:
+
+```
+mpiexec -n 2 python example.py
+```
+
 # Installation
 NumS releases are tested on Linux-based systems running Python 3.7, 3.8, and 3.9.
 

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import random
 
 import numpy as np
 
@@ -49,7 +50,7 @@ def test_loadtxt(nps_app_inst):
     seed = 1337
     rs = np.random.RandomState(seed)
 
-    fname = "test_text.out"
+    fname = "test_text_%032x.out" % random.getrandbits(128)
     # TODO (hme): There's a reshape issue that causes this method to currently fallback to numpy.
     #  Using a nice shape for now.
     data = rs.random_sample(99).reshape(33, 3)
@@ -268,10 +269,12 @@ if __name__ == "__main__":
     from nums.core import application_manager
     from nums.core import settings
 
-    settings.system_name = "serial"
+    settings.system_name = "mpi"
     nps_app_inst = application_manager.instance()
-    # test_where(nps_app_inst)
-    test_transpose(nps_app_inst)
+    np.random.seed(1331)
+
+    test_where(nps_app_inst)
+    # test_transpose(nps_app_inst)
     # test_loadtxt(nps_app_inst)
     # test_reshape(nps_app_inst)
     # test_all_alltrue_any(nps_app_inst)
