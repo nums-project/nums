@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+# pylint: disable=import-error, wrong-import-order, unused-import
 import numpy as np
 import pytest
 
@@ -23,7 +23,7 @@ from nums.core.grid.grid import DeviceID
 from nums.core.storage.storage import BimodalGaussian
 from nums.core.backends import utils as backend_utils
 
-import common  # pylint: disable=import-error, wrong-import-order
+import common
 
 
 def test_scalar_op(app_inst: ArrayApplication):
@@ -84,7 +84,8 @@ def test_concatenate(app_inst: ArrayApplication):
     real_X_concated = np.concatenate([real_X, real_ones], axis=axis)
     assert np.allclose(X_concated.get(), real_X_concated)
 
-    real_X2 = np.random.random_sample(1000 * 17).reshape(1000, 17)
+    rs = np.random.RandomState(1337)
+    real_X2 = rs.random_sample(1000 * 17).reshape(1000, 17)
     X2 = app_inst.array(real_X2, block_shape=(X.block_shape[0], 3))
     X_concated = app_inst.concatenate(
         [X, ones, X2], axis=axis, axis_block_size=X.block_shape[axis]
@@ -119,10 +120,6 @@ def test_split(app_inst: ArrayApplication):
 def test_touch(app_inst: ArrayApplication):
     ones = app_inst.ones((123, 456), (12, 34))
     assert ones.touch() is ones
-
-
-def test_num_cores(app_inst: ArrayApplication):
-    assert np.allclose(app_inst.cm.num_cores_total(), backend_utils.get_num_cores())
 
 
 def ideal_tall_skinny_shapes(size, dtype):
@@ -262,12 +259,17 @@ def test_compute_block_shape(app_inst: ArrayApplication):
 
 if __name__ == "__main__":
     # pylint: disable=import-error, no-member
-    import conftest
+    import nums
+    from nums.core import application_manager, settings
 
-    app_inst = conftest.get_app("serial")
-    test_scalar_op(app_inst)
-    test_array_integrity(app_inst)
+    np.random.seed(1331)
+
+    settings.system_name = "mpi"
+    app_inst = application_manager.instance()
+
+    # test_scalar_op(app_inst)
+    # test_array_integrity(app_inst)
     test_concatenate(app_inst)
     test_touch(app_inst)
-    test_split(app_inst)
-    test_compute_block_shape(app_inst)
+    # test_split(app_inst)
+    # test_compute_block_shape(app_inst)
