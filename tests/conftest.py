@@ -23,7 +23,12 @@ from nums.core.compute.compute_manager import ComputeManager
 from nums.core.grid.grid import DeviceGrid, CyclicDeviceGrid, PackedDeviceGrid
 from nums.core.systems import utils as systems_utils
 from nums.core.systems.filesystem import FileSystem
-from nums.core.systems.systems import SystemInterface, SerialSystem, RaySystem
+from nums.core.systems.systems import (
+    SystemInterface,
+    SerialSystem,
+    RaySystem,
+    MPISystem,
+)
 
 
 # pylint: disable=protected-access, import-outside-toplevel
@@ -55,6 +60,7 @@ def nps_app_inst(request):
     from nums.core import settings
     from nums.core import application_manager
     import nums.numpy as nps
+    import numpy as np
 
     settings.system_name = request.config.getoption("--system-name") or "serial"
     settings.device_grid_name = (
@@ -64,6 +70,7 @@ def nps_app_inst(request):
     # Need to reset numpy random state.
     # It's the only stateful numpy API object.
     nps.random.reset()
+    np.random.seed(1331)
     yield application_manager.instance()
     if settings.system_name == "ray":
         assert application_manager.instance().cm.system._manage_ray
@@ -128,6 +135,8 @@ def get_app(system_name, device_grid_name="cyclic"):
         system: SystemInterface = DaskSystem(
             num_cpus=systems_utils.get_num_cores(), num_nodes=1
         )
+    elif system_name == "mpi":
+        system: SystemInterface = MPISystem()
     else:
         raise Exception("Unexpected system name %s" % system_name)
     system.init()
