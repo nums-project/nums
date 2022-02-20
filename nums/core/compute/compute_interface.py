@@ -170,7 +170,10 @@ class ComputeInterface(object):
     def sparse_to_dense(self, arr, syskwargs: Dict):
         raise NotImplementedError()
 
-    def sparse_random_block(self, rng_params, rfunc_name, rfunc_args, shape, density, fill_value, syskwargs: Dict):
+    def sparse_random_block(self, rng_params, rfunc_name, rfunc_args, shape, p, fill_value, syskwargs: Dict):
+        raise NotImplementedError()
+
+    def sparse_uop_map(self, op_name, arr, args, kwargs, syskwargs: Dict):
         raise NotImplementedError()
 
 

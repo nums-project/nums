@@ -524,7 +524,8 @@ class ComputeCls(ComputeImp):
     # Sparse
 
     def dense_to_sparse(self, arr, fill_value):
-        return GCXS.from_numpy(arr, fill_value=fill_value)
+        result = GCXS.from_numpy(arr, fill_value=fill_value)
+        return result, result.nbytes, result.nnz
 
     def sparse_to_dense(self, arr):
         return arr.todense()
@@ -536,14 +537,16 @@ class ComputeCls(ComputeImp):
         rfunc_args,
         shape,
         dtype,
-        density,
+        p,
         fill_value,
     ):
         rng = block_rng_legacy(*rng_params)
         op_func = rng.__getattribute__(rfunc_name)
+        # Sample nnz from Binomial(size, p)
+        nnz = rng.binomial(np.product(shape), p)
         result = sparse.random(
             shape,
-            density = density,
+            nnz = nnz,
             random_state = rng,
             data_rvs = lambda s: op_func(**rfunc_args, size=s),
             format = "gcxs",
@@ -552,8 +555,8 @@ class ComputeCls(ComputeImp):
         if rfunc_name != "randint":
             # Only random and integer supports sampling of a specific type.
             result = result.astype(dtype)
-        return result
-    
+        return result, result.nbytes, result.nnz
+
     def sparse_uop_map(self, op_name, arr, args, kwargs):
         """
         Args:
@@ -561,7 +564,7 @@ class ComputeCls(ComputeImp):
             arrs: Tuple[Union[SparseArray, ndarray, scipy.sparse.spmatrix]]
             kwargs: Dict
         """
-        assert args is None, "pydata.sparse.elemwise only supports array positional args"
+        assert args == (), "pydata.sparse.elemwise only supports array positional args"
         func = np.__getattribute__(op_name)
         assert isinstance(func, np.ufunc)
         return sparse.elemwise(func, arr, **kwargs)

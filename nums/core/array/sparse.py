@@ -1,8 +1,9 @@
+from typing import Optional
+from nums.core.array import utils as array_utils
 from nums.core.array.base import BlockArrayBase, Block
 from nums.core.array.blockarray import BlockArray
 from nums.core.compute.compute_manager import ComputeManager
 from nums.core.grid.grid import ArrayGrid
-from typing import Iterator, List, Tuple
 import numpy as np
 
 
@@ -21,15 +22,16 @@ class SparseBlock(Block):
     ):
         super().__init__(grid_entry, grid_shape, shape, dtype, transposed, cm, id)
         self.fill_value = fill_value
-        self.oid = None
-        self.nbytes = None
+        # Keep as ObjectRefs to avoid blocking on creation?
+        self._nbytes: object = None
+        self._nnz: object = None
 
     def __repr__(self):
         return f"SparseBlock({self.oid})"
 
     def size(self):
         return np.product(self.shape)
-
+    
     def copy(self, shallow=True):
         assert shallow, "Only shallow copies are currently supported."
         block = SparseBlock(
@@ -38,7 +40,8 @@ class SparseBlock(Block):
             self.shape,
             self.dtype,
             self.transposed,
-            self.cm,
+            self.fill_value,
+            self._cm,
         )
         block.oid = self.oid
         return block
@@ -79,7 +82,7 @@ class SparseBlock(Block):
         else:
             syskwargs = {"device_id": device_id}
         block.device_id = device_id
-        block.oid = self._cm.sparse_map_uop(
+        block.oid = self._cm.sparse_uop_map(
             op_name, self.oid, args, kwargs, syskwargs=syskwargs
         )
         return block
@@ -121,12 +124,12 @@ class SparseBlock(Block):
             )
             return block
 
+    def tensordot(self, other, axes):
+        return self.bop("sparse_tensordot", other, args={"axes": axes})
+
     def __add__(self, other):
         if isinstance(other, SparseBlock):
             return self.bop("sparse_add", other, args={})
-
-    def tensordot(self, other, axes):
-        return self.bop("sparse_tensordot", other, args={"axes": axes})
 
 
 class SparseBlockArray(BlockArray):
@@ -146,7 +149,6 @@ class SparseBlockArray(BlockArray):
         self.size = np.product(self.shape)
         self.ndim = len(self.shape)
         self.dtype = self.grid.dtype
-        self.nbytes = 0 #
         self.fill_value = fill_value
         self.blocks = blocks
         if self.blocks is None:
@@ -161,21 +163,46 @@ class SparseBlockArray(BlockArray):
                     fill_value,
                     self.cm,
                 )
+        self._nbytes: object = None
+        self._nnz: object = None
+
+    def __getattr__(self, item):
+        if item == "nbytes":
+            return self._nbytes #.get()
+        elif item == "nnz":
+            return self._nnz #.get()
+        else:
+            super().__getattr__(item)
 
     @classmethod
     def from_ba(cls, ba: BlockArrayBase, fill_value=0):
         grid = ArrayGrid(ba.shape, ba.block_shape, ba.dtype.__name__)
         sba = SparseBlockArray(grid, ba.cm, fill_value)
+        nbytes_oids = []
+        nnz_oids = []
         for grid_entry in grid.get_entry_iterator():
             block: Block = ba.blocks[grid_entry]
-            sba.blocks[grid_entry].oid = sba.cm.dense_to_sparse(
+            sba.blocks[grid_entry].oid, nb, nz = sba.cm.dense_to_sparse(
                 block.oid,
                 fill_value,
                 syskwargs = {
                     "grid_entry": block.grid_entry,
                     "grid_shape": block.grid_shape,
+                    "num_returns": 3,
                 },
             )
+            sba.blocks[grid_entry]._nbytes = nb
+            sba.blocks[grid_entry]._nnz = nz
+            nbytes_oids.append(nb)
+            nnz_oids.append(nz)
+        sba._nbytes = sba.cm.sum_reduce(
+            *nbytes_oids,
+            syskwargs = {"device_id": 0}
+        )
+        sba._nnz = sba.cm.sum_reduce(
+            *nnz_oids,
+            syskwargs = {"device_id": 0}
+        )
         return sba
 
     def to_ba(self):
@@ -192,196 +219,27 @@ class SparseBlockArray(BlockArray):
             )
         return ba
 
+    def copy(self):
+        grid_copy = self.grid.from_meta(self.grid.to_meta())
+        rarr_copy = SparseBlockArray(grid_copy, self.cm, self.fill_value)
+        for grid_entry in grid_copy.get_entry_iterator():
+            rarr_copy.blocks[grid_entry] = self.blocks[grid_entry].copy()
+        return rarr_copy
 
-# class ArrayIndex(ArrayGrid):
-#     """
-#     For now, use COO
-#     """
+    def ufunc(self, op_name):
+        result = self.copy()
+        for grid_entry in self.grid.get_entry_iterator():
+            result.blocks[grid_entry] = self.blocks[grid_entry].ufunc(op_name)
+        return result
 
-#     def __init__(self, shape: Tuple, block_shape: Tuple, dtype: str):
-#         super().__init__(shape, block_shape, dtype)
-#         self.coordinates = []  # Basically grid_entry
-#         self.blocks = []
+    def __elementwise__(self, op_name, other):
+        pass
 
-#     def get_sparse_entry_iterator(self) -> Iterator[Tuple]:
-#         return self.coordinates
+    def __add__(self, other):
+        if isinstance(other, SparseBlockArray):
+            return self.__elementwise__("add", self)
+        elif isinstance(other, BlockArray):
+            return self.__elementwise__("sd_add", self)
 
-#     def _compare_coord(self, coord1, coord2):
-#         assert len(coord1) == len(coord2)
-#         for i in range(len(coord1)):
-#             if coord1[i] > coord2[i]:
-#                 return 1
-#             elif coord1[i] < coord2[i]:
-#                 return -1
-#         return 0
-
-#     def insert_block(self, coord, block):
-#         """
-#         Keep sorted by coordinate using binary insertion
-#         """
-#         top, bot = 0, len(self.coordinates) - 1
-#         while top < bot:
-#             mid = top + (bot - top) // 2
-#             comp = self._compare_coord(coord, self.coordinates[mid])
-#             if comp == 1:
-#                 top = mid + 1
-#             elif comp == -1:
-#                 bot = mid
-#             else:
-#                 raise Exception(f"Block already exists at {coord}")
-#         self.coordinates.insert(top, coord)
-#         self.blocks.insert(top, block)
-
-#     def block_at(self, coord):
-#         # Inefficient
-#         for i, c in enumerate(self.coordinates):
-#             if c == coord:
-#                 return self.blocks[i]
-#         return None
-    
-#     def copy(self):
-#         index = self.from_meta(self.to_meta())
-#         index.coordinates = []
-#         index.blocks = []
-#         for i, grid_entry in enumerate(self.get_sparse_entry_iterator()):
-#             index.coordinates.append(tuple(grid_entry))
-#             index.blocks.append(self.blocks[i].copy())
-#         return index
-
-
-# class SparseBlockArrayI(object):
-#     @classmethod
-#     def from_ba(cls, ba: BlockArrayBase, fill_value=0):
-#         index = ArrayIndex(ba.shape, ba.block_shape, ba.dtype.__name__)
-#         sp_ba = SparseBlockArrayI(index, ba.cm, fill_value)
-#         mask = ba != fill_value
-#         oids = []
-#         for grid_entry in mask.grid.get_entry_iterator():
-#             block: Block = mask.blocks[grid_entry]
-#             oid = mask.cm.any(
-#                 block.oid,
-#                 syskwargs={
-#                     "grid_entry": block.grid_entry,
-#                     "grid_shape": block.grid_shape,
-#                 },
-#             )
-#             oids.append((grid_entry, oid))
-#         for grid_entry, oid in oids:
-#             if sp_ba.cm.get(oid):
-#                 block: Block = ba.blocks[grid_entry]
-#                 oid = sp_ba.cm.dense_to_sparse(
-#                     block.oid,
-#                     fill_value,
-#                     syskwargs={
-#                         "grid_entry": block.grid_entry,
-#                         "grid_shape": block.grid_shape,
-#                     },
-#                 )
-#                 sp_block = SparseBlock(
-#                     grid_entry,
-#                     index.grid_shape,
-#                     index.shape,
-#                     dtype=ba.dtype,
-#                     transposed=False,
-#                     cm=sp_ba.cm,
-#                 )
-#                 sp_block.oid = oid
-#                 sp_ba.index.insert_block(grid_entry, sp_block)
-#         return sp_ba
-
-#     @classmethod
-#     def random(
-#         cls,
-#         cm: ComputeManager, 
-#         shape,
-#         block_shape,
-#         density,
-#         random_state,
-#         data_rvs,
-#         dtype,
-#         fill_value=0,
-#     ):
-#         index = ArrayIndex(shape, block_shape, dtype.__name__)
-#         sp_ba = SparseBlockArrayI(index, cm, fill_value)
-#         for grid_entry in sp_ba.index.get_entry_iterator():
-#             sp_block = SparseBlock(
-#                 grid_entry,
-#                 index.grid_shape,
-#                 index.shape,
-#                 dtype=dtype,
-#                 transposed=False,
-#                 cm=cm
-#             )
-#             sp_block.oid = cm.sparse_random_block(
-#                 block_shape,
-#                 density,
-#                 random_state,
-#                 data_rvs,
-#                 fill_value,
-#                 syskwargs={
-#                     "grid_entry": grid_entry,
-#                     "grid_shape": index.grid_shape,
-#                 },
-#             )
-#             sp_ba.index.insert_block(grid_entry, sp_block)
-#         return sp_ba
-
-#     def __init__(self, index: ArrayIndex, cm: ComputeManager, fill_value):
-#         self.index = index
-#         self.cm = cm
-#         self.shape = index.shape
-#         self.block_shape = index.block_shape
-#         self.grid_shape = index.grid_shape
-#         self.size = len(self.shape)
-#         self.ndim = np.product(self.shape)
-#         self.dtype = self.index.dtype
-#         self.fill_value = fill_value
-#         init_ops = {
-#             0: "zeros",
-#             1: "ones",
-#         }
-#         self.init_op = init_ops.get(fill_value, "empty")
-
-#     def __repr__(self):
-#         return f"SparseBlockArrayI({self.index.blocks})"
-
-#     def get(self):
-#         return self.to_ba(self).get()
-
-#     def copy(self):
-#         index_copy = self.index.copy()
-#         rarr_copy = SparseBlockArrayI(index_copy, self.cm, self.fill_value)
-#         return rarr_copy
-
-#     def to_ba(self):
-#         grid = ArrayGrid(self.shape, self.block_shape, self.dtype.__name__)
-#         grid_meta = grid.to_meta()
-#         ba = BlockArray(grid, self.cm)
-#         for grid_entry in self.index.get_entry_iterator():
-#             # FIXME: inefficient linear search
-#             if grid_entry in self.index.coordinates:
-#                 sp_block = self.index.block_at(grid_entry)
-#                 ba.blocks[grid_entry].oid = self.cm.sparse_to_dense(
-#                     sp_block.oid,
-#                     syskwargs={
-#                         "grid_entry": grid_entry,
-#                         "grid_shape": self.grid_shape,
-#                     },
-#                 )
-#             else:
-#                 ba.blocks[grid_entry].oid = self.cm.new_block(
-#                     self.init_op,
-#                     grid_entry,
-#                     grid_meta,
-#                     syskwargs={
-#                         "grid_entry": grid_entry,
-#                         "grid_shape": self.grid_shape,
-#                     },
-#                 )
-#         return ba
-
-#     def __elementwise__(self, op_name, other):
-#         assert self.shape == other.shape and self.block_shape
-
-#     def __add__(self, other):
-#         return self.__elementwise__("add", other)
+    def __radd__(self, other):
+        pass

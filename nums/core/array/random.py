@@ -218,7 +218,7 @@ class NumsRandomState(object):
 
     def sparse_randint(
         self, low, high=None, dtype=int, shape=None, block_shape=None,
-        density=0.01, fill_value=0,
+        p=0.01, fill_value=0,
     ):
         if dtype is None:
             dtype = np.float64
@@ -226,30 +226,30 @@ class NumsRandomState(object):
         return self._sparse_sample_basic(
             "randint", shape, block_shape, dtype,
             {"low": low, "high": high, "dtype": dtype},
-            density, fill_value,
+            p, fill_value,
         )
 
     def sparse_uniform(
         self, low=0.0, high=1.0, shape=None, block_shape=None, dtype=None,
-        density=0.01, fill_value=0,
+        p=0.01, fill_value=0,
     ):
         return self._sparse_sample_basic(
             "uniform", shape, block_shape, dtype,
             {"low": low, "high": high},
-            density, fill_value,
+            p, fill_value,
         )
 
     def sparse_normal(self, loc=0.0, scale=1.0, shape=None, block_shape=None, dtype=None,
-        density=0.01, fill_value=0,
+        p=0.01, fill_value=0,
     ):
         return self.sparse_sample_basic(
             "normal", shape, block_shape, dtype,
             {"loc": loc, "scale": scale},
-            density, fill_value,
+            p, fill_value,
         )
 
     def _sparse_sample_basic(
-        self, rfunc_name, shape, block_shape, dtype, rfunc_args: Dict, density, fill_value,
+        self, rfunc_name, shape, block_shape, dtype, rfunc_args: Dict, p, fill_value,
     ) -> SparseBlockArray:
         if shape is None:
             assert block_shape is None
@@ -262,19 +262,37 @@ class NumsRandomState(object):
         assert isinstance(dtype, type)
         assert "size" not in rfunc_args
         grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype=dtype.__name__)
-        ba: SparseBlockArray = SparseBlockArray(grid, self._cm, fill_value)
-        for grid_entry in ba.grid.get_entry_iterator():
+        sba: SparseBlockArray = SparseBlockArray(grid, self._cm, fill_value)
+        nbytes_oids = []
+        nnz_oids = []
+        for grid_entry in sba.grid.get_entry_iterator():
             rng_params = list(self._rng.new_block_rng_params())
             this_block_shape = grid.get_block_shape(grid_entry)
-            block: SparseBlock = ba.blocks[grid_entry]
-            block.oid = self._cm.sparse_random_block(
+            block: SparseBlock = sba.blocks[grid_entry]
+            block.oid , nb, nz = self._cm.sparse_random_block(
                 rng_params,
                 rfunc_name,
                 rfunc_args,
                 this_block_shape,
                 dtype,
-                density,
+                p,
                 fill_value,
-                syskwargs={"grid_entry": grid_entry, "grid_shape": grid.grid_shape},
+                syskwargs={
+                    "grid_entry": grid_entry,
+                    "grid_shape": grid.grid_shape,
+                    "num_returns": 3,
+                },
             )
-        return ba
+            block._nbytes = nb
+            block._nnz = nz
+            nbytes_oids.append(nb)
+            nnz_oids.append(nz)
+        sba._nbytes = sba.cm.sum_reduce(
+            *nbytes_oids,
+            syskwargs = {"device_id": 0}
+        )
+        sba._nnz = sba.cm.sum_reduce(
+            *nnz_oids,
+            syskwargs = {"device_id": 0}
+        )
+        return sba
