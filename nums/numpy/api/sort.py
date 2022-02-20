@@ -364,6 +364,7 @@ def sort(arr: BlockArray, axis=-1, kind=None, order=None) -> BlockArray:
 
     return _instance().sort(arr, kind=kind)
 
+
 def top_k(
     a: BlockArray, k: int, largest=True, sorted=False
 ) -> Tuple[BlockArray, BlockArray]:
