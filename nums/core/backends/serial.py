@@ -58,7 +58,9 @@ class SerialBackend(Backend):
         assert name not in self._actors
         self._actors[name] = cls
 
-    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+    def make_actor(
+        self, name: str, *args, device_id: DeviceID = None, **kwargs
+    ):  # pylint: disable=unused-argument
         return self._actors[name](*args, **kwargs)
 
     def call_actor_method(self, actor, method: str, *args, **kwargs):

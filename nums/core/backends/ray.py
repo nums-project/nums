@@ -221,6 +221,8 @@ class RayBackendStockScheduler(RayBackend):
                 assert node_key not in options["resources"]
         return self._remote_functions[name].options(**options).remote(*args, **kwargs)
 
-    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+    def make_actor(
+        self, name: str, *args, device_id: DeviceID = None, **kwargs
+    ):  # pylint: disable=unused-argument
         actor = self._actors[name]
         return actor.remote(*args, **kwargs)
