@@ -130,8 +130,8 @@ def get_app(backend_name, device_grid_name="cyclic"):
         backend: Backend = DaskBackend(
             num_cpus=backend_utils.get_num_cores(), num_nodes=1
         )
-    elif system_name == "mpi":
-        system: SystemInterface = MPISystem()
+    elif backend_name == "mpi":
+        backend: Backend = MPIBackend()
     else:
         raise Exception("Unexpected backend name %s" % backend_name)
     backend.init()
