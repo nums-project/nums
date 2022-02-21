@@ -33,7 +33,6 @@ def test_app_manager(compute_name, system_name, device_grid_name, num_cpus):
     settings.system_name = system_name
     settings.device_grid_name = device_grid_name
     settings.num_cpus = num_cpus
-
     app: ArrayApplication = application_manager.instance()
     print(settings.num_cpus, num_cpus, app.cm.num_cores_total())
     app_arange = app.arange(0, shape=(10,), block_shape=(10,))
@@ -53,5 +52,5 @@ def test_app_manager(compute_name, system_name, device_grid_name, num_cpus):
     settings.num_cpus = None
 
 
-# if __name__ == "__main__":
-#     test_app_manager("numpy", "serial", "cyclic", 1)
+if __name__ == "__main__":
+    test_app_manager("numpy", "serial", "cyclic", 2)
