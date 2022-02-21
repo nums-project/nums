@@ -26,7 +26,7 @@ def test_modin(nps_app_inst):
     from nums.core import settings
     from nums.core.backends.backends import RayBackend
 
-    if not isinstance(nps_app_inst.cm.backend, RayBackend):
+    if not isinstance(nps_app_inst.km.backend, RayBackend):
         return
 
     filename = settings.pj(
