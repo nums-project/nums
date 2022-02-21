@@ -13,4 +13,5 @@
 # limitations under the License.
 from .base import Backend
 from .ray import RayBackend, RayBackendStockScheduler
+from .mpi import MPIBackend
 from .serial import SerialBackend
