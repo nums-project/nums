@@ -84,7 +84,7 @@ def create():
             num_cpus=settings.num_cpus,
         )
     elif backend_name == "mpi":
-        system: SystemInterface = MPISystem()
+        backend: Backend = MPIBackend()
     elif backend_name == "ray-scheduler":
         use_head = settings.use_head
         num_nodes = int(np.product(settings.cluster_shape))
