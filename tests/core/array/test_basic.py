@@ -21,7 +21,7 @@ from nums.core.array.blockarray import BlockArray
 from nums.core.grid.grid import ArrayGrid
 from nums.core.grid.grid import Device
 from nums.core.storage.storage import BimodalGaussian
-from nums.core.systems import utils as systems_utils
+from nums.core.backends import utils as backend_utils
 
 import common
 

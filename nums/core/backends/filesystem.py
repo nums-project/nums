@@ -429,7 +429,7 @@ class FileSystem:
                 syskwargs={"device": device},
             )
             result_oids.append(oid)
-        file_results = self.cm.system.get(result_oids)
+        file_results = self.cm.backend.get(result_oids)
 
         # Check if all the nodes have all the data.
         all_has_all = True

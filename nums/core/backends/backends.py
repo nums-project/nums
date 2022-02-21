@@ -23,15 +23,15 @@ from dataclasses import dataclass
 import ray
 
 from nums.core.grid.grid import Device
-from nums.core.systems.system_interface import SystemInterface
-from nums.core.systems.utils import get_private_ip, get_num_cores
+from nums.core.backends.backend_interface import Backend
+from nums.core.backends.utils import get_private_ip, get_num_cores
 from nums.core import settings
 
 
 # pylint: disable = unused-argument
 
 
-class SerialSystem(SystemInterface):
+class SerialBackend(Backend):
     def __init__(self, num_cpus: Optional[int] = None):
         self.num_cpus = int(get_num_cores()) if num_cpus is None else num_cpus
         self._remote_functions: dict = {}
@@ -94,7 +94,7 @@ class MPILocalObj(object):
     value: Any
 
 
-class MPISystem(SystemInterface):
+class MPIBackend(Backend):
     """
     Implements SystemInterface for MPI.
     """
@@ -303,10 +303,10 @@ class MPISystem(SystemInterface):
         return self.num_cpus
 
 
-class RaySystem(SystemInterface):
+class RayBackend(Backend):
     # pylint: disable=abstract-method
     """
-    Implements SystemInterface for Ray.
+    Implements backend for Ray.
     """
 
     def __init__(
@@ -485,9 +485,9 @@ class RaySystem(SystemInterface):
         return getattr(actor, method).remote(*args, **kwargs)
 
 
-class RaySystemStockScheduler(RaySystem):
+class RayBackendStockScheduler(RayBackend):
     """
-    An implementation of the Ray system which ignores scheduling commands given
+    An implementation of the Ray backend which ignores scheduling commands given
     by the caller. For testing only.
     """
 

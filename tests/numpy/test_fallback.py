@@ -274,7 +274,7 @@ if __name__ == "__main__":
     # pylint: disable=import-error
     from nums.core import application_manager
 
-    settings.system_name = "serial"
+    settings.backend_name = "serial"
     nps_app_inst = application_manager.instance()
     # test_doctest_fallback(nps_app_inst)
     # test_manual_cov(nps_app_inst)

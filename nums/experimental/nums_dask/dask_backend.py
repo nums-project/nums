@@ -26,14 +26,14 @@ except Exception as e:
         "Unable to import dask. Install dask with command 'pip install dask[complete]'"
     ) from e
 from nums.core.grid.grid import Device
-from nums.core.systems.system_interface import SystemInterface
-from nums.core.systems.utils import get_num_cores
+from nums.core.backends.backend_interface import Backend
+from nums.core.backends.utils import get_num_cores
 
 
 # pylint: disable = unused-argument
 
 
-class DaskSystem(SystemInterface):
+class DaskBackend(Backend):
     def __init__(
         self,
         address: Optional[str] = None,
@@ -177,9 +177,9 @@ class DaskSystem(SystemInterface):
         return actor_future
 
 
-class DaskSystemStockScheduler(DaskSystem):
+class DaskBackendStockScheduler(DaskBackend):
     """
-    An implementation of the Dask system which ignores scheduling commands given
+    An implementation of the Dask backend which ignores scheduling commands given
     by the caller. For testing only.
     """
 

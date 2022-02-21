@@ -464,7 +464,7 @@ if __name__ == "__main__":
     from nums.core import application_manager
     from nums.core import settings
 
-    settings.system_name = "mpi"
+    settings.backed_name = "mpi"
     nps_app_inst = application_manager.instance()
 
     np.random.seed(1331)
