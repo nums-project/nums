@@ -41,4 +41,4 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2
         with:
-          env_vars: OS,PYTHON
+          env_vars: OS,PYTHON,BACKEND
