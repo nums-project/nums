@@ -464,8 +464,10 @@ if __name__ == "__main__":
     from nums.core import application_manager
     from nums.core import settings
 
-    settings.backend_name = "serial"
+    settings.backed_name = "mpi"
     nps_app_inst = application_manager.instance()
+
+    np.random.seed(1331)
     # test_inner_outer(nps_app_inst)
     # test_dot(nps_app_inst)
     # test_overloads(nps_app_inst)

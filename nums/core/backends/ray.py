@@ -28,7 +28,7 @@ from .utils import get_private_ip, get_num_cores
 class RayBackend(Backend):
     # pylint: disable=abstract-method
     """
-    Implements Backend for Ray.
+    Implements backend for Ray.
     """
 
     def __init__(
@@ -218,7 +218,7 @@ class RayBackendStockScheduler(RayBackend):
             node = self._device_to_node[device_id]
             node_key = self._node_key(node)
             if "resources" in options:
-                assert node_key not in options
+                assert node_key not in options["resources"]
         return self._remote_functions[name].options(**options).remote(*args, **kwargs)
 
     def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):

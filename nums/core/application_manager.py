@@ -28,6 +28,7 @@ from nums.core.backends import (
     Backend,
     SerialBackend,
     RayBackend,
+    MPIBackend,
     RayBackendStockScheduler,
 )
 
@@ -82,6 +83,8 @@ def create():
             num_nodes=num_nodes,
             num_cpus=settings.num_cpus,
         )
+    elif backend_name == "mpi":
+        backend: Backend = MPIBackend()
     elif backend_name == "ray-scheduler":
         use_head = settings.use_head
         num_nodes = int(np.product(settings.cluster_shape))

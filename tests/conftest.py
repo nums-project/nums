@@ -23,7 +23,7 @@ from nums.core.compute.compute_manager import ComputeManager
 from nums.core.grid.grid import DeviceGrid, CyclicDeviceGrid, PackedDeviceGrid
 from nums.core.backends import utils as backend_utils
 from nums.core.backends.filesystem import FileSystem
-from nums.core.backends import Backend, SerialBackend, RayBackend
+from nums.core.backends.backends import Backend, SerialBackend, RayBackend, MPIBackend
 
 
 # pylint: disable=protected-access, import-outside-toplevel
@@ -55,6 +55,7 @@ def nps_app_inst(request):
     from nums.core import settings
     from nums.core import application_manager
     import nums.numpy as nps
+    import numpy as np
 
     settings.backend_name = request.config.getoption("--backend-name") or "serial"
     settings.device_grid_name = (
@@ -64,6 +65,7 @@ def nps_app_inst(request):
     # Need to reset numpy random state.
     # It's the only stateful numpy API object.
     nps.random.reset()
+    np.random.seed(1331)
     yield application_manager.instance()
     if settings.backend_name == "ray":
         assert application_manager.instance().cm.backend._manage_ray
@@ -128,6 +130,8 @@ def get_app(backend_name, device_grid_name="cyclic"):
         backend: Backend = DaskBackend(
             num_cpus=backend_utils.get_num_cores(), num_nodes=1
         )
+    elif backend_name == "mpi":
+        backend: Backend = MPIBackend()
     else:
         raise Exception("Unexpected backend name %s" % backend_name)
     backend.init()

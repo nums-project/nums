@@ -163,11 +163,11 @@ if __name__ == "__main__":
     from nums.core import application_manager
     from nums.core import settings
 
-    settings.backend_name = "serial"
+    settings.backend_name = "mpi"
     app_inst = application_manager.instance()
 
     test_quantile_percentile(app_inst)
+    test_median(app_inst)
     test_cov(app_inst)
-    # test_quickselect(app_inst)
-    # test_median(app_inst)
-    # test_top_k(app_inst)
+    test_quickselect(app_inst)
+    test_top_k(app_inst)
