@@ -22,7 +22,7 @@ from dataclasses import dataclass
 
 import ray
 
-from nums.core.grid.grid import DeviceID
+from nums.core.grid.grid import Device
 from nums.core.backends.backend_interface import Backend
 from nums.core.backends.utils import get_private_ip, get_num_cores
 from nums.core import settings
@@ -43,7 +43,7 @@ class SerialBackend(Backend):
     def shutdown(self):
         pass
 
-    def put(self, value: Any, device_id: DeviceID):
+    def put(self, value: Any, device: Device):
         return value
 
     def get(self, object_ids: Union[Any, List]):
@@ -53,7 +53,7 @@ class SerialBackend(Backend):
         return function
 
     def devices(self):
-        return [DeviceID(0, "localhost", "cpu", 0)]
+        return [Device(0, "localhost", "cpu", 0)]
 
     def register(self, name: str, func: callable, remote_params: dict = None):
         if name in self._remote_functions:
@@ -62,7 +62,7 @@ class SerialBackend(Backend):
             remote_params = {}
         self._remote_functions[name] = self.remote(func, remote_params)
 
-    def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
+    def call(self, name: str, args, kwargs, device: Device, options: Dict):
         return self._remote_functions[name](*args, **kwargs)
 
     def register_actor(self, name: str, cls: type):
@@ -74,7 +74,7 @@ class SerialBackend(Backend):
             return
         self._actors[name] = cls
 
-    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+    def make_actor(self, name: str, *args, device: Device = None, **kwargs):
         return self._actors[name](*args, **kwargs)
 
     def call_actor_method(self, actor, method: str, *args, **kwargs):
@@ -108,7 +108,7 @@ class MPIBackend(Backend):
         self.rank = self.comm.Get_rank()
         self.proc_name: str = get_private_ip()
 
-        self._devices: List[DeviceID] = []
+        self._devices: List[Device] = []
 
         self._remote_functions: dict = {}
         self._actors: dict = {}
@@ -117,8 +117,8 @@ class MPIBackend(Backend):
         self.num_cpus = self.size
         # self._devices = []
 
-        # self._device_to_node: Dict[DeviceID, int] = {}
-        self._device_to_rank: Dict[DeviceID, int] = {}
+        # self._device_to_node: Dict[Device, int] = {}
+        self._device_to_rank: Dict[Device, int] = {}
         self._actor_to_rank: dict = {}
         self._actor_node_index = 0
 
@@ -128,9 +128,7 @@ class MPIBackend(Backend):
     def init_devices(self):
         # TODO: sort proc_names and don't do an all-gather for `did`. Construct `did` locally.
         proc_names = list(set(self.comm.allgather(self.proc_name)))
-        did = DeviceID(
-            proc_names.index(self.proc_name), self.proc_name, "cpu", self.rank
-        )
+        did = Device(proc_names.index(self.proc_name), self.proc_name, "cpu", self.rank)
         self._device_to_rank[did] = self.rank
         self._devices = self.comm.allgather(did)
         self._device_to_rank = self.comm.allgather({did: self.rank})
@@ -142,8 +140,8 @@ class MPIBackend(Backend):
         pass
 
     # TODO: this is scatter. (Document this)
-    def put(self, value: Any, device_id: DeviceID):
-        dest_rank = self._device_to_rank[device_id]
+    def put(self, value: Any, device: Device):
+        dest_rank = self._device_to_rank[device]
         assert not isinstance(value, (MPILocalObj, MPIRemoteObj))
         if self.rank == dest_rank:
             return MPILocalObj(value)
@@ -180,7 +178,7 @@ class MPIBackend(Backend):
     def remote(self, function: FunctionType, remote_params: dict):
         return function, remote_params
 
-    def devices(self) -> List[DeviceID]:
+    def devices(self) -> List[Device]:
         return self._devices
 
     def register(self, name: str, func: callable, remote_params: dict = None):
@@ -201,8 +199,8 @@ class MPIBackend(Backend):
             nout = remote_params["num_returns"]
         return func, nout
 
-    def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
-        dest_rank = self._device_to_rank[device_id]
+    def call(self, name: str, args, kwargs, device: Device, options: Dict):
+        dest_rank = self._device_to_rank[device]
         for arg in args:
             if isinstance(arg, MPILocalObj):
                 assert not isinstance(arg.value, MPILocalObj)
@@ -269,13 +267,13 @@ class MPIBackend(Backend):
             return
         self._actors[name] = cls
 
-    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+    def make_actor(self, name: str, *args, device: Device = None, **kwargs):
         # Distribute actors round-robin over devices.
-        if device_id is None:
-            device_id = self._devices[self._actor_node_index]
+        if device is None:
+            device = self._devices[self._actor_node_index]
             self._actor_node_index = (self._actor_node_index + 1) % len(self._devices)
         actor = self._actors[name]
-        dest_rank = self._device_to_rank[device_id]
+        dest_rank = self._device_to_rank[device]
         resolved_args = self._resolve_args(args, dest_rank)
         resolved_kwargs = self._resolve_kwargs(kwargs, dest_rank)
         if dest_rank == self.rank:
@@ -329,8 +327,8 @@ class RayBackend(Backend):
         self._available_nodes = []
         self._head_node = None
         self._worker_nodes = []
-        self._devices: List[DeviceID] = []
-        self._device_to_node: Dict[DeviceID, Dict] = {}
+        self._devices: List[Device] = []
+        self._device_to_node: Dict[Device, Dict] = {}
 
     def init(self):
         if ray.is_initialized():
@@ -382,7 +380,7 @@ class RayBackend(Backend):
         self._device_to_node = {}
         for node_id in range(self._num_nodes):
             node = self._available_nodes[node_id]
-            did = DeviceID(node_id, self._node_key(node), "cpu", 1)
+            did = Device(node_id, self._node_key(node), "cpu", 1)
             self._devices.append(did)
             self._device_to_node[did] = node
 
@@ -430,8 +428,8 @@ class RayBackend(Backend):
 
             warmup_func(n)
 
-    def put(self, value: Any, device_id: DeviceID):
-        return self.call("identity", [value], {}, device_id, {})
+    def put(self, value: Any, device: Device):
+        return self.call("identity", [value], {}, device, {})
 
     def get(self, object_ids):
         return ray.get(object_ids)
@@ -445,16 +443,16 @@ class RayBackend(Backend):
             return
         self._remote_functions[name] = self.remote(func, remote_params)
 
-    def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
-        if device_id is not None:
-            node = self._device_to_node[device_id]
+    def call(self, name: str, args, kwargs, device: Device, options: Dict):
+        if device is not None:
+            node = self._device_to_node[device]
             node_key = self._node_key(node)
             if "resources" in options:
                 assert node_key not in options
             options["resources"] = {node_key: 1.0 / 10 ** 4}
         return self._remote_functions[name].options(**options).remote(*args, **kwargs)
 
-    def devices(self) -> List[DeviceID]:
+    def devices(self) -> List[Device]:
         return self._devices
 
     def num_cores_total(self) -> int:
@@ -472,13 +470,13 @@ class RayBackend(Backend):
             return
         self._actors[name] = ray.remote(cls)
 
-    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+    def make_actor(self, name: str, *args, device: Device = None, **kwargs):
         # Distribute actors round-robin over devices.
-        if device_id is None:
-            device_id = self._devices[self._actor_node_index]
+        if device is None:
+            device = self._devices[self._actor_node_index]
             self._actor_node_index = (self._actor_node_index + 1) % len(self._devices)
         actor = self._actors[name]
-        node = self._device_to_node[device_id]
+        node = self._device_to_node[device]
         node_key = self._node_key(node)
         options = {"resources": {node_key: 1.0 / 10 ** 4}}
         return actor.options(**options).remote(*args, **kwargs)
@@ -493,14 +491,14 @@ class RayBackendStockScheduler(RayBackend):
     by the caller. For testing only.
     """
 
-    def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
-        if device_id is not None:
-            node = self._device_to_node[device_id]
+    def call(self, name: str, args, kwargs, device: Device, options: Dict):
+        if device is not None:
+            node = self._device_to_node[device]
             node_key = self._node_key(node)
             if "resources" in options:
                 assert node_key not in options["resources"]
         return self._remote_functions[name].options(**options).remote(*args, **kwargs)
 
-    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+    def make_actor(self, name: str, *args, device: Device = None, **kwargs):
         actor = self._actors[name]
         return actor.remote(*args, **kwargs)

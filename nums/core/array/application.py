@@ -72,10 +72,8 @@ class ArrayApplication:
 
     def delete_fs(self, filename: str) -> bool:
         results = []
-        for device_id in self.cm.devices():
-            result = self._fs.delete_file_fs(
-                filename, syskwargs={"device_id": device_id}
-            )
+        for device in self.cm.devices():
+            result = self._fs.delete_file_fs(filename, syskwargs={"device": device})
             results.append(result)
         results = self.cm.get(results)
         # Were files deleted anywhere?

@@ -52,7 +52,7 @@ class Block:
             Block.block_id_counter += 1
             self.id = Block.block_id_counter
         # Set if a device id was used to compute this block.
-        self.device_id = None
+        self.device = None
 
     def __repr__(self):
         return "Block(" + str(self.oid) + ")"
@@ -138,20 +138,20 @@ class Block:
         )
         return block
 
-    def ufunc(self, op_name, device_id=None):
-        return self.uop_map(op_name, device_id=device_id)
+    def ufunc(self, op_name, device=None):
+        return self.uop_map(op_name, device=device)
 
-    def uop_map(self, op_name, args=None, kwargs=None, device_id=None):
+    def uop_map(self, op_name, args=None, kwargs=None, device=None):
         # This retains transpose.
         block = self.copy()
         block.dtype = array_utils.get_uop_output_type(op_name, self.dtype)
         args = () if args is None else args
         kwargs = {} if kwargs is None else kwargs
-        if device_id is None:
+        if device is None:
             syskwargs = {"grid_entry": block.grid_entry, "grid_shape": block.grid_shape}
         else:
-            syskwargs = {"device_id": device_id}
-        block.device_id = device_id
+            syskwargs = {"device": device}
+        block.device = device
         block.oid = self._cm.map_uop(
             op_name, self.oid, args, kwargs, syskwargs=syskwargs
         )
@@ -182,7 +182,7 @@ class Block:
         )
         return block
 
-    def bop(self, op, other, args: dict, device_id=None):
+    def bop(self, op, other, args: dict, device=None):
         if not isinstance(other, Block):
             other = self._block_from_other(other)
         if op == "tensordot":
@@ -237,11 +237,11 @@ class Block:
             cm=self._cm,
         )
 
-        if device_id is None:
+        if device is None:
             syskwargs = {"grid_entry": block.grid_entry, "grid_shape": block.grid_shape}
         else:
-            syskwargs = {"device_id": device_id}
-        block.device_id = device_id
+            syskwargs = {"device": device}
+        block.device = device
         block.oid = self._cm.bop(
             op,
             self.oid,
