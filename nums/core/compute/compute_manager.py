@@ -155,7 +155,7 @@ class ComputeManager(ComputeInterface):
         kwargs = kwargs.copy()
         syskwargs = kwargs["syskwargs"]
         del kwargs["syskwargs"]
-        device_id, options = self._process_syskwargs(syskwargs)
+        device, options = self._process_syskwargs(syskwargs)
         return self.backend.call(name, args, kwargs, device, options)
 
     def num_cores_total(self):
