@@ -23,9 +23,9 @@ or `nums.core.array.blockarray.BlockArray`.
 if it's not possible to implement using existing methods, 
 or the implementation's execution speed can be 
 improved beyond what is achievable using existing methods.
-4. Add kernel interfaces to `nums.core.systems.interfaces.ComputeInterface`, and implement
+4. Add kernel interfaces to `nums.core.backends.interfaces.ComputeInterface`, and implement
 the interface methods for all existing compute implementations.
-Currently, the only compute interface is `nums.core.systems.numpy_compute`.
+Currently, the only compute interface is `nums.core.backends.numpy_compute`.
 5. Write tests covering all branches of your implementation in the corresponding test module
 in the project's `tests/` directory.
 6. Do your best to implement the API in its entirety. It's generally better to have a partial

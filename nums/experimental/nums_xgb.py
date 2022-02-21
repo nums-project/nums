@@ -28,14 +28,14 @@ from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray, Block
 from nums.core.compute.compute_manager import ComputeManager
 from nums.core.grid.grid import ArrayGrid
-from nums.core.systems import utils as systems_utils
+from nums.core.backends import utils as backend_utils
 
 
 def _start_rabit_tracker(num_workers: int):
     """Start Rabit tracker. The workers connect to this tracker to share
     their results."""
     # TODO (hme): Cleanup thread and tracker after training.
-    host = systems_utils.get_private_ip()
+    host = backend_utils.get_private_ip()
 
     env = {"DMLC_NUM_WORKER": num_workers}
     rabit_tracker = xgb.RabitTracker(hostIP=host, nslave=num_workers)

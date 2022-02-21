@@ -60,6 +60,6 @@ if __name__ == "__main__":
 
     np.random.seed(1331)
 
-    nums.core.settings.system_name = "mpi"
+    nums.core.settings.backend_name = "mpi"
     nps_app_inst = application_manager.instance()
     test_stats_1d(nps_app_inst)

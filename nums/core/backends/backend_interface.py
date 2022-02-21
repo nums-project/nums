@@ -19,7 +19,7 @@ from typing import Any, Union, List, Dict
 from nums.core.grid.grid import DeviceID
 
 
-class SystemInterface:
+class Backend:
     def init(self):
         raise NotImplementedError()
 
@@ -28,13 +28,13 @@ class SystemInterface:
 
     def put(self, value: Any, device_id: DeviceID):
         """
-        Put object into system storage and force placement on the relevant node.
+        Put object into backend storage and force placement on the relevant node.
         """
         raise NotImplementedError()
 
     def get(self, object_ids: Union[Any, List]):
         """
-        Get object from system storage.
+        Get object from backend storage.
         """
         raise NotImplementedError()
 
@@ -67,7 +67,7 @@ class SystemInterface:
         """
         :param name: The name of the actor.
         :param args: args to pass to __init__.
-        :param device_id: A device id. This is captured by the system and not passed to __init__.
+        :param device_id: A device id. This is captured by the backend and not passed to __init__.
         :param kwargs: kwargs to pass to __init__.
         :return: An Actor.
         """
