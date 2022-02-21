@@ -15,14 +15,14 @@
 
 import psutil
 
-from nums.core.compute import numpy_compute
+from nums.core.kernel import numpy_kernel
 from nums.core.backends import utils as backend_utils
 
 
 def test_utils():
     r = backend_utils.get_module_functions(backend_utils)
     assert len(r) > 0
-    r = backend_utils.get_instance_functions(numpy_compute.ComputeCls())
+    r = backend_utils.get_instance_functions(numpy_kernel.ComputeCls())
     assert len(r) > 0
 
 

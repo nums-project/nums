@@ -123,7 +123,7 @@ def from_modin(df):
     frame: PandasOnRayFrame = df._query_compiler._modin_frame
 
     app: ArrayApplication = _instance()
-    backend = app.cm
+    backend = app.km
 
     # Make sure the partitions are numeric.
     dtype = frame.dtypes[0]

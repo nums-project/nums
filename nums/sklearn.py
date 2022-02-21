@@ -19,7 +19,7 @@ def _register_train_test_split(app: ArrayApplication):
     from sklearn import model_selection
     from numpy.random import Generator, RandomState
 
-    from nums.core.compute.numpy_compute import block_rng
+    from nums.core.kernel.numpy_kernel import block_rng
 
     def train_test_split_wrapper(
         *arrays,
@@ -47,7 +47,7 @@ def _register_train_test_split(app: ArrayApplication):
             stratify=stratify
         )
 
-    app.cm.register("train_test_split", train_test_split_wrapper, {})
+    app.km.register("train_test_split", train_test_split_wrapper, {})
 
 
 call_on_create(_register_train_test_split)
@@ -105,7 +105,7 @@ def train_test_split(
         rng_params = random_state._rng.new_block_rng_params()
 
     array_oids = [array.flattened_oids()[0] for array in updated_arrays]
-    result_oids = instance().cm.call(
+    result_oids = instance().km.call(
         "train_test_split",
         *array_oids,
         rng_params=rng_params,
@@ -117,17 +117,17 @@ def train_test_split(
     )
     # Optimize by computing this directly.
     shape_dtype_oids = [
-        instance().cm.shape_dtype(
+        instance().km.shape_dtype(
             r_oid, syskwargs={"grid_entry": (0,), "grid_shape": (1,)}
         )
         for r_oid in result_oids
     ]
-    shape_dtypes = instance().cm.get(shape_dtype_oids)
+    shape_dtypes = instance().km.get(shape_dtype_oids)
     results = []
     for i, r_oid in enumerate(result_oids):
         shape, dtype = shape_dtypes[i]
         results.append(
-            BlockArray.from_oid(r_oid, shape=shape, dtype=dtype, cm=instance().cm)
+            BlockArray.from_oid(r_oid, shape=shape, dtype=dtype, km=instance().km)
         )
     return results
 
@@ -171,14 +171,14 @@ def build_sklearn_actor(cls: type):
         def __init__(self, *args, **kwargs):
             device = None
             if self.__class__ in _place_on_node_0:
-                device = instance().cm.devices()[0]
-            self.actor = instance().cm.make_actor(name, *args, device=device, **kwargs)
+                device = instance().km.devices()[0]
+            self.actor = instance().km.make_actor(name, *args, device=device, **kwargs)
 
         # TODO: (all functions) test inputs are single block, if not warn about performance
         def fit(self, X: BlockArray, y: BlockArray):
             _check_array(X, True)
             _check_array(y, True)
-            instance().cm.call_actor_method(
+            instance().km.call_actor_method(
                 self.actor, "fit", X.flattened_oids()[0], y.flattened_oids()[0]
             )
 
@@ -187,20 +187,20 @@ def build_sklearn_actor(cls: type):
             if y is not None:
                 _check_array(y, True)
                 y = y.flattened_oids()[0]
-            r_oid = instance().cm.call_actor_method(
+            r_oid = instance().km.call_actor_method(
                 self.actor, "fit_transform", X.flattened_oids()[0], y
             )
             return BlockArray.from_oid(
-                r_oid, shape=X.shape, dtype=float, cm=instance().cm
+                r_oid, shape=X.shape, dtype=float, km=instance().km
             )
 
         def predict(self, X: BlockArray):
             _check_array(X, True)
-            r_oid = instance().cm.call_actor_method(
+            r_oid = instance().km.call_actor_method(
                 self.actor, "predict", X.flattened_oids()[0]
             )
             return BlockArray.from_oid(
-                r_oid, shape=(X.shape[0],), dtype=predict_dtype, cm=instance().cm
+                r_oid, shape=(X.shape[0],), dtype=predict_dtype, km=instance().km
             )
 
         def score(self, X: BlockArray, y: BlockArray, sample_weight: BlockArray = None):
@@ -209,18 +209,18 @@ def build_sklearn_actor(cls: type):
             if sample_weight is not None:
                 _check_array(sample_weight, True)
                 sample_weight = sample_weight.flattened_oids()[0]
-            r_oid = instance().cm.call_actor_method(
+            r_oid = instance().km.call_actor_method(
                 self.actor,
                 "score",
                 X.flattened_oids()[0],
                 y.flattened_oids()[0],
                 sample_weight,
             )
-            return BlockArray.from_oid(r_oid, shape=(), dtype=float, cm=instance().cm)
+            return BlockArray.from_oid(r_oid, shape=(), dtype=float, km=instance().km)
 
     NumsModel.__name__ = "Nums" + cls.__name__
     ModelActor.__name__ = cls.__name__ + "Actor"
-    call_on_create(lambda app: app.cm.register_actor(name, ModelActor))
+    call_on_create(lambda app: app.km.register_actor(name, ModelActor))
     return NumsModel
 
 

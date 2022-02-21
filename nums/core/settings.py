@@ -37,7 +37,7 @@ address = None
 
 
 # Compute settings.
-compute_name = os.environ.get("NUMS_COMPUTE", "numpy")
+kernel_name = os.environ.get("NUMS_COMPUTE", "numpy")
 
 
 # Device grid settings.
