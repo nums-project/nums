@@ -22,7 +22,7 @@ import numpy as np
 
 from nums.core.array import utils as array_utils
 from nums.core.compute.compute_interface import ComputeInterface, RNGInterface
-from nums.core.grid.grid import DeviceGrid, DeviceID
+from nums.core.grid.grid import DeviceGrid, Device
 from nums.core.backends import utils as backend_utils
 from nums.core.backends import Backend
 
@@ -116,9 +116,9 @@ class ComputeManager(ComputeInterface):
         syskwargs = kwargs["syskwargs"]
         del kwargs["syskwargs"]
         assert "options" not in syskwargs
-        device_id, options = self._process_syskwargs(syskwargs)
+        device, options = self._process_syskwargs(syskwargs)
         assert len(options) == 0
-        return self.backend.put(value, device_id)
+        return self.backend.put(value, device)
 
     def get(self, object_ids: Union[Any, List]):
         return self.backend.get(object_ids)
@@ -135,28 +135,28 @@ class ComputeManager(ComputeInterface):
     def _process_syskwargs(self, syskwargs):
         if "grid_entry" in syskwargs:
             assert "grid_shape" in syskwargs
-            assert "device_id" not in syskwargs
+            assert "device" not in syskwargs
             grid_entry = syskwargs["grid_entry"]
             grid_shape = syskwargs["grid_shape"]
-            device_id: DeviceID = self.device_grid.get_device_id(grid_entry, grid_shape)
-        elif "device_id" in syskwargs:
+            device: Device = self.device_grid.get_device(grid_entry, grid_shape)
+        elif "device" in syskwargs:
             assert "grid_entry" not in syskwargs and "grid_shape" not in syskwargs
-            device_id: DeviceID = syskwargs["device_id"]
+            device: Device = syskwargs["device"]
         else:
-            raise Exception("All calls require device_id or grid_entry and grid_shape.")
+            raise Exception("All calls require device or grid_entry and grid_shape.")
         if "options" in syskwargs:
             options = syskwargs["options"]
         else:
             options = {}
-        return device_id, options
+        return device, options
 
     def call(self, name: str, *args, **kwargs):
         assert "syskwargs" in kwargs
         kwargs = kwargs.copy()
         syskwargs = kwargs["syskwargs"]
         del kwargs["syskwargs"]
-        device_id, options = self._process_syskwargs(syskwargs)
-        return self.backend.call(name, args, kwargs, device_id, options)
+        device, options = self._process_syskwargs(syskwargs)
+        return self.backend.call(name, args, kwargs, device, options)
 
     def num_cores_total(self):
         return self.backend.num_cores_total()
@@ -164,8 +164,8 @@ class ComputeManager(ComputeInterface):
     def register_actor(self, name: str, cls: type):
         return self.backend.register_actor(name, cls)
 
-    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
-        return self.backend.make_actor(name, *args, device_id=device_id, **kwargs)
+    def make_actor(self, name: str, *args, device: Device = None, **kwargs):
+        return self.backend.make_actor(name, *args, device=device, **kwargs)
 
     def call_actor_method(self, actor, method: str, *args, **kwargs):
         return self.backend.call_actor_method(actor, method, *args, **kwargs)
