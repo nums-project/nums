@@ -23,7 +23,7 @@ from nums.core.array.random import NumsRandomState
 from nums.core.compute.compute_manager import ComputeManager
 from nums.core.grid.grid import ArrayGrid
 from nums.core.storage.storage import StoredArray, StoredArrayS3
-from nums.core.systems.filesystem import FileSystem
+from nums.core.backends.filesystem import FileSystem
 
 # pylint: disable = too-many-lines
 
@@ -754,8 +754,8 @@ class ArrayApplication:
             s_oids.append(self.cm.size(arr_oid, syskwargs=syskwargs))
         ms_oids = m_oids + s_oids
         device_0 = self.cm.devices()[0]
-        wmm_oid = self.cm.system.call("weighted_median", ms_oids, {}, device_0, {})
-        total_size = sum(self.cm.get(s) for s in s_oids)
+        wmm_oid = self.cm.backend.call("weighted_median", ms_oids, {}, device_0, {})
+        total_size = sum(self.cm.get(s_oids))
         if kth < 0:
             kth += total_size
         if kth < 0 or total_size <= kth:
@@ -776,7 +776,7 @@ class ArrayApplication:
             )
             gr_size_oids.append(gr_size_oid)
             gr_oids.append(gr_oid)
-        gr_size = sum(self.cm.get(s) for s in gr_size_oids)
+        gr_size = sum(self.cm.get(gr_size_oids))
         if kth < gr_size:
             del arr_oids
             return self._quickselect(gr_oids, kth)
@@ -796,7 +796,7 @@ class ArrayApplication:
             )
             ls_size_oids.append(ls_size_oid)
             ls_oids.append(ls_oid)
-        ls_size = sum(self.cm.get(s) for s in ls_size_oids)
+        ls_size = sum(self.cm.get(ls_size_oids))
         if kth >= total_size - ls_size:
             del arr_oids
             return self._quickselect(ls_oids, kth - (total_size - ls_size))

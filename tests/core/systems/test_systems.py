@@ -17,15 +17,15 @@ import numpy as np
 
 from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray, Block
-from nums.core.systems.systems import RaySystem
+from nums.core.backends.backends import RayBackend
 
 
 # pylint: disable=protected-access
 
 
 def test_warmup(app_inst_all: ArrayApplication):
-    sys = app_inst_all.cm.system
-    if isinstance(sys, RaySystem):
+    sys = app_inst_all.cm.backend
+    if isinstance(sys, RayBackend):
         sys.warmup(10)
     assert True
 
@@ -55,9 +55,11 @@ def test_deferred_transposed_block(app_inst_all: ArrayApplication):
 
 
 if __name__ == "__main__":
-    # pylint: disable=import-error
-    import conftest
+    from nums.core import application_manager
+    from nums.core import settings
 
-    app_inst = conftest.get_app("ray-none")
-    test_warmup(app_inst)
-    test_deferred_transposed_block(app_inst)
+    settings.system_name = "mpi"
+    nps_app_inst = application_manager.instance()
+    # test_warmup(nps_app_inst)
+    test_transposed_block(nps_app_inst)
+    test_deferred_transposed_block(nps_app_inst)

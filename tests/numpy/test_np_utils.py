@@ -18,7 +18,7 @@ import itertools
 import numpy as np
 
 from nums.core.grid.grid import ArrayGrid
-from nums.core.systems import utils as systems_utils
+from nums.core.backends import utils as backend_utils
 
 
 # pylint: disable=import-outside-toplevel
@@ -89,6 +89,7 @@ def test_block_shape(nps_app_inst):
     grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype.__name__)
     assert grid.grid_shape == (int(num_cores ** 0.5), int(num_cores ** 0.5))
 
+    # Here we are testing the behaviour for objects size == and < 100 MB.
     shape = (10 ** 4, 10 ** 4 // dtype(0).nbytes)
     block_shape = app.compute_block_shape(
         shape=shape, dtype=dtype, cluster_shape=cluster_shape, num_cores=num_cores
@@ -104,14 +105,10 @@ def test_block_shape(nps_app_inst):
     assert grid.grid_shape == (1, 1)
 
     shape = (10 ** 4, 10 ** 4)
-    block_shape = app.compute_block_shape(shape=shape, dtype=dtype, num_cores=num_cores)
-    grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype.__name__)
-    assert grid.grid_shape == (int(num_cores ** 0.5), int(num_cores ** 0.5))
-
     cluster_shape = (12, 1)
-    num_cores = systems_utils.get_num_cores()
+    num_cores = backend_utils.get_num_cores()
     block_shape = app.compute_block_shape(
-        shape=shape, dtype=dtype, cluster_shape=cluster_shape
+        shape=shape, dtype=dtype, cluster_shape=cluster_shape, num_cores=num_cores
     )
     grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype.__name__)
     assert grid.grid_shape == (num_cores, 1)
@@ -119,7 +116,12 @@ def test_block_shape(nps_app_inst):
 
 if __name__ == "__main__":
     from nums.core import application_manager
+    from nums.core import settings
 
+    np.random.seed(1331)
+
+    settings.system_name = "serial"
     nps_app_inst = application_manager.instance()
+
     _inspect_block_shape(nps_app_inst)
     test_block_shape(nps_app_inst)
