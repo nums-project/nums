@@ -17,15 +17,15 @@ import numpy as np
 
 from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray, Block
-from nums.core.systems.systems import RaySystem
+from nums.core.backends.backends import RayBackend
 
 
 # pylint: disable=protected-access
 
 
 def test_warmup(app_inst_all: ArrayApplication):
-    sys = app_inst_all.cm.system
-    if isinstance(sys, RaySystem):
+    sys = app_inst_all.cm.backend
+    if isinstance(sys, RayBackend):
         sys.warmup(10)
     assert True
 

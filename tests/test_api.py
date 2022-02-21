@@ -29,7 +29,7 @@ def test_rwd():
     from nums.core import application_manager
     from nums.core import settings
 
-    settings.system_name = "serial"
+    settings.backend_name = "serial"
     nps_app_inst = application_manager.instance()
 
     array: np.ndarray = np.random.random(35).reshape(7, 5)
@@ -54,7 +54,7 @@ def test_rwd_s3():
     from nums.core import application_manager
     from nums.core import settings
 
-    settings.system_name = "serial"
+    settings.backend_name = "serial"
     nps_app_inst = application_manager.instance()
 
     conn = boto3.resource("s3", region_name="us-east-1")
@@ -82,7 +82,7 @@ def test_read_csv():
     from nums.core import application_manager
     from nums.core import settings
 
-    settings.system_name = "serial"
+    settings.backend_name = "serial"
     _ = application_manager.instance()
 
     filename = settings.pj(

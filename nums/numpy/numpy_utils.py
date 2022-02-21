@@ -17,7 +17,7 @@ import re
 import numpy as np
 
 from nums.core.array.application import ArrayApplication
-from nums.core.systems import utils as systems_utils
+from nums.core.backends import utils as backend_utils
 
 
 def ufunc_kwargs(kwargs):
@@ -29,7 +29,7 @@ def ufunc_kwargs(kwargs):
 
 def ufunc_op_signatures():
     uops, bops = [], []
-    for name, func in sorted(systems_utils.get_module_functions(np).items()):
+    for name, func in sorted(backend_utils.get_module_functions(np).items()):
         if name in ("deprecate_with_doc", "loads"):
             continue
         if name in ("isnat",):

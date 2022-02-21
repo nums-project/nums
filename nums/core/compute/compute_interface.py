@@ -1,6 +1,6 @@
 from typing import Tuple, Dict
 
-from nums.core.systems.utils import method_meta
+from nums.core.backends.utils import method_meta
 
 
 class ComputeInterface:

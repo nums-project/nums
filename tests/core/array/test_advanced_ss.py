@@ -194,7 +194,7 @@ def test_subscript_edge_cases(nps_app_inst):
 if __name__ == "__main__":
     import nums.core.settings
 
-    nums.core.settings.system_name = "serial"
+    nums.core.settings.backend_name = "serial"
     from nums.core import application_manager
 
     nps_app_inst = application_manager.instance()

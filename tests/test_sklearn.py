@@ -164,9 +164,9 @@ def test_parallel_sklearn(nps_app_inst: ArrayApplication):
 
 
 def test_supervised(nps_app_inst: ArrayApplication):
-    from nums.core.systems.systems import RaySystem, SerialSystem
+    from nums.core.backends.backends import RayBackend, SerialBackend
 
-    if not isinstance(nps_app_inst.cm.system, (RaySystem, SerialSystem)):
+    if not isinstance(nps_app_inst.cm.backend, (RayBackend, SerialBackend)):
         return
 
     assert nps_app_inst is not None
@@ -206,9 +206,9 @@ def test_train_test_split(nps_app_inst: ArrayApplication):
     import numpy as np
     from nums.sklearn import SVC, SVR, train_test_split
 
-    from nums.core.systems.systems import RaySystem, SerialSystem
+    from nums.core.backends.backends import RayBackend, SerialBackend
 
-    if not isinstance(nps_app_inst.cm.system, (RaySystem, SerialSystem)):
+    if not isinstance(nps_app_inst.cm.backend, (RayBackend, SerialBackend)):
         return
 
     X, y = sample_Xy()
@@ -243,9 +243,9 @@ def test_train_test_split(nps_app_inst: ArrayApplication):
 
 
 def test_regressors(nps_app_inst: ArrayApplication):
-    from nums.core.systems.systems import RaySystem, SerialSystem
+    from nums.core.backends.backends import RayBackend, SerialBackend
 
-    if not isinstance(nps_app_inst.cm.system, (RaySystem, SerialSystem)):
+    if not isinstance(nps_app_inst.cm.backend, (RayBackend, SerialBackend)):
         return
 
     assert nps_app_inst is not None
@@ -263,9 +263,9 @@ def test_regressors(nps_app_inst: ArrayApplication):
 
 
 def test_typing(nps_app_inst):
-    from nums.core.systems.systems import RaySystem, SerialSystem
+    from nums.core.backends.backends import RayBackend, SerialBackend
 
-    if not isinstance(nps_app_inst.cm.system, (RaySystem, SerialSystem)):
+    if not isinstance(nps_app_inst.cm.backend, (RayBackend, SerialBackend)):
         return
 
     assert nps_app_inst is not None
@@ -297,7 +297,7 @@ if __name__ == "__main__":
     from nums.core import application_manager
     from nums.core import settings
 
-    settings.system_name = "serial"
+    settings.backend_name = "serial"
     nps_app_inst = application_manager.instance()
     # test_parallel_sklearn(nps_app_inst)
     # test_supervised(nps_app_inst)
