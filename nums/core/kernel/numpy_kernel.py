@@ -22,7 +22,7 @@ import scipy.special
 from numpy.random import Generator
 from numpy.random import PCG64
 
-from nums.core.compute.compute_interface import ComputeImp, RNGInterface
+from nums.core.kernel.kernel_interface import KernelImp, RNGInterface
 from nums.core.grid.grid import ArrayGrid
 from nums.core.settings import np_ufunc_map
 
@@ -82,7 +82,7 @@ class RNG(RNGInterface):
         return params
 
 
-class ComputeCls(ComputeImp):
+class ComputeCls(KernelImp):
     # pylint: disable=no-member, unused-variable
 
     # I/O operations.

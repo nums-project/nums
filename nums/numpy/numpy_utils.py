@@ -80,7 +80,7 @@ def ufunc_op_signatures():
 
 
 def get_num_cores(app: ArrayApplication):
-    return app.cm.num_cores_total()
+    return app.km.num_cores_total()
 
 
 def update_doc_string(doc_string):

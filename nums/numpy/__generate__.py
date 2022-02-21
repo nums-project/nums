@@ -101,8 +101,8 @@ def random_stub():
     from nums.core.application_manager import instance
 
     app = instance()
-    sys = app.cm
-    rs_inst = NumsRandomState(cm=sys, seed=1337)
+    sys = app.km
+    rs_inst = NumsRandomState(km=sys, seed=1337)
     numpy_items = sorted(backend_utils.get_module_functions(numpy_module).items())
     nums_items = sorted(backend_utils.get_instance_functions(rs_inst).items())
     raise NotImplementedError()
