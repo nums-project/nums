@@ -17,7 +17,7 @@ from types import FunctionType
 from typing import Any, List, Dict, Union
 import warnings
 
-from nums.core.grid.grid import DeviceID
+from nums.core.grid.grid import Device
 
 from .base import Backend
 from .utils import get_private_ip
@@ -47,7 +47,7 @@ class MPIBackend(Backend):
         self.rank = self.comm.Get_rank()
         self.proc_name: str = get_private_ip()
 
-        self._devices: List[DeviceID] = []
+        self._devices: List[Device] = []
 
         self._remote_functions: dict = {}
         self._actors: dict = {}
@@ -56,8 +56,8 @@ class MPIBackend(Backend):
         self.num_cpus = self.size
         # self._devices = []
 
-        # self._device_to_node: Dict[DeviceID, int] = {}
-        self._device_to_rank: Dict[DeviceID, int] = {}
+        # self._device_to_node: Dict[Device, int] = {}
+        self._device_to_rank: Dict[Device, int] = {}
         self._actor_to_rank: dict = {}
         self._actor_node_index = 0
 
@@ -67,9 +67,7 @@ class MPIBackend(Backend):
     def init_devices(self):
         # TODO: sort proc_names and don't do an all-gather for `did`. Construct `did` locally.
         proc_names = list(set(self.comm.allgather(self.proc_name)))
-        did = DeviceID(
-            proc_names.index(self.proc_name), self.proc_name, "cpu", self.rank
-        )
+        did = Device(proc_names.index(self.proc_name), self.proc_name, "cpu", self.rank)
         self._device_to_rank[did] = self.rank
         self._devices = self.comm.allgather(did)
         self._device_to_rank = self.comm.allgather({did: self.rank})
@@ -81,8 +79,8 @@ class MPIBackend(Backend):
         pass
 
     # TODO: this is scatter. (Document this)
-    def put(self, value: Any, device_id: DeviceID):
-        dest_rank = self._device_to_rank[device_id]
+    def put(self, value: Any, device: Device):
+        dest_rank = self._device_to_rank[device]
         assert not isinstance(value, (MPILocalObj, MPIRemoteObj))
         if self.rank == dest_rank:
             return MPILocalObj(value)
@@ -119,7 +117,7 @@ class MPIBackend(Backend):
     def remote(self, function: FunctionType, remote_params: dict):
         return function, remote_params
 
-    def devices(self) -> List[DeviceID]:
+    def devices(self) -> List[Device]:
         return self._devices
 
     def register(self, name: str, func: callable, remote_params: dict = None):
@@ -140,8 +138,8 @@ class MPIBackend(Backend):
             nout = remote_params["num_returns"]
         return func, nout
 
-    def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
-        dest_rank = self._device_to_rank[device_id]
+    def call(self, name: str, args, kwargs, device: Device, options: Dict):
+        dest_rank = self._device_to_rank[device]
         for arg in args:
             if isinstance(arg, MPILocalObj):
                 assert not isinstance(arg.value, MPILocalObj)
@@ -208,13 +206,13 @@ class MPIBackend(Backend):
             return
         self._actors[name] = cls
 
-    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+    def make_actor(self, name: str, *args, device: Device = None, **kwargs):
         # Distribute actors round-robin over devices.
-        if device_id is None:
-            device_id = self._devices[self._actor_node_index]
+        if device is None:
+            device = self._devices[self._actor_node_index]
             self._actor_node_index = (self._actor_node_index + 1) % len(self._devices)
         actor = self._actors[name]
-        dest_rank = self._device_to_rank[device_id]
+        dest_rank = self._device_to_rank[device]
         resolved_args = self._resolve_args(args, dest_rank)
         resolved_kwargs = self._resolve_kwargs(kwargs, dest_rank)
         if dest_rank == self.rank:

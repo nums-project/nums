@@ -19,7 +19,7 @@ from typing import Any, List, Dict, Optional
 import ray
 
 from nums.core import settings
-from nums.core.grid.grid import DeviceID
+from nums.core.grid.grid import Device
 
 from .base import Backend
 from .utils import get_private_ip, get_num_cores
@@ -49,8 +49,8 @@ class RayBackend(Backend):
         self._available_nodes = []
         self._head_node = None
         self._worker_nodes = []
-        self._devices: List[DeviceID] = []
-        self._device_to_node: Dict[DeviceID, Dict] = {}
+        self._devices: List[Device] = []
+        self._device_to_node: Dict[Device, Dict] = {}
 
     def init(self):
         if ray.is_initialized():
@@ -102,7 +102,7 @@ class RayBackend(Backend):
         self._device_to_node = {}
         for node_id in range(self._num_nodes):
             node = self._available_nodes[node_id]
-            did = DeviceID(node_id, self._node_key(node), "cpu", 1)
+            did = Device(node_id, self._node_key(node), "cpu", 1)
             self._devices.append(did)
             self._device_to_node[did] = node
 
@@ -150,8 +150,8 @@ class RayBackend(Backend):
 
             warmup_func(n)
 
-    def put(self, value: Any, device_id: DeviceID):
-        return self.call("identity", [value], {}, device_id, {})
+    def put(self, value: Any, device: Device):
+        return self.call("identity", [value], {}, device, {})
 
     def get(self, object_ids):
         return ray.get(object_ids)
@@ -165,16 +165,16 @@ class RayBackend(Backend):
             return
         self._remote_functions[name] = self.remote(func, remote_params)
 
-    def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
-        if device_id is not None:
-            node = self._device_to_node[device_id]
+    def call(self, name: str, args, kwargs, device: Device, options: Dict):
+        if device is not None:
+            node = self._device_to_node[device]
             node_key = self._node_key(node)
             if "resources" in options:
                 assert node_key not in options
             options["resources"] = {node_key: 1.0 / 10 ** 4}
         return self._remote_functions[name].options(**options).remote(*args, **kwargs)
 
-    def devices(self) -> List[DeviceID]:
+    def devices(self) -> List[Device]:
         return self._devices
 
     def num_cores_total(self) -> int:
@@ -192,13 +192,13 @@ class RayBackend(Backend):
             return
         self._actors[name] = ray.remote(cls)
 
-    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+    def make_actor(self, name: str, *args, device: Device = None, **kwargs):
         # Distribute actors round-robin over devices.
-        if device_id is None:
-            device_id = self._devices[self._actor_node_index]
+        if device is None:
+            device = self._devices[self._actor_node_index]
             self._actor_node_index = (self._actor_node_index + 1) % len(self._devices)
         actor = self._actors[name]
-        node = self._device_to_node[device_id]
+        node = self._device_to_node[device]
         node_key = self._node_key(node)
         options = {"resources": {node_key: 1.0 / 10 ** 4}}
         return actor.options(**options).remote(*args, **kwargs)
@@ -213,16 +213,16 @@ class RayBackendStockScheduler(RayBackend):
     by the caller. For testing only.
     """
 
-    def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
-        if device_id is not None:
-            node = self._device_to_node[device_id]
+    def call(self, name: str, args, kwargs, device: Device, options: Dict):
+        if device is not None:
+            node = self._device_to_node[device]
             node_key = self._node_key(node)
             if "resources" in options:
                 assert node_key not in options["resources"]
         return self._remote_functions[name].options(**options).remote(*args, **kwargs)
 
     def make_actor(
-        self, name: str, *args, device_id: DeviceID = None, **kwargs
+        self, name: str, *args, device: Device = None, **kwargs
     ):  # pylint: disable=unused-argument
         actor = self._actors[name]
         return actor.remote(*args, **kwargs)

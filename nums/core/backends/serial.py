@@ -14,7 +14,7 @@
 from types import FunctionType
 from typing import Any, List, Dict, Optional, Union
 
-from nums.core.grid.grid import DeviceID
+from nums.core.grid.grid import Device
 
 from .base import Backend
 from .utils import get_num_cores
@@ -32,7 +32,7 @@ class SerialBackend(Backend):
     def shutdown(self):
         pass
 
-    def put(self, value: Any, device_id: DeviceID):
+    def put(self, value: Any, device: Device):
         return value
 
     def get(self, object_ids: Union[Any, List]):
@@ -42,7 +42,7 @@ class SerialBackend(Backend):
         return function
 
     def devices(self):
-        return [DeviceID(0, "localhost", "cpu", 0)]
+        return [Device(0, "localhost", "cpu", 0)]
 
     def register(self, name: str, func: callable, remote_params: dict = None):
         if name in self._remote_functions:
@@ -51,7 +51,7 @@ class SerialBackend(Backend):
             remote_params = {}
         self._remote_functions[name] = self.remote(func, remote_params)
 
-    def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
+    def call(self, name: str, args, kwargs, device: Device, options: Dict):
         return self._remote_functions[name](*args, **kwargs)
 
     def register_actor(self, name: str, cls: type):
@@ -59,7 +59,7 @@ class SerialBackend(Backend):
         self._actors[name] = cls
 
     def make_actor(
-        self, name: str, *args, device_id: DeviceID = None, **kwargs
+        self, name: str, *args, device: Device = None, **kwargs
     ):  # pylint: disable=unused-argument
         return self._actors[name](*args, **kwargs)
 
