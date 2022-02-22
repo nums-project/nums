@@ -26,7 +26,7 @@ from nums.core import settings
 from nums.core.array.blockarray import BlockArray
 from nums.core.compute.compute_manager import ComputeManager
 from nums.core.grid.grid import ArrayGrid
-from nums.core.grid.grid import DeviceID
+from nums.core.grid.grid import Device
 from nums.core.storage import utils as storage_utils
 from nums.core.storage.storage import StoredArrayS3
 
@@ -388,22 +388,20 @@ class FileSystem:
         # Currently, no need for anything more than the array grid.
         meta = {"grid": ba.grid.to_meta()}
         nodes_written_to = set()
-        for device_id in self.cm.devices():
-            device_id: DeviceID = device_id
-            if device_id.node_id in nodes_written_to:
+        for device in self.cm.devices():
+            device: Device = device
+            if device.node_id in nodes_written_to:
                 continue
-            nodes_written_to.add(device_id.node_id)
+            nodes_written_to.add(device.node_id)
             oid = self.cm.call(
-                "write_meta_fs", meta, filename, syskwargs={"device_id": device_id}
+                "write_meta_fs", meta, filename, syskwargs={"device": device}
             )
             result = self.cm.get(oid)
             assert isinstance(result, np.ndarray) and result.item() is None
 
     def read_meta_fs(self, filename: str):
-        for device_id in self.cm.devices():
-            oid = self.cm.call(
-                "read_meta_fs", filename, syskwargs={"device_id": device_id}
-            )
+        for device in self.cm.devices():
+            oid = self.cm.call("read_meta_fs", filename, syskwargs={"device": device})
             result = self.cm.get(oid)
             if result is not None:
                 return result
@@ -423,12 +421,12 @@ class FileSystem:
         grid: ArrayGrid = ArrayGrid.from_meta(file_meta["grid"])
         # First, let's identify which nodes actually contain the data we need.
         result_oids = []
-        for device_id in self.cm.devices():
+        for device in self.cm.devices():
             oid = self.cm.call(
                 "get_parts_fs",
                 filename,
                 file_meta["grid"],
-                syskwargs={"device_id": device_id},
+                syskwargs={"device": device},
             )
             result_oids.append(oid)
         file_results = self.cm.backend.get(result_oids)
@@ -444,14 +442,14 @@ class FileSystem:
             # Load via device grid ordering.
             ba: BlockArray = BlockArray(grid, self.cm)
             for grid_entry in grid.get_entry_iterator():
-                device_id: DeviceID = self.cm.device_grid.get_device_id(
+                device: Device = self.cm.device_grid.get_device(
                     grid_entry, grid.grid_shape
                 )
                 ba.blocks[grid_entry].oid = self.read_block_fs(
                     filename,
                     grid_entry,
                     file_meta["grid"],
-                    syskwargs={"device_id": device_id},
+                    syskwargs={"device": device},
                 )
             return ba
 
@@ -461,17 +459,16 @@ class FileSystem:
             node_grid_entries: Union[None, np.ndarray] = file_results[i]
             if node_grid_entries is None:
                 continue
-            device_id = self.cm.devices()[i]
-            grid_entry_sets[device_id] = set(map(tuple, node_grid_entries.tolist()))
+            device = self.cm.devices()[i]
+            grid_entry_sets[device] = set(map(tuple, node_grid_entries.tolist()))
 
         # The data may be partitioned according to the grid layout for this cluster.
         # Test this and load accordingly if it is.
         aligned = True
         for grid_entry in grid.get_entry_iterator():
-            device_id = self.cm.device_grid.get_device_id(grid_entry, grid.grid_shape)
+            device = self.cm.device_grid.get_device(grid_entry, grid.grid_shape)
             if not (
-                device_id in grid_entry_sets
-                and grid_entry in grid_entry_sets[device_id]
+                device in grid_entry_sets and grid_entry in grid_entry_sets[device]
             ):
                 aligned = False
                 break
@@ -479,14 +476,14 @@ class FileSystem:
             # If data is partitioning aligned, then just load it using device grid ordering.
             ba: BlockArray = BlockArray(grid, self.cm)
             for grid_entry in grid.get_entry_iterator():
-                device_id: DeviceID = self.cm.device_grid.get_device_id(
+                device: Device = self.cm.device_grid.get_device(
                     grid_entry, grid.grid_shape
                 )
                 ba.blocks[grid_entry].oid = self.read_block_fs(
                     filename,
                     grid_entry,
                     file_meta["grid"],
-                    syskwargs={"device_id": device_id},
+                    syskwargs={"device": device},
                 )
             return ba
 
@@ -494,9 +491,9 @@ class FileSystem:
         grid_entry_to_devices = {}
         for grid_entry in grid.get_entry_iterator():
             grid_entry_to_devices[grid_entry] = []
-            for device_id in grid_entry_sets:
-                if grid_entry in grid_entry_sets[device_id]:
-                    grid_entry_to_devices[grid_entry].append(device_id)
+            for device in grid_entry_sets:
+                if grid_entry in grid_entry_sets[device]:
+                    grid_entry_to_devices[grid_entry].append(device)
             if len(grid_entry_to_devices[grid_entry]) == 0:
                 raise Exception("Unable to find all blocks for %s." % filename)
 
@@ -508,13 +505,13 @@ class FileSystem:
         ba: BlockArray = BlockArray(grid, self.cm)
         for grid_entry in grid_entry_to_devices:
             # Distribute load of read operations randomly over available nodes.
-            device_id = np.random.choice(grid_entry_to_devices[grid_entry])
+            device = np.random.choice(grid_entry_to_devices[grid_entry])
             # Schedule the load operation.
             ba.blocks[grid_entry].oid = self.read_block_fs(
                 filename,
                 grid_entry,
                 file_meta["grid"],
-                syskwargs={"device_id": device_id},
+                syskwargs={"device": device},
             )
         # The blocks are likely not distributed properly,
         # but any operations performed on this block array

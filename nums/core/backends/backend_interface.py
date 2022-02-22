@@ -16,7 +16,7 @@
 from types import FunctionType
 from typing import Any, Union, List, Dict
 
-from nums.core.grid.grid import DeviceID
+from nums.core.grid.grid import Device
 
 
 class Backend:
@@ -26,7 +26,7 @@ class Backend:
     def shutdown(self):
         raise NotImplementedError()
 
-    def put(self, value: Any, device_id: DeviceID):
+    def put(self, value: Any, device: Device):
         """
         Put object into backend storage and force placement on the relevant node.
         """
@@ -50,7 +50,7 @@ class Backend:
     def register(self, name: str, func: callable, remote_params: Dict = None):
         raise NotImplementedError("Implements a way to register new remote functions.")
 
-    def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
+    def call(self, name: str, args, kwargs, device: Device, options: Dict):
         raise NotImplementedError(
             "Implement RPC as e.g. " "self.remote_functions[name](*args, **new_kwargs)"
         )
@@ -63,11 +63,11 @@ class Backend:
         """
         raise NotImplementedError()
 
-    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+    def make_actor(self, name: str, *args, device: Device = None, **kwargs):
         """
         :param name: The name of the actor.
         :param args: args to pass to __init__.
-        :param device_id: A device id. This is captured by the backend and not passed to __init__.
+        :param device: A device. This is captured by the system and not passed to __init__.
         :param kwargs: kwargs to pass to __init__.
         :return: An Actor.
         """

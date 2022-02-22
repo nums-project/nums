@@ -19,7 +19,7 @@ import pytest
 from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray
 from nums.core.grid.grid import ArrayGrid
-from nums.core.grid.grid import DeviceID
+from nums.core.grid.grid import Device
 from nums.core.storage.storage import BimodalGaussian
 from nums.core.backends import utils as backend_utils
 
@@ -37,10 +37,10 @@ def test_scalar_op(app_inst: ArrayApplication):
         app_inst.scalar(np.array(1))
 
 
-def test_device_id_hashing(app_inst: ArrayApplication):
+def test_device_hashing(app_inst: ArrayApplication):
     assert app_inst is not None
-    d1 = DeviceID(0, "node:localhost1", "cpu", 0)
-    d2 = DeviceID(1, "node:localhost2", "cpu", 0)
+    d1 = Device(0, "node:localhost1", "cpu", 0)
+    d2 = Device(1, "node:localhost2", "cpu", 0)
     x = {}
     x[d1] = "one"
     x[d2] = "two"
