@@ -37,8 +37,7 @@ the issue you're experiencing.
 
 We encourage you to follow the `nums.numpy.api.arange` implementation as a reference.
 
-#### Steps for debugging NumS on MPI Backend with PyCharm
-* You would need PyCharm professional (free for students and academics) (check this if this is still true)
+#### Steps for debugging NumS on MPI Backend with PyCharm professional
 * Go to Run -> Edit Configurations, there you will find a template for Python Debug Server.
 * check the box that says "allow parallel run" and also follow the step 1 in the template that has
   instructions on how to install `pydevd_pycharm`. Leave everything else intact in the template.
