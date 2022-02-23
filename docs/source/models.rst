@@ -69,13 +69,3 @@ The canonical link maps :math:`\mu` to :math:`\theta`
     LogisticRegression
     PoissonRegression
     ExponentialRegression
-
-
-
-
-Limited-memory BFGS
-~~~~~~~~~~~~~~~~~~
-Based on Nocedal and Wright, chapters 2, 3, 6 and 7.
-
-.. automodule:: nums.models.lbfgs
-   :members:

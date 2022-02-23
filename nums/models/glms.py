@@ -84,7 +84,7 @@ class GLM:
         X : BlockArray of shape (n_samples, n_features)
             Training data.
         y : BlockArray of shape (n_samples,) or (n_samples, n_targets)
-            Target values. Will be cast to X's dtype if necessary.
+            Target values.
 
         Returns
         -------
@@ -173,15 +173,61 @@ class GLM:
         self._beta = beta[:-1]
 
     def forward(self, X, beta=None):
+        """Step forward one interation of the GLM model.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Training data.
+        beta : BlockArray of shape (n_features,)
+            beta #TODO
+
+        Returns
+        -------
+        mu : BlockArray
+            mu #TODO
+        """
         if beta:
             return self.link_inv(X @ beta)
         return self.link_inv(self._beta0 + X @ self._beta)
 
     def grad_norm_sq(self, X: BlockArray, y: BlockArray, beta=None):
+        """Compute the norm of the gradient squared. #TODO
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Training data.
+        y : BlockArray of shape (n_samples,)
+            Target values.
+        beta : BlockArray of shape (n_features,)
+            beta #TODO
+
+        Returns
+        -------
+        g : BlockArray #TODO
+            Returns the norm of the gradient squared.
+        """
         g = self.gradient(X, y, self.forward(X, beta), beta=beta)
         return g.transpose(defer=True) @ g
 
     def predict(self, X):
+        """Predict using the GLM model.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        Returns
+        -------
+        C : array, shape (n_samples,)
+            Returns predicted values.
+
+        Notes
+        -----
+        Predict is not implemented yet for this GLM.
+        """
         raise NotImplementedError()
 
     def link_inv(self, eta: BlockArray):
@@ -211,9 +257,42 @@ class GLM:
         raise NotImplementedError()
 
     def deviance(self, y, y_pred):
+        """Computes the deviance of the model with regards to y_pred.
+
+        Parameters
+        ----------
+        y : BlockArray of shape (n_samples,)
+            Samples.
+
+        y_pred : BlockArray of shape (n_samples,)
+            Predicted values.
+
+        Returns
+        -------
+        C : BlockArray
+            Returns deviance between y and y_pred.
+
+        Notes
+        -----
+        The deviance is not implemented yet for this GLM.
+        """
         raise NotImplementedError()
 
     def deviance_sqr(self, X, y):
+        """Computes the deviance squared. #TODO
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Training data.
+        y : BlockArray of shape (n_samples,) or (n_samples, n_targets)
+            Target values.
+
+        Returns
+        -------
+        C : float
+            Deviance squared. #TODO
+        """
         y_pred = self.predict(X)
         dev = self.deviance(y, y_pred)
         y_mean = self._app.mean(y)
@@ -221,8 +300,17 @@ class GLM:
         return 1 - dev / dev_null
 
     def obj_penalty(self, beta):
-        """
-        Returns the penalty term for the object function used in regularization.
+        """Returns the penalty term for the object function used in regularization.
+
+        Parameters
+        ----------
+        beta : float #TODO
+            The coefficient vector.
+
+        Returns
+        -------
+        C : float #TODO
+            Objective penalty.
         """
         if self._penalty == "l1":
             return self._l1penalty * self._app.norm(beta, order=1)
@@ -236,8 +324,16 @@ class GLM:
             raise ValueError("Unexpected call to objective term, penalty=None.")
 
     def grad_penalty(self, beta):
-        """
-        Returns the penalty for the gradient used in regularization.
+        """Returns the penalty for the gradient used in regularization.
+        Parameters
+        ----------
+        beta : float #TODO
+            The coefficient vector.
+
+        Returns
+        -------
+        C : float #TODO
+            Gradient penalty.
         """
         if self._penalty == "l1":
             return self._l1penalty_vec * self._app.map_uop("sign", beta)
@@ -251,8 +347,12 @@ class GLM:
             raise ValueError("Unexpected call to objective term, penalty=None.")
 
     def hessian_penalty(self):
-        """
-        Returns the norm penalty for the hessian used in regularization.
+        """Returns the norm penalty for the hessian used in regularization.
+
+        Returns
+        -------
+        C : float #TODO
+            Hessian penalty.
         """
         if self._penalty == "l1":
             return 0.0
@@ -297,6 +397,27 @@ class LinearRegressionBase(GLM):
         beta: BlockArray = None,
         mu: BlockArray = None,
     ):
+        """Computes the objective function.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        y : BlockArray of shape (n_samples,)
+            Target values.
+
+        mu : BlockArray of shape (n_samples,) #TODO
+            Hessian penalty
+
+        beta: BlockArray of shape (n_features,)
+            Beta #TODO
+
+        Returns
+        -------
+        C : BlockArray, shape (n_samples,) #TODO
+            Returns the objective,
+        """
         assert beta is not None or self._beta is not None
         mu = self.forward(X, beta) if mu is None else mu
         r = self._app.sum((y - mu) ** self._app.two)
@@ -314,6 +435,24 @@ class LinearRegressionBase(GLM):
     ):
         """Computes the gradient with regards to beta.
 
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        y : BlockArray of shape (n_samples,)
+            Target values.
+
+        mu : BlockArray of shape (n_samples,) #TODO
+            Hessian penalty
+
+        beta: BlockArray of shape (n_features,)
+            Beta #TODO
+
+        Returns
+        -------
+        C : array, shape (n_samples,) #TODO
+            Returns predicted values.
         """
         if mu is None:
             mu = self.forward(X)
@@ -738,17 +877,6 @@ class Lasso(LinearRegressionBase):
     feature_names_in_ : ndarray of shape (`n_features_in_`,)
         Names of features seen during :term:`fit`. Defined only when `X`
         has feature names that are all strings.
-
-    Examples
-    --------
-    >>> from sklearn import linear_model
-    >>> clf = linear_model.Lasso(alpha=0.1)
-    >>> clf.fit([[0,0], [1, 1], [2, 2]], [0, 1, 2])
-    Lasso(alpha=0.1)
-    >>> print(clf.coef_)
-    [0.85 0.  ]
-    >>> print(clf.intercept_)
-    0.15...
     """
     def __init__(
         self,
@@ -852,36 +980,6 @@ class LogisticRegression(GLM):
         .. versionchanged:: 0.20
             In SciPy <= 1.0.0 the number of lbfgs iterations may exceed
             ``max_iter``. ``n_iter_`` will now report at most ``max_iter``.
-
-    See Also
-    --------
-    SGDClassifier : Incrementally trained logistic regression (when given
-        the parameter ``loss="log"``).
-    LogisticRegressionCV : Logistic regression with built-in cross validation.
-
-    Notes
-    -----
-    The underlying C implementation uses a random number generator to
-    select features when fitting the model. It is thus not uncommon,
-    to have slightly different results for the same input data. If
-    that happens, try with a smaller tol parameter.
-    Predict output may not match that of standalone liblinear in certain
-    cases. See :ref:`differences from liblinear <liblinear_differences>`
-    in the narrative documentation.
-
-    Examples
-    --------
-    >>> from sklearn.datasets import load_iris
-    >>> from sklearn.linear_model import LogisticRegression
-    >>> X, y = load_iris(return_X_y=True)
-    >>> clf = LogisticRegression(random_state=0).fit(X, y)
-    >>> clf.predict(X[:2, :])
-    array([0, 0])
-    >>> clf.predict_proba(X[:2, :])
-    array([[9.8...e-01, 1.8...e-02, 1.4...e-08],
-           [9.7...e-01, 2.8...e-02, ...e-08]])
-    >>> clf.score(X, y)
-    0.97...
     """
     def __init__(
         self,
@@ -908,6 +1006,18 @@ class LogisticRegression(GLM):
         )
 
     def link_inv(self, eta: BlockArray):
+        """Computes the inverse link function.
+
+        Parameters
+        ----------
+        eta : BlockArray
+            eta
+
+        Returns
+        -------
+        eta: BlockArray
+            Returns eta.
+        """
         return self._app.one / (self._app.one + self._app.exp(-eta))
 
     def objective(
@@ -917,6 +1027,27 @@ class LogisticRegression(GLM):
         beta: BlockArray = None,
         mu: BlockArray = None,
     ):
+        """Computes the objective function.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        y : BlockArray of shape (n_samples,)
+            Target values.
+
+        mu : BlockArray of shape (n_samples,) #TODO
+            Hessian penalty
+
+        beta: BlockArray of shape (n_features,)
+            Beta #TODO
+
+        Returns
+        -------
+        C : BlockArray, shape (n_samples,) #TODO
+            Returns the objective,
+        """
         assert beta is not None or self._beta is not None
         log, one = self._app.log, self._app.one
         mu = self.forward(X, beta) if mu is None else mu
@@ -933,6 +1064,27 @@ class LogisticRegression(GLM):
         mu: BlockArray = None,
         beta: BlockArray = None,
     ):
+        """Computes the gradient with regards to beta.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        y : BlockArray of shape (n_samples,)
+            Target values.
+
+        mu : BlockArray of shape (n_samples,) #TODO
+            Hessian penalty
+
+        beta: BlockArray of shape (n_features,)
+            Beta #TODO
+
+        Returns
+        -------
+        C : array, shape (n_samples,) #TODO
+            Returns predicted values.
+        """
         if mu is None:
             mu = self.forward(X)
         r = X.transpose(defer=True) @ (mu - y)
@@ -942,6 +1094,24 @@ class LogisticRegression(GLM):
         return r
 
     def hessian(self, X: BlockArray, y: BlockArray, mu: BlockArray = None):
+        """Computes the hessian with regards to the hessian penalty.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        y : BlockArray of shape (n_samples,)
+            Target values.
+
+        mu : BlockArray of shape (n_samples,) #TODO
+            Hessian penalty
+
+        Returns
+        -------
+        C : array, shape (n_samples,) #TODO
+            Returns predicted values.
+        """
         if mu is None:
             mu = self.forward(X)
         dim, block_dim = mu.shape[0], mu.block_shape[0]
@@ -952,6 +1122,25 @@ class LogisticRegression(GLM):
         return r
 
     def deviance(self, y, y_pred):
+        """Computes the deviance of the model with regards to y_pred.
+
+        Parameters
+        ----------
+        y : BlockArray of shape (n_samples,)
+            Samples.
+
+        y_pred : BlockArray of shape (n_samples,)
+            Predicted values.
+
+        Notes
+        -----
+        The deviance for logistic regression is not implemented yet.
+
+        Returns
+        -------
+        C : BlockArray
+            Returns deviance between y and y_pred.
+        """
         raise NotImplementedError()
 
     def predict(self, X: BlockArray) -> BlockArray:
@@ -970,6 +1159,19 @@ class LogisticRegression(GLM):
         return (self.forward(X) > 0.5).astype(np.int)
 
     def predict_proba(self, X: BlockArray) -> BlockArray:
+        """Probability estimates.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Vector to be scored, where `n_samples` is the number of samples and
+            `n_features` is the number of features.
+
+        Returns
+        -------
+        T : BlockArray of shape (n_samples, n_classes)
+            Returns the probability of the sample for each class in the model.
+        """
         y_pos = self.forward(X).reshape(
             (X.shape[0], 1), block_shape=(X.block_shape[0], 1)
         )
@@ -981,6 +1183,8 @@ class PoissonRegression(GLM):
     """Generalized Linear Model with a Poisson distribution.
 
     This regressor uses the 'log' link function.
+
+    This docstring was copied from sklearn.linear_model.PoissonRegressor.
 
     Parameters
     ----------
@@ -1024,28 +1228,20 @@ class PoissonRegression(GLM):
         .. versionadded:: 1.0
     n_iter_ : int
         Actual number of iterations used in the solver.
-    Examples
-    ----------
-    >>> from sklearn import linear_model
-    >>> clf = linear_model.PoissonRegressor()
-    >>> X = [[1, 2], [2, 3], [3, 4], [4, 3]]
-    >>> y = [12, 17, 22, 21]
-    >>> clf.fit(X, y)
-    PoissonRegressor()
-    >>> clf.score(X, y)
-    0.990...
-    >>> clf.coef_
-    array([0.121..., 0.158...])
-    >>> clf.intercept_
-    2.088...
-    >>> clf.predict([[1, 1], [3, 4]])
-    array([10.676..., 21.875...])
-    See Also
-    ----------
-    GeneralizedLinearRegressor : Generalized Linear Model with a Poisson
-        distribution.
     """
     def link_inv(self, eta: BlockArray):
+        """Computes the inverse link function.
+
+        Parameters
+        ----------
+        eta : BlockArray
+            eta
+
+        Returns
+        -------
+        eta: BlockArray
+            Returns eta.
+        """
         return self._app.exp(eta)
 
     def objective(
@@ -1055,6 +1251,27 @@ class PoissonRegression(GLM):
         beta: BlockArray = None,
         mu: BlockArray = None,
     ):
+        """Computes the objective function.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        y : BlockArray of shape (n_samples,)
+            Target values.
+
+        mu : BlockArray of shape (n_samples,) #TODO
+            Hessian penalty
+
+        beta: BlockArray of shape (n_features,)
+            Beta #TODO
+
+        Returns
+        -------
+        C : array, shape (n_samples,) #TODO
+            Returns predicted values.
+        """
         if beta is None:
             eta = X @ self._beta + self._beta0
         else:
@@ -1069,22 +1286,87 @@ class PoissonRegression(GLM):
         mu: BlockArray = None,
         beta: BlockArray = None,
     ):
+        """Computes the gradient with regards to beta.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        y : BlockArray of shape (n_samples,)
+            Target values.
+
+        mu : BlockArray of shape (n_samples,) #TODO
+            Hessian penalty
+
+        beta: BlockArray of shape (n_features,)
+            Beta #TODO
+
+        Returns
+        -------
+        C : array, shape (n_samples,) #TODO
+            Returns predicted values.
+        """
         if mu is None:
             mu = self.forward(X)
         return X.transpose(defer=True) @ (mu - y)
 
     def hessian(self, X: BlockArray, y: BlockArray, mu: BlockArray = None):
+        """Computes the hessian with regards to the hessian penalty.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        y : BlockArray of shape (n_samples,)
+            Target values.
+
+        mu : BlockArray of shape (n_samples,) #TODO
+            Hessian penalty
+
+        Returns
+        -------
+        C : array, shape (n_samples,) #TODO
+            Returns predicted values.
+        """
         if mu is None:
             mu = self.forward(X)
         # TODO (hme): This is sub-optimal as it forces the computation of X.T.
         return (X.transpose(defer=True) * mu) @ X
 
     def deviance(self, y: BlockArray, y_pred: BlockArray) -> BlockArray:
+        """Computes the deviance. #TODO
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Training data.
+        y : BlockArray of shape (n_samples,) or (n_samples, n_targets)
+            Target values.
+
+        Returns
+        -------
+        C : BlockArray
+            Deviance. #TODO
+        """
         return self._app.sum(
             self._app.two * self._app.xlogy(y, y / y_pred) - y + y_pred
         )
 
     def predict(self, X: BlockArray) -> BlockArray:
+        """Predict using the Linear Regression model. Calls forward internally.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        Returns
+        -------
+        C : BlockArray, shape (n_samples,)
+            Returns predicted values.
+        """
         return self.forward(X)
 
 
@@ -1126,6 +1408,22 @@ class ExponentialRegression(GLM):
     * inverse canonical link: mu = b'(theta) = -1/theta = -1/eta
     """
     def link_inv(self, eta: BlockArray):
+        """Computes the inverse link function.
+
+        Parameters
+        ----------
+        eta : BlockArray
+            eta
+
+        Returns
+        -------
+        eta: BlockArray
+            Returns eta.
+
+        Notes
+        -----
+        Inverse link function for exponential regression is not implemented yet.
+        """
         raise NotImplementedError()
 
     def objective(
@@ -1135,6 +1433,31 @@ class ExponentialRegression(GLM):
         beta: BlockArray = None,
         mu: BlockArray = None,
     ):
+        """Computes the objective function.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        y : BlockArray of shape (n_samples,)
+            Target values.
+
+        mu : BlockArray of shape (n_samples,) #TODO
+            Hessian penalty
+
+        beta: BlockArray of shape (n_features,)
+            Beta #TODO
+
+        Returns
+        -------
+        C : BlockArray, shape (n_samples,) #TODO
+            Returns the objective.
+
+        Notes
+        -----
+        Objective function for exponential regression is not implemented yet.
+        """
         raise NotImplementedError()
 
     def gradient(
@@ -1144,9 +1467,56 @@ class ExponentialRegression(GLM):
         mu: BlockArray = None,
         beta: BlockArray = None,
     ):
+        """Computes the gradient with regards to beta.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        y : BlockArray of shape (n_samples,)
+            Target values.
+
+        mu : BlockArray of shape (n_samples,) #TODO
+            Hessian penalty
+
+        beta: BlockArray of shape (n_features,)
+            Beta #TODO
+
+        Returns
+        -------
+        C : array, shape (n_samples,) #TODO
+            Returns gradient.
+
+        Notes
+        -----
+        Gradient for exponential regression is not implemented yet.
+        """
         raise NotImplementedError()
 
     def hessian(self, X: BlockArray, y: BlockArray, mu: BlockArray = None):
+        """Computes the hessian with regards to the hessian penalty.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        y : BlockArray of shape (n_samples,)
+            Target values.
+
+        mu : BlockArray of shape (n_samples,) #TODO
+            Hessian penalty
+
+        Returns
+        -------
+        C : array, shape (n_samples,) #TODO
+            Returns predicted values.
+
+        Notes
+        -----
+        Hessian for exponential regression is not implemented yet.
+        """
         raise NotImplementedError()
 
 
