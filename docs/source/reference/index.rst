@@ -8,3 +8,4 @@ API Reference
 
    api.rst
    numpy.rst
+   models.rst
