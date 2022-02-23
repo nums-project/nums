@@ -555,23 +555,6 @@ class LinearRegression(LinearRegressionBase):
         Normalizes the regressors before regression.
         Setting this option to True is not yet supported.
 
-    Attributes
-    ----------
-    _penalty :
-    _lambda :
-    _l1penalty : generalized L1 penalty
-    _l1penalty_vec : generalized L1 penalty vector
-    _l2penalty : generalized L2 penalty
-    _l2penalty_vec : generalized L2 penalty vector
-    _l2penalty_diag : generalized L2 penalty diagonal
-    alpha: the weighting between L1 penalty and L2 penalty term of the loss function
-    _tol : corresponds to the parameter tol
-    _max_iter: corresponds to the parameter max_iter
-    _opt: corresponds to the parameter solver
-    _lr: corresponds to the parameter lr
-    _beta: BlockArray used internally for the optimizer to solve for the beta coefficients of the model
-    _beta0
-
     See Also
     --------
     Ridge : Ridge regression addresses some of the
@@ -652,23 +635,6 @@ class Ridge(LinearRegressionBase):
     normalize : bool, default=False
         Normalizes the regressors before regression.
         Setting this option to True is not yet supported.
-
-    Attributes
-    ----------
-    _penalty
-    _lambda
-    _l1penalty
-    _l1penalty_vec
-    _l2penalty
-    _l2penalty_vec
-    _l2penalty_diag
-    alpha
-    _tol : corresponds to the parameter tol
-    _max_iter: corresponds to the parameter max_iter
-    _opt: corresponds to the parameter solver
-    _lr: corresponds to the parameter lr
-    _beta: BlockArray used internally for the optimizer to solve for the beta coefficients of the model
-    _beta0
     """
     def __init__(
         self,
@@ -757,23 +723,6 @@ class ElasticNet(LinearRegressionBase):
         Normalizes the regressors before regression.
         Setting this option to True is not yet supported.
 
-    Attributes
-    ----------
-    _penalty
-    _lambda
-    _l1penalty
-    _l1penalty_vec
-    _l2penalty
-    _l2penalty_vec
-    _l2penalty_diag
-    alpha
-    _tol : corresponds to the parameter tol
-    _max_iter: corresponds to the parameter max_iter
-    _opt: corresponds to the parameter solver
-    _lr: corresponds to the parameter lr
-    _beta: BlockArray used internally for the optimizer to solve for the beta coefficients of the model
-    _beta0
-
     Notes
     -----
     Sklearn documentation suggests lasso and elastic net have different coefficients
@@ -849,34 +798,6 @@ class Lasso(LinearRegressionBase):
     normalize : bool, default=False
         Normalizes the regressors before regression.
         Setting this option to True is not yet supported.
-
-    Attributes
-    ----------
-    coef_ : ndarray of shape (n_features,) or (n_targets, n_features)
-        Parameter vector (w in the cost function formula).
-
-    dual_gap_ : float or ndarray of shape (n_targets,)
-        Given param alpha, the dual gaps at the end of the optimization,
-        same shape as each observation of y.
-
-    sparse_coef_ : sparse matrix of shape (n_features, 1) or \
-            (n_targets, n_features)
-        Readonly property derived from ``coef_``.
-
-    intercept_ : float or ndarray of shape (n_targets,)
-        Independent term in decision function.
-
-    n_iter_ : int or list of int
-        Number of iterations run by the coordinate descent solver to reach
-        the specified tolerance.
-
-    n_features_in_ : int
-        Number of features seen during :term:`fit`.
-        .. versionadded:: 0.24
-
-    feature_names_in_ : ndarray of shape (`n_features_in_`,)
-        Names of features seen during :term:`fit`. Defined only when `X`
-        has feature names that are all strings.
     """
     def __init__(
         self,
@@ -944,42 +865,6 @@ class LogisticRegression(GLM):
     normalize : bool, default=False
         Normalizes the regressors before regression.
         Setting this option to True is not yet supported.
-
-    Attributes
-    ----------
-    classes_ : ndarray of shape (n_classes, )
-        A list of class labels known to the classifier.
-
-    coef_ : ndarray of shape (1, n_features) or (n_classes, n_features)
-        Coefficient of the features in the decision function.
-        `coef_` is of shape (1, n_features) when the given problem is binary.
-        In particular, when `multi_class='multinomial'`, `coef_` corresponds
-        to outcome 1 (True) and `-coef_` corresponds to outcome 0 (False).
-
-    intercept_ : ndarray of shape (1,) or (n_classes,)
-        Intercept (a.k.a. bias) added to the decision function.
-        If `fit_intercept` is set to False, the intercept is set to zero.
-        `intercept_` is of shape (1,) when the given problem is binary.
-        In particular, when `multi_class='multinomial'`, `intercept_`
-        corresponds to outcome 1 (True) and `-intercept_` corresponds to
-        outcome 0 (False).
-
-    n_features_in_ : int
-        Number of features seen during :term:`fit`.
-        .. versionadded:: 0.24
-
-    feature_names_in_ : ndarray of shape (`n_features_in_`,)
-        Names of features seen during :term:`fit`. Defined only when `X`
-        has feature names that are all strings.
-        .. versionadded:: 1.0
-
-    n_iter_ : ndarray of shape (n_classes,) or (1, )
-        Actual number of iterations for all classes. If binary or multinomial,
-        it returns only 1 element. For liblinear solver, only the maximum
-        number of iteration across all classes is given.
-        .. versionchanged:: 0.20
-            In SciPy <= 1.0.0 the number of lbfgs iterations may exceed
-            ``max_iter``. ``n_iter_`` will now report at most ``max_iter``.
     """
     def __init__(
         self,
@@ -1211,23 +1096,6 @@ class PoissonRegression(GLM):
     normalize : bool, default=False
         Normalizes the regressors before regression.
         Setting this option to True is not yet supported.
-
-    Attributes
-    ----------
-    coef_ : array of shape (n_features,)
-        Estimated coefficients for the linear predictor (`X @ coef_ +
-        intercept_`) in the GLM.
-    intercept_ : float
-        Intercept (a.k.a. bias) added to linear predictor.
-    n_features_in_ : int
-        Number of features seen during :term:`fit`.
-        .. versionadded:: 0.24
-    feature_names_in_ : ndarray of shape (`n_features_in_`,)
-        Names of features seen during :term:`fit`. Defined only when `X`
-        has feature names that are all strings.
-        .. versionadded:: 1.0
-    n_iter_ : int
-        Actual number of iterations used in the solver.
     """
     def link_inv(self, eta: BlockArray):
         """Computes the inverse link function.
