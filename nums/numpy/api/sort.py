@@ -356,6 +356,79 @@ def min(
 amin = min
 
 
+def sort(arr: BlockArray, axis=-1, kind=None, order=None) -> BlockArray:
+    """Return a sorted copy of an array.
+
+    This docstring was copied from numpy.sort.
+
+    Some inconsistencies with the NumS version may exist.
+
+    Parameters
+    ----------
+    arr : BlockArray
+        BlockArray to be sorted.
+    axis : int or None, optional
+        Axis along which to sort. If None, the array is flattened before
+        sorting. The default is -1, which sorts along the last axis.
+    kind : {'quicksort', 'mergesort', 'heapsort', 'stable'}, optional
+        Sorting algorithm. The default is 'quicksort'. Note that both 'stable'
+        and 'mergesort' use timsort or radix sort under the covers and, in general,
+        the actual implementation will vary with data type. The 'mergesort' option
+        is retained for backwards compatibility.
+    order : str or list of str, optional
+        When `arr` is an array with fields defined, this argument specifies
+        which fields to compare first, second, etc.  A single field can
+        be specified as a string, and not all fields need be specified,
+        but unspecified fields will still be used, in the order in which
+        they come up in the dtype, to break ties.
+
+    Returns
+    -------
+    sorted_array : BlockArray
+        Array of the same type and shape as `arr`.
+
+    Notes
+    -----
+    'axis' is currently not supported.
+
+    'kind' is currently not supported.
+
+    NumS's sort is a distributed multithreaded sort while NumPy's sort is
+    single threaded. NumS's sort is able to utilize NumPy's underlying
+    sorting algorithm. Below is a description of the NumPy sorting
+    algroithms used.
+
+    The various sorting algorithms are characterized by their average speed,
+    worst case performance, work space size, and whether they are stable. A
+    stable sort keeps items with the same key in the same relative
+    order. The four algorithms implemented in NumPy have the following
+    properties:
+
+    =========== ======= ============= ============ ========
+       kind      speed   worst case    work space   stable
+    =========== ======= ============= ============ ========
+    'quicksort'    1     O(n^2)            0          no
+    'heapsort'     3     O(n*log(n))       0          no
+    'mergesort'    2     O(n*log(n))      ~n/2        yes
+    'timsort'      2     O(n*log(n))      ~n/2        yes
+    =========== ======= ============= ============ ========
+
+    Examples
+    --------
+    The doctests shown below are copied from NumPy.
+    They won’t show the correct result until you operate ``get()``.
+    >>> a = nps.array([[1, 4, 3, 1]]) # doctest: +SKIP
+    >>> nps.sort(a).get() # doctest: +SKIP
+    array([1, 1, 3, 4])
+    """
+    if axis is not -1:
+        raise NotImplementedError("'axis' is currently not supported.")
+    if order is not None:
+        raise NotImplementedError("'order' is currently not supported.")
+
+    return _instance().sort(arr, kind=kind)
+
+
 def top_k(
     a: BlockArray, k: int, largest=True, sorted=False
 ) -> Tuple[BlockArray, BlockArray]:

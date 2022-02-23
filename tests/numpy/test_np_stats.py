@@ -54,6 +54,43 @@ def test_stats_1d(nps_app_inst):
             assert np.allclose(ba_result.get(), np_result)
 
 
+def test_sort_serial(nps_app_inst):
+    from nums import numpy as nps
+    from nums.numpy import BlockArray
+
+    assert nps_app_inst is not None
+
+    kinds = ["quicksort", "mergesort", "heapsort", "stable"]
+
+    for kind in kinds:
+        ba: BlockArray = nps.random.permutation(100)
+        na: np.ndarray = ba.get()
+
+        ba_sorted = nps.sort(ba, kind=kind)
+        na_sorted = np.sort(na, kind=kind)
+
+        assert np.allclose(ba_sorted.get(), na_sorted)
+
+
+def test_sort_distributed(nps_app_inst):
+    from nums import numpy as nps
+    from nums.numpy import BlockArray
+
+    assert nps_app_inst is not None
+
+    kinds = ["quicksort", "mergesort", "heapsort", "stable"]
+
+    for kind in kinds:
+        ba: BlockArray = nps.random.permutation(100)
+        ba = ba.reshape(block_shape=(10,))
+        na: np.ndarray = ba.get()
+
+        ba_sorted = nps.sort(ba, kind=kind)
+        na_sorted = np.sort(na, kind=kind)
+
+        assert np.allclose(ba_sorted.get(), na_sorted)
+
+
 if __name__ == "__main__":
     from nums.core import application_manager
     import nums.core.settings
@@ -63,3 +100,5 @@ if __name__ == "__main__":
     nums.core.settings.backend_name = "mpi"
     nps_app_inst = application_manager.instance()
     test_stats_1d(nps_app_inst)
+    test_sort_serial(nps_app_inst)
+    test_sort_distributed(nps_app_inst)

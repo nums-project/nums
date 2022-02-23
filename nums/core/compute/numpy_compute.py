@@ -511,3 +511,20 @@ class ComputeCls(ComputeImp):
 
     def identity(self, value):
         return value
+
+    def sample_pivots(self, arr):
+        return arr[0]
+
+    def sort(self, arr, kind):
+        if arr.size == 1:
+            return arr
+        return np.sort(arr, kind=kind)
+
+    def map_sort(self, arr, pivots, kind):
+        arr = np.sort(arr, kind=kind)
+        idx = arr.searchsorted(pivots)
+        return np.array(np.split(arr, idx), dtype=object)
+
+    def reduce_sort(self, *arr, kind):
+        merged_arr = np.concatenate(arr)
+        return np.sort(merged_arr, kind=kind)

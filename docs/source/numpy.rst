@@ -160,3 +160,4 @@ NumS Supported API
    empty_like
    trace
    top_k
+   sort

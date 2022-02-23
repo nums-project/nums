@@ -14,7 +14,6 @@
 
 
 from typing import List, Tuple, Dict, Union
-
 import numpy as np
 
 from nums.core.array import utils as array_utils
@@ -1204,3 +1203,103 @@ class ArrayApplication:
             else:
                 arrays.append(self.atleast_2d(arr))
         return self.concatenate(arrays, 1, axis_block_size=axis_block_size)
+
+    def sort(self, arr, kind):
+        # If the BlockArray to be sorted is small enough, default to serial sort
+        if arr.blocks.size == 1:
+            oid = self.cm.sort(
+                arr.flattened_oids()[0],
+                kind,
+                syskwargs={
+                    "grid_entry": (0,),
+                    "grid_shape": (1,),
+                    "options": {"num_returns": 1},
+                },
+            )
+            return BlockArray.from_oid(oid, arr.block_shape, arr.dtype, self.cm)
+
+        num_blocks = arr.grid.grid_shape[0]
+        pivot_oids = []
+
+        # Sample n - 1 pivots to sort buckets around
+        for i, grid_entry in enumerate(arr.grid.get_entry_iterator()):
+            if i == 0:
+                continue
+            oid = self.cm.sample_pivots(
+                arr.blocks[i].oid,
+                syskwargs={
+                    "grid_entry": grid_entry,
+                    "grid_shape": arr.grid.grid_shape,
+                    "options": {"num_returns": 1},
+                },
+            )
+            pivot_oids.append(BlockArray.from_oid(oid, (1,), arr.dtype, self.cm))
+
+        ba_pivots = self.concatenate(
+            pivot_oids, axis=0, axis_block_size=len(pivot_oids)
+        )
+
+        # Assume that the number of pivots is small enough to fit within a single BlockArray
+
+        sorted_pivots_oid = self.cm.sort(
+            ba_pivots.blocks[0].oid,
+            kind,
+            syskwargs={
+                "grid_entry": (0,),
+                "grid_shape": (1,),
+                "options": {"num_returns": 1},
+            },
+        )
+
+        mapped_sorted = np.empty([num_blocks, num_blocks], dtype=object)
+        reduce_sorted = []
+
+        for i, grid_entry in enumerate(arr.grid.get_entry_iterator()):
+            mapped_sorted[i] = self.cm.map_sort(
+                arr.blocks[i].oid,
+                sorted_pivots_oid,
+                kind,
+                syskwargs={
+                    "grid_entry": grid_entry,
+                    "grid_shape": arr.grid.grid_shape,
+                    "options": {"num_returns": num_blocks},
+                },
+            )
+
+        oids = []
+
+        for j, grid_entry in enumerate(arr.grid.get_entry_iterator()):
+            oids.append(
+                self.cm.reduce_sort(
+                    *mapped_sorted[:, j],
+                    kind=kind,
+                    syskwargs={
+                        "grid_entry": grid_entry,
+                        "grid_shape": arr.grid.grid_shape,
+                        "options": {"num_returns": 1},
+                    },
+                )
+            )
+
+        shape_dtypes = []
+
+        for i, grid_entry in enumerate(arr.grid.get_entry_iterator()):
+            shape_dtypes.append(
+                self.cm.shape_dtype(
+                    oids[i],
+                    syskwargs={
+                        "grid_entry": grid_entry,
+                        "grid_shape": arr.grid.grid_shape,
+                    },
+                )
+            )
+
+        shapes, dtypes = zip(*self.cm.get(shape_dtypes))
+
+        for i in range(len(oids)):
+            ba = BlockArray.from_oid(oids[i], shapes[i], dtypes[i], self.cm)
+            reduce_sorted.append(ba)
+
+        return self.concatenate(
+            reduce_sorted, axis=0, axis_block_size=arr.block_shape[0]
+        )
