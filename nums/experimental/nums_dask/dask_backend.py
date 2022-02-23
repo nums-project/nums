@@ -26,7 +26,7 @@ except Exception as e:
         "Unable to import dask. Install dask with command 'pip install dask[complete]'"
     ) from e
 from nums.core.grid.grid import Device
-from nums.core.backends.backend_interface import Backend
+from nums.core.backends import Backend
 from nums.core.backends.utils import get_num_cores
 
 
