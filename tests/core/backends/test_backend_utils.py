@@ -22,7 +22,7 @@ from nums.core.backends import utils as backend_utils
 def test_utils():
     r = backend_utils.get_module_functions(backend_utils)
     assert len(r) > 0
-    r = backend_utils.get_instance_functions(numpy_kernel.ComputeCls())
+    r = backend_utils.get_instance_functions(numpy_kernel.KernelCls())
     assert len(r) > 0
 
 

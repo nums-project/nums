@@ -57,7 +57,7 @@ class KernelManager(Kernel):
         self.init_kernel(kernel_module)
 
     def init_kernel(self, kernel_module):
-        kernel_imp = kernel_module.ComputeCls
+        kernel_imp = kernel_module.KernelCls
 
         # Check that all of kernel interface is implemented.
         backend_utils.check_implementation(Kernel, kernel_imp)

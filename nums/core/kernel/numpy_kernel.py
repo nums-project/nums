@@ -82,7 +82,7 @@ class RNG(RNGInterface):
         return params
 
 
-class ComputeCls(KernelImp):
+class KernelCls(KernelImp):
     # pylint: disable=no-member, unused-variable
 
     # I/O operations.
