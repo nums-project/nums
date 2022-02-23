@@ -62,13 +62,13 @@ The canonical link maps :math:`\mu` to :math:`\theta`
 .. autosummary::
    :toctree: generated/
 
-   LinearRegression
-   Ridge
-   ElasticNet
-   Lasso
-   LogisticRegression
-   PoissonRegression
-   ExponentialRegression
+    LinearRegression
+    Ridge
+    ElasticNet
+    Lasso
+    LogisticRegression
+    PoissonRegression
+    ExponentialRegression
 
 
 
