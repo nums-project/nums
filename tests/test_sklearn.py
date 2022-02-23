@@ -164,7 +164,7 @@ def test_parallel_sklearn(nps_app_inst: ArrayApplication):
 
 
 def test_supervised(nps_app_inst: ArrayApplication):
-    from nums.core.backends.backends import RayBackend, SerialBackend
+    from nums.core.backends import RayBackend, SerialBackend
 
     if not isinstance(nps_app_inst.km.backend, (RayBackend, SerialBackend)):
         return
@@ -206,7 +206,7 @@ def test_train_test_split(nps_app_inst: ArrayApplication):
     import numpy as np
     from nums.sklearn import SVC, SVR, train_test_split
 
-    from nums.core.backends.backends import RayBackend, SerialBackend
+    from nums.core.backends import RayBackend, SerialBackend
 
     if not isinstance(nps_app_inst.km.backend, (RayBackend, SerialBackend)):
         return
@@ -243,7 +243,7 @@ def test_train_test_split(nps_app_inst: ArrayApplication):
 
 
 def test_regressors(nps_app_inst: ArrayApplication):
-    from nums.core.backends.backends import RayBackend, SerialBackend
+    from nums.core.backends import RayBackend, SerialBackend
 
     if not isinstance(nps_app_inst.km.backend, (RayBackend, SerialBackend)):
         return
@@ -263,7 +263,7 @@ def test_regressors(nps_app_inst: ArrayApplication):
 
 
 def test_typing(nps_app_inst):
-    from nums.core.backends.backends import RayBackend, SerialBackend
+    from nums.core.backends import RayBackend, SerialBackend
 
     if not isinstance(nps_app_inst.km.backend, (RayBackend, SerialBackend)):
         return

@@ -11,10 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 from types import FunctionType
-from typing import Any, Union, List, Dict
+from typing import Any, Dict, List, Union
 
 from nums.core.grid.grid import Device
 

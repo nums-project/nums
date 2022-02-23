@@ -111,7 +111,7 @@ class Device:
     node_id: int
     node_addr: str
     device_type: str
-    device_id: int
+    device: int
 
 
 class DeviceGrid:

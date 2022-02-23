@@ -24,7 +24,7 @@ from nums.core.array import utils as array_utils
 from nums.core.kernel.kernel_interface import Kernel, RNGInterface
 from nums.core.grid.grid import DeviceGrid, Device
 from nums.core.backends import utils as backend_utils
-from nums.core.backends.backend_interface import Backend
+from nums.core.backends import Backend
 
 
 class KernelManager(Kernel):
