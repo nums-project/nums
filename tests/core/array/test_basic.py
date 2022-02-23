@@ -108,10 +108,10 @@ def test_split(app_inst: ArrayApplication):
         "grid_shape": x.blocks[0].grid_shape,
         "options": {"num_returns": 2},
     }
-    res1, res2 = x.cm.split(
+    res1, res2 = x.km.split(
         x.blocks[0].oid, 2, axis=0, transposed=False, syskwargs=syskwargs
     )
-    ba = BlockArray(ArrayGrid((4,), (2,), x.dtype.__name__), x.cm)
+    ba = BlockArray(ArrayGrid((4,), (2,), x.dtype.__name__), x.km)
     ba.blocks[0].oid = res1
     ba.blocks[1].oid = res2
     assert np.allclose([1.0, 2.0, 3.0, 4.0], ba.get())
@@ -214,7 +214,7 @@ def test_compute_block_shape(app_inst: ArrayApplication):
         shape, expected_block_shape, expected_grid_shape = ideal_tall_skinny_shapes(
             size_str, dtype
         )
-        block_shape = app_inst.cm.compute_block_shape(
+        block_shape = app_inst.km.compute_block_shape(
             shape, dtype, cluster_shape, num_nodes * cores_per_node
         )
         grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype.__name__)
@@ -236,7 +236,7 @@ def test_compute_block_shape(app_inst: ArrayApplication):
         shape, expected_block_shape, expected_grid_shape = ideal_square_shapes(
             size_str, dtype
         )
-        block_shape = app_inst.cm.compute_block_shape(
+        block_shape = app_inst.km.compute_block_shape(
             shape, dtype, cluster_shape, num_nodes * cores_per_node
         )
         grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype.__name__)
