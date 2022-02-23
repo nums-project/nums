@@ -77,10 +77,27 @@ class GLM:
         self._beta0 = None
 
     def fit(self, X: BlockArray, y: BlockArray):
-        # Note, it's critically important from a performance point-of-view
-        # to maintain the original block shape of X below, along axis 1.
-        # Otherwise, the concatenation operation will not construct the new X
-        # by referencing X's existing blocks.
+        """Fit generalized linear model.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Training data.
+        y : BlockArray of shape (n_samples,) or (n_samples, n_targets)
+            Target values. Will be cast to X's dtype if necessary.
+
+        Returns
+        -------
+        self : object
+            Fitted Estimator.
+
+        Notes
+        -----
+        Note, it's critically important from a performance point-of-view
+        to maintain the original block shape of X below, along axis 1.
+        Otherwise, the concatenation operation will not construct the new X
+        by referencing X's existing blocks.
+        """
         # TODO: Option to do concat.
         # TODO: Provide support for batching.
         if np.issubdtype(X.dtype, np.integer):
@@ -279,8 +296,8 @@ class LinearRegressionBase(GLM):
         mu: BlockArray = None,
         beta: BlockArray = None,
     ):
-        """
-        Computes the gradient with regards to beta.
+        """Computes the gradient with regards to beta.
+
         """
         if mu is None:
             mu = self.forward(X)
@@ -291,8 +308,23 @@ class LinearRegressionBase(GLM):
         return r
 
     def hessian(self, X: BlockArray, y: BlockArray, mu: BlockArray = None):
-        """
-        Computes the hessian with regards to the hessian penalty.
+        """Computes the hessian with regards to the hessian penalty.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        y : BlockArray of shape (n_samples,)
+            Target values.
+
+        mu : BlockArray of shape (n_samples,) #TODO
+            Hessian penalty
+
+        Returns
+        -------
+        C : array, shape (n_samples,) #TODO
+            Returns predicted values.
         """
         r = X.transpose(defer=True) @ X
         if self._penalty is not None:
@@ -300,14 +332,35 @@ class LinearRegressionBase(GLM):
         return r
 
     def deviance(self, y, y_pred):
-        """
-        Computes the deviance of the model with regards to y_pred.
+        """Computes the deviance of the model with regards to y_pred.
+
+        Parameters
+        ----------
+        y : BlockArray of shape (n_samples,)
+            Samples.
+
+        y_pred : BlockArray of shape (n_samples,)
+            Predicted values.
+
+        Returns
+        -------
+        C : BlockArray
+            Returns deviance between y and y_pred.
         """
         return self._app.sum((y - y_pred) ** self._app.two)
 
     def predict(self, X: BlockArray) -> BlockArray:
-        """
-        Predict using the Linear Regression model. Calls foward internally.
+        """Predict using the Linear Regression model. Calls forward internally.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        Returns
+        -------
+        C : array, shape (n_samples,)
+            Returns predicted values.
         """
         return self.forward(X)
 
@@ -329,7 +382,7 @@ class LinearRegression(LinearRegressionBase):
     max_iter : int, default=100
         Maximum number of iterations taken for the solvers to converge.
 
-    solver : {'newton'}, default='newton'
+    solver : {'gd', 'sgd', 'block_sgd', 'newton', 'newton-cg', 'irls', 'lbfgs'}, default='newton'
         Algorithm to use in the optimization problem. Default is ‘newton’.
 
     lr : float, default=0.01
@@ -349,14 +402,14 @@ class LinearRegression(LinearRegressionBase):
 
     Attributes
     ----------
-    _penalty
-    _lambda
-    _l1penalty
-    _l1penalty_vec
-    _l2penalty
-    _l2penalty_vec
-    _l2penalty_diag
-    alpha
+    _penalty :
+    _lambda :
+    _l1penalty : generalized L1 penalty
+    _l1penalty_vec : generalized L1 penalty vector
+    _l2penalty : generalized L2 penalty
+    _l2penalty_vec : generalized L2 penalty vector
+    _l2penalty_diag : generalized L2 penalty diagonal
+    alpha: the weighting between L1 penalty and L2 penalty term of the loss function
     _tol : corresponds to the parameter tol
     _max_iter: corresponds to the parameter max_iter
     _opt: corresponds to the parameter solver
@@ -415,15 +468,11 @@ class Ridge(LinearRegressionBase):
 
     Parameters
     ----------
-    alpha : float or array-like of shape (n_targets,)
+    alpha : float
         Regularization strength; must be a positive float. Regularization
         improves the conditioning of the problem and reduces the variance of
         the estimates. Larger values specify stronger regularization.
-        Alpha corresponds to ``1 / (2C)`` in other linear models such as
-        :class:`~sklearn.linear_model.LogisticRegression` or
-        :class:`~sklearn.svm.LinearSVC`. If an array is passed, penalties are
-        assumed to be specific to the targets. Hence they must correspond in
-        number.
+        Alpha corresponds to ``1 / (2C)``.
 
     tol : float, default=0.0001
         Tolerance for stopping criteria.
@@ -431,7 +480,7 @@ class Ridge(LinearRegressionBase):
     max_iter : int, default=100
         Maximum number of iterations taken for the solvers to converge.
 
-    solver : {'newton'}, default='newton'
+    solver : {'gd', 'sgd', 'block_sgd', 'newton', 'newton-cg', 'irls', 'lbfgs'}, default='newton'
         Algorithm to use in the optimization problem. Default is ‘newton’.
 
     lr : float, default=0.01
@@ -515,62 +564,71 @@ class ElasticNet(LinearRegressionBase):
 
     This docstring was copied from sklearn.linear_model.ElasticNet.
 
-   Parameters
-   ----------
-   alpha : float or array-like of shape (n_targets,)
-       Regularization strength; must be a positive float. Regularization
-       improves the conditioning of the problem and reduces the variance of
-       the estimates. Larger values specify stronger regularization.
-       Alpha corresponds to ``1 / (2C)`` in other linear models such as
-       :class:`~sklearn.linear_model.LogisticRegression` or
-       :class:`~sklearn.svm.LinearSVC`. If an array is passed, penalties are
-       assumed to be specific to the targets. Hence they must correspond in
-       number.
+    Parameters
+    ----------
+    alpha : float or array-like of shape (n_targets,)
+        Regularization strength; must be a positive float. Regularization
+        improves the conditioning of the problem and reduces the variance of
+        the estimates. Larger values specify stronger regularization.
+        Alpha corresponds to ``1 / (2C)``.
 
-   tol : float, default=0.0001
-       Tolerance for stopping criteria.
+    l1_ratio : float, default=0.5
+        The ElasticNet mixing parameter, with ``0 <= l1_ratio <= 1``. For
+        ``l1_ratio = 0`` the penalty is an L2 penalty. ``For l1_ratio = 1`` it
+        is an L1 penalty.  For ``0 < l1_ratio < 1``, the penalty is a
+        combination of L1 and L2.
 
-   max_iter : int, default=100
-       Maximum number of iterations taken for the solvers to converge.
+    tol : float, default=0.0001
+        Tolerance for stopping criteria.
 
-   solver : {'newton'}, default='newton'
-       Algorithm to use in the optimization problem. Default is ‘newton’.
+    max_iter : int, default=100
+        Maximum number of iterations taken for the solvers to converge.
 
-   lr : float, default=0.01
-       Learning Rate. Used in the optimization of the model.
+    solver : {'gd', 'sgd', 'block_sgd', 'newton', 'newton-cg', 'irls', 'lbfgs'}, default='newton'
+        Algorithm to use in the optimization problem. Default is ‘newton’.
 
-   random_state : NumsRandomState, default=None
-       Seeds for randomness in model.
+    lr : float, default=0.01
+        Learning Rate. Used in the optimization of the model.
 
-   fit_intercept : bool, default=True
-       The intercept of regression is calculated for this model.
-       When data is centered, the intercept is calculated to 0.
-       Setting this option to False is unsupported.
+    random_state : NumsRandomState, default=None
+        Seeds for randomness in model.
 
-   normalize : bool, default=False
-       Normalizes the regressors before regression.
-       Setting this option to True is not yet supported.
+    fit_intercept : bool, default=True
+        The intercept of regression is calculated for this model.
+        When data is centered, the intercept is calculated to 0.
+        Setting this option to False is unsupported.
 
-   Attributes
-   ----------
-   _penalty
-   _lambda
-   _l1penalty
-   _l1penalty_vec
-   _l2penalty
-   _l2penalty_vec
-   _l2penalty_diag
-   alpha
-   _tol : corresponds to the parameter tol
-   _max_iter: corresponds to the parameter max_iter
-   _opt: corresponds to the parameter solver
-   _lr: corresponds to the parameter lr
-   _beta: BlockArray used internally for the optimizer to solve for the beta coefficients of the model
-   _beta0
-   """
-    # Reference: https://glm-tools.github.io/pyglmnet/tutorial.html
-    # sklearn documentation suggests lasso and elastic net have different coefficients
-    # than linear regression, but this does not appear to be the case in any other source.
+    normalize : bool, default=False
+        Normalizes the regressors before regression.
+        Setting this option to True is not yet supported.
+
+    Attributes
+    ----------
+    _penalty
+    _lambda
+    _l1penalty
+    _l1penalty_vec
+    _l2penalty
+    _l2penalty_vec
+    _l2penalty_diag
+    alpha
+    _tol : corresponds to the parameter tol
+    _max_iter: corresponds to the parameter max_iter
+    _opt: corresponds to the parameter solver
+    _lr: corresponds to the parameter lr
+    _beta: BlockArray used internally for the optimizer to solve for the beta coefficients of the model
+    _beta0
+
+    Notes
+    -----
+    Sklearn documentation suggests lasso and elastic net have different coefficients
+    than linear regression, but this does not appear to be the case in any other source.
+
+    References
+    ----------
+    pyglmnet -- A python implementation of elastic-net regularized generalized linear models
+        https://glm-tools.github.io/pyglmnet/tutorial.html
+    """
     def __init__(
         self,
         alpha=1.0,
@@ -598,6 +656,82 @@ class ElasticNet(LinearRegressionBase):
 
 
 class Lasso(LinearRegressionBase):
+    """Linear Model trained with L1 prior as regularizer (aka the Lasso).
+
+    The optimization objective for Lasso is::
+        (1 / (2 * n_samples)) * ||y - Xw||^2_2 + alpha * ||w||_1
+
+    Technically the Lasso model is optimizing the same objective function as
+    the Elastic Net with ``l1_ratio=1.0`` (no L2 penalty).
+
+    Parameters
+    ----------
+    alpha : float, default=1.0
+        Constant that multiplies the L1 term. Defaults to 1.0.
+
+    tol : float, default=0.0001
+        Tolerance for stopping criteria.
+
+    max_iter : int, default=100
+        Maximum number of iterations taken for the solvers to converge.
+
+    solver : {'gd', 'sgd', 'block_sgd', 'newton', 'newton-cg', 'irls', 'lbfgs'}, default='newton'
+        Algorithm to use in the optimization problem. Default is ‘newton’.
+
+    lr : float, default=0.01
+        Learning Rate. Used in the optimization of the model.
+
+    random_state : NumsRandomState, default=None
+        Seeds for randomness in model.
+
+    fit_intercept : bool, default=True
+        The intercept of regression is calculated for this model.
+        When data is centered, the intercept is calculated to 0.
+        Setting this option to False is unsupported.
+
+    normalize : bool, default=False
+        Normalizes the regressors before regression.
+        Setting this option to True is not yet supported.
+
+    Attributes #TODO
+    ----------
+    coef_ : ndarray of shape (n_features,) or (n_targets, n_features)
+        Parameter vector (w in the cost function formula).
+
+    dual_gap_ : float or ndarray of shape (n_targets,)
+        Given param alpha, the dual gaps at the end of the optimization,
+        same shape as each observation of y.
+
+    sparse_coef_ : sparse matrix of shape (n_features, 1) or \
+            (n_targets, n_features)
+        Readonly property derived from ``coef_``.
+
+    intercept_ : float or ndarray of shape (n_targets,)
+        Independent term in decision function.
+
+    n_iter_ : int or list of int
+        Number of iterations run by the coordinate descent solver to reach
+        the specified tolerance.
+
+    n_features_in_ : int
+        Number of features seen during :term:`fit`.
+        .. versionadded:: 0.24
+
+    feature_names_in_ : ndarray of shape (`n_features_in_`,)
+        Names of features seen during :term:`fit`. Defined only when `X`
+        has feature names that are all strings.
+
+    Examples
+    --------
+    >>> from sklearn import linear_model
+    >>> clf = linear_model.Lasso(alpha=0.1)
+    >>> clf.fit([[0,0], [1, 1], [2, 2]], [0, 1, 2])
+    Lasso(alpha=0.1)
+    >>> print(clf.coef_)
+    [0.85 0.  ]
+    >>> print(clf.intercept_)
+    0.15...
+    """
     def __init__(
         self,
         alpha=1.0,
@@ -623,6 +757,248 @@ class Lasso(LinearRegressionBase):
 
 
 class LogisticRegression(GLM):
+    """Logistic Regression (aka logit, MaxEnt) classifier.
+
+    In the multiclass case, the training algorithm uses the one-vs-rest (OvR)
+    scheme if the 'multi_class' option is set to 'ovr', and uses the
+    cross-entropy loss if the 'multi_class' option is set to 'multinomial'.
+    (Currently the 'multinomial' option is supported only by the 'lbfgs',
+    'sag', 'saga' and 'newton-cg' solvers.)
+
+    This class implements regularized logistic regression using the
+    'liblinear' library, 'newton-cg', 'sag', 'saga' and 'lbfgs' solvers. **Note
+    that regularization is applied by default**. It can handle both dense
+    and sparse input. Use C-ordered arrays or CSR matrices containing 64-bit
+    floats for optimal performance; any other input format will be converted
+    (and copied).
+
+    The 'newton-cg', 'sag', and 'lbfgs' solvers support only L2 regularization
+    with primal formulation, or no regularization. The 'liblinear' solver
+    supports both L1 and L2 regularization, with a dual formulation only for
+    the L2 penalty. The Elastic-Net regularization is only supported by the
+    'saga' solver.
+
+    Parameters
+    ----------
+    penalty : {'l1', 'l2', 'elasticnet', 'none'}, default='l2'
+        Specify the norm of the penalty:
+        - `'none'`: no penalty is added;
+        - `'l2'`: add a L2 penalty term and it is the default choice;
+        - `'l1'`: add a L1 penalty term;
+        - `'elasticnet'`: both L1 and L2 penalty terms are added.
+        .. warning::
+           Some penalties may not work with some solvers. See the parameter
+           `solver` below, to know the compatibility between the penalty and
+           solver.
+        .. versionadded:: 0.19
+           l1 penalty with SAGA solver (allowing 'multinomial' + L1)
+
+    dual : bool, default=False
+        Dual or primal formulation. Dual formulation is only implemented for
+        l2 penalty with liblinear solver. Prefer dual=False when
+        n_samples > n_features.
+
+    tol : float, default=1e-4
+        Tolerance for stopping criteria.
+
+    C : float, default=1.0
+        Inverse of regularization strength; must be a positive float.
+        Like in support vector machines, smaller values specify stronger
+        regularization.
+
+    fit_intercept : bool, default=True
+        Specifies if a constant (a.k.a. bias or intercept) should be
+        added to the decision function.
+
+    intercept_scaling : float, default=1
+        Useful only when the solver 'liblinear' is used
+        and self.fit_intercept is set to True. In this case, x becomes
+        [x, self.intercept_scaling],
+        i.e. a "synthetic" feature with constant value equal to
+        intercept_scaling is appended to the instance vector.
+        The intercept becomes ``intercept_scaling * synthetic_feature_weight``.
+        Note! the synthetic feature weight is subject to l1/l2 regularization
+        as all other features.
+        To lessen the effect of regularization on synthetic feature weight
+        (and therefore on the intercept) intercept_scaling has to be increased.
+
+    class_weight : dict or 'balanced', default=None
+        Weights associated with classes in the form ``{class_label: weight}``.
+        If not given, all classes are supposed to have weight one.
+        The "balanced" mode uses the values of y to automatically adjust
+        weights inversely proportional to class frequencies in the input data
+        as ``n_samples / (n_classes * np.bincount(y))``.
+        Note that these weights will be multiplied with sample_weight (passed
+        through the fit method) if sample_weight is specified.
+        .. versionadded:: 0.17
+           *class_weight='balanced'*
+
+    random_state : int, RandomState instance, default=None
+        Used when ``solver`` == 'sag', 'saga' or 'liblinear' to shuffle the
+        data. See :term:`Glossary <random_state>` for details.
+
+    solver : {'newton-cg', 'lbfgs', 'liblinear', 'sag', 'saga'}, \
+            default='lbfgs'
+        Algorithm to use in the optimization problem. Default is 'lbfgs'.
+        To choose a solver, you might want to consider the following aspects:
+            - For small datasets, 'liblinear' is a good choice, whereas 'sag'
+              and 'saga' are faster for large ones;
+            - For multiclass problems, only 'newton-cg', 'sag', 'saga' and
+              'lbfgs' handle multinomial loss;
+            - 'liblinear' is limited to one-versus-rest schemes.
+        .. warning::
+           The choice of the algorithm depends on the penalty chosen:
+           Supported penalties by solver:
+           - 'newton-cg'   -   ['l2', 'none']
+           - 'lbfgs'       -   ['l2', 'none']
+           - 'liblinear'   -   ['l1', 'l2']
+           - 'sag'         -   ['l2', 'none']
+           - 'saga'        -   ['elasticnet', 'l1', 'l2', 'none']
+        .. note::
+           'sag' and 'saga' fast convergence is only guaranteed on
+           features with approximately the same scale. You can
+           preprocess the data with a scaler from :mod:`sklearn.preprocessing`.
+        .. seealso::
+           Refer to the User Guide for more information regarding
+           :class:`LogisticRegression` and more specifically the
+           `Table <https://scikit-learn.org/dev/modules/linear_model.html#logistic-regression>`_
+           summarazing solver/penalty supports.
+           <!--
+           # noqa: E501
+           -->
+        .. versionadded:: 0.17
+           Stochastic Average Gradient descent solver.
+        .. versionadded:: 0.19
+           SAGA solver.
+        .. versionchanged:: 0.22
+            The default solver changed from 'liblinear' to 'lbfgs' in 0.22.
+
+    max_iter : int, default=100
+        Maximum number of iterations taken for the solvers to converge.
+
+    multi_class : {'auto', 'ovr', 'multinomial'}, default='auto'
+        If the option chosen is 'ovr', then a binary problem is fit for each
+        label. For 'multinomial' the loss minimised is the multinomial loss fit
+        across the entire probability distribution, *even when the data is
+        binary*. 'multinomial' is unavailable when solver='liblinear'.
+        'auto' selects 'ovr' if the data is binary, or if solver='liblinear',
+        and otherwise selects 'multinomial'.
+        .. versionadded:: 0.18
+           Stochastic Average Gradient descent solver for 'multinomial' case.
+        .. versionchanged:: 0.22
+            Default changed from 'ovr' to 'auto' in 0.22.
+
+    verbose : int, default=0
+        For the liblinear and lbfgs solvers set verbose to any positive
+        number for verbosity.
+
+    warm_start : bool, default=False
+        When set to True, reuse the solution of the previous call to fit as
+        initialization, otherwise, just erase the previous solution.
+        Useless for liblinear solver. See :term:`the Glossary <warm_start>`.
+        .. versionadded:: 0.17
+           *warm_start* to support *lbfgs*, *newton-cg*, *sag*, *saga* solvers.
+
+    n_jobs : int, default=None
+        Number of CPU cores used when parallelizing over classes if
+        multi_class='ovr'". This parameter is ignored when the ``solver`` is
+        set to 'liblinear' regardless of whether 'multi_class' is specified or
+        not. ``None`` means 1 unless in a :obj:`joblib.parallel_backend`
+        context. ``-1`` means using all processors.
+        See :term:`Glossary <n_jobs>` for more details.
+
+    l1_ratio : float, default=None
+        The Elastic-Net mixing parameter, with ``0 <= l1_ratio <= 1``. Only
+        used if ``penalty='elasticnet'``. Setting ``l1_ratio=0`` is equivalent
+        to using ``penalty='l2'``, while setting ``l1_ratio=1`` is equivalent
+        to using ``penalty='l1'``. For ``0 < l1_ratio <1``, the penalty is a
+        combination of L1 and L2.
+
+    Attributes
+    ----------
+    classes_ : ndarray of shape (n_classes, )
+        A list of class labels known to the classifier.
+
+    coef_ : ndarray of shape (1, n_features) or (n_classes, n_features)
+        Coefficient of the features in the decision function.
+        `coef_` is of shape (1, n_features) when the given problem is binary.
+        In particular, when `multi_class='multinomial'`, `coef_` corresponds
+        to outcome 1 (True) and `-coef_` corresponds to outcome 0 (False).
+
+    intercept_ : ndarray of shape (1,) or (n_classes,)
+        Intercept (a.k.a. bias) added to the decision function.
+        If `fit_intercept` is set to False, the intercept is set to zero.
+        `intercept_` is of shape (1,) when the given problem is binary.
+        In particular, when `multi_class='multinomial'`, `intercept_`
+        corresponds to outcome 1 (True) and `-intercept_` corresponds to
+        outcome 0 (False).
+
+    n_features_in_ : int
+        Number of features seen during :term:`fit`.
+        .. versionadded:: 0.24
+
+    feature_names_in_ : ndarray of shape (`n_features_in_`,)
+        Names of features seen during :term:`fit`. Defined only when `X`
+        has feature names that are all strings.
+        .. versionadded:: 1.0
+
+    n_iter_ : ndarray of shape (n_classes,) or (1, )
+        Actual number of iterations for all classes. If binary or multinomial,
+        it returns only 1 element. For liblinear solver, only the maximum
+        number of iteration across all classes is given.
+        .. versionchanged:: 0.20
+            In SciPy <= 1.0.0 the number of lbfgs iterations may exceed
+            ``max_iter``. ``n_iter_`` will now report at most ``max_iter``.
+
+    See Also
+    --------
+    SGDClassifier : Incrementally trained logistic regression (when given
+        the parameter ``loss="log"``).
+    LogisticRegressionCV : Logistic regression with built-in cross validation.
+
+    Notes
+    -----
+    The underlying C implementation uses a random number generator to
+    select features when fitting the model. It is thus not uncommon,
+    to have slightly different results for the same input data. If
+    that happens, try with a smaller tol parameter.
+    Predict output may not match that of standalone liblinear in certain
+    cases. See :ref:`differences from liblinear <liblinear_differences>`
+    in the narrative documentation.
+
+    References
+    ----------
+    L-BFGS-B -- Software for Large-scale Bound-constrained Optimization
+        Ciyou Zhu, Richard Byrd, Jorge Nocedal and Jose Luis Morales.
+        http://users.iems.northwestern.edu/~nocedal/lbfgsb.html
+    LIBLINEAR -- A Library for Large Linear Classification
+        https://www.csie.ntu.edu.tw/~cjlin/liblinear/
+    SAG -- Mark Schmidt, Nicolas Le Roux, and Francis Bach
+        Minimizing Finite Sums with the Stochastic Average Gradient
+        https://hal.inria.fr/hal-00860051/document
+    SAGA -- Defazio, A., Bach F. & Lacoste-Julien S. (2014).
+        SAGA: A Fast Incremental Gradient Method With Support
+        for Non-Strongly Convex Composite Objectives
+        https://arxiv.org/abs/1407.0202
+    Hsiang-Fu Yu, Fang-Lan Huang, Chih-Jen Lin (2011). Dual coordinate descent
+        methods for logistic regression and maximum entropy models.
+        Machine Learning 85(1-2):41-75.
+        https://www.csie.ntu.edu.tw/~cjlin/papers/maxent_dual.pdf
+
+    Examples
+    --------
+    >>> from sklearn.datasets import load_iris
+    >>> from sklearn.linear_model import LogisticRegression
+    >>> X, y = load_iris(return_X_y=True)
+    >>> clf = LogisticRegression(random_state=0).fit(X, y)
+    >>> clf.predict(X[:2, :])
+    array([0, 0])
+    >>> clf.predict_proba(X[:2, :])
+    array([[9.8...e-01, 1.8...e-02, 1.4...e-08],
+           [9.7...e-01, 2.8...e-02, ...e-08]])
+    >>> clf.score(X, y)
+    0.97...
+    """
     def __init__(
         self,
         penalty="none",
@@ -695,6 +1071,18 @@ class LogisticRegression(GLM):
         raise NotImplementedError()
 
     def predict(self, X: BlockArray) -> BlockArray:
+        """Predict using the Linear Regression model. Calls forward internally.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        Returns
+        -------
+        C : array, shape (n_samples,)
+            Returns predicted values.
+        """
         return (self.forward(X) > 0.5).astype(np.int)
 
     def predict_proba(self, X: BlockArray) -> BlockArray:
@@ -706,6 +1094,69 @@ class LogisticRegression(GLM):
 
 
 class PoissonRegression(GLM):
+    """Generalized Linear Model with a Poisson distribution.
+
+    This regressor uses the 'log' link function.
+
+    Parameters
+    ----------
+    alpha : float, default=1
+        Constant that multiplies the penalty term and thus determines the
+        regularization strength. ``alpha = 0`` is equivalent to unpenalized
+        GLMs. In this case, the design matrix `X` must have full column rank
+        (no collinearities).
+    fit_intercept : bool, default=True
+        Specifies if a constant (a.k.a. bias or intercept) should be
+        added to the linear predictor (X @ coef + intercept).
+    max_iter : int, default=100
+        The maximal number of iterations for the solver.
+    tol : float, default=1e-4
+        Stopping criterion. For the lbfgs solver,
+        the iteration will stop when ``max{|g_j|, j = 1, ..., d} <= tol``
+        where ``g_j`` is the j-th component of the gradient (derivative) of
+        the objective function.
+    warm_start : bool, default=False
+        If set to ``True``, reuse the solution of the previous call to ``fit``
+        as initialization for ``coef_`` and ``intercept_`` .
+    verbose : int, default=0
+        For the lbfgs solver set verbose to any positive number for verbosity.
+    Attributes
+    ----------
+    coef_ : array of shape (n_features,)
+        Estimated coefficients for the linear predictor (`X @ coef_ +
+        intercept_`) in the GLM.
+    intercept_ : float
+        Intercept (a.k.a. bias) added to linear predictor.
+    n_features_in_ : int
+        Number of features seen during :term:`fit`.
+        .. versionadded:: 0.24
+    feature_names_in_ : ndarray of shape (`n_features_in_`,)
+        Names of features seen during :term:`fit`. Defined only when `X`
+        has feature names that are all strings.
+        .. versionadded:: 1.0
+    n_iter_ : int
+        Actual number of iterations used in the solver.
+    Examples
+    ----------
+    >>> from sklearn import linear_model
+    >>> clf = linear_model.PoissonRegressor()
+    >>> X = [[1, 2], [2, 3], [3, 4], [4, 3]]
+    >>> y = [12, 17, 22, 21]
+    >>> clf.fit(X, y)
+    PoissonRegressor()
+    >>> clf.score(X, y)
+    0.990...
+    >>> clf.coef_
+    array([0.121..., 0.158...])
+    >>> clf.intercept_
+    2.088...
+    >>> clf.predict([[1, 1], [3, 4]])
+    array([10.676..., 21.875...])
+    See Also
+    ----------
+    GeneralizedLinearRegressor : Generalized Linear Model with a Poisson
+        distribution.
+    """
     def link_inv(self, eta: BlockArray):
         return self._app.exp(eta)
 
@@ -750,6 +1201,9 @@ class PoissonRegression(GLM):
 
 
 class ExponentialRegression(GLM):
+    """Exponential linear regression
+
+    """
     # canonical parameter: theta = - lambda
     # b(theta) = -log(-theta)
     # b'(theta) = -1/theta
