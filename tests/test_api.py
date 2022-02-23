@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import random
 
 import boto3
 import numpy as np
@@ -28,12 +29,14 @@ def test_rwd():
     from nums.core import application_manager
     from nums.core import settings
 
-    settings.system_name = "serial"
+    settings.backend_name = "serial"
     nps_app_inst = application_manager.instance()
 
     array: np.ndarray = np.random.random(35).reshape(7, 5)
     ba: BlockArray = nps_app_inst.array(array, block_shape=(3, 4))
-    filename = "/tmp/darrays/read_write_delete_array_test"
+    filename = "/tmp/darrays/read_write_delete_array_test_%032x" % random.getrandbits(
+        128
+    )
     write_result_ba: BlockArray = nums.write(filename, ba)
     write_result_np = write_result_ba.get()
     for grid_entry in write_result_ba.grid.get_entry_iterator():
@@ -51,7 +54,7 @@ def test_rwd_s3():
     from nums.core import application_manager
     from nums.core import settings
 
-    settings.system_name = "serial"
+    settings.backend_name = "serial"
     nps_app_inst = application_manager.instance()
 
     conn = boto3.resource("s3", region_name="us-east-1")
@@ -60,7 +63,9 @@ def test_rwd_s3():
 
     array: np.ndarray = np.random.random(35).reshape(7, 5)
     ba: BlockArray = nps_app_inst.array(array, block_shape=(3, 4))
-    filename = "s3://darrays/read_write_delete_array_test"
+    filename = "s3://darrays/read_write_delete_array_test_%032x" % random.getrandbits(
+        128
+    )
     write_result_ba: BlockArray = nums.write(filename, ba)
     write_result_np = write_result_ba.get()
     for grid_entry in write_result_ba.grid.get_entry_iterator():
@@ -77,7 +82,7 @@ def test_read_csv():
     from nums.core import application_manager
     from nums.core import settings
 
-    settings.system_name = "serial"
+    settings.backend_name = "serial"
     _ = application_manager.instance()
 
     filename = settings.pj(

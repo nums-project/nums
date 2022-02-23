@@ -23,9 +23,14 @@ from nums.core.array.application import ArrayApplication
 from nums.core.compute import numpy_compute
 from nums.core.compute.compute_manager import ComputeManager
 from nums.core.grid.grid import DeviceGrid, CyclicDeviceGrid, PackedDeviceGrid
-from nums.core.systems.filesystem import FileSystem
-from nums.core.systems.system_interface import SystemInterface
-from nums.core.systems.systems import SerialSystem, RaySystem, RaySystemStockScheduler
+from nums.core.backends.filesystem import FileSystem
+from nums.core.backends import (
+    Backend,
+    SerialBackend,
+    RayBackend,
+    MPIBackend,
+    RayBackendStockScheduler,
+)
 
 # pylint: disable=global-statement
 
@@ -65,62 +70,64 @@ def create():
     if _instance is not None:
         raise Exception("create() called more than once.")
 
-    # Initialize compute interface and system.
-    system_name = settings.system_name
-    if system_name == "serial":
-        system: SystemInterface = SerialSystem(settings.num_cpus)
-    elif system_name == "ray":
+    # Initialize compute interface and backend.
+    backend_name = settings.backend_name
+    if backend_name == "serial":
+        backend: Backend = SerialBackend(settings.num_cpus)
+    elif backend_name == "ray":
         use_head = settings.use_head
         num_nodes = int(np.product(settings.cluster_shape))
-        system: SystemInterface = RaySystem(
+        backend: Backend = RayBackend(
             address=settings.address,
             use_head=use_head,
             num_nodes=num_nodes,
             num_cpus=settings.num_cpus,
         )
-    elif system_name == "ray-scheduler":
+    elif backend_name == "mpi":
+        backend: Backend = MPIBackend()
+    elif backend_name == "ray-scheduler":
         use_head = settings.use_head
         num_nodes = int(np.product(settings.cluster_shape))
-        system: SystemInterface = RaySystemStockScheduler(
+        backend: Backend = RayBackendStockScheduler(
             address=settings.address,
             use_head=use_head,
             num_nodes=num_nodes,
             num_cpus=settings.num_cpus,
         )
-    elif system_name == "dask":
+    elif backend_name == "dask":
         # pylint: disable=import-outside-toplevel
-        from nums.experimental.nums_dask.dask_system import DaskSystem
+        from nums.experimental.nums_dask.dask_backend import DaskBackend
 
         num_nodes = int(np.product(settings.cluster_shape))
-        system: SystemInterface = DaskSystem(
+        backend: Backend = DaskBackend(
             address=settings.address, num_nodes=num_nodes, num_cpus=settings.num_cpus
         )
-    elif system_name == "dask-scheduler":
+    elif backend_name == "dask-scheduler":
         # pylint: disable=import-outside-toplevel
-        from nums.experimental.nums_dask.dask_system import DaskSystemStockScheduler
+        from nums.experimental.nums_dask.dask_backend import DaskBackendStockScheduler
 
         num_nodes = int(np.product(settings.cluster_shape))
-        system: SystemInterface = DaskSystemStockScheduler(
+        backend: Backend = DaskBackendStockScheduler(
             address=settings.address, num_nodes=num_nodes, num_cpus=settings.num_cpus
         )
     else:
-        raise Exception("Unexpected system name %s" % settings.system_name)
-    system.init()
+        raise Exception("Unexpected backend name %s" % settings.backend_name)
+    backend.init()
 
     compute_module = {"numpy": numpy_compute}[settings.compute_name]
 
     if settings.device_grid_name == "cyclic":
         device_grid: DeviceGrid = CyclicDeviceGrid(
-            settings.cluster_shape, "cpu", system.devices()
+            settings.cluster_shape, "cpu", backend.devices()
         )
     elif settings.device_grid_name == "packed":
         device_grid: DeviceGrid = PackedDeviceGrid(
-            settings.cluster_shape, "cpu", system.devices()
+            settings.cluster_shape, "cpu", backend.devices()
         )
     else:
         raise Exception("Unexpected device grid name %s" % settings.device_grid_name)
 
-    cm = ComputeManager.create(system, compute_module, device_grid)
+    cm = ComputeManager.create(backend, compute_module, device_grid)
     fs = FileSystem(cm)
     return ArrayApplication(cm, fs)
 
@@ -130,7 +137,7 @@ def destroy():
     if _instance is None:
         return
     # This will shutdown ray if ray was started by NumS.
-    _instance.cm.system.shutdown()
+    _instance.cm.backend.shutdown()
     ComputeManager.destroy()
     del _instance
     _instance = None

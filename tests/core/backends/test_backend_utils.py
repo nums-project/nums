@@ -16,21 +16,21 @@
 import psutil
 
 from nums.core.compute import numpy_compute
-from nums.core.systems import utils as systems_utils
+from nums.core.backends import utils as backend_utils
 
 
 def test_utils():
-    r = systems_utils.get_module_functions(systems_utils)
+    r = backend_utils.get_module_functions(backend_utils)
     assert len(r) > 0
-    r = systems_utils.get_instance_functions(numpy_compute.ComputeCls())
+    r = backend_utils.get_instance_functions(numpy_compute.ComputeCls())
     assert len(r) > 0
 
 
 def test_num_cpus():
     all_cores = psutil.cpu_count(logical=False)
-    returned_cores = systems_utils.get_num_cores(reserved_for_os=0)
+    returned_cores = backend_utils.get_num_cores(reserved_for_os=0)
     assert all_cores == returned_cores
-    returned_cores = systems_utils.get_num_cores(reserved_for_os=2)
+    returned_cores = backend_utils.get_num_cores(reserved_for_os=2)
     if all_cores <= returned_cores:
         # CI machines may have few cores.
         assert all_cores == returned_cores

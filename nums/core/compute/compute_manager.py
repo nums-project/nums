@@ -22,15 +22,15 @@ import numpy as np
 
 from nums.core.array import utils as array_utils
 from nums.core.compute.compute_interface import ComputeInterface, RNGInterface
-from nums.core.grid.grid import DeviceGrid, DeviceID
-from nums.core.systems import utils as systems_utils
-from nums.core.systems.system_interface import SystemInterface
+from nums.core.grid.grid import DeviceGrid, Device
+from nums.core.backends import utils as backend_utils
+from nums.core.backends import Backend
 
 
 class ComputeManager(ComputeInterface):
     """
-    Abstraction to support multiple systems;
-    namely simultaneous support for CPU and GPU system implementations.
+    Abstraction to support multiple backends;
+    namely simultaneous support for CPU and GPU backend implementations.
     """
 
     # pylint: disable=abstract-method,useless-super-delegation
@@ -38,11 +38,11 @@ class ComputeManager(ComputeInterface):
     instance = None
 
     @classmethod
-    def create(cls, system: SystemInterface, compute_module, device_grid: DeviceGrid):
+    def create(cls, backend: Backend, compute_module, device_grid: DeviceGrid):
         if cls.instance is not None:
             raise Exception()
         cls.instance: ComputeManager = ComputeManager(
-            system, compute_module, device_grid
+            backend, compute_module, device_grid
         )
         return cls.instance
 
@@ -50,10 +50,8 @@ class ComputeManager(ComputeInterface):
     def destroy(cls):
         cls.instance = None
 
-    def __init__(
-        self, system: SystemInterface, compute_module, device_grid: DeviceGrid
-    ):
-        self.system: SystemInterface = system
+    def __init__(self, backend: Backend, compute_module, device_grid: DeviceGrid):
+        self.backend: Backend = backend
         self.device_grid: DeviceGrid = device_grid
         self.rng_cls = None
         self.methods: dict = {}
@@ -64,7 +62,7 @@ class ComputeManager(ComputeInterface):
         compute_imp = compute_module.ComputeCls
 
         # Check that all of kernel interface is implemented.
-        systems_utils.check_implementation(ComputeInterface, compute_imp)
+        backend_utils.check_implementation(ComputeInterface, compute_imp)
         if getattr(compute_module, "RNG", None) is None:
             raise Exception(
                 "No random number generator implemented "
@@ -73,7 +71,7 @@ class ComputeManager(ComputeInterface):
         self.rng_cls = compute_module.RNG
 
         # Collect implemented module functions.
-        module_functions = systems_utils.extract_functions(compute_imp)
+        module_functions = backend_utils.extract_functions(compute_imp)
         # Collect function signatures.
         function_signatures: dict = {}
         required_methods = inspect.getmembers(
@@ -109,7 +107,7 @@ class ComputeManager(ComputeInterface):
         return object.__getattribute__(self, name)
 
     ####################
-    # System Interface
+    # Backend Interface
     ####################
 
     def put(self, value: Any, **kwargs):
@@ -118,59 +116,59 @@ class ComputeManager(ComputeInterface):
         syskwargs = kwargs["syskwargs"]
         del kwargs["syskwargs"]
         assert "options" not in syskwargs
-        device_id, options = self._process_syskwargs(syskwargs)
+        device, options = self._process_syskwargs(syskwargs)
         assert len(options) == 0
-        return self.system.put(value, device_id)
+        return self.backend.put(value, device)
 
     def get(self, object_ids: Union[Any, List]):
-        return self.system.get(object_ids)
+        return self.backend.get(object_ids)
 
     def remote(self, function: FunctionType, remote_params: dict):
-        return self.system.remote(function, remote_params)
+        return self.backend.remote(function, remote_params)
 
     def devices(self):
-        return self.system.devices()
+        return self.backend.devices()
 
     def register(self, name: str, func: callable, remote_params: dict = None):
-        self.system.register(name, func, remote_params)
+        self.backend.register(name, func, remote_params)
 
     def _process_syskwargs(self, syskwargs):
         if "grid_entry" in syskwargs:
             assert "grid_shape" in syskwargs
-            assert "device_id" not in syskwargs
+            assert "device" not in syskwargs
             grid_entry = syskwargs["grid_entry"]
             grid_shape = syskwargs["grid_shape"]
-            device_id: DeviceID = self.device_grid.get_device_id(grid_entry, grid_shape)
-        elif "device_id" in syskwargs:
+            device: Device = self.device_grid.get_device(grid_entry, grid_shape)
+        elif "device" in syskwargs:
             assert "grid_entry" not in syskwargs and "grid_shape" not in syskwargs
-            device_id: DeviceID = syskwargs["device_id"]
+            device: Device = syskwargs["device"]
         else:
-            raise Exception("All calls require device_id or grid_entry and grid_shape.")
+            raise Exception("All calls require device or grid_entry and grid_shape.")
         if "options" in syskwargs:
             options = syskwargs["options"]
         else:
             options = {}
-        return device_id, options
+        return device, options
 
     def call(self, name: str, *args, **kwargs):
         assert "syskwargs" in kwargs
         kwargs = kwargs.copy()
         syskwargs = kwargs["syskwargs"]
         del kwargs["syskwargs"]
-        device_id, options = self._process_syskwargs(syskwargs)
-        return self.system.call(name, args, kwargs, device_id, options)
+        device, options = self._process_syskwargs(syskwargs)
+        return self.backend.call(name, args, kwargs, device, options)
 
     def num_cores_total(self):
-        return self.system.num_cores_total()
+        return self.backend.num_cores_total()
 
     def register_actor(self, name: str, cls: type):
-        return self.system.register_actor(name, cls)
+        return self.backend.register_actor(name, cls)
 
-    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
-        return self.system.make_actor(name, *args, device_id=device_id, **kwargs)
+    def make_actor(self, name: str, *args, device: Device = None, **kwargs):
+        return self.backend.make_actor(name, *args, device=device, **kwargs)
 
     def call_actor_method(self, actor, method: str, *args, **kwargs):
-        return self.system.call_actor_method(actor, method, *args, **kwargs)
+        return self.backend.call_actor_method(actor, method, *args, **kwargs)
 
     #########################
     # Block Shape Management

@@ -11,76 +11,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 import warnings
 import logging
 from types import FunctionType
-from typing import Any, Union, List, Dict, Optional
+from typing import Any, List, Dict, Optional
 
 import ray
 
-from nums.core.grid.grid import DeviceID
-from nums.core.systems.system_interface import SystemInterface
-from nums.core.systems.utils import get_private_ip, get_num_cores
 from nums.core import settings
+from nums.core.grid.grid import Device
+
+from .base import Backend
+from .utils import get_private_ip, get_num_cores
 
 
-# pylint: disable = unused-argument
-
-
-class SerialSystem(SystemInterface):
-    def __init__(self, num_cpus: Optional[int] = None):
-        self.num_cpus = int(get_num_cores()) if num_cpus is None else num_cpus
-        self._remote_functions: dict = {}
-        self._actors: dict = {}
-
-    def init(self):
-        pass
-
-    def shutdown(self):
-        pass
-
-    def put(self, value: Any, device_id: DeviceID):
-        return value
-
-    def get(self, object_ids: Union[Any, List]):
-        return object_ids
-
-    def remote(self, function: FunctionType, remote_params: dict):
-        return function
-
-    def devices(self):
-        return [DeviceID(0, "localhost", "cpu", 0)]
-
-    def register(self, name: str, func: callable, remote_params: dict = None):
-        if name in self._remote_functions:
-            return
-        if remote_params is None:
-            remote_params = {}
-        self._remote_functions[name] = self.remote(func, remote_params)
-
-    def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
-        return self._remote_functions[name](*args, **kwargs)
-
-    def register_actor(self, name: str, cls: type):
-        assert name not in self._actors
-        self._actors[name] = cls
-
-    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
-        return self._actors[name](*args, **kwargs)
-
-    def call_actor_method(self, actor, method: str, *args, **kwargs):
-        return getattr(actor, method)(*args, **kwargs)
-
-    def num_cores_total(self) -> int:
-        return self.num_cpus
-
-
-class RaySystem(SystemInterface):
+class RayBackend(Backend):
     # pylint: disable=abstract-method
     """
-    Implements SystemInterface for Ray.
+    Implements backend for Ray.
     """
 
     def __init__(
@@ -101,8 +49,8 @@ class RaySystem(SystemInterface):
         self._available_nodes = []
         self._head_node = None
         self._worker_nodes = []
-        self._devices: List[DeviceID] = []
-        self._device_to_node: Dict[DeviceID, Dict] = {}
+        self._devices: List[Device] = []
+        self._device_to_node: Dict[Device, Dict] = {}
 
     def init(self):
         if ray.is_initialized():
@@ -154,7 +102,7 @@ class RaySystem(SystemInterface):
         self._device_to_node = {}
         for node_id in range(self._num_nodes):
             node = self._available_nodes[node_id]
-            did = DeviceID(node_id, self._node_key(node), "cpu", 1)
+            did = Device(node_id, self._node_key(node), "cpu", 1)
             self._devices.append(did)
             self._device_to_node[did] = node
 
@@ -202,8 +150,8 @@ class RaySystem(SystemInterface):
 
             warmup_func(n)
 
-    def put(self, value: Any, device_id: DeviceID):
-        return self.call("identity", [value], {}, device_id, {})
+    def put(self, value: Any, device: Device):
+        return self.call("identity", [value], {}, device, {})
 
     def get(self, object_ids):
         return ray.get(object_ids)
@@ -217,16 +165,16 @@ class RaySystem(SystemInterface):
             return
         self._remote_functions[name] = self.remote(func, remote_params)
 
-    def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
-        if device_id is not None:
-            node = self._device_to_node[device_id]
+    def call(self, name: str, args, kwargs, device: Device, options: Dict):
+        if device is not None:
+            node = self._device_to_node[device]
             node_key = self._node_key(node)
             if "resources" in options:
                 assert node_key not in options
             options["resources"] = {node_key: 1.0 / 10 ** 4}
         return self._remote_functions[name].options(**options).remote(*args, **kwargs)
 
-    def devices(self) -> List[DeviceID]:
+    def devices(self) -> List[Device]:
         return self._devices
 
     def num_cores_total(self) -> int:
@@ -244,13 +192,13 @@ class RaySystem(SystemInterface):
             return
         self._actors[name] = ray.remote(cls)
 
-    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+    def make_actor(self, name: str, *args, device: Device = None, **kwargs):
         # Distribute actors round-robin over devices.
-        if device_id is None:
-            device_id = self._devices[self._actor_node_index]
+        if device is None:
+            device = self._devices[self._actor_node_index]
             self._actor_node_index = (self._actor_node_index + 1) % len(self._devices)
         actor = self._actors[name]
-        node = self._device_to_node[device_id]
+        node = self._device_to_node[device]
         node_key = self._node_key(node)
         options = {"resources": {node_key: 1.0 / 10 ** 4}}
         return actor.options(**options).remote(*args, **kwargs)
@@ -259,20 +207,22 @@ class RaySystem(SystemInterface):
         return getattr(actor, method).remote(*args, **kwargs)
 
 
-class RaySystemStockScheduler(RaySystem):
+class RayBackendStockScheduler(RayBackend):
     """
-    An implementation of the Ray system which ignores scheduling commands given
+    An implementation of the Ray backend which ignores scheduling commands given
     by the caller. For testing only.
     """
 
-    def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
-        if device_id is not None:
-            node = self._device_to_node[device_id]
+    def call(self, name: str, args, kwargs, device: Device, options: Dict):
+        if device is not None:
+            node = self._device_to_node[device]
             node_key = self._node_key(node)
             if "resources" in options:
-                assert node_key not in options
+                assert node_key not in options["resources"]
         return self._remote_functions[name].options(**options).remote(*args, **kwargs)
 
-    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+    def make_actor(
+        self, name: str, *args, device: Device = None, **kwargs
+    ):  # pylint: disable=unused-argument
         actor = self._actors[name]
         return actor.remote(*args, **kwargs)

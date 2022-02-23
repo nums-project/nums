@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from nums.core.systems import utils as systems_utils
+from nums.core.backends import utils as backend_utils
 from nums.numpy import numpy_utils
 
 
@@ -48,7 +48,7 @@ def {op_name}(x1: BlockArray, x2: BlockArray,
         return s.format(op_name=op_name)
 
     uops, bops = numpy_utils.ufunc_op_signatures()
-    for name, func in sorted(systems_utils.get_module_functions(np).items()):
+    for name, func in sorted(backend_utils.get_module_functions(np).items()):
         if name in ("deprecate_with_doc", "loads"):
             continue
         try:
@@ -103,8 +103,8 @@ def random_stub():
     app = instance()
     sys = app.cm
     rs_inst = NumsRandomState(cm=sys, seed=1337)
-    numpy_items = sorted(systems_utils.get_module_functions(numpy_module).items())
-    nums_items = sorted(systems_utils.get_instance_functions(rs_inst).items())
+    numpy_items = sorted(backend_utils.get_module_functions(numpy_module).items())
+    nums_items = sorted(backend_utils.get_instance_functions(rs_inst).items())
     raise NotImplementedError()
 
 

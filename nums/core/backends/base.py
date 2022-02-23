@@ -11,30 +11,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 from types import FunctionType
-from typing import Any, Union, List, Dict
+from typing import Any, Dict, List, Union
 
-from nums.core.grid.grid import DeviceID
+from nums.core.grid.grid import Device
 
 
-class SystemInterface:
+class Backend:
     def init(self):
         raise NotImplementedError()
 
     def shutdown(self):
         raise NotImplementedError()
 
-    def put(self, value: Any, device_id: DeviceID):
+    def put(self, value: Any, device: Device):
         """
-        Put object into system storage and force placement on the relevant node.
+        Put object into backend storage and force placement on the relevant node.
         """
         raise NotImplementedError()
 
     def get(self, object_ids: Union[Any, List]):
         """
-        Get object from system storage.
+        Get object from backend storage.
         """
         raise NotImplementedError()
 
@@ -50,7 +48,7 @@ class SystemInterface:
     def register(self, name: str, func: callable, remote_params: Dict = None):
         raise NotImplementedError("Implements a way to register new remote functions.")
 
-    def call(self, name: str, args, kwargs, device_id: DeviceID, options: Dict):
+    def call(self, name: str, args, kwargs, device: Device, options: Dict):
         raise NotImplementedError(
             "Implement RPC as e.g. " "self.remote_functions[name](*args, **new_kwargs)"
         )
@@ -63,11 +61,11 @@ class SystemInterface:
         """
         raise NotImplementedError()
 
-    def make_actor(self, name: str, *args, device_id: DeviceID = None, **kwargs):
+    def make_actor(self, name: str, *args, device: Device = None, **kwargs):
         """
         :param name: The name of the actor.
         :param args: args to pass to __init__.
-        :param device_id: A device id. This is captured by the system and not passed to __init__.
+        :param device: A device. This is captured by the system and not passed to __init__.
         :param kwargs: kwargs to pass to __init__.
         :return: An Actor.
         """

@@ -24,15 +24,15 @@ data_dir = pj(project_root, "data")
 Path(data_dir).mkdir(parents=True, exist_ok=True)
 
 
-# System settings.
-system_name = os.environ.get("NUMS_SYSTEM", "ray")
+# Backend settings.
+backend_name = os.environ.get("NUMS_BACKEND", "ray")
 # TODO (hme):
 #  - Make cluster shape an environment variable.
 #  - use_head should be an environment variable.
 use_head = True
 head_ip = os.environ.get("NUMS_HEAD_IP", None)
 
-# An address to which the system client should connect.
+# An address to which the backend client should connect.
 address = None
 
 

@@ -24,9 +24,9 @@ def test_modin(nps_app_inst):
     import nums.numpy as nps
     import modin.pandas as mpd
     from nums.core import settings
-    from nums.core.systems.systems import RaySystem
+    from nums.core.backends import RayBackend
 
-    if not isinstance(nps_app_inst.cm.system, RaySystem):
+    if not isinstance(nps_app_inst.cm.backend, RayBackend):
         return
 
     filename = settings.pj(

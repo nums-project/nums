@@ -21,9 +21,9 @@ from nums.core.array.application import ArrayApplication
 from nums.core.compute import numpy_compute
 from nums.core.compute.compute_manager import ComputeManager
 from nums.core.grid.grid import DeviceGrid, CyclicDeviceGrid, PackedDeviceGrid
-from nums.core.systems import utils as systems_utils
-from nums.core.systems.filesystem import FileSystem
-from nums.core.systems.systems import SystemInterface, SerialSystem, RaySystem
+from nums.core.backends import utils as backend_utils
+from nums.core.backends.filesystem import FileSystem
+from nums.core.backends import Backend, SerialBackend, RayBackend, MPIBackend
 
 
 # pylint: disable=protected-access, import-outside-toplevel
@@ -42,7 +42,7 @@ def pytest_collection_modifyitems(config, items):
 
 
 def pytest_addoption(parser):
-    parser.addoption("--system-name")
+    parser.addoption("--backend-name")
     parser.addoption("--device-grid-name")
 
 
@@ -55,8 +55,9 @@ def nps_app_inst(request):
     from nums.core import settings
     from nums.core import application_manager
     import nums.numpy as nps
+    import numpy as np
 
-    settings.system_name = request.config.getoption("--system-name") or "serial"
+    settings.backend_name = request.config.getoption("--backend-name") or "serial"
     settings.device_grid_name = (
         request.config.getoption("--device-grid-name") or "cyclic"
     )
@@ -64,23 +65,24 @@ def nps_app_inst(request):
     # Need to reset numpy random state.
     # It's the only stateful numpy API object.
     nps.random.reset()
+    np.random.seed(1331)
     yield application_manager.instance()
-    if settings.system_name == "ray":
-        assert application_manager.instance().cm.system._manage_ray
+    if settings.backend_name == "ray":
+        assert application_manager.instance().cm.backend._manage_ray
     application_manager.destroy()
     time.sleep(2)
 
 
 @pytest.fixture(scope="module")
 def app_inst(request):
-    system_name = request.config.getoption("--system-name") or "serial"
+    backend_name = request.config.getoption("--backend-name") or "serial"
     device_grid_name = request.config.getoption("--device-grid-name") or "cyclic"
 
-    _app_inst = get_app(system_name, device_grid_name)
+    _app_inst = get_app(backend_name, device_grid_name)
     yield _app_inst
-    if system_name == "ray":
-        assert _app_inst.cm.system._manage_ray
-    _app_inst.cm.system.shutdown()
+    if backend_name == "ray":
+        assert _app_inst.cm.backend._manage_ray
+    _app_inst.cm.backend.shutdown()
     _app_inst.cm.destroy()
     time.sleep(2)
 
@@ -88,9 +90,9 @@ def app_inst(request):
 @pytest.fixture(scope="module", params=[("serial", "cyclic")])
 def app_inst_s3(request):
     _app_inst = get_app(*request.param)
-    assert isinstance(_app_inst.cm.system, SerialSystem)
+    assert isinstance(_app_inst.cm.backend, SerialBackend)
     yield _app_inst
-    _app_inst.cm.system.shutdown()
+    _app_inst.cm.backend.shutdown()
     _app_inst.cm.destroy()
     time.sleep(2)
 
@@ -108,42 +110,44 @@ def app_inst_all(request):
     _app_inst = get_app(*request.param)
     yield _app_inst
     if request.param[0] == "ray":
-        assert _app_inst.cm.system._manage_ray
-    _app_inst.cm.system.shutdown()
+        assert _app_inst.cm.backend._manage_ray
+    _app_inst.cm.backend.shutdown()
     _app_inst.cm.destroy()
     time.sleep(2)
 
 
-def get_app(system_name, device_grid_name="cyclic"):
-    if system_name == "serial":
-        system: SystemInterface = SerialSystem()
-    elif system_name == "ray":
+def get_app(backend_name, device_grid_name="cyclic"):
+    if backend_name == "serial":
+        backend: Backend = SerialBackend()
+    elif backend_name == "ray":
         assert not ray.is_initialized()
-        system: SystemInterface = RaySystem(
-            use_head=True, num_cpus=systems_utils.get_num_cores()
+        backend: Backend = RayBackend(
+            use_head=True, num_cpus=backend_utils.get_num_cores()
         )
-    elif system_name == "dask":
-        from nums.experimental.nums_dask.dask_system import DaskSystem
+    elif backend_name == "dask":
+        from nums.experimental.nums_dask.dask_backend import DaskBackend
 
-        system: SystemInterface = DaskSystem(
-            num_cpus=systems_utils.get_num_cores(), num_nodes=1
+        backend: Backend = DaskBackend(
+            num_cpus=backend_utils.get_num_cores(), num_nodes=1
         )
+    elif backend_name == "mpi":
+        backend: Backend = MPIBackend()
     else:
-        raise Exception("Unexpected system name %s" % system_name)
-    system.init()
+        raise Exception("Unexpected backend name %s" % backend_name)
+    backend.init()
 
     cluster_shape = (1, 1)
     if device_grid_name == "cyclic":
         device_grid: DeviceGrid = CyclicDeviceGrid(
-            cluster_shape, "cpu", system.devices()
+            cluster_shape, "cpu", backend.devices()
         )
     elif device_grid_name == "packed":
         device_grid: DeviceGrid = PackedDeviceGrid(
-            cluster_shape, "cpu", system.devices()
+            cluster_shape, "cpu", backend.devices()
         )
     else:
         raise Exception("Unexpected device grid name %s" % device_grid_name)
 
-    cm = ComputeManager.create(system, numpy_compute, device_grid)
+    cm = ComputeManager.create(backend, numpy_compute, device_grid)
     fs = FileSystem(cm)
     return ArrayApplication(cm, fs)
