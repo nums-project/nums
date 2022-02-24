@@ -163,3 +163,7 @@ def from_modin(df):
         rows.append(row_ba)
     result = app.concatenate(rows, axis=0, axis_block_size=block_shape[0])
     return result
+
+
+def zarr_group(url):
+    return _instance().zarr_group(url)
