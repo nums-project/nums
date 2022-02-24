@@ -8,155 +8,195 @@ Functions in the ``nums.numpy`` module.
 NumS Supported API
 ~~~~~~~~~~~~~~~~~~
 
-.. autosummary::
-   :toctree: generated/
 
-   loadtxt
-   array
-   empty
-   zeroes
-   zeros_like
-   ones_like
-   concatenate
-   split
-   identity
-   eye
-   diag
-   trace
-   atleast_1d
-   atleast_2d
-   atleast_3d
-   hstack
-   vstack
-   dstack
-   row_stack
-   column_stack
-   arange
-   linspace
-   logspace
-   tensordot
-   matmul
-   inner
-   outer
-   dot
-   shape
-   size
-   ndim
-   reshape
-   expand_dims
-   squeeze
-   swapaxes
-   transpose
-   copy
-   min
-   max
-   argmin
-   argmax
-   sum
-   mean
-   var
-   std
-   where
-   all
-   alltrue
-   any
-   average
-   median
-   nanmax
-   nanmin
-   nansum
-   nanmean
-   nanvar
-   nanstd
-   array_equal
-   array_equiv
-   allclose
-   abs
-   absolute
-   arccos
-   arccosh
-   arcsin
-   arcsinh
-   arctan
-   arctanh
-   bitwise_not
-   cbrt
-   ceil
-   conj
-   conjugate
-   cos
-   cosh
-   deg2rad
-   degrees
-   exp
-   exp2
-   expm1
-   fabs
-   floor
-   invert
-   isfinite
-   isinf
-   isnan
-   log
-   log10
-   log1p
-   log2
-   logical_not
-   negative
-   positive rad2deg
-   radians
-   reciprocal
-   rint
-   sign
-   signbit
-   sin
-   sinh
-   spacing
-   sqrt
-   square
-   tan
-   tanh
-   trunc
-   add
-   arctan2
-   bitwise_and
-   bitwise_or
-   bitwise_xor
-   copysign
-   divide
-   equal
-   float_power
-   floor_divide
-   fmax
-   fmin
-   fmod
-   greater
-   greater_equal
-   heaviside
-   hypot
-   lcm
-   ldexp
-   left_shift
-   less
-   less_equal
-   logaddexp
-   logaddexp2
-   logical_and
-   logical_or
-   logical_xor
-   maximum
-   minimum
-   mod
-   multiply
-   nextafter
-   not_equal
-   power
-   remainder
-   right_shift
-   subtract
-   true_divide
-   diag
-   ones
-   empty_like
-   trace
-   top_k
+Linear Algebra
+~~~~~~~~~~~~~~
+.. autosummary::
+    :toctree: generated/
+
+    dot
+    inner
+    matmul
+    tensordot
+    outer
+    trace
+
+Mathematical Functions
+~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+    :toctree: generated/
+
+    sum
+    sin
+    cos
+    tan
+    arcsin
+    arccos
+    arctan
+    hypot
+    arctan2
+    degrees
+    radians
+    deg2rad
+    rad2deg
+    sinh
+    cosh
+    tanh
+    arcsinh
+    arccosh
+    arctanh
+    rint
+    floor
+    ceil
+    trunc
+    sum
+    nansum
+    exp
+    expm1
+    exp2
+    log
+    log10
+    log2
+    log1p
+    logaddexp
+    logaddexp2
+    signbit
+    copysign
+    ldexp
+    nextafter
+    spacing
+    lcm
+    gcd
+    add
+    reciprocal
+    positive
+    negative
+    multiply
+    divide
+    power
+    subtract
+    true_divide
+    floor_divide
+    float_power
+    fmod
+    mod
+    remainder
+    conj
+    conjugate
+    maximum
+    fmax
+    amax
+    nanmax
+    minimum
+    fmin
+    amin
+    nanmin
+    sqrt
+    cbrt
+    square
+    absolute
+    fabs
+    sign
+    heaviside
+
+
+Array Creation Routines
+~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+    :toctree: generated/
+
+    empty
+    empty_like
+    eye
+    identity
+    ones
+    ones_like
+    zeros
+    zeros_like
+    array
+    copy
+    loadtxt
+    arange
+    linspace
+    logspace
+    mgrid
+    ogrid
+    diag
+    diagflat
+
+
+Logic Functions
+~~~~~~~~~~~~~~~
+.. autosummary::
+    :toctree: generated/
+
+    all
+    any
+    isfinite
+    isinf
+    isnan
+    logical_and
+    logical_or
+    logical_not
+    logical_xor
+    allclose
+    array_equal
+    array_equiv
+    greater
+    greater_equal
+    less
+    less_equal
+    equal
+    not_equal
+
+Array Manipulation Routines
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+    :toctree: generated/
+
+    shape
+    reshape
+    swapaxes
+    transpose
+    atleast_1d
+    atleast_2d
+    atleast_3d
+    expand_dims
+    squeeze
+    concatenate
+    vstack
+    hstack
+    dstack
+    column_stack
+    row_stack
+    split
+    reshape
+
+Sorting, Searching, and Counting
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+    :toctree: generated/
+
+    argmax
+    argmin
+    where
+    max
+    min
+    top_k
+
+Statistics
+~~~~~~~~~~
+.. autosummary::
+    :toctree: generated/
+
+    percentile
+    quantile
+    median
+    average
+    mean
+    std
+    var
+    nanmean
+    nanstd
+    nanvar
+    cov
