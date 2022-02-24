@@ -123,9 +123,9 @@ def broadcast(a_shape, b_shape):
 
 
 def broadcast_block_shape(a_shape, b_shape, a_block_shape):
-    # Starting from last block shape dim and
-    # map each shape dim to block shape dim as already defined,
-    # and for the rest of dims, set block shape to 1.
+    # Start from last block shape dim and
+    # map each shape dim to block shape dim as already defined.
+    # For the rest of dims, set block shape to 1.
     result_shape = broadcast(a_shape, b_shape).shape
     result_block_shape = []
     a_block_shape_r = list(reversed(a_block_shape))
