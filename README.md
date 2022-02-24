@@ -116,8 +116,8 @@ by the implemented system's workers.
 size = 10**8
 X_train = nps.concatenate([nps.random.randn(size // 2, 2), 
                            nps.random.randn(size // 2, 2) + 2.0], axis=0)
-y_train = nps.concatenate([nps.zeros(shape=(size // 2,), dtype=nps.int), 
-                           nps.ones(shape=(size // 2,), dtype=nps.int)], axis=0)
+y_train = nps.concatenate([nps.zeros(shape=(size // 2,), dtype=nps.int64), 
+                           nps.ones(shape=(size // 2,), dtype=nps.int64)], axis=0)
 ```
 
 #### Training
@@ -145,8 +145,8 @@ We evaluate our dataset by computing the accuracy on a sampled test set.
 ```python
 X_test = nps.concatenate([nps.random.randn(10**3, 2), 
                           nps.random.randn(10**3, 2) + 2.0], axis=0)
-y_test = nps.concatenate([nps.zeros(shape=(10**3,), dtype=nps.int), 
-                          nps.ones(shape=(10**3,), dtype=nps.int)], axis=0)
+y_test = nps.concatenate([nps.zeros(shape=(10**3,), dtype=nps.int64), 
+                          nps.ones(shape=(10**3,), dtype=nps.int64)], axis=0)
 print("train accuracy", (nps.sum(y_train == model.predict(X_train)) / X_train.shape[0]).get())
 print("test accuracy", (nps.sum(y_test == model.predict(X_test)) / X_test.shape[0]).get())
 ```
@@ -183,7 +183,7 @@ NumS can be configured to run on Dask and MPI.
 Install Dask using `pip install dask[complete]`.
 The following snippet runs a basic computation using the Dask backend.
 
-```
+```python
 import nums.numpy as nps
 from nums.core import settings
 settings.system_name = "dask"
@@ -206,7 +206,7 @@ pip install mpi4py
 
 The following snippet runs a basic computation using MPI.
 
-```
+```python
 import nums.numpy as nps
 from nums.core import settings
 settings.system_name = "mpi"
@@ -219,7 +219,7 @@ print(z.get())
 
 Finally, to execute the above script on MPI using two processes, run the following command:
 
-```
+```sh
 mpiexec -n 2 python example.py
 ```
 
