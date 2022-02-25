@@ -36,14 +36,19 @@ from nums.core.storage.storage import StoredArrayS3
 ################
 # zarr
 ################
-def read_block_zarr(url, field_name, grid_entry):
+def read_block_zarr(url, field_name, grid_entry, shape):
     # TODO: Can we avoid private methods here without incurring a copy?
     fobj = fsspec.get_mapper(url)
     zarr_group = zarr.open_consolidated(fobj, mode="r")
     zarr_arr = zarr_group[field_name]
     ckey = zarr_arr._chunk_key(grid_entry)
     cdata = zarr_arr.chunk_store[ckey]
-    return zarr_arr._decode_chunk(cdata)
+    arr = zarr_arr._decode_chunk(cdata)
+    if arr.shape != shape:
+        # This is padded. Truncate.
+        sel = tuple(slice(0, dim) for dim in shape)
+        return arr[sel]
+    return arr
 
 
 ################
@@ -650,8 +655,8 @@ class FileSystem:
         return arrays
 
     def read_block_zarr(
-        self, url: AnyStr, field_name: AnyStr, grid_entry: Tuple, syskwargs: Dict
+        self, url: AnyStr, field_name: AnyStr, grid_entry: Tuple, shape: Tuple, syskwargs: Dict
     ):
         return self.km.call(
-            "read_block_zarr", url, field_name, grid_entry, syskwargs=syskwargs
+            "read_block_zarr", url, field_name, grid_entry, shape, syskwargs=syskwargs
         )

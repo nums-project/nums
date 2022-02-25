@@ -30,6 +30,7 @@ class ZarrGroup:
                 self.url,
                 field_name,
                 grid_entry,
+                self.grid.get_block_shape(grid_entry),
                 syskwargs={
                     "grid_entry": grid_entry,
                     "grid_shape": self.grid.grid_shape,
