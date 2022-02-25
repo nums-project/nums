@@ -73,7 +73,6 @@ class GraphArray(object):
             ba.cm,
             copy_on_op=copy_on_op,
         )
-
     def __init__(
         self,
         grid: ArrayGrid,
