@@ -18,22 +18,22 @@ class ZarrGroup:
         return self.zarr_group.__getattribute__(item)
 
     def blockarray(self, field_name):
-        self.zarr_arr = self.zarr_group[field_name]
-        self.grid = ArrayGrid(
-            self.zarr_arr.shape,
-            block_shape=self.zarr_arr.chunks,
-            dtype=str(self.zarr_arr.dtype),
+        zarr_arr = self.zarr_group[field_name]
+        grid = ArrayGrid(
+            zarr_arr.shape,
+            block_shape=zarr_arr.chunks,
+            dtype=str(zarr_arr.dtype),
         )
-        ba = BlockArray(self.grid, self.km)
-        for grid_entry in self.grid.get_entry_iterator():
+        ba = BlockArray(grid, self.km)
+        for grid_entry in grid.get_entry_iterator():
             ba.blocks[grid_entry].oid = self.fs.read_block_zarr(
                 self.url,
                 field_name,
                 grid_entry,
-                self.grid.get_block_shape(grid_entry),
+                grid.get_block_shape(grid_entry),
                 syskwargs={
                     "grid_entry": grid_entry,
-                    "grid_shape": self.grid.grid_shape,
+                    "grid_shape": grid.grid_shape,
                 },
             )
         return ba
