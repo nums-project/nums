@@ -37,6 +37,7 @@ from nums.core.storage.storage import StoredArrayS3
 # zarr
 ################
 def read_block_zarr(url, field_name, grid_entry, shape):
+    # pylint: disable=protected-access
     # TODO: Can we avoid private methods here without incurring a copy?
     fobj = fsspec.get_mapper(url)
     zarr_group = zarr.open_consolidated(fobj, mode="r")
@@ -655,7 +656,12 @@ class FileSystem:
         return arrays
 
     def read_block_zarr(
-        self, url: AnyStr, field_name: AnyStr, grid_entry: Tuple, shape: Tuple, syskwargs: Dict
+        self,
+        url: AnyStr,
+        field_name: AnyStr,
+        grid_entry: Tuple,
+        shape: Tuple,
+        syskwargs: Dict,
     ):
         return self.km.call(
             "read_block_zarr", url, field_name, grid_entry, shape, syskwargs=syskwargs

@@ -32,5 +32,5 @@ __all__ = [
     "delete",
     "read_csv",
     "from_modin",
-    zarr_group,
+    "zarr_group",
 ]
