@@ -23,7 +23,7 @@ from nums.core.array.random import NumsRandomState
 from nums.core.kernel.kernel_manager import KernelManager
 from nums.core.grid.grid import ArrayGrid
 from nums.core.storage.storage import StoredArray, StoredArrayS3
-from nums.core.backends.filesystem import FileSystem
+from nums.core.filesystem import FileSystem
 
 # pylint: disable = too-many-lines
 

@@ -22,7 +22,7 @@ from nums.core.kernel import numpy_kernel
 from nums.core.kernel.kernel_manager import KernelManager
 from nums.core.grid.grid import DeviceGrid, CyclicDeviceGrid, PackedDeviceGrid
 from nums.core.backends import utils as backend_utils
-from nums.core.backends.filesystem import FileSystem
+from nums.core.filesystem import FileSystem
 from nums.core.backends import Backend, SerialBackend, RayBackend, MPIBackend
 
 
