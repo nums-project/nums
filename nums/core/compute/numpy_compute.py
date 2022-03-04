@@ -557,14 +557,64 @@ class ComputeCls(ComputeImp):
             result = result.astype(dtype)
         return result, result.nbytes, result.nnz
 
-    def sparse_uop_map(self, op_name, arr, args, kwargs):
+    def sparse_map_uop(self, op_name, arr, args, kwargs):
         """
         Args:
             func: types.Callable
-            arrs: Tuple[Union[SparseArray, ndarray, scipy.sparse.spmatrix]]
+            arrs: Union[SparseArray, ndarray, scipy.sparse.spmatrix]
             kwargs: Dict
         """
-        assert args == (), "pydata.sparse.elemwise only supports array positional args"
-        func = np.__getattribute__(op_name)
-        assert isinstance(func, np.ufunc)
-        return sparse.elemwise(func, arr, **kwargs)
+        ufunc = np.__getattribute__(op_name)
+        args = list(args)
+        args.insert(0, arr)
+        result = sparse.elemwise(ufunc, *args, **kwargs)
+        return result, result.nbytes, result.nnz
+
+    def sparse_bop_densify(self, op_name, a1_meta, a2_meta):
+        def sample_array(meta):
+            a = np.eye(2)
+            if meta["type"] == "sparse":
+                return sparse.GCXS.from_numpy(a, fill_value=meta["fill_value"])
+            elif meta["type"] == "dense":
+                return a
+
+        a1 = sample_array(a1_meta)
+        a2 = sample_array(a2_meta)
+        if op_name == "tensordot":
+            result = sparse.tensordot(a1, a2)
+        else:
+            op_name = np_ufunc_map.get(op_name, op_name)
+            try:
+                ufunc = np.__getattribute__(op_name)
+            except Exception as _:
+                ufunc = scipy.special.__getattribute__(op_name)
+            result = sparse.elemwise(ufunc, a1, a2)
+        if isinstance(result, sparse.SparseArray):
+            return False
+        return True
+
+    def sparse_bop(self, op, a1, a2, a1_T, a2_T, axes, densify):
+        if a1_T:
+            a1 = a1.T
+        if a2_T:
+            a2 = a2.T
+        if op == "tensordot":
+            if axes == 1 and max(len(a1.shape), len(a2.shape)) <= 2:
+                # Execute this as a matmul.
+                # TODO: Outer product is optimized.
+                #  detect here and execute np.outer(...)
+                result = sparse.matmul(a1, a2)
+            else:
+                result = sparse.tensordot(a1, a2, axes=axes)
+        else:
+            op = np_ufunc_map.get(op, op)
+            try:
+                ufunc = np.__getattribute__(op)
+            except Exception as _:
+                ufunc = scipy.special.__getattribute__(op)
+            result = sparse.elemwise(ufunc, a1, a2)
+        if densify and isinstance(result, sparse.SparseArray):
+            result = result.todense()
+        if isinstance(result, np.ndarray):
+            return result, -1, -1
+        return result, result.nbytes, result.nnz

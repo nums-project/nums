@@ -280,19 +280,20 @@ class NumsRandomState(object):
                 syskwargs={
                     "grid_entry": grid_entry,
                     "grid_shape": grid.grid_shape,
-                    "num_returns": 3,
+                    "options": {"num_returns": 3},
                 },
             )
             block._nbytes = nb
             block._nnz = nz
             nbytes_oids.append(nb)
             nnz_oids.append(nz)
+        device_0 = sba.cm.devices()[0]
         sba._nbytes = sba.cm.sum_reduce(
             *nbytes_oids,
-            syskwargs = {"device_id": 0}
+            syskwargs = {"device_id": device_0}
         )
         sba._nnz = sba.cm.sum_reduce(
             *nnz_oids,
-            syskwargs = {"device_id": 0}
+            syskwargs = {"device_id": device_0}
         )
         return sba
