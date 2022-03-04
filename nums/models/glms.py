@@ -173,26 +173,30 @@ class GLM:
         self._beta = beta[:-1]
 
     def forward(self, X, beta=None):
-        """Step forward one interation of the GLM model.
+        """Inference on X using the model given by beta.
+
+        If beta is None, then use the beta fitted by this model instance.
 
         Parameters
         ----------
         X : BlockArray of shape (n_samples, n_features)
             Training data.
         beta : BlockArray of shape (n_features,)
-            beta #TODO
+            Model parameters.
 
         Returns
         -------
         mu : BlockArray
-            mu #TODO
+            Inference on X.
         """
         if beta:
             return self.link_inv(X @ beta)
         return self.link_inv(self._beta0 + X @ self._beta)
 
     def grad_norm_sq(self, X: BlockArray, y: BlockArray, beta=None):
-        """Compute the norm of the gradient squared. #TODO
+        """Compute the norm of the gradient squared.
+
+        If beta is None, then use the beta fitted by this model instance.
 
         Parameters
         ----------
@@ -201,11 +205,11 @@ class GLM:
         y : BlockArray of shape (n_samples,)
             Target values.
         beta : BlockArray of shape (n_features,)
-            beta #TODO
+            Model parameters.
 
         Returns
         -------
-        g : BlockArray #TODO
+        g : BlockArray
             Returns the norm of the gradient squared.
         """
         g = self.gradient(X, y, self.forward(X, beta), beta=beta)
@@ -257,7 +261,7 @@ class GLM:
         raise NotImplementedError()
 
     def deviance(self, y, y_pred):
-        """Computes the deviance of the model with regards to y_pred.
+        """Computes the deviance of the model with respect to y_pred.
 
         Parameters
         ----------
@@ -279,7 +283,7 @@ class GLM:
         raise NotImplementedError()
 
     def deviance_sqr(self, X, y):
-        """Computes the deviance squared. #TODO
+        """Deviance squared metric.
 
         Parameters
         ----------
@@ -291,7 +295,7 @@ class GLM:
         Returns
         -------
         C : float
-            Deviance squared. #TODO
+            Deviance squared.
         """
         y_pred = self.predict(X)
         dev = self.deviance(y, y_pred)
@@ -304,12 +308,12 @@ class GLM:
 
         Parameters
         ----------
-        beta : float #TODO
-            The coefficient vector.
+        beta : float
+            Model parameters.
 
         Returns
         -------
-        C : float #TODO
+        C : float
             Objective penalty.
         """
         if self._penalty == "l1":
@@ -324,16 +328,17 @@ class GLM:
             raise ValueError("Unexpected call to objective term, penalty=None.")
 
     def grad_penalty(self, beta):
-        """Returns the penalty for the gradient used in regularization.
+        """Returns the gradient of the penalty used in regularization.
+
         Parameters
         ----------
-        beta : float #TODO
-            The coefficient vector.
+        beta : float
+            Model parameters.
 
         Returns
         -------
-        C : float #TODO
-            Gradient penalty.
+        C : float
+            Returns gradient of the penalty.
         """
         if self._penalty == "l1":
             return self._l1penalty_vec * self._app.map_uop("sign", beta)
@@ -347,12 +352,12 @@ class GLM:
             raise ValueError("Unexpected call to objective term, penalty=None.")
 
     def hessian_penalty(self):
-        """Returns the norm penalty for the hessian used in regularization.
+        """Returns the hessian of the penalty used in regularization.
 
         Returns
         -------
-        C : float #TODO
-            Hessian penalty.
+        C : float
+            Returns the hessian of the penalty.
         """
         if self._penalty == "l1":
             return 0.0
@@ -399,6 +404,8 @@ class LinearRegressionBase(GLM):
     ):
         """Computes the objective function.
 
+        If beta is None, then use the beta fitted by this model instance.
+
         Parameters
         ----------
         X : BlockArray of shape (n_samples, n_features)
@@ -407,16 +414,16 @@ class LinearRegressionBase(GLM):
         y : BlockArray of shape (n_samples,)
             Target values.
 
-        mu : BlockArray of shape (n_samples,) #TODO
+        mu : BlockArray of shape (n_samples,)
             Hessian penalty
 
         beta: BlockArray of shape (n_features,)
-            Beta #TODO
+            Model parameters.
 
         Returns
         -------
-        C : BlockArray, shape (n_samples,) #TODO
-            Returns the objective,
+        C : BlockArray, shape (n_samples,)
+            Returns the objective.
         """
         assert beta is not None or self._beta is not None
         mu = self.forward(X, beta) if mu is None else mu
@@ -433,7 +440,9 @@ class LinearRegressionBase(GLM):
         mu: BlockArray = None,
         beta: BlockArray = None,
     ):
-        """Computes the gradient with regards to beta.
+        """Computes the gradient with respect to beta.
+
+        If beta is None, then use the beta fitted by this model instance.
 
         Parameters
         ----------
@@ -443,16 +452,16 @@ class LinearRegressionBase(GLM):
         y : BlockArray of shape (n_samples,)
             Target values.
 
-        mu : BlockArray of shape (n_samples,) #TODO
+        mu : BlockArray of shape (n_samples,)
             Hessian penalty
 
         beta: BlockArray of shape (n_features,)
-            Beta #TODO
+            Model parameters.
 
         Returns
         -------
-        C : array, shape (n_samples,) #TODO
-            Returns predicted values.
+        C : array, shape (n_samples,)
+            Returns the gradient with respect to beta.
         """
         if mu is None:
             mu = self.forward(X)
@@ -463,7 +472,7 @@ class LinearRegressionBase(GLM):
         return r
 
     def hessian(self, X: BlockArray, y: BlockArray, mu: BlockArray = None):
-        """Computes the hessian with regards to the hessian penalty.
+        """Computes the hessian with respect to the hessian penalty.
 
         Parameters
         ----------
@@ -473,13 +482,13 @@ class LinearRegressionBase(GLM):
         y : BlockArray of shape (n_samples,)
             Target values.
 
-        mu : BlockArray of shape (n_samples,) #TODO
+        mu : BlockArray of shape (n_samples,)
             Hessian penalty
 
         Returns
         -------
-        C : array, shape (n_samples,) #TODO
-            Returns predicted values.
+        C : array, shape (n_samples,)
+            Returns the hessian with respect to the hessian penalty.
         """
         r = X.transpose(defer=True) @ X
         if self._penalty is not None:
@@ -487,7 +496,7 @@ class LinearRegressionBase(GLM):
         return r
 
     def deviance(self, y, y_pred):
-        """Computes the deviance of the model with regards to y_pred.
+        """Computes the deviance of the model with respect to y_pred.
 
         Parameters
         ----------
@@ -922,16 +931,16 @@ class LogisticRegression(GLM):
         y : BlockArray of shape (n_samples,)
             Target values.
 
-        mu : BlockArray of shape (n_samples,) #TODO
+        mu : BlockArray of shape (n_samples,)
             Hessian penalty
 
         beta: BlockArray of shape (n_features,)
-            Beta #TODO
+            Model parameters.
 
         Returns
         -------
-        C : BlockArray, shape (n_samples,) #TODO
-            Returns the objective,
+        C : BlockArray, shape (n_samples,)
+            Returns the objective.
         """
         assert beta is not None or self._beta is not None
         log, one = self._app.log, self._app.one
@@ -949,7 +958,7 @@ class LogisticRegression(GLM):
         mu: BlockArray = None,
         beta: BlockArray = None,
     ):
-        """Computes the gradient with regards to beta.
+        """Computes the gradient with respect to beta
 
         Parameters
         ----------
@@ -959,16 +968,16 @@ class LogisticRegression(GLM):
         y : BlockArray of shape (n_samples,)
             Target values.
 
-        mu : BlockArray of shape (n_samples,) #TODO
+        mu : BlockArray of shape (n_samples,)
             Hessian penalty
 
         beta: BlockArray of shape (n_features,)
-            Beta #TODO
+            Model parameters.
 
         Returns
         -------
-        C : array, shape (n_samples,) #TODO
-            Returns predicted values.
+        C : array, shape (n_samples,)
+            Returns the gradient with respect to beta.
         """
         if mu is None:
             mu = self.forward(X)
@@ -979,7 +988,7 @@ class LogisticRegression(GLM):
         return r
 
     def hessian(self, X: BlockArray, y: BlockArray, mu: BlockArray = None):
-        """Computes the hessian with regards to the hessian penalty.
+        """Computes the hessian with respect to the hessian penalty.
 
         Parameters
         ----------
@@ -989,13 +998,13 @@ class LogisticRegression(GLM):
         y : BlockArray of shape (n_samples,)
             Target values.
 
-        mu : BlockArray of shape (n_samples,) #TODO
+        mu : BlockArray of shape (n_samples,)
             Hessian penalty
 
         Returns
         -------
-        C : array, shape (n_samples,) #TODO
-            Returns predicted values.
+        C : array, shape (n_samples,)
+            Returns the hessian with respect to the hessian penalty.
         """
         if mu is None:
             mu = self.forward(X)
@@ -1007,7 +1016,7 @@ class LogisticRegression(GLM):
         return r
 
     def deviance(self, y, y_pred):
-        """Computes the deviance of the model with regards to y_pred.
+        """Computes the deviance of the model with respect to y_pred.
 
         Parameters
         ----------
@@ -1121,6 +1130,8 @@ class PoissonRegression(GLM):
     ):
         """Computes the objective function.
 
+        If beta is None, then use the beta fitted by this model instance.
+
         Parameters
         ----------
         X : BlockArray of shape (n_samples, n_features)
@@ -1129,16 +1140,16 @@ class PoissonRegression(GLM):
         y : BlockArray of shape (n_samples,)
             Target values.
 
-        mu : BlockArray of shape (n_samples,) #TODO
+        mu : BlockArray of shape (n_samples,)
             Hessian penalty
 
         beta: BlockArray of shape (n_features,)
-            Beta #TODO
+            Model parameters.
 
         Returns
         -------
-        C : array, shape (n_samples,) #TODO
-            Returns predicted values.
+        C : array, shape (n_samples,)
+            Returns the objective.
         """
         if beta is None:
             eta = X @ self._beta + self._beta0
@@ -1154,7 +1165,9 @@ class PoissonRegression(GLM):
         mu: BlockArray = None,
         beta: BlockArray = None,
     ):
-        """Computes the gradient with regards to beta.
+        """Computes the gradient with respect to beta
+
+        If beta is None, then use the beta fitted by this model instance.
 
         Parameters
         ----------
@@ -1164,23 +1177,23 @@ class PoissonRegression(GLM):
         y : BlockArray of shape (n_samples,)
             Target values.
 
-        mu : BlockArray of shape (n_samples,) #TODO
+        mu : BlockArray of shape (n_samples,)
             Hessian penalty
 
         beta: BlockArray of shape (n_features,)
-            Beta #TODO
+            Model parameters.
 
         Returns
         -------
-        C : array, shape (n_samples,) #TODO
-            Returns predicted values.
+        C : array, shape (n_samples,)
+            Returns the gradient with respect to beta.
         """
         if mu is None:
             mu = self.forward(X)
         return X.transpose(defer=True) @ (mu - y)
 
     def hessian(self, X: BlockArray, y: BlockArray, mu: BlockArray = None):
-        """Computes the hessian with regards to the hessian penalty.
+        """Computes the hessian with respect to the hessian penalty.
 
         Parameters
         ----------
@@ -1190,13 +1203,13 @@ class PoissonRegression(GLM):
         y : BlockArray of shape (n_samples,)
             Target values.
 
-        mu : BlockArray of shape (n_samples,) #TODO
+        mu : BlockArray of shape (n_samples,)
             Hessian penalty
 
         Returns
         -------
-        C : array, shape (n_samples,) #TODO
-            Returns predicted values.
+        C : array, shape (n_samples,)
+            Returns the hessian with respect to the hessian penalty.
         """
         if mu is None:
             mu = self.forward(X)
@@ -1204,19 +1217,20 @@ class PoissonRegression(GLM):
         return (X.transpose(defer=True) * mu) @ X
 
     def deviance(self, y: BlockArray, y_pred: BlockArray) -> BlockArray:
-        """Computes the deviance. #TODO
+        """Computes the deviance of the model with respect to y_pred.
 
         Parameters
         ----------
-        X : BlockArray of shape (n_samples, n_features)
-            Training data.
-        y : BlockArray of shape (n_samples,) or (n_samples, n_targets)
-            Target values.
+        y : BlockArray of shape (n_samples,)
+            Samples.
+
+        y_pred : BlockArray of shape (n_samples,)
+            Predicted values.
 
         Returns
         -------
         C : BlockArray
-            Deviance. #TODO
+            Returns deviance between y and y_pred.
         """
         return self._app.sum(
             self._app.two * self._app.xlogy(y, y / y_pred) - y + y_pred
@@ -1303,6 +1317,8 @@ class ExponentialRegression(GLM):
     ):
         """Computes the objective function.
 
+        If beta is None, then use the beta fitted by this model instance.
+
         Parameters
         ----------
         X : BlockArray of shape (n_samples, n_features)
@@ -1311,15 +1327,15 @@ class ExponentialRegression(GLM):
         y : BlockArray of shape (n_samples,)
             Target values.
 
-        mu : BlockArray of shape (n_samples,) #TODO
+        mu : BlockArray of shape (n_samples,)
             Hessian penalty
 
         beta: BlockArray of shape (n_features,)
-            Beta #TODO
+            Model parameters.
 
         Returns
         -------
-        C : BlockArray, shape (n_samples,) #TODO
+        C : BlockArray, shape (n_samples,)
             Returns the objective.
 
         Notes
@@ -1335,7 +1351,9 @@ class ExponentialRegression(GLM):
         mu: BlockArray = None,
         beta: BlockArray = None,
     ):
-        """Computes the gradient with regards to beta.
+        """Computes the gradient with respect to beta
+
+        If beta is None, then use the beta fitted by this model instance.
 
         Parameters
         ----------
@@ -1345,16 +1363,16 @@ class ExponentialRegression(GLM):
         y : BlockArray of shape (n_samples,)
             Target values.
 
-        mu : BlockArray of shape (n_samples,) #TODO
+        mu : BlockArray of shape (n_samples,)
             Hessian penalty
 
         beta: BlockArray of shape (n_features,)
-            Beta #TODO
+            Model parameters.
 
         Returns
         -------
-        C : array, shape (n_samples,) #TODO
-            Returns gradient.
+        C : array, shape (n_samples,)
+            Returns the gradient with respect to beta.
 
         Notes
         -----
@@ -1363,7 +1381,7 @@ class ExponentialRegression(GLM):
         raise NotImplementedError()
 
     def hessian(self, X: BlockArray, y: BlockArray, mu: BlockArray = None):
-        """Computes the hessian with regards to the hessian penalty.
+        """Computes the hessian with respect to the hessian penalty.
 
         Parameters
         ----------
@@ -1373,13 +1391,13 @@ class ExponentialRegression(GLM):
         y : BlockArray of shape (n_samples,)
             Target values.
 
-        mu : BlockArray of shape (n_samples,) #TODO
+        mu : BlockArray of shape (n_samples,)
             Hessian penalty
 
         Returns
         -------
-        C : array, shape (n_samples,) #TODO
-            Returns predicted values.
+        C : array, shape (n_samples,)
+            Returns the hessian with respect to the hessian penalty.
 
         Notes
         -----
