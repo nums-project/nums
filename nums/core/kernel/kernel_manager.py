@@ -21,13 +21,13 @@ import warnings
 import numpy as np
 
 from nums.core.array import utils as array_utils
-from nums.core.compute.compute_interface import ComputeInterface, RNGInterface
+from nums.core.kernel.kernel_interface import Kernel, RNGInterface
 from nums.core.grid.grid import DeviceGrid, Device
 from nums.core.backends import utils as backend_utils
 from nums.core.backends import Backend
 
 
-class ComputeManager(ComputeInterface):
+class KernelManager(Kernel):
     """
     Abstraction to support multiple backends;
     namely simultaneous support for CPU and GPU backend implementations.
@@ -38,45 +38,41 @@ class ComputeManager(ComputeInterface):
     instance = None
 
     @classmethod
-    def create(cls, backend: Backend, compute_module, device_grid: DeviceGrid):
+    def create(cls, backend: Backend, kernel_module, device_grid: DeviceGrid):
         if cls.instance is not None:
             raise Exception()
-        cls.instance: ComputeManager = ComputeManager(
-            backend, compute_module, device_grid
-        )
+        cls.instance: KernelManager = KernelManager(backend, kernel_module, device_grid)
         return cls.instance
 
     @classmethod
     def destroy(cls):
         cls.instance = None
 
-    def __init__(self, backend: Backend, compute_module, device_grid: DeviceGrid):
+    def __init__(self, backend: Backend, kernel_module, device_grid: DeviceGrid):
         self.backend: Backend = backend
         self.device_grid: DeviceGrid = device_grid
         self.rng_cls = None
         self.methods: dict = {}
         self._block_shape_map = {}
-        self.init_compute(compute_module)
+        self.init_kernel(kernel_module)
 
-    def init_compute(self, compute_module):
-        compute_imp = compute_module.ComputeCls
+    def init_kernel(self, kernel_module):
+        kernel_imp = kernel_module.KernelCls
 
         # Check that all of kernel interface is implemented.
-        backend_utils.check_implementation(ComputeInterface, compute_imp)
-        if getattr(compute_module, "RNG", None) is None:
+        backend_utils.check_implementation(Kernel, kernel_imp)
+        if getattr(kernel_module, "RNG", None) is None:
             raise Exception(
                 "No random number generator implemented "
-                "for compute module %s" % str(compute_module)
+                "for compute module %s" % str(kernel_module)
             )
-        self.rng_cls = compute_module.RNG
+        self.rng_cls = kernel_module.RNG
 
         # Collect implemented module functions.
-        module_functions = backend_utils.extract_functions(compute_imp)
+        module_functions = backend_utils.extract_functions(kernel_imp)
         # Collect function signatures.
         function_signatures: dict = {}
-        required_methods = inspect.getmembers(
-            ComputeInterface(), predicate=inspect.ismethod
-        )
+        required_methods = inspect.getmembers(Kernel(), predicate=inspect.ismethod)
         for name, func in required_methods:
             function_signatures[name] = func
         for name, func in module_functions.items():
@@ -248,7 +244,7 @@ class ComputeManager(ComputeInterface):
         if cluster_shape is None:
             cluster_shape = self.device_grid.grid_shape
 
-        return ComputeManager.compute_block_shape_static(
+        return KernelManager.compute_block_shape_static(
             shape, dtype, cluster_shape, num_cores
         )
 
@@ -275,5 +271,5 @@ class ComputeManager(ComputeInterface):
         return tuple(final_block_shape)
 
 
-def instance() -> ComputeManager:
-    return ComputeManager.instance
+def instance() -> KernelManager:
+    return KernelManager.instance

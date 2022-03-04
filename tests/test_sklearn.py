@@ -166,7 +166,7 @@ def test_parallel_sklearn(nps_app_inst: ArrayApplication):
 def test_supervised(nps_app_inst: ArrayApplication):
     from nums.core.backends import RayBackend, SerialBackend
 
-    if not isinstance(nps_app_inst.cm.backend, (RayBackend, SerialBackend)):
+    if not isinstance(nps_app_inst.km.backend, (RayBackend, SerialBackend)):
         return
 
     assert nps_app_inst is not None
@@ -208,7 +208,7 @@ def test_train_test_split(nps_app_inst: ArrayApplication):
 
     from nums.core.backends import RayBackend, SerialBackend
 
-    if not isinstance(nps_app_inst.cm.backend, (RayBackend, SerialBackend)):
+    if not isinstance(nps_app_inst.km.backend, (RayBackend, SerialBackend)):
         return
 
     X, y = sample_Xy()
@@ -245,7 +245,7 @@ def test_train_test_split(nps_app_inst: ArrayApplication):
 def test_regressors(nps_app_inst: ArrayApplication):
     from nums.core.backends import RayBackend, SerialBackend
 
-    if not isinstance(nps_app_inst.cm.backend, (RayBackend, SerialBackend)):
+    if not isinstance(nps_app_inst.km.backend, (RayBackend, SerialBackend)):
         return
 
     assert nps_app_inst is not None
@@ -265,7 +265,7 @@ def test_regressors(nps_app_inst: ArrayApplication):
 def test_typing(nps_app_inst):
     from nums.core.backends import RayBackend, SerialBackend
 
-    if not isinstance(nps_app_inst.cm.backend, (RayBackend, SerialBackend)):
+    if not isinstance(nps_app_inst.km.backend, (RayBackend, SerialBackend)):
         return
 
     assert nps_app_inst is not None

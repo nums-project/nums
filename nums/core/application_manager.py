@@ -20,8 +20,8 @@ import numpy as np
 
 from nums.core import settings
 from nums.core.array.application import ArrayApplication
-from nums.core.compute import numpy_compute
-from nums.core.compute.compute_manager import ComputeManager
+from nums.core.kernel import numpy_kernel
+from nums.core.kernel.kernel_manager import KernelManager
 from nums.core.grid.grid import DeviceGrid, CyclicDeviceGrid, PackedDeviceGrid
 from nums.core.backends.filesystem import FileSystem
 from nums.core.backends import (
@@ -114,7 +114,7 @@ def create():
         raise Exception("Unexpected backend name %s" % settings.backend_name)
     backend.init()
 
-    compute_module = {"numpy": numpy_compute}[settings.compute_name]
+    kernel_module = {"numpy": numpy_kernel}[settings.kernel_name]
 
     if settings.device_grid_name == "cyclic":
         device_grid: DeviceGrid = CyclicDeviceGrid(
@@ -127,9 +127,9 @@ def create():
     else:
         raise Exception("Unexpected device grid name %s" % settings.device_grid_name)
 
-    cm = ComputeManager.create(backend, compute_module, device_grid)
-    fs = FileSystem(cm)
-    return ArrayApplication(cm, fs)
+    km = KernelManager.create(backend, kernel_module, device_grid)
+    fs = FileSystem(km)
+    return ArrayApplication(km, fs)
 
 
 def destroy():
@@ -137,8 +137,8 @@ def destroy():
     if _instance is None:
         return
     # This will shutdown ray if ray was started by NumS.
-    _instance.cm.backend.shutdown()
-    ComputeManager.destroy()
+    _instance.km.backend.shutdown()
+    KernelManager.destroy()
     del _instance
     _instance = None
 

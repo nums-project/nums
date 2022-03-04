@@ -28,7 +28,7 @@ def test_dask_backend():
     assert not application_manager.is_initialized()
     app: ArrayApplication = application_manager.instance()
 
-    assert isinstance(app.cm.backend, DaskBackend)
+    assert isinstance(app.km.backend, DaskBackend)
 
     X: BlockArray = app.random.normal(shape=(3, 3), block_shape=(3, 3))
     Y: BlockArray = app.random.normal(shape=(3, 3), block_shape=(3, 3))
