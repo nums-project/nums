@@ -13,7 +13,7 @@
 import os
 import sys
 
-import nums
+# import nums
 
 sys.path.insert(0, os.path.abspath("../.."))
 
@@ -58,7 +58,7 @@ exclude_patterns = []
 # already loads it
 panels_add_bootstrap_css = False
 
-version = str(nums.__version__)
+# version = str(nums.__version__)
 
 # -- Options for HTML output -------------------------------------------------
 
