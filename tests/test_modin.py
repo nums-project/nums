@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,20 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import pytest
 
 
 from nums.core.array.blockarray import BlockArray
 
 
 # pylint: disable=import-outside-toplevel
+@pytest.mark.skip(reason="This test occasionally times out. See issue #263.")
 def test_modin(nps_app_inst):
     import nums
     import nums.numpy as nps
     import modin.pandas as mpd
     from nums.core import settings
-    from nums.core.systems.systems import RaySystem
+    from nums.core.backends import RayBackend
 
-    if not isinstance(nps_app_inst.cm.system, RaySystem):
+    if not isinstance(nps_app_inst.km.backend, RayBackend):
         return
 
     filename = settings.pj(

@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -125,7 +124,7 @@ def from_modin(df):
     frame: PandasOnRayFrame = df._query_compiler._modin_frame
 
     app: ArrayApplication = _instance()
-    system = app.cm
+    backend = app.km
 
     # Make sure the partitions are numeric.
     dtype = frame.dtypes[0]
@@ -153,7 +152,7 @@ def from_modin(df):
             part: PandasOnRayFramePartition = pd_parts[(i, j)]
             part.drain_call_queue()
             ba: BlockArray = BlockArray.from_oid(
-                part.oid, curr_block_shape, dtype, system
+                part.oid, curr_block_shape, dtype, backend
             )
             cols.append(ba)
         if grid_shape[1] == 1:

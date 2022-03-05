@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +13,7 @@
 # limitations under the License.
 
 
+from dataclasses import dataclass
 import itertools
 import logging
 from typing import Tuple, Iterator, List
@@ -24,7 +24,7 @@ from nums.core.array import utils as array_utils
 from nums.core.storage.utils import Batch
 
 
-class ArrayGrid(object):
+class ArrayGrid:
     @classmethod
     def from_meta(cls, d: dict):
         return cls(**d)
@@ -106,64 +106,40 @@ class ArrayGrid(object):
         return nbytes
 
 
-class DeviceID(object):
-    @classmethod
-    def from_str(cls, s: str):
-        a, b = s.split("/")
-        node_id, node_addr = a.split("=")
-        device_type, device_id = b.split(":")
-        return DeviceID(int(node_id), node_addr, device_type, int(device_id))
-
-    def __init__(self, node_id: int, node_addr: str, device_type: str, device_id: int):
-        self.node_id: int = node_id
-        self.node_addr: str = node_addr
-        self.device_type: str = device_type
-        self.device_id: int = device_id
-
-    def __str__(self):
-        return self.__repr__()
-
-    def __hash__(self):
-        return hash(self.__repr__())
-
-    def __repr__(self):
-        return "%s=%s/%s:%s" % (
-            self.node_id,
-            self.node_addr,
-            self.device_type,
-            self.device_id,
-        )
-
-    def __eq__(self, other):
-        return self.node_id == other.node_id and self.device_id == other.device_id
-        # return str(self) == str(other)
+@dataclass(frozen=True)
+class Device:
+    node_id: int
+    node_addr: str
+    device_type: str
+    device: int
 
 
 class DeviceGrid(object):
-    def __init__(self, grid_shape, device_type, device_ids):
+    def __init__(self, grid_shape, device_type, devices):
         self.grid_shape = grid_shape
         self.device_type = device_type
         self.device_grid: np.ndarray = np.empty(shape=self.grid_shape, dtype=object)
 
-        self._check_devices(device_ids)
+        self._check_devices(devices)
         # Delegate device ordering to subclasses,
         # so that proper ordering is achieved when given multiple devices/workers per node.
-        device_ids: List[DeviceID] = self._order_device_ids(device_ids)
+        devices: List[Device] = self._order_devices(devices)
 
         for i, cluster_entry in enumerate(self.get_grid_entry_iterator()):
-            device_id: DeviceID = device_ids[i]
-            self.device_grid[cluster_entry] = device_id
+            device: Device = devices[i]
+            self.device_grid[cluster_entry] = device
+            print(cluster_entry, device)
 
         logging.getLogger(__name__).info("device_grid %s", str(self.grid_shape))
 
-    def _check_devices(self, device_ids: List[DeviceID]):
+    def _check_devices(self, devices: List[Device]):
         node_map = {}
         node_addr_check = set()
-        for device_id in device_ids:
-            node_addr_check.add(device_id.node_addr)
-            if device_id.node_id not in node_map:
-                node_map[device_id.node_id] = 0
-            node_map[device_id.node_id] += 1
+        for device in devices:
+            node_addr_check.add(device.node_addr)
+            if device.node_id not in node_map:
+                node_map[device.node_id] = 0
+            node_map[device.node_id] += 1
         assert len(node_addr_check) == len(node_map)
         devices_per_node = None
         for _, device_count in node_map.items():
@@ -173,25 +149,23 @@ class DeviceGrid(object):
         num_nodes = len(node_map)
         return num_nodes, devices_per_node
 
-    def _order_device_ids(self, device_ids: List[DeviceID]):
+    def _order_devices(self, devices: List[Device]):
         raise NotImplementedError()
 
     def get_grid_entry_iterator(self):
         return itertools.product(*map(range, self.grid_shape))
 
-    def get_device_id(self, agrid_entry, agrid_shape):
+    def get_device(self, agrid_entry, agrid_shape):
         raise NotImplementedError()
 
 
 class CyclicDeviceGrid(DeviceGrid):
-    def _order_device_ids(self, device_ids: List[DeviceID]):
+    def _order_devices(self, devices: List[Device]):
         # We order by device id first, then by node id, which ensures data layout
         # cycles over nodes first, then workers.
-        return sorted(
-            device_ids, key=lambda device_id: (device_id.device_id, device_id.node_id)
-        )
+        return sorted(devices, key=lambda device: (device.device, device.node_id))
 
-    def get_device_id(self, agrid_entry, agrid_shape):
+    def get_device(self, agrid_entry, agrid_shape):
         cluster_entry = self.get_cluster_entry(agrid_entry, agrid_shape)
         return self.device_grid[cluster_entry]
 
@@ -216,16 +190,14 @@ class CyclicDeviceGrid(DeviceGrid):
 class PackedDeviceGrid(DeviceGrid):
     # Places adjacent blocks on the same nodes.
     # Only useful on Ray.
-    def _order_device_ids(self, device_ids: List[DeviceID]):
-        return sorted(
-            device_ids, key=lambda device_id: (device_id.node_id, device_id.device_id)
-        )
+    def _order_devices(self, devices: List[Device]):
+        return sorted(devices, key=lambda device: (device.node_id, device.device))
 
-    def _check_devices(self, device_ids: List[DeviceID]):
-        _, devices_per_node = super()._check_devices(device_ids)
+    def _check_devices(self, devices: List[Device]):
+        _, devices_per_node = super()._check_devices(devices)
         assert devices_per_node == 1
 
-    def get_device_id(self, agrid_entry, agrid_shape):
+    def get_device(self, agrid_entry, agrid_shape):
         cluster_entry = self.get_cluster_entry(agrid_entry, agrid_shape)
         return self.device_grid[cluster_entry]
 

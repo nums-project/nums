@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,7 +69,8 @@ def test_assign_2dim_accesses(app_inst: ArrayApplication):
     Z_shape = 32, 36
     W_shape = 32, 36
     npZ = np.zeros(np.product(Z_shape)).reshape(*Z_shape)
-    npW = np.random.random_sample(np.product(W_shape)).reshape(*W_shape)
+    rs = np.random.RandomState(1337)
+    npW = rs.random_sample(np.product(W_shape)).reshape(*W_shape)
     Z = app_inst.array(npZ, block_shape=(4, 3))
     W = app_inst.array(npW, block_shape=(4, 3))
 
@@ -120,7 +120,8 @@ def test_assign_dependencies(app_inst: ArrayApplication):
     C_shape = 8, 9
     D_shape = 8, 9
     npC = np.zeros(np.product(C_shape)).reshape(*C_shape)
-    npD = np.random.random_sample(np.product(D_shape)).reshape(*D_shape)
+    rs = np.random.RandomState(1337)
+    npD = rs.random_sample(np.product(D_shape)).reshape(*D_shape)
     C = app_inst.array(npC, block_shape=(4, 3))
     D = app_inst.array(npD, block_shape=(4, 3))
     for i in range(0, C_shape[0] - 3, 3):
@@ -170,8 +171,9 @@ def test_complete_3dim_slices(app_inst: ArrayApplication):
     )
 
     def test_assignment(laccessor):
+        rs = np.random.RandomState(1337)
         npA = np.zeros(np.product(shape)).reshape(*shape)
-        npB = np.random.random_sample(np.product(shape)).reshape(*shape)
+        npB = rs.random_sample(np.product(shape)).reshape(*shape)
         A = app_inst.array(npA, block_shape=block_shape)
         B = app_inst.array(npB, block_shape=block_shape)
         assert np.allclose(npA[laccessor], A[laccessor].get())
@@ -208,6 +210,7 @@ def test_assign_complete_2dim_slices(app_inst: ArrayApplication):
             ]
         )
     )
+    rs = np.random.RandomState(1337)
     for A_block_shape in A_block_shapes:
         for B_block_shape in B_block_shapes:
             if A_block_shape != B_block_shape:
@@ -216,7 +219,7 @@ def test_assign_complete_2dim_slices(app_inst: ArrayApplication):
                 pbar.update(len(A_block_shapes) ** 2 * len(B_block_shapes) ** 2)
                 continue
             npA = np.zeros(np.product(A_shape)).reshape(*A_shape)
-            npB = np.random.random_sample(np.product(B_shape)).reshape(*B_shape)
+            npB = rs.random_sample(np.product(B_shape)).reshape(*B_shape)
             A = app_inst.array(npA, block_shape=A_block_shape)
             B = app_inst.array(npB, block_shape=B_block_shape)
             for A_strt in A_block_shapes:
@@ -358,11 +361,12 @@ def test_ref_accessor(app_inst: ArrayApplication):
             (slice(4, 5), slice(4, 8), slice(None, None)),
         ),
     ]
+    rs = np.random.RandomState(1337)
     for sel_a, sel_b in sels:
         if sel_b is None:
             sel_b = sel_a
         arr_a = np.arange(np.product(shape)).reshape(shape)
-        arr_b = np.random.random_sample(np.product(shape)).reshape(shape)
+        arr_b = rs.random_sample(np.product(shape)).reshape(shape)
         ba_a = app_inst.array(arr_a, block_shape)
         ba_b = app_inst.array(arr_b, block_shape)
         arr_r = arr_a[sel_a]
@@ -378,7 +382,7 @@ def test_ref_accessor(app_inst: ArrayApplication):
     shape_b = 9, 7, 23
     block_shape_b = 1, 3, 1
     arr_a = np.arange(np.product(shape_a)).reshape(shape_a)
-    arr_b = np.random.random_sample(np.product(shape_b)).reshape(shape_b)
+    arr_b = rs.random_sample(np.product(shape_b)).reshape(shape_b)
     ba_a = app_inst.array(arr_a, block_shape_a)
     ba_b = app_inst.array(arr_b, block_shape_b)
     assert np.allclose(arr_b[4:8], ba_b[4:8].get())
@@ -388,7 +392,7 @@ def test_ref_accessor(app_inst: ArrayApplication):
 
     # Test different broadcasting behavior.
     arr_a = np.arange(np.product(shape_a)).reshape(shape_a)
-    arr_b = np.random.random_sample(np.product(shape_b)).reshape(shape_b)
+    arr_b = rs.random_sample(np.product(shape_b)).reshape(shape_b)
     ba_a = app_inst.array(arr_a, block_shape_a)
     ba_b = app_inst.array(arr_b, block_shape_b)
     assert np.allclose(arr_b[4:8, 0:3], ba_b[4:8, 0:3].get())

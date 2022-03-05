@@ -32,7 +32,7 @@ from nums.experimental.optimizer.tree_search import RandomTS
 
 def test_neg(app_inst_mock_small):
     app = app_inst_mock_small
-    cluster_state = ClusterState(app.cm.devices())
+    cluster_state = ClusterState(app.km.devices())
 
     A_shape, A_block_shape = (5, 10), (5, 5)
     real_A = np.random.random(np.product(A_shape)).reshape(A_shape)
@@ -45,13 +45,13 @@ def test_neg(app_inst_mock_small):
         max_reduction_pairs=1,
         force_final_action=True,
     ).solve(prob_ga)
-    result_ba = BlockArray(result_ga.grid, app.cm, result_ga.to_blocks())
+    result_ba = BlockArray(result_ga.grid, app.km, result_ga.to_blocks())
     assert app.allclose(-A, result_ba)
 
 
 def test_root_uop(app_inst_mock_small):
     app = app_inst_mock_small
-    cluster_state = ClusterState(app.cm.devices())
+    cluster_state = ClusterState(app.km.devices())
 
     one_ba: BlockArray = app.one
     one_ga: GraphArray = GraphArray.from_ba(app.one, cluster_state)
@@ -67,14 +67,14 @@ def test_root_uop(app_inst_mock_small):
         max_reduction_pairs=1,
         force_final_action=True,
     ).solve(prob_ga)
-    result_ba = BlockArray(result_ga.grid, app.cm, result_ga.to_blocks())
+    result_ba = BlockArray(result_ga.grid, app.km, result_ga.to_blocks())
     print(app.allclose(result_ba, one_ba / (one_ba + app.exp(-(A + A)))).get())
     assert app.allclose(result_ba, one_ba / (one_ba + app.exp(-(A + A))))
 
 
 def test_transpose(app_inst_mock_small):
     app = app_inst_mock_small
-    cluster_state = ClusterState(app.cm.devices())
+    cluster_state = ClusterState(app.km.devices())
 
     A_shape, A_block_shape = (5, 10), (5, 5)
     real_A = np.random.random(np.product(A_shape)).reshape(A_shape)
@@ -87,7 +87,7 @@ def test_transpose(app_inst_mock_small):
         max_reduction_pairs=1,
         force_final_action=True,
     ).solve(prob_ga)
-    result_ba = BlockArray(result_ga.grid, app.cm, result_ga.to_blocks())
+    result_ba = BlockArray(result_ga.grid, app.km, result_ga.to_blocks())
     assert app.allclose(A.transpose(defer=True) @ A, result_ba)
 
 
@@ -103,7 +103,7 @@ def test_reduce(app_inst_mock_small):
         itertools.product(test_axis, test_keepdims, test_op, test_block_shape)
     )
     for axis, keepdims, op, block_shape in test_inputs:
-        cluster_state = ClusterState(app.cm.devices())
+        cluster_state = ClusterState(app.km.devices())
         X: BlockArray = app.random.random(shape=(3, 16, 20), block_shape=block_shape)
         X_np: np.ndarray = X.get()
         X_ga: GraphArray = GraphArray.from_ba(X, cluster_state)
@@ -114,7 +114,7 @@ def test_reduce(app_inst_mock_small):
             max_reduction_pairs=1,
             force_final_action=True,
         ).solve(reduced_ga)
-        result_ba = BlockArray(result_ga.grid, app.cm, result_ga.to_blocks())
+        result_ba = BlockArray(result_ga.grid, app.km, result_ga.to_blocks())
         if op == "sum":
             reduced_np = X_np.sum(axis=axis, keepdims=keepdims)
         else:
@@ -144,10 +144,10 @@ def test_bop(app_inst_mock_small):
             max_reduction_pairs=1,
             force_final_action=True,
         ).solve(ga)
-        return BlockArray(result_ga.grid, app.cm, result_ga.to_blocks())
+        return BlockArray(result_ga.grid, app.km, result_ga.to_blocks())
 
     app = app_inst_mock_small
-    cluster_state = ClusterState(app.cm.devices())
+    cluster_state = ClusterState(app.km.devices())
     X = app.random.normal(shape=(10, 3), block_shape=(5, 3))
     # y = app.random.integers(0, 2, shape=(10,), block_shape=(5,))
     Xc = app.concatenate(

@@ -46,13 +46,13 @@ def fuse_ga(app, r: GraphArray) -> GraphArray:
     t = time.time()
     for grid_entry in r.grid.get_entry_iterator():
         graph = r.graphs[grid_entry]
-        result_graphs[grid_entry] = FuseGraph(graph, app.cm)()
+        result_graphs[grid_entry] = FuseGraph(graph, app.km)()
     print("fusion time", time.time() - t)
-    return GraphArray(r.grid.copy(), r.cluster_state, result_graphs, r.cm)
+    return GraphArray(r.grid.copy(), r.cluster_state, result_graphs, r.km)
 
 
 def ga_op(app, func, x: BlockArray, y: BlockArray, copy_on_op=True) -> BlockArray:
-    cluster_state: ClusterState = ClusterState(x.cm.devices())
+    cluster_state: ClusterState = ClusterState(x.km.devices())
     x_ga: GraphArray = GraphArray.from_ba(x, cluster_state, copy_on_op=copy_on_op)
     y_ga: GraphArray = GraphArray.from_ba(y, cluster_state, copy_on_op=copy_on_op)
     op_ga: GraphArray = func(app, x_ga, y_ga)
@@ -65,7 +65,7 @@ def ga_op(app, func, x: BlockArray, y: BlockArray, copy_on_op=True) -> BlockArra
         force_final_action=True,
     ).solve(fused_ga)
     print("tree search time", time.time() - t)
-    return BlockArray(result_ga.grid, x.cm, result_ga.to_blocks())
+    return BlockArray(result_ga.grid, x.km, result_ga.to_blocks())
 
 
 def test_fusion(app_inst_mock_none):

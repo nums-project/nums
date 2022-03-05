@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +17,7 @@ import re
 import numpy as np
 
 from nums.core.array.application import ArrayApplication
-from nums.core.systems import utils as systems_utils
+from nums.core.backends import utils as backend_utils
 
 
 def ufunc_kwargs(kwargs):
@@ -30,7 +29,7 @@ def ufunc_kwargs(kwargs):
 
 def ufunc_op_signatures():
     uops, bops = [], []
-    for name, func in sorted(systems_utils.get_module_functions(np).items()):
+    for name, func in sorted(backend_utils.get_module_functions(np).items()):
         if name in ("deprecate_with_doc", "loads"):
             continue
         if name in ("isnat",):
@@ -81,7 +80,7 @@ def ufunc_op_signatures():
 
 
 def get_num_cores(app: ArrayApplication):
-    return app.cm.num_cores_total()
+    return app.km.num_cores_total()
 
 
 def update_doc_string(doc_string):

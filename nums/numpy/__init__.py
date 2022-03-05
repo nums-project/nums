@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,9 +29,9 @@ from nums.numpy.api import _not_implemented
 def _init():
     # pylint: disable=import-outside-toplevel
     import numpy as np
-    from nums.core.systems import utils as system_utils
+    from nums.core.backends import utils as backend_utils
 
-    for name, func in system_utils.get_module_functions(np).items():
+    for name, func in backend_utils.get_module_functions(np).items():
         if name not in globals():
             # TODO(mwe): Allow failed fallback functions to be used in default function doctests
             if hasattr(np, func.__name__) and func.__name__ in (

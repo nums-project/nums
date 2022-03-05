@@ -20,8 +20,8 @@ import copy
 import numpy as np
 
 from nums.core.array.base import Block
-from nums.core.grid.grid import DeviceID
-from nums.core.compute.compute_manager import ComputeManager
+from nums.core.grid.grid import Device
+from nums.core.kernel.kernel_manager import KernelManager
 from nums.experimental.optimizer.clusterstate import ClusterState
 from nums.experimental.optimizer.graph import TreeNode, Leaf
 import nums.core.array.utils as array_utils
@@ -145,11 +145,9 @@ class TreeReductionOp(TreeNode):
         result = []
         for leaf in self.leafs_dict.values():
             assert isinstance(leaf, Leaf)
-            device_id: DeviceID = self.cluster_state.get_block_device_ids(
-                leaf.block.id
-            )[0]
-            result.append((leaf, device_id))
-        result = sorted(result, key=lambda v: (v[1].node_id, v[1].device_id))
+            device: Device = self.cluster_state.get_block_devices(leaf.block.id)[0]
+            result.append((leaf, device))
+        result = sorted(result, key=lambda v: (v[1].node_id, v[1].device))
         leafs, _ = zip(*result)
         return leafs
 
@@ -158,15 +156,15 @@ class TreeReductionOp(TreeNode):
         use_all_devices = kwargs.get("use_all_devices", False)
         actions = []
         if use_all_devices:
-            device_ids = self.cluster_state.device_ids
+            devices = self.cluster_state.devices
         else:
             # Restrict node ids to the nodes on which the leafs already reside.
             left: Leaf = self.leafs_dict[leaf_ids[0]]
             right: Leaf = self.leafs_dict[leaf_ids[1]]
-            device_ids = self.cluster_state.union_devices(left.block.id, right.block.id)
-        for device_id in device_ids:
+            devices = self.cluster_state.union_devices(left.block.id, right.block.id)
+        for device in devices:
             actions.append(
-                (self.tree_node_id, {"device_id": device_id, "leaf_ids": leaf_ids})
+                (self.tree_node_id, {"device": device, "leaf_ids": leaf_ids})
             )
         return actions
 
@@ -198,23 +196,23 @@ class TreeReductionOp(TreeNode):
             for tnode_id in self.leafs_dict:
                 self.action_leaf_q.append(tnode_id)
 
-    def simulate_on(self, device_id: DeviceID, leaf_ids=None) -> np.ndarray:
+    def simulate_on(self, device: Device, leaf_ids=None) -> np.ndarray:
         assert len(leaf_ids) == 2
         leafs = self.leafs_dict[leaf_ids[0]], self.leafs_dict[leaf_ids[1]]
         left, right = leafs
         assert isinstance(left, Leaf) and isinstance(right, Leaf)
         resources = self.cluster_state.resources.copy()
         resources = self.cluster_state.simulate_op(
-            self._mem_cost(leafs), left.block.id, right.block.id, device_id, resources
+            self._mem_cost(leafs), left.block.id, right.block.id, device, resources
         )
         return resources
 
-    def execute_on(self, device_id: DeviceID, leaf_ids=None) -> TreeNode:
+    def execute_on(self, device: Device, leaf_ids=None) -> TreeNode:
         assert len(leaf_ids) == 2
         leafs = self.leafs_dict[leaf_ids[0]], self.leafs_dict[leaf_ids[1]]
         left, right = leafs
         assert isinstance(left, Leaf) and isinstance(right, Leaf)
-        result = self._collapse(device_id, left, right)
+        result = self._collapse(device, left, right)
         new_leaf: Leaf = result[0]
         new_block: Block = result[1]
 
@@ -227,10 +225,10 @@ class TreeReductionOp(TreeNode):
         # Update the cluster state after computing the leaf, so that transfer costs are properly
         # captured by leaf node computations.
         self.cluster_state.commit_op(
-            self._mem_cost(leafs), left.block.id, right.block.id, device_id
+            self._mem_cost(leafs), left.block.id, right.block.id, device
         )
         # Update cluster state with new block.
-        self.cluster_state.add_block(new_block.id, new_block.size(), [device_id])
+        self.cluster_state.add_block(new_block.id, new_block.size(), [device])
         if not self.cluster_state.created_on_only:
             assert self.cluster_state.blocks_local(left.block.id, right.block.id)
             assert self.cluster_state.blocks_local(left.block.id, new_leaf.block.id)
@@ -254,7 +252,7 @@ class TreeReductionOp(TreeNode):
             return new_leaf
         return self
 
-    def _collapse(self, device_id: DeviceID, left: Leaf, right: Leaf):
+    def _collapse(self, device: Device, left: Leaf, right: Leaf):
         lblock: Block = left.block
         rblock: Block = right.block
         if self.op_name == "matmul":
@@ -264,15 +262,15 @@ class TreeReductionOp(TreeNode):
         block: Block = lblock.copy()
         block.transposed = False
         block.dtype = array_utils.get_reduce_output_type(self.op_name, lblock.dtype)
-        block.oid = lblock._cm.bop_reduce(
+        block.oid = lblock._km.bop_reduce(
             op_name,
             lblock.oid,
             rblock.oid,
             lblock.transposed,
             rblock.transposed,
-            syskwargs={"device_id": device_id},
+            syskwargs={"device": device},
         )
-        block._device_id = device_id
+        block._device = device
 
         leaf: Leaf = Leaf(self.cluster_state)
         leaf.block = block
@@ -337,6 +335,6 @@ class TreeReductionOp(TreeNode):
             )
         return self._expression
 
-    def fuse(self, func_node, cm: ComputeManager):
+    def fuse(self, func_node, km: KernelManager):
         # This is fuseable, but it seems impractical.
         raise NotImplementedError()

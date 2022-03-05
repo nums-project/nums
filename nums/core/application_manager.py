@@ -21,17 +21,18 @@ import numpy as np
 
 from nums.core import settings
 from nums.core.array.application import ArrayApplication
-from nums.core.compute import numpy_compute
-from nums.core.compute.compute_manager import ComputeManager
-from nums.core.grid.grid import (
-    DeviceGrid,
-    CyclicDeviceGrid,
-    PackedDeviceGrid,
+from nums.core.kernel import numpy_kernel
+from nums.core.kernel.kernel_manager import KernelManager
+from nums.core.grid.grid import DeviceGrid, CyclicDeviceGrid, PackedDeviceGrid
+from nums.core.filesystem import FileSystem
+from nums.core.backends import Backend
+from nums.core.backends import (
+    SerialBackend,
+    RayBackend,
+    RayBackendStockScheduler,
+    MPIBackend,
 )
-from nums.core.systems.filesystem import FileSystem
-from nums.core.systems.system_interface import SystemInterface
-from nums.core.systems.systems import SerialSystem, RaySystem, RaySystemStockScheduler
-from nums.core.systems import utils as systems_utils
+from nums.core.backends import utils as backend_utils
 
 # pylint: disable=global-statement
 
@@ -72,80 +73,78 @@ def create():
         raise Exception("create() called more than once.")
 
     num_cpus = (
-        int(systems_utils.get_num_cores())
+        int(backend_utils.get_num_cores())
         if settings.num_cpus is None
         else settings.num_cpus
     )
-
-    # Initialize compute interface and system.
-    system_name = settings.system_name
     cluster_shape = (1, 1) if settings.cluster_shape is None else settings.cluster_shape
-    if system_name == "serial":
-        system: SystemInterface = SerialSystem(num_cpus)
-    elif system_name == "ray":
+
+    # Initialize kernel interface and backend.
+    backend_name = settings.backend_name
+    if backend_name == "serial":
+        backend: Backend = SerialBackend(num_cpus)
+    elif backend_name == "ray":
         use_head = settings.use_head
         num_devices = int(np.product(cluster_shape))
-        system: SystemInterface = RaySystem(
+        backend: Backend = RayBackend(
             address=settings.address,
             use_head=use_head,
-            num_devices=num_devices,
+            num_nodes=num_devices,
             num_cpus=num_cpus,
         )
-    elif system_name == "ray-scheduler":
+    elif backend_name == "mpi":
+        backend: Backend = MPIBackend()
+    elif backend_name == "ray-scheduler":
         use_head = settings.use_head
         num_devices = int(np.product(cluster_shape))
-        system: SystemInterface = RaySystemStockScheduler(
+        backend: Backend = RayBackendStockScheduler(
             address=settings.address,
             use_head=use_head,
-            num_devices=num_devices,
+            num_nodes=num_devices,
             num_cpus=num_cpus,
         )
-    elif system_name == "dask":
+    elif backend_name == "dask":
         # pylint: disable=import-outside-toplevel
-        from nums.experimental.nums_dask.dask_system import DaskSystem
+        from nums.experimental.nums_dask.dask_backend import DaskBackend
 
         cluster_shape = (
             (num_cpus,) if settings.cluster_shape is None else settings.cluster_shape
         )
         num_devices = int(np.product(cluster_shape))
-        system: SystemInterface = DaskSystem(
-            address=settings.address,
-            num_devices=num_devices,
-            num_cpus=num_cpus,
+        backend: Backend = DaskBackend(
+            address=settings.address, num_devices=num_devices, num_cpus=num_cpus
         )
-    elif system_name == "dask-scheduler":
+    elif backend_name == "dask-scheduler":
         # pylint: disable=import-outside-toplevel
-        from nums.experimental.nums_dask.dask_system import DaskSystemStockScheduler
+        from nums.experimental.nums_dask.dask_backend import DaskBackendStockScheduler
 
         cluster_shape = (
             (num_cpus,) if settings.cluster_shape is None else settings.cluster_shape
         )
         num_devices = int(np.product(cluster_shape))
-        system: SystemInterface = DaskSystemStockScheduler(
-            address=settings.address,
-            num_devices=num_devices,
-            num_cpus=num_cpus,
+        backend: Backend = DaskBackendStockScheduler(
+            address=settings.address, num_devices=num_devices, num_cpus=num_cpus
         )
     else:
-        raise Exception("Unexpected system name %s" % settings.system_name)
-    system.init()
+        raise Exception("Unexpected backend name %s" % settings.backend_name)
+    backend.init()
 
-    compute_module = {"numpy": numpy_compute}[settings.compute_name]
+    kernel_module = {"numpy": numpy_kernel}[settings.kernel_name]
 
     if settings.device_grid_name == "cyclic":
         device_grid: DeviceGrid = CyclicDeviceGrid(
-            cluster_shape, "cpu", system.devices()
+            cluster_shape, "cpu", backend.devices()
         )
     elif settings.device_grid_name == "packed":
         device_grid: DeviceGrid = PackedDeviceGrid(
-            cluster_shape, "cpu", system.devices()
+            cluster_shape, "cpu", backend.devices()
         )
     else:
         raise Exception("Unexpected device grid name %s" % settings.device_grid_name)
 
-    cm = ComputeManager.create(system, compute_module, device_grid)
-    fs = FileSystem(cm)
-    return ArrayApplication(cm, fs)
+    km = KernelManager.create(backend, kernel_module, device_grid)
+    fs = FileSystem(km)
+    return ArrayApplication(km, fs)
 
 
 def destroy():
@@ -153,8 +152,8 @@ def destroy():
     if _instance is None:
         return
     # This will shutdown ray if ray was started by NumS.
-    _instance.cm.system.shutdown()
-    ComputeManager.destroy()
+    _instance.km.backend.shutdown()
+    KernelManager.destroy()
     del _instance
     _instance = None
 

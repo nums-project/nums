@@ -101,7 +101,7 @@ def test_graph_array_logistic(app_inst_mock_small):
     )
     theta: BlockArray = app.zeros((Xc.shape[1],), (Xc.block_shape[1],), dtype=Xc.dtype)
 
-    cluster_state = ClusterState(app.cm.devices())
+    cluster_state = ClusterState(app.km.devices())
     X_ga = GraphArray.from_ba(Xc, cluster_state)
     y_ga = GraphArray.from_ba(y, cluster_state)
     theta_ga = GraphArray.from_ba(theta, cluster_state)

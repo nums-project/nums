@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -181,7 +180,7 @@ if __name__ == "__main__":
     from nums.core import application_manager
     import nums.core.settings
 
-    nums.core.settings.system_name = "serial"
+    nums.core.settings.backend_name = "serial"
     nps_app_inst = application_manager.instance()
     test_reductions(nps_app_inst)
     test_argops(nps_app_inst)

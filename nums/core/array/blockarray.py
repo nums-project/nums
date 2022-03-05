@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +22,7 @@ from nums.core.array import utils as array_utils
 from nums.core.array.base import BlockArrayBase, Block
 from nums.core.array.view import ArrayView
 from nums.core.grid.grid import ArrayGrid
-from nums.core.compute.compute_manager import ComputeManager
+from nums.core.kernel.kernel_manager import KernelManager
 
 
 # pylint: disable=too-many-lines
@@ -31,16 +30,16 @@ from nums.core.compute.compute_manager import ComputeManager
 
 class BlockArray(BlockArrayBase):
     @classmethod
-    def empty(cls, shape, block_shape, dtype, cm: ComputeManager):
-        return BlockArray.create("empty", shape, block_shape, dtype, cm)
+    def empty(cls, shape, block_shape, dtype, km: KernelManager):
+        return BlockArray.create("empty", shape, block_shape, dtype, km)
 
     @classmethod
-    def create(cls, create_op_name, shape, block_shape, dtype, cm: ComputeManager):
+    def create(cls, create_op_name, shape, block_shape, dtype, km: KernelManager):
         grid = ArrayGrid(shape=shape, block_shape=block_shape, dtype=dtype.__name__)
         grid_meta = grid.to_meta()
-        arr = BlockArray(grid, cm)
+        arr = BlockArray(grid, km)
         for grid_entry in grid.get_entry_iterator():
-            arr.blocks[grid_entry].oid = cm.new_block(
+            arr.blocks[grid_entry].oid = km.new_block(
                 create_op_name,
                 grid_entry,
                 grid_meta,
@@ -49,34 +48,34 @@ class BlockArray(BlockArrayBase):
         return arr
 
     @classmethod
-    def from_scalar(cls, val, cm):
+    def from_scalar(cls, val, km):
         if not array_utils.is_scalar(val):
             raise ValueError("%s is not a scalar." % val)
-        return BlockArray.from_np(np.array(val), block_shape=(), copy=False, cm=cm)
+        return BlockArray.from_np(np.array(val), block_shape=(), copy=False, km=km)
 
     @classmethod
-    def from_oid(cls, oid, shape, dtype, cm):
+    def from_oid(cls, oid, shape, dtype, km):
         block_shape = shape
         dtype = array_utils.to_dtype_cls(dtype)
         grid = ArrayGrid(shape, block_shape, dtype.__name__)
-        ba = BlockArray(grid, cm)
+        ba = BlockArray(grid, km)
         for i, grid_entry in enumerate(grid.get_entry_iterator()):
             assert i == 0
             ba.blocks[grid_entry].oid = oid
         return ba
 
     @classmethod
-    def from_np(cls, arr, block_shape, copy, cm):
+    def from_np(cls, arr, block_shape, copy, km):
         dtype_str = str(arr.dtype)
         grid = ArrayGrid(arr.shape, block_shape, dtype_str)
-        rarr = BlockArray(grid, cm)
+        rarr = BlockArray(grid, km)
         grid_entry_iterator = grid.get_entry_iterator()
         for grid_entry in grid_entry_iterator:
             grid_slice = grid.get_slice(grid_entry)
             block = arr[grid_slice]
             if copy:
                 block = np.copy(block)
-            rarr.blocks[grid_entry].oid = cm.put(
+            rarr.blocks[grid_entry].oid = km.put(
                 block,
                 syskwargs={"grid_entry": grid_entry, "grid_shape": grid.grid_shape},
             )
@@ -84,7 +83,7 @@ class BlockArray(BlockArrayBase):
         return rarr
 
     @classmethod
-    def from_blocks(cls, arr: np.ndarray, result_shape, cm):
+    def from_blocks(cls, arr: np.ndarray, result_shape, km):
         sample_idx = tuple(0 for dim in arr.shape)
         if isinstance(arr, Block):
             sample_block = arr
@@ -99,7 +98,7 @@ class BlockArray(BlockArrayBase):
             shape=result_shape, block_shape=result_block_shape, dtype=result_dtype_str
         )
         assert arr.shape == result_grid.grid_shape
-        result = BlockArray(result_grid, cm)
+        result = BlockArray(result_grid, km)
         for grid_entry in result_grid.get_entry_iterator():
             if isinstance(arr, Block):
                 block: Block = arr
@@ -110,7 +109,7 @@ class BlockArray(BlockArrayBase):
 
     def copy(self):
         grid_copy = self.grid.from_meta(self.grid.to_meta())
-        rarr_copy = BlockArray(grid_copy, self.cm)
+        rarr_copy = BlockArray(grid_copy, self.km)
         for grid_entry in grid_copy.get_entry_iterator():
             rarr_copy.blocks[grid_entry] = self.blocks[grid_entry].copy()
         return rarr_copy
@@ -123,7 +122,7 @@ class BlockArray(BlockArrayBase):
         for grid_entry in self.grid.get_entry_iterator():
             block: Block = self.blocks[grid_entry]
             oids.append(
-                self.cm.touch(
+                self.km.touch(
                     block.oid,
                     syskwargs={
                         "grid_entry": block.grid_entry,
@@ -131,7 +130,7 @@ class BlockArray(BlockArrayBase):
                     },
                 )
             )
-        self.cm.get(oids)
+        self.km.get(oids)
         return self
 
     def is_single_block(self):
@@ -141,9 +140,9 @@ class BlockArray(BlockArrayBase):
         res: BlockArray = self.reshape(*self.shape, block_shape=self.shape)
         if replicate:
             block: Block = res.blocks.item()
-            num_devices: int = len(self.cm.devices())
+            num_devices: int = len(self.km.devices())
             for i in range(num_devices):
-                self.cm.touch(
+                self.km.touch(
                     block.oid,
                     syskwargs={
                         "grid_entry": (i,),
@@ -169,7 +168,7 @@ class BlockArray(BlockArrayBase):
                 # This is a noop.
                 block_shape = self.block_shape
             else:
-                block_shape = self.cm.get_block_shape(shape, self.dtype)
+                block_shape = self.km.get_block_shape(shape, self.dtype)
         return Reshape()(self, shape, block_shape)
 
     def expand_dims(self, axis):
@@ -220,7 +219,7 @@ class BlockArray(BlockArrayBase):
             rarr_src[grid_entry] = self.blocks[grid_entry].swapaxes(axis1, axis2)
         rarr_src = rarr_src.swapaxes(axis1, axis2)
 
-        rarr_swap = BlockArray(grid_swap, self.cm, rarr_src)
+        rarr_swap = BlockArray(grid_swap, self.km, rarr_src)
         return rarr_swap
 
     def transpose(self, defer=False, redistribute=False):
@@ -240,7 +239,7 @@ class BlockArray(BlockArrayBase):
         metaT["shape"] = tuple(reversed(metaT["shape"]))
         metaT["block_shape"] = tuple(reversed(metaT["block_shape"]))
         gridT = ArrayGrid.from_meta(metaT)
-        rarrT = BlockArray(gridT, self.cm)
+        rarrT = BlockArray(gridT, self.km)
         rarrT.blocks = np.copy(self.blocks.T)
         for grid_entry in rarrT.grid.get_entry_iterator():
             rarrT.blocks[grid_entry] = rarrT.blocks[grid_entry].transpose(
@@ -334,7 +333,7 @@ class BlockArray(BlockArrayBase):
 
         # TODO: We may encounter block shape incompatability due to this.
         block_size = self.block_shape[axis]
-        self.cm.update_block_shape_map(array.shape[0], block_size)
+        self.km.update_block_shape_map(array.shape[0], block_size)
 
         dst_axis = None
         shape = []
@@ -361,12 +360,12 @@ class BlockArray(BlockArrayBase):
                 block_shape=tuple(block_shape),
                 dtype=self.dtype.__name__,
             ),
-            cm=self.cm,
+            km=self.km,
         )
 
         src_arr = self
         np_ss = ss
-        ss = self.cm.put(
+        ss = self.km.put(
             ss,
             syskwargs={
                 "grid_entry": (0,),
@@ -408,7 +407,7 @@ class BlockArray(BlockArrayBase):
                     dst_arg = (dst_block.shape, dst_block.dtype)
                 else:
                     dst_arg = dst_block.oid
-                dst_block.oid = self.cm.advanced_select_block_along_axis(
+                dst_block.oid = self.km.advanced_select_block_along_axis(
                     dst_arg,
                     src_block.oid,
                     ss,
@@ -424,7 +423,7 @@ class BlockArray(BlockArrayBase):
         return dst_arr
 
     def __setitem__(self, key, value):
-        value: BlockArray = BlockArray.to_block_array(value, self.cm)
+        value: BlockArray = BlockArray.to_block_array(value, self.km)
         ss, is_handled_advanced, axis = self._preprocess_subscript(key)
         if is_handled_advanced:
             return self._advanced_single_array_assign(ss, value, axis)
@@ -518,7 +517,7 @@ class BlockArray(BlockArrayBase):
         src_arr = value
         src_grid_shape = src_arr.grid.grid_shape
         np_ss = ss
-        ss = self.cm.put(
+        ss = self.km.put(
             ss,
             syskwargs={
                 "grid_entry": (0,),
@@ -557,7 +556,7 @@ class BlockArray(BlockArrayBase):
                 src_coord: tuple = src_arr.grid.get_entry_coordinates(
                     src_block.grid_entry
                 )
-                dst_block.oid = self.cm.advanced_assign_block_along_axis(
+                dst_block.oid = self.km.advanced_assign_block_along_axis(
                     dst_block.oid,
                     src_block.oid,
                     ss,
@@ -575,7 +574,7 @@ class BlockArray(BlockArrayBase):
                     src_coord: tuple = src_arr.grid.get_entry_coordinates(
                         src_grid_entry
                     )
-                    dst_block.oid = self.cm.advanced_assign_block_along_axis(
+                    dst_block.oid = self.km.advanced_assign_block_along_axis(
                         dst_block.oid,
                         src_block.oid,
                         ss,
@@ -601,7 +600,7 @@ class BlockArray(BlockArrayBase):
                     src_coord: tuple = src_arr.grid.get_entry_coordinates(
                         src_grid_entry
                     )
-                    dst_block.oid = self.cm.advanced_assign_block_along_axis(
+                    dst_block.oid = self.km.advanced_assign_block_along_axis(
                         dst_block.oid,
                         src_block.oid,
                         ss,
@@ -616,7 +615,7 @@ class BlockArray(BlockArrayBase):
         return dst_arr
 
     @staticmethod
-    def to_block_array(obj, cm: ComputeManager, block_shape=None):
+    def to_block_array(obj, km: KernelManager, block_shape=None):
         if isinstance(obj, BlockArray):
             return obj
         if isinstance(obj, np.ndarray):
@@ -624,16 +623,16 @@ class BlockArray(BlockArrayBase):
         elif isinstance(obj, list):
             np_array = np.array(obj)
         elif array_utils.is_scalar(obj):
-            return BlockArray.from_scalar(obj, cm)
+            return BlockArray.from_scalar(obj, km)
         else:
             raise Exception("Unsupported type %s" % type(obj))
         if block_shape is None:
-            block_shape = cm.get_block_shape(np_array.shape, np_array.dtype)
-        return BlockArray.from_np(np_array, block_shape, False, cm)
+            block_shape = km.get_block_shape(np_array.shape, np_array.dtype)
+        return BlockArray.from_np(np_array, block_shape, False, km)
 
     def check_or_convert_other(self, other, compute_block_shape=False):
         block_shape = None if compute_block_shape else self.block_shape
-        return BlockArray.to_block_array(other, self.cm, block_shape=block_shape)
+        return BlockArray.to_block_array(other, self.km, block_shape=block_shape)
 
     def ufunc(self, op_name):
         result = self.copy()
@@ -672,7 +671,7 @@ class BlockArray(BlockArrayBase):
             ge, gs = (
                 (result_grid_entry, result_grid_shape) if len(q) == 0 else (a_ge, a_gs)
             )
-            c_oid = self.cm.bop_reduce(
+            c_oid = self.km.bop_reduce(
                 op_name,
                 a_oid,
                 b_oid,
@@ -693,11 +692,11 @@ class BlockArray(BlockArrayBase):
         if not (axis is None or isinstance(axis, (int, np.int32, np.int64))):
             raise NotImplementedError("Only integer axis is currently supported.")
         if 0 in self.shape:
-            return BlockArray.create("zeros", (), (), float, self.cm)
+            return BlockArray.create("zeros", (), (), float, self.km)
         block_reduced_oids = np.empty_like(self.blocks, dtype=tuple)
         for grid_entry in self.grid.get_entry_iterator():
             block = self.blocks[grid_entry]
-            block_oid = self.cm.reduce_axis(
+            block_oid = self.km.reduce_axis(
                 op_name=op_name,
                 arr=block.oid,
                 axis=axis,
@@ -736,7 +735,7 @@ class BlockArray(BlockArrayBase):
             block_shape=result_block_shape,
             dtype=result_dtype.__name__,
         )
-        result = BlockArray(result_grid, self.cm)
+        result = BlockArray(result_grid, self.km)
 
         if axis is None:
             if result.shape == ():
@@ -810,7 +809,7 @@ class BlockArray(BlockArrayBase):
             ).__name__,
         )
         assert result_grid.grid_shape == tuple(this_axes + other_axes)
-        result = BlockArray(result_grid, self.cm)
+        result = BlockArray(result_grid, self.km)
         this_dims = list(itertools.product(*map(range, this_axes)))
         other_dims = list(itertools.product(*map(range, other_axes)))
         sum_dims = list(itertools.product(*map(range, this_sum_axes)))
@@ -825,7 +824,7 @@ class BlockArray(BlockArrayBase):
                     dot_grid_args = self._compute_tensordot_syskwargs(
                         self_block, other_block
                     )
-                    dotted_oid = self.cm.bop(
+                    dotted_oid = self.km.bop(
                         "tensordot",
                         self_block.oid,
                         other_block.oid,
@@ -880,9 +879,9 @@ class BlockArray(BlockArrayBase):
                 shape=self_block.shape,
                 dtype=dtype,
                 transposed=False,
-                cm=self.cm,
+                km=self.km,
             )
-            block.oid = self.cm.bop(
+            block.oid = self.km.bop(
                 op_name,
                 self_block.oid,
                 other_block.oid,
@@ -896,7 +895,7 @@ class BlockArray(BlockArrayBase):
             )
         return BlockArray(
             ArrayGrid(self.shape, self.block_shape, dtype.__name__),
-            self.cm,
+            self.km,
             blocks=blocks,
         )
 
@@ -906,7 +905,7 @@ class BlockArray(BlockArrayBase):
             return self._fast_element_wise(op_name, other)
         blocks_op = self.blocks.__getattribute__("__%s__" % op_name)
         return BlockArray.from_blocks(
-            blocks_op(other.blocks), result_shape=None, cm=self.cm
+            blocks_op(other.blocks), result_shape=None, km=self.km
         )
 
     def __neg__(self):
@@ -996,7 +995,7 @@ class BlockArray(BlockArrayBase):
         )
         dtype = bool.__name__
         grid = ArrayGrid(shape, block_shape, dtype)
-        result = BlockArray(grid, self.cm)
+        result = BlockArray(grid, self.km)
         for grid_entry in result.grid.get_entry_iterator():
             if other.shape == ():
                 other_block: Block = other.blocks.item()
@@ -1114,7 +1113,7 @@ class BlockArray(BlockArrayBase):
 
     def astype(self, dtype):
         grid = ArrayGrid(self.shape, self.block_shape, dtype.__name__)
-        result = BlockArray(grid, self.cm)
+        result = BlockArray(grid, self.km)
         for grid_entry in result.grid.get_entry_iterator():
             result.blocks[grid_entry] = self.blocks[grid_entry].astype(dtype)
         return result
@@ -1127,7 +1126,7 @@ class BlockArray(BlockArrayBase):
         return oids
 
 
-class Reshape(object):
+class Reshape:
     @staticmethod
     def compute_shape(shape, input_shape):
         size = np.product(shape)
@@ -1204,9 +1203,9 @@ class Reshape(object):
         # This is the worst-case scenario.
         # Generate index mappings per block, and group source indices to minimize
         # RPCs and generation of new objects.
-        cm = arr.cm
+        km = arr.km
         dst_arr = BlockArray.empty(
-            shape=shape, block_shape=block_shape, dtype=arr.dtype, cm=cm
+            shape=shape, block_shape=block_shape, dtype=arr.dtype, km=km
         )
         for dst_grid_entry in dst_arr.grid.get_entry_iterator():
             dst_block: Block = dst_arr.blocks[dst_grid_entry]
@@ -1228,13 +1227,13 @@ class Reshape(object):
                     "grid_entry": dst_grid_entry,
                     "grid_shape": dst_arr.grid.grid_shape,
                 }
-                dst_block.oid = cm.update_block_by_index(
+                dst_block.oid = km.update_block_by_index(
                     dst_block.oid, src_block.oid, index_pairs, syskwargs=syskwargs
                 )
         return dst_arr
 
     def _block_shape_reshape(self, arr, block_shape):
-        rarr: BlockArray = BlockArray.empty(arr.shape, block_shape, arr.dtype, arr.cm)
+        rarr: BlockArray = BlockArray.empty(arr.shape, block_shape, arr.dtype, arr.km)
         for grid_entry in rarr.grid.get_entry_iterator():
             grid_entry_slice = rarr.grid.get_slice(grid_entry)
             # TODO (hme): This could be less costly.
@@ -1287,12 +1286,12 @@ class Reshape(object):
         # to simplify access to source blocks.
         grid = ArrayGrid(shape, block_shape, dtype=arr.dtype.__name__)
         src_blocks = arr.blocks.reshape(grid.grid_shape)
-        rarr = BlockArray(grid, arr.cm)
+        rarr = BlockArray(grid, arr.km)
         for grid_entry in grid.get_entry_iterator():
             src_block: Block = src_blocks[grid_entry]
             dst_block: Block = rarr.blocks[grid_entry]
             syskwargs = {"grid_entry": grid_entry, "grid_shape": grid.grid_shape}
-            dst_block.oid = arr.cm.reshape(
+            dst_block.oid = arr.km.reshape(
                 src_block.oid, dst_block.shape, syskwargs=syskwargs
             )
         return rarr

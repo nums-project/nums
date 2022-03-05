@@ -18,7 +18,7 @@ from typing import Union
 
 import numpy as np
 
-from nums.core.compute.compute_manager import ComputeManager
+from nums.core.kernel.kernel_manager import KernelManager
 from nums.experimental.optimizer.grapharray import GraphArray
 
 from nums.experimental.optimizer.graph import (
@@ -90,12 +90,12 @@ class ProgramState(object):
         # Gets the final action to perform on a graph array.
         # This is to ensure the output graph array satisfies device grid layout
         # assumptions.
-        cm: ComputeManager = ComputeManager.instance
+        cm: KernelManager = KernelManager.instance
         grid_entry = self.get_tnode_grid_entry(tnode)
         grid_shape = self.arr.grid.grid_shape
-        device_id = cm.device_grid.get_device_id(grid_entry, grid_shape)
+        device = cm.device_grid.get_device(grid_entry, grid_shape)
         if isinstance(tnode, BinaryOp):
-            actions = [(tnode.tree_node_id, {"device_id": device_id})]
+            actions = [(tnode.tree_node_id, {"device": device})]
         elif isinstance(tnode, TreeReductionOp):
             # TreeReductionOp maintains an ordered list of leaves,
             # which is initialized upon invoking get_actions().
@@ -104,11 +104,9 @@ class ProgramState(object):
             # is either initialized or can safely be initialized to execute the final op.
             tnode.final_action_check()
             leaf_ids = tuple(tnode.leafs_dict.keys())[:2]
-            actions = [
-                (tnode.tree_node_id, {"device_id": device_id, "leaf_ids": leaf_ids})
-            ]
+            actions = [(tnode.tree_node_id, {"device": device, "leaf_ids": leaf_ids})]
         elif isinstance(tnode, UnaryOp):
-            actions = [(tnode.tree_node_id, {"device_id": device_id})]
+            actions = [(tnode.tree_node_id, {"device": device})]
         else:
             raise Exception()
         return actions
