@@ -200,7 +200,7 @@ The following dependencies need to be installed (on Ubuntu or related Linux mach
 
 ```sh
 sudo apt update
-sudo apt-get mpich
+sudo apt-get install mpich
 pip install mpi4py
 ```
 
