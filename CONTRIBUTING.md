@@ -36,3 +36,27 @@ arguments in functions like `nums.numpy.api.min`.
 the issue you're experiencing.
 
 We encourage you to follow the `nums.numpy.api.arange` implementation as a reference.
+
+#### Steps for debugging NumS on MPI Backend with PyCharm professional
+* Select Run -> Edit Configurations, there you will find a template for Python Debug Server.
+* Check the box that says "allow parallel run," and follow step 1 in the template that has
+  instructions on how to install `pydevd_pycharm`. Leave everything else intact in the template.
+* Click Apply to apply the changes, then click the "debug" button as many times as the 
+  number of mpi processes (ranks) which you want to debug.
+* In the console for each debug server, you will see the port on which it is communicating.
+  Make a note of these ports for all the debug servers.
+* Insert this piece of code at the beginning of your NumS program. 
+```python
+from mpi4py import MPI
+import os
+size = MPI.COMM_WORLD.Get_size()
+rank = MPI.COMM_WORLD.Get_rank()
+import pydevd_pycharm
+# Replace the port number below with the ones from above. 
+# This example is for 2 ranks. For n ranks, the port mapping list will have n port numbers.
+port_mapping = [56482, 56483]
+pydevd_pycharm.settrace('localhost', port=port_mapping[rank], stdoutToServer=True, stderrToServer=True)
+```
+* This will attach each debug process to each rank in your mpi cluster. You'll need to step through each rank separately.
+* Now run your nums program from the terminal using the command `mpiexec -n 2 python <nums_program.py>`.
+* The above steps are adapted from the following source: [stackoverflow post](https://stackoverflow.com/questions/57519129/how-to-run-python-script-with-mpi4py-using-mpiexec-from-within-pycharm)

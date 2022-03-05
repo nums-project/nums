@@ -185,12 +185,12 @@ class MPIBackend(Backend):
             # If the object is not local then execute a receive.
             sender_rank = obj.rank
             # TODO: Try Isend and Irecv and have a switch for sync and async.
-            arg_value = self.comm.recv(sender_rank)
+            arg_value = self.comm.recv(source=sender_rank)
             return arg_value
         elif isinstance(obj, MPILocalObj):
             # The obj is stored on this rank, so send it to the device on which the op will be
             # executed.
-            self.comm.send(obj.value, device_rank)
+            self.comm.send(obj.value, dest=device_rank)
             return obj
         else:
             # The obj is remote and this is not the device on which we want to invoke the op.
