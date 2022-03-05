@@ -4,7 +4,7 @@ import fsspec
 from nums.core.grid.grid import ArrayGrid
 from nums.core.array.blockarray import BlockArray
 from nums.core.kernel.kernel_manager import KernelManager
-from nums.core.backends.filesystem import FileSystem
+from nums.core.filesystem import FileSystem
 
 
 class ZarrGroup:
