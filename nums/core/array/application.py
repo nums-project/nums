@@ -19,7 +19,7 @@ import numpy as np
 
 from nums.core.array import utils as array_utils
 from nums.core.array.blockarray import BlockArray, Block
-from nums.core.array.blockzarr import ZarrGroup
+from nums.experimental.zarrgroup import ZarrGroup
 from nums.core.array.random import NumsRandomState
 from nums.core.kernel.kernel_manager import KernelManager
 from nums.core.grid.grid import ArrayGrid

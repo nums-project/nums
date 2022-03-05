@@ -8,11 +8,26 @@ from nums.core.backends.filesystem import FileSystem
 
 
 class ZarrGroup:
-    def __init__(self, url: str, km: KernelManager, fs: FileSystem):
+    def __init__(
+        self,
+        url: str,
+        km: KernelManager,
+        fs: FileSystem,
+        consolidated: bool = True,
+        mode: str = "r",
+        **kwargs
+    ):
         self.km = km
         self.fs = fs
         self.url = url
-        self.zarr_group = zarr.open_consolidated(fsspec.get_mapper(url), mode="r")
+        assert consolidated, "Only consolidated mode is currently supported."
+        assert mode == "r", "Only read mode is currently supported."
+        assert "mode" not in kwargs
+        self.consolidated = consolidated
+        self.kwargs = kwargs.copy()
+        self.kwargs["mode"] = mode
+
+        self.zarr_group = zarr.open_consolidated(fsspec.get_mapper(url), **kwargs)
 
     def __getattr__(self, item):
         return self.zarr_group.__getattribute__(item)
@@ -29,6 +44,8 @@ class ZarrGroup:
             ba.blocks[grid_entry].oid = self.fs.read_block_zarr(
                 self.url,
                 field_name,
+                self.consolidated,
+                self.kwargs,
                 grid_entry,
                 grid.get_block_shape(grid_entry),
                 syskwargs={
