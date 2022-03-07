@@ -21,6 +21,8 @@ from typing import Any, AnyStr, Tuple, Dict, Union
 
 import numpy as np
 from numpy.compat import asbytes, asstr, asunicode
+import zarr
+import fsspec
 
 from nums.core import settings
 from nums.core.array.blockarray import BlockArray
@@ -29,6 +31,26 @@ from nums.core.grid.grid import ArrayGrid
 from nums.core.grid.grid import Device
 from nums.core.storage import utils as storage_utils
 from nums.core.storage.storage import StoredArrayS3
+
+
+################
+# zarr
+################
+def read_block_zarr(url, field_name, consolidated, kwargs, grid_entry, shape):
+    # pylint: disable=protected-access
+    # TODO: Can we avoid private methods here without incurring a copy?
+    fobj = fsspec.get_mapper(url)
+    assert consolidated
+    zarr_group = zarr.open_consolidated(fobj, **kwargs)
+    zarr_arr = zarr_group[field_name]
+    ckey = zarr_arr._chunk_key(grid_entry)
+    cdata = zarr_arr.chunk_store[ckey]
+    arr = zarr_arr._decode_chunk(cdata)
+    if arr.shape != shape:
+        # This is padded. Truncate.
+        sel = tuple(slice(0, dim) for dim in shape)
+        return arr[sel]
+    return arr
 
 
 ################
@@ -284,6 +306,7 @@ class FileSystem:
             delete_file_fs,
             loadtxt_block,
             read_csv_block,
+            read_block_zarr,
         ]:
             self.km.register(func.__name__, func, {})
 
@@ -632,3 +655,24 @@ class FileSystem:
                 arr.blocks[grid_entry].oid = block
             arrays.append(arr)
         return arrays
+
+    def read_block_zarr(
+        self,
+        url: AnyStr,
+        field_name: AnyStr,
+        consolidated: bool,
+        kwargs: dict,
+        grid_entry: Tuple,
+        shape: Tuple,
+        syskwargs: Dict,
+    ):
+        return self.km.call(
+            "read_block_zarr",
+            url,
+            field_name,
+            consolidated,
+            kwargs,
+            grid_entry,
+            shape,
+            syskwargs=syskwargs,
+        )
