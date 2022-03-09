@@ -523,7 +523,7 @@ class ComputeCls(ComputeImp):
     def map_sort(self, arr, pivots, kind):
         arr = np.sort(arr, kind=kind)
         idx = arr.searchsorted(pivots)
-        return np.array(np.split(arr, idx), dtype=object)
+        return np.split(arr, idx)
 
     def reduce_sort(self, *arr, kind):
         merged_arr = np.concatenate(arr)
