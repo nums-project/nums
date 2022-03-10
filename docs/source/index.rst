@@ -1,27 +1,11 @@
-NumS documentation
+Welcome to the NumS documentation!
 ============================
 
 .. toctree::
    :maxdepth: 1
    :hidden:
 
-   Get Started <get_started/index>
-   User Guide <user_guide/index>
    API Reference <reference/index>
-   Development <development/index>
-
-**Date**: |today| **Version**: |version|
-
-**Download documentation**: `PDF Version <nums.pdf>`__ | `Zipped HTML <nums.zip>`__
-
-**Useful links**:
-`Binary Installers <https://pypi.org/project/nums>`__ |
-`Source Repository <https://github.com/nums-project/nums>`__ |
-`Issues & Ideas <https://github.com/nums-project/nums/issues>`__ |
-`Q&A Support <https://stackoverflow.com/questions/tagged/nums>`__ |
-
-:mod:`NumS` is an open source, Apache-licensed library that translates Python and NumPy 
-to optimized distributed systems code.
 
 .. panels::
     :card: + intro-card text-center

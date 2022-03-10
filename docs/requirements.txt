@@ -5,6 +5,6 @@ sphinx >=3, <4
 sphinx_rtd_theme
 sphinx-autodoc-typehints
 m2r2
-pydata-sphinx-theme
+sphinx-book-theme
 sphinx-panels
 sphinx-autopackagesummary
