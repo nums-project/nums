@@ -24,12 +24,12 @@ from .utils import get_private_ip
 
 
 @dataclass
-class MPIRemoteObj(object):
+class MPIRemoteObj:
     rank: int
 
 
 @dataclass
-class MPILocalObj(object):
+class MPILocalObj:
     value: Any
 
 
