@@ -54,9 +54,7 @@ class MPIBackend(Backend):
 
         # This is same as number of mpi processes.
         self.num_cpus = self.size
-        # self._devices = []
 
-        # self._device_to_node: Dict[Device, int] = {}
         self._device_to_rank: Dict[Device, int] = {}
         self._actor_to_rank: dict = {}
         self._actor_node_index = 0
