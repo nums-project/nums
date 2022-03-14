@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
 
 import warnings
 
@@ -577,6 +578,7 @@ class LinearRegression(LinearRegressionBase):
     Notes
     -----
     """
+
     def __init__(
         self,
         tol=0.0001,
@@ -645,6 +647,7 @@ class Ridge(LinearRegressionBase):
         Normalizes the regressors before regression.
         Setting this option to True is not yet supported.
     """
+
     def __init__(
         self,
         alpha=1.0,
@@ -742,6 +745,7 @@ class ElasticNet(LinearRegressionBase):
     pyglmnet -- A python implementation of elastic-net regularized generalized linear models
         https://glm-tools.github.io/pyglmnet/tutorial.html
     """
+
     def __init__(
         self,
         alpha=1.0,
@@ -808,6 +812,7 @@ class Lasso(LinearRegressionBase):
         Normalizes the regressors before regression.
         Setting this option to True is not yet supported.
     """
+
     def __init__(
         self,
         alpha=1.0,
@@ -875,6 +880,7 @@ class LogisticRegression(GLM):
         Normalizes the regressors before regression.
         Setting this option to True is not yet supported.
     """
+
     def __init__(
         self,
         penalty="none",
@@ -1106,6 +1112,7 @@ class PoissonRegression(GLM):
         Normalizes the regressors before regression.
         Setting this option to True is not yet supported.
     """
+
     def link_inv(self, eta: BlockArray):
         """Computes the inverse link function.
 
@@ -1289,6 +1296,7 @@ class ExponentialRegression(GLM):
     * canonical link: g(mu) = theta = eta = X @ beta
     * inverse canonical link: mu = b'(theta) = -1/theta = -1/eta
     """
+
     def link_inv(self, eta: BlockArray):
         """Computes the inverse link function.
 
