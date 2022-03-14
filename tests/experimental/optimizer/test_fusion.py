@@ -35,7 +35,6 @@ from nums.experimental.optimizer.fusion import FuseGraph
 from nums.experimental.optimizer.graph import TreeNode, Leaf, FunctionNode
 
 import conftest
-
 def fusion1(app, x, y):
     # An element-wise expression that benefits from fusion.
     return 1.0 / (1.0 + app.exp(x - y))
@@ -47,7 +46,6 @@ def fusion3(app, s, q, p):
     return s * (q @ p.T)
 
 def ga_op(app, func, x: BlockArray, y: BlockArray, copy_on_op=True, max_args=2) -> BlockArray:
-    cluster_state: ClusterState = ClusterState(x.cm.devices())
     x_ga: GraphArray = GraphArray.from_ba(x, cluster_state, copy_on_op=copy_on_op)
     y_ga: GraphArray = GraphArray.from_ba(y, cluster_state, copy_on_op=copy_on_op)
     op_ga: GraphArray = func(app, x_ga, y_ga)
@@ -137,10 +135,6 @@ def test_sparse_array(app_inst_mock_none):
     print(end_time - start_time)
     assert np.allclose(z.get(), fusion3(np, real_s, real_q, real_p))
     assert app.allclose(z, opt_z).get()
-
-
-def test_fused_placement():
-    pass
 
 
 if __name__ == "__main__":
