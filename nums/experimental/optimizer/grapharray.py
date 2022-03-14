@@ -74,6 +74,7 @@ class GraphArray(object):
             ba.cm,
             copy_on_op=copy_on_op,
         )
+
     def __init__(
         self,
         grid: ArrayGrid,
@@ -296,7 +297,7 @@ class GraphArray(object):
             self.cluster_state,
             result_graphs,
             self.cm,
-            copy_on_op=self.copy_on_op
+            copy_on_op=self.copy_on_op,
         )
 
     def __getattr__(self, item):

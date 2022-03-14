@@ -35,17 +35,24 @@ from nums.experimental.optimizer.fusion import FuseGraph
 from nums.experimental.optimizer.graph import TreeNode, Leaf, FunctionNode
 
 import conftest
+
+
 def fusion1(app, x, y):
     # An element-wise expression that benefits from fusion.
     return 1.0 / (1.0 + app.exp(x - y))
 
+
 def fusion2(app, x, y):
     return x @ y
+
 
 def fusion3(app, s, q, p):
     return s * (q @ p.T)
 
-def ga_op(app, func, x: BlockArray, y: BlockArray, copy_on_op=True, max_args=2) -> BlockArray:
+
+def ga_op(
+    app, func, x: BlockArray, y: BlockArray, copy_on_op=True, max_args=2
+) -> BlockArray:
     x_ga: GraphArray = GraphArray.from_ba(x, cluster_state, copy_on_op=copy_on_op)
     y_ga: GraphArray = GraphArray.from_ba(y, cluster_state, copy_on_op=copy_on_op)
     op_ga: GraphArray = func(app, x_ga, y_ga)
@@ -62,8 +69,10 @@ def ga_op(app, func, x: BlockArray, y: BlockArray, copy_on_op=True, max_args=2) 
 
     return BlockArray(result_ga.grid, x.cm, result_ga.to_blocks())
 
-def ga_op_sparse(app, func, s: BlockArray, p: BlockArray, q: BlockArray, copy_on_op=True
-    , max_args=3) -> BlockArray:
+
+def ga_op_sparse(
+    app, func, s: BlockArray, p: BlockArray, q: BlockArray, copy_on_op=True, max_args=3
+) -> BlockArray:
     cluster_state: ClusterState = ClusterState(s.cm.devices())
     s_ga: GraphArray = GraphArray.from_ba(s, cluster_state, copy_on_op=copy_on_op)
     p_ga: GraphArray = GraphArray.from_ba(p, cluster_state, copy_on_op=copy_on_op)
@@ -99,12 +108,13 @@ def test_fusion(app_inst_mock_none):
     assert np.allclose(z.get(), fusion1(np, real_x, real_y))
     assert app.allclose(z, opt_z).get()
 
-# matrix multiply 
+
+# matrix multiply
 # tensordot operation
 def test_tensordot(app_inst_mock_none):
     app = app_inst_mock_none
-    x_shape, x_block_shape = (4,2), (2, 2)
-    y_shape, y_block_shape = (2,4), (2, 2)
+    x_shape, x_block_shape = (4, 2), (2, 2)
+    y_shape, y_block_shape = (2, 4), (2, 2)
     real_x = np.random.random(np.product(x_shape)).reshape(x_shape)
     real_y = np.random.random(np.product(y_shape)).reshape(y_shape)
     x: BlockArray = app.array(real_x, x_block_shape)
@@ -117,10 +127,11 @@ def test_tensordot(app_inst_mock_none):
     assert np.allclose(z.get(), fusion2(np, real_x, real_y))
     assert app.allclose(z, opt_z).get()
 
+
 def test_sparse_array(app_inst_mock_none):
     app = app_inst_mock_none
-    q_shape, q_block_shape = (100,2), (2, 2)
-    p_shape, p_block_shape = (200,2), (2, 2)
+    q_shape, q_block_shape = (100, 2), (2, 2)
+    p_shape, p_block_shape = (200, 2), (2, 2)
     s_shape, s_block_shape = (100, 200), (2, 2)
     real_q = np.random.random(np.product(q_shape)).reshape(q_shape)
     real_p = np.random.random(np.product(p_shape)).reshape(p_shape)
@@ -142,7 +153,7 @@ if __name__ == "__main__":
 
     app = conftest.mock_cluster((1, 1))
     test_sparse_array(app)
-    #test_fusion(app)
+    # test_fusion(app)
     conftest.destroy_mock_cluster(app)
 
     # app = conftest.mock_cluster((10, 1))

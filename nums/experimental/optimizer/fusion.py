@@ -51,7 +51,7 @@ class FuseGraph(object):
             if child_leafs is None:
                 # This branch has been pruned.
                 return None, None, None
-            
+
             if len(child_block_id_set) <= self.max_args:
                 # If it's a frontier node, then there's no point in fusing it.
                 # If it's a leaf, we still want to count toward node_leafs,
@@ -119,7 +119,7 @@ class FuseGraph(object):
 
     def hash_str(self, val: str):
         return "fused-%s" % hashlib.sha1(val.encode("utf-8")).hexdigest()
-    
+
     @staticmethod
     def traverse_marker(node: TreeNode, marker, inputs={}):
         """
@@ -132,8 +132,7 @@ class FuseGraph(object):
             return marker + 1, inputs
         new_marker = marker
         for child in node.get_children():
-            new_marker, inputs = FuseGraph.traverse_marker(
-                child, new_marker, inputs)
+            new_marker, inputs = FuseGraph.traverse_marker(child, new_marker, inputs)
         return new_marker, inputs
 
     @staticmethod
@@ -163,13 +162,17 @@ class FuseGraph(object):
         for grid_entry in r.grid.get_entry_iterator():
             graph = r.graphs[grid_entry]
             _, leaf_inputs = FuseGraph.traverse_marker(graph, 0)
-            if grid_entry == (0,) or grid_entry == (0, 0): # generic 
-                result_graphs[grid_entry] = FuseGraph(graph, app.cm, max_args=max_args)()
+            if grid_entry == (0,) or grid_entry == (0, 0):  # generic
+                result_graphs[grid_entry] = FuseGraph(
+                    graph, app.cm, max_args=max_args
+                )()
                 fused_graph = result_graphs[grid_entry]
                 fused_graph.op_expression = fused_graph._expression
             else:
                 fused_graph_copy = fused_graph.copy(r.cluster_state, new_ids=True)
-                fused_graph_copy = FuseGraph.set_using_marker(fused_graph_copy, leaf_inputs)
+                fused_graph_copy = FuseGraph.set_using_marker(
+                    fused_graph_copy, leaf_inputs
+                )
                 fused_graph_copy.set_grid_entry(grid_entry)
                 result_graphs[grid_entry] = fused_graph_copy
         return GraphArray(r.grid.copy(), r.cluster_state, result_graphs, r.cm)
