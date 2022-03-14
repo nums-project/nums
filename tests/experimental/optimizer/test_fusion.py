@@ -32,45 +32,9 @@ from nums.experimental.optimizer.grapharray import (
 )
 from nums.experimental.optimizer.tree_search import RandomTS
 from nums.experimental.optimizer.fusion import FuseGraph
-from nums.experimental.optimizer.graph import TreeNode, Leaf
 
 import conftest
 
-def traverse_marker(node: TreeNode, marker, input_list={}):
-    """
-    Recursively traverse this node and return the number of unique blocks.
-    If <= max_args, then it's a fusion candidate.
-    """
-    if isinstance(node, Leaf):
-        if not node.is_scalar():
-            node.marker = marker + 1
-            input_list[node.marker] = node
-            return marker + 1, input_list
-    new_marker = marker
-    for child in node.get_children():
-        new_marker, input_list = traverse_marker(
-            child, new_marker, input_list)
-    return new_marker, input_list
-
-def print_marker(node):
-    if isinstance(node, Leaf) and not node.is_scalar():
-        print(node, node.marker)
-        return
-    for child in node.get_children():
-        print_marker(child)
-
-def set_using_marker(new_fused, input_graph):
-    if len(new_fused.get_children()) == 0:
-        return new_fused
-    new_children = []
-    for child in new_fused.get_children():
-        if isinstance(child, Leaf) and not child.is_scalar():
-            new_children.append(input_graph[child.marker])
-        else:
-            child = set_using_marker(child, input_graph)
-            new_children.append(child)
-    new_fused.children = new_children
-    return new_fused
 
 def fusion1(app, x, y):
     # An element-wise expression that benefits from fusion.
@@ -81,27 +45,7 @@ def fuse_ga(app, r: GraphArray) -> GraphArray:
     result_graphs = np.empty_like(r.graphs, dtype=r.graphs.dtype)
     for grid_entry in r.grid.get_entry_iterator():
         graph = r.graphs[grid_entry]
-        #print("------------------------------------------------------------")
-        _, leaf_inputs = traverse_marker(graph, 0)
-        #print_marker(graph)
-        #print(graph)
-        #print("------------------------------------------------------------")
-        if grid_entry == (0,): # generic 
-            result_graphs[grid_entry] = FuseGraph(graph, app.cm)()
-            traverse_marker(result_graphs[grid_entry], 0)
-            fused_graph = result_graphs[grid_entry]
-            fused_graph.op_expression = fused_graph._expression
-            #print(result_graphs[grid_entry])
-            #print_marker(fused_graph)
-        else:
-            #print_marker(fused_graph)
-            fused_graph_copy = fused_graph.copy(r.cluster_state, new_ids=True)
-            #print_marker(fused_graph_copy)
-            fused_graph_copy = set_using_marker(fused_graph_copy, leaf_inputs)
-            result_graphs[grid_entry] = fused_graph_copy
-        
-        #print_marker(result_graphs[grid_entry])
-
+        result_graphs[grid_entry] = FuseGraph(graph, app.cm)()
     return GraphArray(r.grid.copy(), r.cluster_state, result_graphs, r.cm)
 
 
@@ -134,8 +78,7 @@ def test_fusion(app_inst_mock_none):
     assert np.allclose(z.get(), fusion1(np, real_x, real_y))
     assert app.allclose(z, opt_z).get()
 
-# matrix multiply 
-# tensordot operation
+
 def test_graph_properties():
     pass
 
