@@ -839,7 +839,7 @@ class FunctionNode(TreeNode):
         new_children = []
         for child in self.children:
             if child.tree_node_id == old_child.tree_node_id:
-                new_children.append(new_children)
+                new_children.append(new_child)
             else:
                 new_children.append(child)
         self.children = new_children

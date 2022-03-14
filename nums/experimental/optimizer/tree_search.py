@@ -178,15 +178,7 @@ class ProgramState(object):
             root: TreeNode = tnode
         else:
             root: TreeNode = tnode.get_root()
-        tree_root_grid_entry = None
-        for grid_entry in self.arr.grid.get_entry_iterator():
-            tree_node: TreeNode = self.arr.graphs[grid_entry]
-            if tree_node is root:
-                tree_root_grid_entry = grid_entry
-                break
-        if tree_root_grid_entry is None:
-            raise Exception("Bad tree.")
-        return tree_root_grid_entry
+        return root.grid_entry()
 
     def update_root(self, old_root, new_root):
         tree_root_grid_entry = self.get_tnode_grid_entry(old_root)

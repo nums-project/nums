@@ -66,10 +66,11 @@ class GraphArray(object):
 
     @classmethod
     def from_ba(cls, ba: BlockArrayBase, cluster_state: ClusterState, copy_on_op=True):
+        graphs = GraphArray.graphs_from_ba(ba, cluster_state, copy_on_op)
         return GraphArray(
             ba.grid,
             cluster_state,
-            GraphArray.graphs_from_ba(ba, cluster_state, copy_on_op),
+            graphs,
             ba.cm,
             copy_on_op=copy_on_op,
         )
@@ -213,38 +214,43 @@ class GraphArray(object):
 
     def __add__(self, other):
         other = self.other_to_ga(other)
-        return self.ga_from_arr(
+        output_ga = self.ga_from_arr(
             self.graphs + other.graphs,
             array_utils.broadcast_shape(self.shape, other.shape),
         )
+        return output_ga
 
     def __sub__(self, other):
         other = self.other_to_ga(other)
-        return self.ga_from_arr(
+        output_ga = self.ga_from_arr(
             self.graphs - other.graphs,
             array_utils.broadcast_shape(self.shape, other.shape),
         )
+        return output_ga
 
     def __mul__(self, other):
         other = self.other_to_ga(other)
-        return self.ga_from_arr(
+        output_ga = self.ga_from_arr(
             self.graphs * other.graphs,
             array_utils.broadcast_shape(self.shape, other.shape),
         )
+        return output_ga
 
     def __truediv__(self, other):
         other = self.other_to_ga(other)
-        return self.ga_from_arr(
+        output_ga = self.ga_from_arr(
             self.graphs / other.graphs,
             array_utils.broadcast_shape(self.shape, other.shape),
         )
+        return output_ga
 
     def __pow__(self, other):
         other = self.other_to_ga(other)
-        return self.ga_from_arr(
+        output_ga = self.ga_from_arr(
             self.graphs ** other.graphs,
             array_utils.broadcast_shape(self.shape, other.shape),
         )
+        return output_ga
 
     __iadd__ = __add__
     __isub__ = __sub__
@@ -290,7 +296,7 @@ class GraphArray(object):
             self.cluster_state,
             result_graphs,
             self.cm,
-            copy_on_op=self.copy_on_op,
+            copy_on_op=self.copy_on_op
         )
 
     def __getattr__(self, item):
