@@ -118,24 +118,23 @@ def app_inst_all(request):
 
 def get_app(backend_name, device_grid_name="cyclic"):
     if backend_name == "serial":
+        cluster_shape = (1, 1)
         backend: Backend = SerialBackend()
         backend.init()
-        cluster_shape = (1, 1)
     elif backend_name == "ray":
+        cluster_shape = (1, 1)
         assert not ray.is_initialized()
         backend: Backend = RayBackend(
             use_head=True, num_cpus=backend_utils.get_num_cores()
         )
         backend.init()
-        cluster_shape = (1, 1)
     elif backend_name == "dask":
         from nums.experimental.nums_dask.dask_backend import DaskBackend
 
-        backend: Backend = DaskBackend(
-            num_cpus=backend_utils.get_num_cores(), num_nodes=1
-        )
+        num_workers = backend_utils.get_num_cores()
+        cluster_shape = (num_workers, 1)
+        backend: Backend = DaskBackend(num_cpus=num_workers, num_devices=num_workers)
         backend.init()
-        cluster_shape = (1, 1)
     elif backend_name == "mpi":
         backend: Backend = MPIBackend()
         backend.init()

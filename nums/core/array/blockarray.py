@@ -876,7 +876,6 @@ class BlockArray(BlockArrayBase):
             blocks[grid_entry] = block = Block(
                 grid_entry=grid_entry,
                 grid_shape=self_block.grid_shape,
-                rect=self_block.rect,
                 shape=self_block.shape,
                 dtype=dtype,
                 transposed=False,
