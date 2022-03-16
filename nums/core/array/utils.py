@@ -18,9 +18,12 @@ from typing import Tuple, Iterator
 
 import numpy as np
 import scipy.special
+import sparse
 
 from nums.core.settings import np_ufunc_map
 from nums.core.array.errors import AxisError
+from nums.core.array.base import Block
+from nums.core.array.sparse import SparseBlock
 
 # pylint: disable = no-member, trailing-whitespace
 
@@ -450,3 +453,26 @@ def normalize_axis_index(axis, ndim):
         )
 
     return axis % ndim
+
+
+def get_sparse_bop_output_type(self, op_name, a: Block, b: Block):
+    def sample_array(block):
+        s = np.eye(2)
+        if isinstance(block, SparseBlock):
+            return sparse.GCXS.from_numpy(s, fill_value=block.fill_value)
+        return s
+
+    sa = sample_array(a)
+    sb = sample_array(b)
+    if op_name == "tensordot":
+        result = sparse.tensordot(sa, sb)
+    else:
+        op_name = np_ufunc_map.get(op_name, op_name)
+        try:
+            ufunc = np.__getattribute__(op_name)
+        except Exception as _:
+            ufunc = scipy.special.__getattribute__(op_name)
+        result = sparse.elemwise(ufunc, sa, sb)
+    if isinstance(result, sparse.SparseArray):
+        return SparseBlock
+    return Block

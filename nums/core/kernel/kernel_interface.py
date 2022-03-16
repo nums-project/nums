@@ -156,12 +156,44 @@ class Kernel:
     def reshape(self, arr, shape, syskwargs: Dict):
         raise NotImplementedError()
 
-    def identity(self, value):
+    def identity(self, value, syskwargs: Dict):
         raise NotImplementedError()
 
     def einsum(self, subscript, *operands, syskwargs: Dict):
         raise NotImplementedError()
 
+    def any(self, arr, syskwargs: Dict):
+        raise NotImplementedError()
+
+    # Sparse
+
+    def dense_to_sparse(self, arr, fill_value, syskwargs: Dict):
+        raise NotImplementedError()
+
+    def sparse_to_dense(self, arr, syskwargs: Dict):
+        raise NotImplementedError()
+
+    def sparse_random_block(
+        self,
+        rng_params,
+        rfunc_name,
+        rfunc_args,
+        shape,
+        dtype,
+        p,
+        fill_value,
+        syskwargs: Dict,
+    ):
+        raise NotImplementedError()
+
+    def sparse_map_uop(self, op_name, arr, args, kwargs, syskwargs: Dict):
+        raise NotImplementedError()
+
+    def sparse_bop_densify(self, op_name, a1_meta, a2_meta, syskwargs: Dict):
+        raise NotImplementedError()
+
+    def sparse_bop(self, op, a1, a2, a1_T, a2_T, axes, densify, syskwargs: Dict):
+        raise NotImplementedError()
 
 class KernelImp:
     pass
