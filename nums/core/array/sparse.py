@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from nums.core.array import utils as array_utils
 from nums.core.array.base import BlockArrayBase, Block
 from nums.core.array.blockarray import BlockArray
@@ -388,6 +388,49 @@ class SparseBlockArray(BlockArray):
         elif isinstance(a, BlockArray):
             meta["type"] = "dense"
         return meta
+
+    def sdtp(self, *block_arrays: List[BlockArray]):
+        assert np.allclose(self.fill_value, 0)
+        for i, ba in enumerate(block_arrays):
+            assert len(ba.shape) == 1
+            assert ba.shape[0] == self.shape[i]
+            assert ba.block_shape[0] == self.block_shape[i]
+        # Sparsity of result is same as self.
+        result: SparseBlockArray = SparseBlockArray(self.grid, self.km, self.fill_value)
+        for grid_entry in self.grid.get_entry_iterator():
+            dense_oids = [ba.blocks[grid_entry].oid for ba in block_arrays]
+            result.blocks[grid_entry].oid = self.km.sdtp(self.blocks[grid_entry].oid,
+                                                         *dense_oids,
+                                                         syskwargs={
+                                                             "grid_entry": grid_entry,
+                                                             "grid_shape": result.grid_shape
+                                                         })
+        return result
+
+    def sdtd(self, x: BlockArray, y: BlockArray, axes: int):
+        assert np.allclose(self.fill_value, 0)
+        # Ensure dims over which we sum are equivalent.
+        assert x.shape[-axes:] == y.shape[:axes]
+        # Ensure block dims over which we sum are equivalent.
+        assert x.block_shape[-axes:] == y.block_shape[:axes]
+        # Ensure sparse dims match output dims of tensordot.
+        assert self.shape == x.shape[:-axes] + y.shape[axes:]
+        # Ensure sparse block shape dims match block output dims of tensordot.
+        assert self.block_shape == x.block_shape[:-axes] + y.block_shape[axes:]
+        assert len(self.shape) % 2 == 0
+
+        # Sparsity of result is same as self.
+        result: SparseBlockArray = SparseBlockArray(self.grid, self.km, self.fill_value)
+        for grid_entry in self.grid.get_entry_iterator():
+            result.blocks[grid_entry].oid = self.km.sdtd(self.blocks[grid_entry].oid,
+                                                         x.blocks[grid_entry].oid,
+                                                         y.blocks[grid_entry].oid,
+                                                         axes=axes,
+                                                         syskwargs={
+                                                             "grid_entry": grid_entry,
+                                                             "grid_shape": result.grid_shape
+                                                         })
+        return result
 
     def __elementwise__(self, op_name, other):
         other = self.check_or_convert_other(other)  # other is dense BlockArray

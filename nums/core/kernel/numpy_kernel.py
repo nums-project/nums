@@ -643,3 +643,35 @@ class KernelCls(KernelImp):
     #     else:
     #         assert a1.shape == a2.shape == r.shape
     #     return r, r.nbytes, r.nnz
+
+    def sdtp(self, s: sparse.COO, *dense_arrays):
+        data = np.copy(s.data)
+        for position in range(s.nnz):
+            for axis in range(len(s.shape)):
+                data[position] *= dense_arrays[axis][s.coords[axis][position]]
+        return sparse.COO(s.coords, data, shape=s.shape, fill_value=s.fill_value)
+
+    def sdtd(self, s: sparse.COO, x: np.ndarray, y: np.ndarray, axes: int):
+        # Check some things.
+        x_dims = x.shape[:-axes]
+        x_sum_dims = x.shape[-axes:]
+        y_dims = y.shape[axes:]
+        y_sum_dims = y.shape[:axes]
+        assert x_sum_dims == y_sum_dims
+        assert s.shape == x_dims + y_dims
+        assert len(s.shape) % 2 == 0
+
+        data = np.copy(s.data)
+        for position in range(s.nnz):
+            x_coords = []
+            y_coords = []
+            for axis in range(len(s.shape)):
+                if axis < len(x_dims):
+                    x_coords.append(s.coords[axis][position])
+                    y_coords.append(slice(None, None))
+                else:
+                    y_coords.append(s.coords[axis][position])
+            sx = x[tuple(x_coords)]
+            sy = y[tuple(y_coords)]
+            data[position] *= np.tensordot(sx, sy, axes=axes)
+        return sparse.COO(s.coords, data, shape=s.shape, fill_value=s.fill_value)

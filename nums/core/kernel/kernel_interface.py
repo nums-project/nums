@@ -195,6 +195,13 @@ class Kernel:
     def sparse_bop(self, op, a1, a2, a1_T, a2_T, axes, densify, syskwargs: Dict):
         raise NotImplementedError()
 
+    def sdtp(self, s, *dense_arrays, syskwargs: Dict):
+        raise NotImplementedError()
+
+    def sdtd(self, s, x, y, axes, syskwargs: Dict):
+        raise NotImplementedError()
+
+
 class KernelImp:
     pass
 
