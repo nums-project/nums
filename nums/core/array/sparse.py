@@ -392,7 +392,7 @@ class SparseBlockArray(BlockArray):
         # Sparsity of result is same as self.
         result: SparseBlockArray = SparseBlockArray(self.grid, self.km, self.fill_value)
         for grid_entry in self.grid.get_entry_iterator():
-            dense_oids = [ba.blocks[grid_entry].oid for ba in block_arrays]
+            dense_oids = [ba.blocks[grid_entry[i]].oid for i, ba in enumerate(block_arrays)]
             result.blocks[grid_entry].oid = self.km.sdtp(
                 self.blocks[grid_entry].oid,
                 *dense_oids,
