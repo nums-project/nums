@@ -217,39 +217,77 @@ class NumsRandomState:
     # SparseBlockArray random generation.
 
     def sparse_randint(
-        self, low, high=None, dtype=int, shape=None, block_shape=None,
-        p=0.01, fill_value=0,
+        self,
+        low,
+        high=None,
+        dtype=int,
+        shape=None,
+        block_shape=None,
+        p=0.01,
+        fill_value=0,
     ):
         if dtype is None:
             dtype = np.float64
         assert isinstance(dtype, type)
         return self._sparse_sample_basic(
-            "randint", shape, block_shape, dtype,
+            "randint",
+            shape,
+            block_shape,
+            dtype,
             {"low": low, "high": high, "dtype": dtype},
-            p, fill_value,
+            p,
+            fill_value,
         )
 
     def sparse_uniform(
-        self, low=0.0, high=1.0, shape=None, block_shape=None, dtype=None,
-        p=0.01, fill_value=0,
+        self,
+        low=0.0,
+        high=1.0,
+        shape=None,
+        block_shape=None,
+        dtype=None,
+        p=0.01,
+        fill_value=0,
     ):
         return self._sparse_sample_basic(
-            "uniform", shape, block_shape, dtype,
+            "uniform",
+            shape,
+            block_shape,
+            dtype,
             {"low": low, "high": high},
-            p, fill_value,
+            p,
+            fill_value,
         )
 
-    def sparse_normal(self, loc=0.0, scale=1.0, shape=None, block_shape=None, dtype=None,
-        p=0.01, fill_value=0,
+    def sparse_normal(
+        self,
+        loc=0.0,
+        scale=1.0,
+        shape=None,
+        block_shape=None,
+        dtype=None,
+        p=0.01,
+        fill_value=0,
     ):
         return self._sparse_sample_basic(
-            "normal", shape, block_shape, dtype,
+            "normal",
+            shape,
+            block_shape,
+            dtype,
             {"loc": loc, "scale": scale},
-            p, fill_value,
+            p,
+            fill_value,
         )
 
     def _sparse_sample_basic(
-        self, rfunc_name, shape, block_shape, dtype, rfunc_args: Dict, p, fill_value,
+        self,
+        rfunc_name,
+        shape,
+        block_shape,
+        dtype,
+        rfunc_args: Dict,
+        p,
+        fill_value,
     ) -> SparseBlockArray:
         if shape is None:
             assert block_shape is None
@@ -269,7 +307,7 @@ class NumsRandomState:
             rng_params = list(self._rng.new_block_rng_params())
             this_block_shape = grid.get_block_shape(grid_entry)
             block: SparseBlock = sba.blocks[grid_entry]
-            block.oid , nb, nz = self._km.sparse_random_block(
+            block.oid, nb, nz = self._km.sparse_random_block(
                 rng_params,
                 rfunc_name,
                 rfunc_args,
@@ -288,12 +326,6 @@ class NumsRandomState:
             nbytes_oids.append(nb)
             nnz_oids.append(nz)
         device_0 = sba.km.devices()[0]
-        sba._nbytes = sba.km.sum_reduce(
-            *nbytes_oids,
-            syskwargs = {"device": device_0}
-        )
-        sba._nnz = sba.km.sum_reduce(
-            *nnz_oids,
-            syskwargs = {"device": device_0}
-        )
+        sba._nbytes = sba.km.sum_reduce(*nbytes_oids, syskwargs={"device": device_0})
+        sba._nnz = sba.km.sum_reduce(*nnz_oids, syskwargs={"device": device_0})
         return sba

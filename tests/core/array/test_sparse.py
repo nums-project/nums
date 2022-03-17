@@ -20,7 +20,9 @@ def test_sparse_init(app_inst: ArrayApplication):
 
 def test_sparse_random(app_inst: ArrayApplication):
     rs: NumsRandomState = app_inst.random_state(1337)
-    sba = rs.sparse_randint(1, high=5, dtype=int, shape=(15, 10), block_shape=(5, 5), p=0.1, fill_value=0)
+    sba = rs.sparse_randint(
+        1, high=5, dtype=int, shape=(15, 10), block_shape=(5, 5), p=0.1, fill_value=0
+    )
     print(sba.nbytes, sba.nnz)
     ba = sba.to_ba()
     print(ba.get())
@@ -81,8 +83,12 @@ def test_sparse_mul(app_inst: ArrayApplication):
 
     # Sparse-dense
     rs: NumsRandomState = app_inst.random_state(1337)
-    x1_sba = rs.sparse_randint(1, high=5, dtype=int, shape=(100, 50), block_shape=(5, 5), p=0.1, fill_value=0)
-    x2_sba = rs.sparse_randint(1, high=5, dtype=int, shape=(100, 50), block_shape=(5, 5), p=0.1, fill_value=0)
+    x1_sba = rs.sparse_randint(
+        1, high=5, dtype=int, shape=(100, 50), block_shape=(5, 5), p=0.1, fill_value=0
+    )
+    x2_sba = rs.sparse_randint(
+        1, high=5, dtype=int, shape=(100, 50), block_shape=(5, 5), p=0.1, fill_value=0
+    )
     x1_ba = x1_sba.to_ba()
     x2_ba = x2_sba.to_ba()
     x1 = x1_ba.get()

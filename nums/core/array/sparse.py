@@ -10,7 +10,6 @@ import itertools
 
 
 class SparseBlock(Block):
-
     def __init__(
         self,
         grid_entry,
@@ -57,12 +56,12 @@ class SparseBlock(Block):
         grid_entryT = tuple(reversed(self.grid_entry))
         grid_shapeT = tuple(reversed(self.grid_shape))
         blockT = SparseBlock(
-            grid_entry = grid_entryT,
-            grid_shape = grid_shapeT,
-            shape = tuple(reversed(self.shape)),
-            dtype = self.dtype,
-            transposed = not self.transposed,
-            km = self._km,
+            grid_entry=grid_entryT,
+            grid_shape=grid_shapeT,
+            shape=tuple(reversed(self.shape)),
+            dtype=self.dtype,
+            transposed=not self.transposed,
+            km=self._km,
         )
         if not defer:
             blockT.transposed = False
@@ -97,9 +96,12 @@ class SparseBlock(Block):
 
     @staticmethod
     def init_block(op, block1, block2, args, device=None):
-        result_grid_entry, result_grid_shape, result_shape, dtype = SparseBlock.block_meta(
-            op, block1, block2, args
-        )
+        (
+            result_grid_entry,
+            result_grid_shape,
+            result_shape,
+            dtype,
+        ) = SparseBlock.block_meta(op, block1, block2, args)
         # TODO: figure out fill_value semantics
         assert block1.fill_value == block2.fill_value
         block = SparseBlock(
@@ -150,12 +152,11 @@ class SparseBlock(Block):
 
 
 class SparseBlockArray(BlockArray):
-
     def __init__(
         self,
         grid: ArrayGrid,
         km: KernelManager,
-        fill_value = 0,
+        fill_value=0,
         blocks: np.ndarray = None,
     ):
         self.grid = grid
@@ -233,7 +234,7 @@ class SparseBlockArray(BlockArray):
             sba.blocks[grid_entry].oid, nb, nz = sba.km.dense_to_sparse(
                 block.oid,
                 fill_value,
-                syskwargs = {
+                syskwargs={
                     "grid_entry": block.grid_entry,
                     "grid_shape": block.grid_shape,
                     "options": {"num_returns": 3},
@@ -245,24 +246,18 @@ class SparseBlockArray(BlockArray):
             nnz_oids.append(nz)
         sba.fill_value = fill_value
         device_0 = sba.km.devices()[0]
-        sba._nbytes = sba.km.sum_reduce(
-            *nbytes_oids,
-            syskwargs = {"device": device_0}
-        )
-        sba._nnz = sba.km.sum_reduce(
-            *nnz_oids,
-            syskwargs = {"device": device_0}
-        )
+        sba._nbytes = sba.km.sum_reduce(*nbytes_oids, syskwargs={"device": device_0})
+        sba._nnz = sba.km.sum_reduce(*nnz_oids, syskwargs={"device": device_0})
         return sba
 
     def to_ba(self):
-        grid = ArrayGrid(self.shape, self.block_shape,self.dtype.__name__)
+        grid = ArrayGrid(self.shape, self.block_shape, self.dtype.__name__)
         ba = BlockArray(grid, self.km)
         for grid_entry in grid.get_entry_iterator():
             block: SparseBlock = self.blocks[grid_entry]
             ba.blocks[grid_entry].oid = ba.km.sparse_to_dense(
                 block.oid,
-                syskwargs = {
+                syskwargs={
                     "grid_entry": block.grid_entry,
                     "grid_shape": block.grid_shape,
                 },
@@ -289,13 +284,9 @@ class SparseBlockArray(BlockArray):
         result.fill_value = func(self.fill_value)
         device_0 = result.km.devices()[0]
         result._nbytes = result.km.sum_reduce(
-            *nbytes_oids,
-            syskwargs={"device": device_0}
+            *nbytes_oids, syskwargs={"device": device_0}
         )
-        result._nnz = result.km.sum_reduce(
-            *nnz_oids,
-            syskwargs={"device": device_0}
-        )
+        result._nnz = result.km.sum_reduce(*nnz_oids, syskwargs={"device": device_0})
         return result
 
     @staticmethod
@@ -370,12 +361,10 @@ class SparseBlockArray(BlockArray):
             result = SparseBlockArray(grid, self.km, fill_value, blocks=blocks)
             device_0 = result.km.devices()[0]
             result._nbytes = result.km.sum_reduce(
-                *nbytes_oids,
-                syskwargs={"device": device_0}
+                *nbytes_oids, syskwargs={"device": device_0}
             )
             result._nnz = result.km.sum_reduce(
-                *nnz_oids,
-                syskwargs={"device": device_0}
+                *nnz_oids, syskwargs={"device": device_0}
             )
             return result
 
@@ -399,12 +388,11 @@ class SparseBlockArray(BlockArray):
         result: SparseBlockArray = SparseBlockArray(self.grid, self.km, self.fill_value)
         for grid_entry in self.grid.get_entry_iterator():
             dense_oids = [ba.blocks[grid_entry].oid for ba in block_arrays]
-            result.blocks[grid_entry].oid = self.km.sdtp(self.blocks[grid_entry].oid,
-                                                         *dense_oids,
-                                                         syskwargs={
-                                                             "grid_entry": grid_entry,
-                                                             "grid_shape": result.grid_shape
-                                                         })
+            result.blocks[grid_entry].oid = self.km.sdtp(
+                self.blocks[grid_entry].oid,
+                *dense_oids,
+                syskwargs={"grid_entry": grid_entry, "grid_shape": result.grid_shape},
+            )
         return result
 
     def sdtd(self, x: BlockArray, y: BlockArray, axes: int):
@@ -422,14 +410,13 @@ class SparseBlockArray(BlockArray):
         # Sparsity of result is same as self.
         result: SparseBlockArray = SparseBlockArray(self.grid, self.km, self.fill_value)
         for grid_entry in self.grid.get_entry_iterator():
-            result.blocks[grid_entry].oid = self.km.sdtd(self.blocks[grid_entry].oid,
-                                                         x.blocks[grid_entry].oid,
-                                                         y.blocks[grid_entry].oid,
-                                                         axes=axes,
-                                                         syskwargs={
-                                                             "grid_entry": grid_entry,
-                                                             "grid_shape": result.grid_shape
-                                                         })
+            result.blocks[grid_entry].oid = self.km.sdtd(
+                self.blocks[grid_entry].oid,
+                x.blocks[grid_entry].oid,
+                y.blocks[grid_entry].oid,
+                axes=axes,
+                syskwargs={"grid_entry": grid_entry, "grid_shape": result.grid_shape},
+            )
         return result
 
     def __elementwise__(self, op_name, other):
@@ -448,7 +435,9 @@ class SparseBlockArray(BlockArray):
         blocks_op = self.blocks.__getattribute__("__%s__" % op_name)
         if densify:
             result = BlockArray.from_blocks(
-                blocks_op(other.blocks), result_shape=None, km=self.km,
+                blocks_op(other.blocks),
+                result_shape=None,
+                km=self.km,
             )
         else:
             op_name = np_ufunc_map.get(op_name, op_name)
@@ -456,7 +445,10 @@ class SparseBlockArray(BlockArray):
             # FIXME: other may be dense
             fill_value = ufunc(self.fill_value, other.fill_value)
             result = SparseBlockArray.from_blocks(
-                blocks_op(other.blocks), result_shape=None, fill_value=fill_value, km=self.km,
+                blocks_op(other.blocks),
+                result_shape=None,
+                fill_value=fill_value,
+                km=self.km,
             )
         return result
 

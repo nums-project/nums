@@ -82,15 +82,22 @@ class RandomState:
     def sparse_randn(self, density, fill_value, *shape):
         shape, block_shape = self._get_shapes(shape, _np.float64)
         return self.rs().sparse_normal(
-            shape=shape, block_shape=block_shape, p=density, fill_value=fill_value,
+            shape=shape,
+            block_shape=block_shape,
+            p=density,
+            fill_value=fill_value,
         )
 
-    def sparse_randint(self, low, high=None, size=None, dtype=int, density=0.01, fill_value=0):
+    def sparse_randint(
+        self, low, high=None, size=None, dtype=int, density=0.01, fill_value=0
+    ):
         if high is None:
             high = low
             low = 0
         shape, block_shape = self._get_shapes(size, dtype)
-        return self.rs().sparse_randint(low, high, dtype, shape, block_shape, density, fill_value)
+        return self.rs().sparse_randint(
+            low, high, dtype, shape, block_shape, density, fill_value
+        )
 
 
 # Default imp.

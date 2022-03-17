@@ -33,6 +33,7 @@ from nums.core.settings import np_ufunc_map
 def block_rng(seed, jump_index):
     return Generator(PCG64(seed).jumped(jump_index))
 
+
 def block_rng_legacy(seed, jump_index):
     return RandomState(PCG64(seed).jumped(jump_index))
 
@@ -549,11 +550,11 @@ class KernelCls(KernelImp):
         nnz = rng.binomial(np.product(shape), p)
         result = sparse.random(
             shape,
-            nnz = nnz,
-            random_state = rng,
-            data_rvs = lambda s: op_func(**rfunc_args, size=s),
-            format = "gcxs",
-            fill_value = fill_value,
+            nnz=nnz,
+            random_state=rng,
+            data_rvs=lambda s: op_func(**rfunc_args, size=s),
+            format="gcxs",
+            fill_value=fill_value,
         )
         if rfunc_name != "randint":
             # Only random and integer supports sampling of a specific type.
