@@ -794,13 +794,21 @@ class BlockArray(BlockArrayBase):
         ):
             raise ValueError("shape-mismatch for sum")
 
-        this_axes = self.grid.grid_shape[:-axes]
-        this_sum_axes = self.grid.grid_shape[-axes:]
-        other_axes = other.grid.grid_shape[axes:]
-        other_sum_axes = other.grid.grid_shape[:axes]
-        assert this_sum_axes == other_sum_axes
-        result_shape = tuple(self.shape[:-axes] + other.shape[axes:])
-        result_block_shape = tuple(self.block_shape[:-axes] + other.block_shape[axes:])
+        if axes > 0:
+            this_axes = self.grid.grid_shape[:-axes]
+            this_sum_axes = self.grid.grid_shape[-axes:]
+            other_axes = other.grid.grid_shape[axes:]
+            other_sum_axes = other.grid.grid_shape[:axes]
+            assert this_sum_axes == other_sum_axes
+            result_shape = tuple(self.shape[:-axes] + other.shape[axes:])
+            result_block_shape = tuple(self.block_shape[:-axes] + other.block_shape[axes:])
+        else:
+            this_axes = self.grid.grid_shape
+            other_axes = other.grid.grid_shape
+            this_sum_axes = ()
+            result_shape = tuple(self.shape + other.shape)
+            result_block_shape = tuple(self.block_shape + other.block_shape)
+
         result_grid = ArrayGrid(
             shape=result_shape,
             block_shape=result_block_shape,

@@ -74,6 +74,18 @@ def test_tensordot_basic(app_inst: ArrayApplication):
     common.check_block_integrity(rResult)
 
 
+def test_tensor_product(app_inst: ArrayApplication):
+    a = np.arange(7 * 6 * 4).reshape((7, 6, 4))
+    b = np.arange(6 * 4 * 9).reshape((4, 6, 9))
+    c = np.tensordot(a, b, axes=0)
+
+    ba_a = app_inst.array(a, block_shape=(2, 3, 2))
+    ba_b = app_inst.array(b, block_shape=(1, 2, 3))
+    ba_c = app_inst.tensordot(ba_a, ba_b, axes=0)
+    assert np.allclose(ba_c.get(), c)
+    common.check_block_integrity(ba_c)
+
+
 def test_tensordot_large_shape(app_inst: ArrayApplication):
     a = np.arange(4 * 6 * 10 * 90).reshape((90, 10, 6, 4))
     b = np.arange(4 * 6 * 10 * 75).reshape((4, 6, 10, 75))
@@ -287,11 +299,12 @@ if __name__ == "__main__":
     # pylint: disable=import-error
     import conftest
 
-    app_inst = conftest.get_app("ray-cyclic")
-    test_matmul(app_inst)
+    app_inst = conftest.get_app("serial", "cyclic")
+    # test_matmul(app_inst)
     # test_matvec(app_inst)
     # test_vecdot(app_inst)
     # test_tensordot_basic(app_inst)
+    test_tensor_product(app_inst)
     # test_tensordot_large_shape(app_inst)
     # test_bops(app_inst)
     # test_conversions(conversions_data(None, app_inst))
