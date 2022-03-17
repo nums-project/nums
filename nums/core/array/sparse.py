@@ -251,9 +251,8 @@ class SparseBlockArray(BlockArray):
         return sba
 
     def to_ba(self):
-        grid = ArrayGrid(self.shape, self.block_shape, self.dtype.__name__)
-        ba = BlockArray(grid, self.km)
-        for grid_entry in grid.get_entry_iterator():
+        ba = BlockArray(self.grid.copy(), self.km)
+        for grid_entry in ba.grid.get_entry_iterator():
             block: SparseBlock = self.blocks[grid_entry]
             ba.blocks[grid_entry].oid = ba.km.sparse_to_dense(
                 block.oid,
@@ -378,7 +377,13 @@ class SparseBlockArray(BlockArray):
             meta["type"] = "dense"
         return meta
 
+    def todense(self) -> BlockArray:
+        return self.to_ba()
+
     def sdtp(self, *block_arrays: List[BlockArray]):
+        """
+        Perform a sampled tensor product among an arbitrary number of block arrays.
+        """
         assert np.allclose(self.fill_value, 0)
         for i, ba in enumerate(block_arrays):
             assert len(ba.shape) == 1
@@ -396,27 +401,59 @@ class SparseBlockArray(BlockArray):
         return result
 
     def sdtd(self, x: BlockArray, y: BlockArray, axes: int):
+        """
+        Perform a sampled dense-dense tensor dot between two tensors x and y.
+        In addition to several compatibility-related constraints to ensure
+        the operation is actually valid, we also require that the fill value of
+        the sparse array is 0, and that the axes over which the tensor dot
+        is being performed are not partitioned.
+        The last constraint can be eliminated if we add a sampled element-wise kernel.
+        """
         assert np.allclose(self.fill_value, 0)
-        # Ensure dims over which we sum are equivalent.
-        assert x.shape[-axes:] == y.shape[:axes]
-        # Ensure block dims over which we sum are equivalent.
-        assert x.block_shape[-axes:] == y.block_shape[:axes]
-        # Ensure sparse dims match output dims of tensordot.
-        assert self.shape == x.shape[:-axes] + y.shape[axes:]
-        # Ensure sparse block shape dims match block output dims of tensordot.
-        assert self.block_shape == x.block_shape[:-axes] + y.block_shape[axes:]
-        assert len(self.shape) % 2 == 0
 
-        # Sparsity of result is same as self.
+        if array_utils.np_tensordot_param_test(x.shape, x.ndim, y.shape, y.ndim, axes):
+            raise ValueError("shape-mismatch for sum")
+
+        x_axes = x.grid.grid_shape[:-axes]
+        x_sum_axes = x.grid.grid_shape[-axes:]
+        y_axes = y.grid.grid_shape[axes:]
+        y_sum_axes = y.grid.grid_shape[:axes]
+        assert x_sum_axes == y_sum_axes
+        result_shape = tuple(x.shape[:-axes] + y.shape[axes:])
+        result_block_shape = tuple(x.block_shape[:-axes] + y.block_shape[axes:])
+        result_grid = ArrayGrid(
+            shape=result_shape,
+            block_shape=result_block_shape,
+            dtype=array_utils.get_bop_output_type(
+                "tensordot", x.dtype, y.dtype
+            ).__name__,
+        )
+        # Ensure dims over which we sum are not partitioned.
+        # This is currently required for scalable sampled dense.
+        assert np.sum(x_sum_axes) == np.sum(y_sum_axes) == axes
+
+        assert result_grid.grid_shape == tuple(x_axes + y_axes)
+        assert result_grid.grid_shape == self.grid_shape
+        assert result_grid.block_shape == self.block_shape
         result: SparseBlockArray = SparseBlockArray(self.grid, self.km, self.fill_value)
-        for grid_entry in self.grid.get_entry_iterator():
-            result.blocks[grid_entry].oid = self.km.sdtd(
-                self.blocks[grid_entry].oid,
-                x.blocks[grid_entry].oid,
-                y.blocks[grid_entry].oid,
-                axes=axes,
-                syskwargs={"grid_entry": grid_entry, "grid_shape": result.grid_shape},
-            )
+        this_dims = list(itertools.product(*map(range, x_axes)))
+        other_dims = list(itertools.product(*map(range, y_axes)))
+        sum_dims = tuple([0] * axes)
+        for i in this_dims:
+            for j in other_dims:
+                grid_entry = tuple(i + j)
+                x_block: Block = x.blocks[tuple(i + sum_dims)]
+                y_block: Block = y.blocks[tuple(sum_dims + j)]
+                result.blocks[grid_entry].oid = self.km.sdtd(
+                    self.blocks[grid_entry].oid,
+                    x_block.oid,
+                    y_block.oid,
+                    axes=axes,
+                    syskwargs={
+                        "grid_entry": grid_entry,
+                        "grid_shape": result.grid_shape,
+                    },
+                )
         return result
 
     def __elementwise__(self, op_name, other):

@@ -459,7 +459,7 @@ def get_sparse_bop_output_type(self, op_name, a: Block, b: Block):
     def sample_array(block):
         s = np.eye(2)
         if isinstance(block, SparseBlock):
-            return sparse.GCXS.from_numpy(s, fill_value=block.fill_value)
+            return sparse.COO.from_numpy(s, fill_value=block.fill_value)
         return s
 
     sa = sample_array(a)

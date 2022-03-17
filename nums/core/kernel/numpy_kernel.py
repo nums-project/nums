@@ -23,7 +23,7 @@ import scipy.linalg
 import scipy.special
 from numpy.random import Generator, RandomState
 from numpy.random import PCG64
-from sparse import GCXS
+from sparse import COO
 
 from nums.core.kernel.kernel_interface import KernelImp, RNGInterface
 from nums.core.grid.grid import ArrayGrid
@@ -528,7 +528,7 @@ class KernelCls(KernelImp):
     # Sparse
 
     def dense_to_sparse(self, arr, fill_value):
-        result = GCXS.from_numpy(arr, fill_value=fill_value)
+        result = COO.from_numpy(arr, fill_value=fill_value)
         return result, result.nbytes, result.nnz
 
     def sparse_to_dense(self, arr):
@@ -553,7 +553,7 @@ class KernelCls(KernelImp):
             nnz=nnz,
             random_state=rng,
             data_rvs=lambda s: op_func(**rfunc_args, size=s),
-            format="gcxs",
+            format="coo",
             fill_value=fill_value,
         )
         if rfunc_name != "randint":
@@ -578,7 +578,7 @@ class KernelCls(KernelImp):
         def sample_array(meta):
             a = np.eye(2)
             if meta["type"] == "sparse":
-                return sparse.GCXS.from_numpy(a, fill_value=meta["fill_value"])
+                return sparse.COO.from_numpy(a, fill_value=meta["fill_value"])
             elif meta["type"] == "dense":
                 return a
 

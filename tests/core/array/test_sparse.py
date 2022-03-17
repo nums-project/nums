@@ -30,7 +30,7 @@ def test_sparse_random(app_inst: ArrayApplication):
 
 def test_sparse_uop(app_inst: ArrayApplication):
     x = np.array([[0, 0, 1, 1], [0, 0, 1, 1], [2, 2, 0, 0], [2, 2, 0, 0]])
-    x_sp = sparse.GCXS.from_numpy(x, fill_value=1)
+    x_sp = sparse.COO.from_numpy(x, fill_value=1)
     x_sp = sparse.elemwise(np.negative, x_sp)
     x_ba = app_inst.array(x, block_shape=(2, 2))
     x_sba = SparseBlockArray.from_ba(x_ba, fill_value=1)
@@ -44,8 +44,8 @@ def test_sparse_uop(app_inst: ArrayApplication):
 def test_sparse_add(app_inst: ArrayApplication):
     x1 = np.array([[0, 0, 1, 1], [0, 0, 1, 1], [2, 2, 0, 0], [2, 2, 0, 0]])
     x2 = x1 * 2
-    x1_sp = sparse.GCXS.from_numpy(x1, fill_value=2)
-    x2_sp = sparse.GCXS.from_numpy(x2, fill_value=2)
+    x1_sp = sparse.COO.from_numpy(x1, fill_value=2)
+    x2_sp = sparse.COO.from_numpy(x2, fill_value=2)
     x1_ba = app_inst.array(x1, block_shape=(2, 2))
     x2_ba = app_inst.array(x2, block_shape=(2, 2))
     x1_sba = SparseBlockArray.from_ba(x1_ba, fill_value=2)
@@ -66,8 +66,8 @@ def test_sparse_add(app_inst: ArrayApplication):
 def test_sparse_mul(app_inst: ArrayApplication):
     x1 = np.array([[0, 0, 1, 1], [0, 0, 1, 1], [2, 2, 0, 0], [2, 2, 0, 0]])
     x2 = np.array([[0, 0, 1, 1], [0, 0, 1, 1], [2, 2, 2, 2], [2, 2, 2, 2]])
-    x1_sp = sparse.GCXS.from_numpy(x1, fill_value=2)
-    x2_sp = sparse.GCXS.from_numpy(x2, fill_value=2)
+    x1_sp = sparse.COO.from_numpy(x1, fill_value=2)
+    x2_sp = sparse.COO.from_numpy(x2, fill_value=2)
     x1_ba = app_inst.array(x1, block_shape=(2, 2))
     x2_ba = app_inst.array(x2, block_shape=(2, 2))
     x1_sba = SparseBlockArray.from_ba(x1_ba, fill_value=2)
@@ -93,8 +93,8 @@ def test_sparse_mul(app_inst: ArrayApplication):
     x2_ba = x2_sba.to_ba()
     x1 = x1_ba.get()
     x2 = x2_ba.get()
-    x1_sp = sparse.GCXS.from_numpy(x1, fill_value=0)
-    x2_sp = sparse.GCXS.from_numpy(x2, fill_value=0)
+    x1_sp = sparse.COO.from_numpy(x1, fill_value=0)
+    x2_sp = sparse.COO.from_numpy(x2, fill_value=0)
     y_sp = x1_sp * x2
     y_sba = x1_sba * x2_ba
     assert y_sba.fill_value == y_sp.fill_value
@@ -103,12 +103,55 @@ def test_sparse_mul(app_inst: ArrayApplication):
     assert np.array_equal(x1 * x2, y_ba.get())
 
 
+# This is currently broken upstream b/c of axes=0 bug for tensordot.
+@pytest.mark.skip
+def test_sdtp(app_inst: ArrayApplication):
+    shape = 50, 50, 50
+    block_shape = 10, 10, 10
+    s: SparseBlockArray = app_inst.random.sparse_uniform(
+        shape=shape, block_shape=block_shape, p=0.001
+    )
+    vecs = [
+        app_inst.random.random(shape=(n,), block_shape=(bn,))
+        for n, bn in zip(*(shape, block_shape))
+    ]
+
+    r_true = s * app_inst.tensordot(
+        app_inst.tensordot(vecs[0], vecs[1], axes=0), vecs[2], axes=0
+    )
+    r_sdtp = s.sdtp(*vecs)
+    assert app_inst.allclose(r_true.todense(), r_sdtp.todense())
+
+
+def test_sdtd(app_inst):
+    shape = 12, 23, 34, 45
+    block_shape = 6, 7, 8, 9
+    s: SparseBlockArray = app_inst.random.sparse_uniform(
+        shape=shape, block_shape=block_shape, p=0.001
+    )
+
+    sum_shape = 67, 89
+    sum_block_shape = 67, 89
+    x = app_inst.random.random(
+        shape=shape[:2] + sum_shape, block_shape=block_shape[:2] + sum_block_shape
+    )
+    y = app_inst.random.random(
+        shape=sum_shape + shape[2:], block_shape=sum_block_shape + block_shape[2:]
+    )
+    axes = len(sum_shape)
+    r_true: SparseBlockArray = s * app_inst.tensordot(x, y, axes=axes)
+    r_sdtd: SparseBlockArray = s.sdtd(x, y, axes)
+    assert app_inst.allclose(r_true.todense(), r_sdtd.todense())
+
+
 if __name__ == "__main__":
     # pylint disable=import-error, no-member
     import conftest
 
     app_inst = conftest.get_app("serial")
-    test_sparse_init(app_inst)
-    test_sparse_random(app_inst)
-    test_sparse_uop(app_inst)
-    test_sparse_add(app_inst)
+    # test_sdtp(app_inst)
+    test_sdtd(app_inst)
+    # test_sparse_init(app_inst)
+    # test_sparse_random(app_inst)
+    # test_sparse_uop(app_inst)
+    # test_sparse_add(app_inst)
