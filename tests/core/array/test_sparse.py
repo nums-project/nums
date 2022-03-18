@@ -103,8 +103,6 @@ def test_sparse_mul(app_inst: ArrayApplication):
     assert np.array_equal(x1 * x2, y_ba.get())
 
 
-# This is currently broken upstream b/c of axes=0 bug for tensordot.
-@pytest.mark.skip
 def test_sdtp(app_inst: ArrayApplication):
     shape = 50, 50, 50
     block_shape = 10, 10, 10
@@ -149,8 +147,8 @@ if __name__ == "__main__":
     import conftest
 
     app_inst = conftest.get_app("serial")
-    # test_sdtp(app_inst)
-    test_sdtd(app_inst)
+    test_sdtp(app_inst)
+    # test_sdtd(app_inst)
     # test_sparse_init(app_inst)
     # test_sparse_random(app_inst)
     # test_sparse_uop(app_inst)
