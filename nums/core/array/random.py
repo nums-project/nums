@@ -301,13 +301,15 @@ class NumsRandomState:
         assert "size" not in rfunc_args
         grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype=dtype.__name__)
         sba: SparseBlockArray = SparseBlockArray(grid, self._km, fill_value)
-        nbytes_oids = []
-        nnz_oids = []
         for grid_entry in sba.grid.get_entry_iterator():
             rng_params = list(self._rng.new_block_rng_params())
             this_block_shape = grid.get_block_shape(grid_entry)
             block: SparseBlock = sba.blocks[grid_entry]
-            block.oid, nb, nz = self._km.sparse_random_block(
+            syskwargs = {
+                "grid_entry": grid_entry,
+                "grid_shape": grid.grid_shape,
+            }
+            block.oid = self._km.sparse_random_block(
                 rng_params,
                 rfunc_name,
                 rfunc_args,
@@ -315,17 +317,7 @@ class NumsRandomState:
                 dtype,
                 p,
                 fill_value,
-                syskwargs={
-                    "grid_entry": grid_entry,
-                    "grid_shape": grid.grid_shape,
-                    "options": {"num_returns": 3},
-                },
+                syskwargs=syskwargs,
             )
-            block._nbytes = nb
-            block._nnz = nz
-            nbytes_oids.append(nb)
-            nnz_oids.append(nz)
-        device_0 = sba.km.devices()[0]
-        sba._nbytes = sba.km.sum_reduce(*nbytes_oids, syskwargs={"device": device_0})
-        sba._nnz = sba.km.sum_reduce(*nnz_oids, syskwargs={"device": device_0})
+            block._nnz = sba.km.sparse_nnz(block.oid, syskwargs=syskwargs)
         return sba

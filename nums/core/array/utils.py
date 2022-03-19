@@ -455,7 +455,7 @@ def normalize_axis_index(axis, ndim):
     return axis % ndim
 
 
-def get_sparse_bop_output_type(self, op_name, a: Block, b: Block):
+def get_sparse_bop_return_type(op_name, a: Block, b: Block):
     def sample_array(block):
         s = np.eye(2)
         if isinstance(block, SparseBlock):
@@ -474,5 +474,5 @@ def get_sparse_bop_output_type(self, op_name, a: Block, b: Block):
             ufunc = scipy.special.__getattribute__(op_name)
         result = sparse.elemwise(ufunc, sa, sb)
     if isinstance(result, sparse.SparseArray):
-        return SparseBlock
-    return Block
+        return False
+    return True

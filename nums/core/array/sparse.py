@@ -19,19 +19,33 @@ class SparseBlock(Block):
         transposed,
         km: KernelManager,
         id=None,
+        fill_value=0,
+        index_dtype=np.int64,
     ):
         super().__init__(grid_entry, grid_shape, shape, dtype, transposed, km, id)
-        # Keep as ObjectRefs to avoid blocking on creation?
-        self._nbytes: object = None
+        self.fill_value = fill_value
+        self.index_dtype = index_dtype
         self._nnz: object = None
+        # self._nbytes: object = None
 
     def __getattr__(self, item):
-        if item == "nbytes":
-            return self._km.get(self._nbytes)
-        elif item == "nnz":
-            return self._km.get(self._nnz)
+        if item == "nnz":
+            if not array_utils.is_int(self._nnz):
+                self._nnz = self._km.get(self._nnz)
+            return self._nnz
+        elif item == "nbytes":
+            return self._estimate_nbytes(format="coo")
         else:
             super().__getattr__(item)
+
+    def _estimate_nbytes(self, format=None):
+        if format is None:
+            return self.nnz
+        elif format == "coo":
+            return (
+                self.nnz * np.dtype(self.dtype).itemsize
+                + self.nnz * self.ndim * np.dtype(self.index_dtype).itemsize
+            )
 
     def __repr__(self):
         return f"SparseBlock({self.oid})"
@@ -87,40 +101,46 @@ class SparseBlock(Block):
             syskwargs = {"grid_entry": block.grid_entry, "grid_shape": block.grid_shape}
         else:
             syskwargs = {"device": device}
-        syskwargs["options"] = {"num_returns": 3}
         block._device = device
-        block.oid, block._nbytes, block._nnz = self._km.sparse_map_uop(
+        block.oid = self._km.sparse_map_uop(
             op_name, self.oid, args, kwargs, syskwargs=syskwargs
         )
+        block._nnz = self._km.sparse_nnz(block.oid, syskwargs=syskwargs)
+        block.fill_value = np.__getattribute__(op_name)(self.fill_value)
         return block
 
     @staticmethod
-    def init_block(op, block1, block2, args, device=None):
+    def init_block(op_name, block1, block2, args, device=None):
         (
             result_grid_entry,
             result_grid_shape,
             result_shape,
             dtype,
-        ) = SparseBlock.block_meta(op, block1, block2, args)
-        # TODO: figure out fill_value semantics
-        assert block1.fill_value == block2.fill_value
+        ) = Block.block_meta(op_name, block1, block2, args)
+        op_name = np_ufunc_map.get(op_name, op_name)
+        func = np.__getattribute__(op_name)
+        fill_value = block1.fill_value
+        if isinstance(block2, SparseBlock):
+            fill_value = func(block1.fill_value, block2.fill_value)
+        # TODO: what happens when different index_dtype?
         block = SparseBlock(
             grid_entry=result_grid_entry,
             grid_shape=result_grid_shape,
             shape=result_shape,
             dtype=dtype,
             transposed=False,
+            fill_value=fill_value,
             km=block1._km,
         )
         block._device = device
         return block
 
-    def bop(self, op, other, args: dict, densify, device=None):
-        # TODO: figure out sparse result semantics
-        if isinstance(other, SparseBlock):
-            block = SparseBlock.init_block(op, self, other, args, device)
+    def bop(self, op_name, other, args: dict, device=None):
+        densify = array_utils.get_sparse_bop_return_type(op_name, self, other)
+        if densify:
+            block = Block.init_block(op_name, self, other, args, device)
         else:
-            block = Block.init_block(op, self, other, args, device)
+            block = SparseBlock.init_block(op_name, self, other, args, device)
         if device is None:
             syskwargs = {
                 "grid_entry": block.grid_entry,
@@ -128,9 +148,8 @@ class SparseBlock(Block):
             }
         else:
             syskwargs = {"device": device}
-        syskwargs["options"] = {"num_returns": 3}
         block.oid = self._km.sparse_bop(
-            op,
+            op_name,
             self.oid,
             other.oid,
             self.transposed,
@@ -139,6 +158,8 @@ class SparseBlock(Block):
             densify=densify,
             syskwargs=syskwargs,
         )
+        if not densify:
+            block._nnz = self._km.sparse_nnz(block.oid, syskwargs=syskwargs)
         return block
 
     def tensordot(self, other, axes):
@@ -146,6 +167,9 @@ class SparseBlock(Block):
 
     def __add__(self, other):
         return self.bop("add", other, args={})
+
+    def __sub__(self, other):
+        return self.bop("sub", other, args={})
 
     def __mul__(self, other):
         return self.bop("mul", other, args={})
@@ -178,18 +202,33 @@ class SparseBlockArray(BlockArray):
                     self.dtype,
                     False,
                     self.km,
+                    fill_value,
                 )
         self.fill_value = fill_value
-        self._nbytes: object = None
-        self._nnz: object = None
+        self._nnz = -1
+        self._nbytes = -1
 
     def __getattr__(self, item):
-        if item == "nbytes":
-            return self.km.get(self._nbytes)
-        elif item == "nnz":
-            return self.km.get(self._nnz)
+        if item == "nnz":
+            return self._get_nnz()
+        elif item == "nbytes":
+            return self._get_nbytes()
         else:
             super().__getattr__(item)
+
+    def _get_nnz(self):
+        if self._nnz == -1:
+            self._nnz = 0
+            for grid_entry in self.grid.get_entry_iterator():
+                self._nnz += self.blocks[grid_entry].nnz
+        return self._nnz
+
+    def _get_nbytes(self):
+        if self._nbytes == -1:
+            self._nbytes = 0
+            for grid_entry in self.grid.get_entry_iterator():
+                self._nbytes += self.blocks[grid_entry].nbytes
+        return self._nbytes
 
     @classmethod
     def from_scalar(cls, val, km, fill_value=None):
@@ -227,27 +266,20 @@ class SparseBlockArray(BlockArray):
     def from_ba(cls, ba: BlockArrayBase, fill_value=0):
         grid = ArrayGrid(ba.shape, ba.block_shape, ba.dtype.__name__)
         sba = SparseBlockArray(grid, ba.km, fill_value)
-        nbytes_oids = []
-        nnz_oids = []
         for grid_entry in grid.get_entry_iterator():
             block: Block = ba.blocks[grid_entry]
-            sba.blocks[grid_entry].oid, nb, nz = sba.km.dense_to_sparse(
+            sblock: SparseBlock = sba.blocks[grid_entry]
+            syskwargs = {
+                "grid_entry": grid_entry,
+                "grid_shape": block.grid_shape,
+            }
+            sblock.oid = sba.km.dense_to_sparse(
                 block.oid,
                 fill_value,
-                syskwargs={
-                    "grid_entry": block.grid_entry,
-                    "grid_shape": block.grid_shape,
-                    "options": {"num_returns": 3},
-                },
+                syskwargs=syskwargs,
             )
-            sba.blocks[grid_entry]._nbytes = nb
-            sba.blocks[grid_entry]._nnz = nz
-            nbytes_oids.append(nb)
-            nnz_oids.append(nz)
+            sblock._nnz = sba.km.sparse_nnz(sblock.oid, syskwargs=syskwargs)
         sba.fill_value = fill_value
-        device_0 = sba.km.devices()[0]
-        sba._nbytes = sba.km.sum_reduce(*nbytes_oids, syskwargs={"device": device_0})
-        sba._nnz = sba.km.sum_reduce(*nnz_oids, syskwargs={"device": device_0})
         return sba
 
     def to_ba(self):
@@ -272,20 +304,12 @@ class SparseBlockArray(BlockArray):
 
     def ufunc(self, op_name):
         result = self.copy()
-        nbytes_oids = []
-        nnz_oids = []
         for grid_entry in self.grid.get_entry_iterator():
-            result.blocks[grid_entry] = block = self.blocks[grid_entry].ufunc(op_name)
-            nbytes_oids.append(block._nbytes)
-            nnz_oids.append(block._nnz)
+            result.blocks[grid_entry] = self.blocks[grid_entry].ufunc(op_name)
         op_name = np_ufunc_map.get(op_name, op_name)
         func = np.__getattribute__(op_name)
         result.fill_value = func(self.fill_value)
-        device_0 = result.km.devices()[0]
-        result._nbytes = result.km.sum_reduce(
-            *nbytes_oids, syskwargs={"device": device_0}
-        )
-        result._nnz = result.km.sum_reduce(*nnz_oids, syskwargs={"device": device_0})
+        result._nnz = -1
         return result
 
     @staticmethod
@@ -310,25 +334,15 @@ class SparseBlockArray(BlockArray):
 
     def _fast_elementwise(self, op_name, other, densify):
         dtype = array_utils.get_bop_output_type(op_name, self.dtype, other.dtype)
-        # Schedule the op first.
         if densify:
-            blocks = np.empty(shape=self.grid.grid_shape, dtype=Block)
+            blocks = np.empty(shape=self.grid_shape, dtype=Block)
         else:
-            blocks = np.empty(shape=self.grid.grid_shape, dtype=SparseBlock)
-        nbytes_oids = []
-        nnz_oids = []
+            blocks = np.empty(shape=self.grid_shape, dtype=SparseBlock)
         for grid_entry in self.grid.get_entry_iterator():
             self_block: SparseBlock = self.blocks[grid_entry]
-            other_block = other.blocks[grid_entry]
-            blocks[grid_entry] = block = Block(
-                grid_entry=grid_entry,
-                grid_shape=self_block.grid_shape,
-                shape=self_block.shape,
-                dtype=dtype,
-                transposed=False,
-                km=self.km,
-            )
-            block.oid, nb, nz = self.km.sparse_bop(
+            other_block: Block = other.blocks[grid_entry]
+            blocks[grid_entry] = block = self_block.bop(op_name, other_block, args={})
+            block.oid = self.km.sparse_bop(
                 op_name,
                 self_block.oid,
                 other_block.oid,
@@ -339,43 +353,19 @@ class SparseBlockArray(BlockArray):
                 syskwargs={
                     "grid_entry": grid_entry,
                     "grid_shape": self.grid.grid_shape,
-                    "options": {"num_returns": 3},
                 },
             )
-            if not densify:
-                block._nbytes = nb
-                block._nnz = nz
-                nbytes_oids.append(nb)
-                nnz_oids.append(nz)
         grid = ArrayGrid(self.shape, self.block_shape, dtype.__name__)
         if densify:
             return BlockArray(grid, self.km, blocks=blocks)
         else:
             op_name = np_ufunc_map.get(op_name, op_name)
             ufunc = np.__getattribute__(op_name)
-            # FIXME: other may be dense
             fill_value = self.fill_value
             if isinstance(other, SparseBlockArray):
                 fill_value = ufunc(self.fill_value, other.fill_value)
             result = SparseBlockArray(grid, self.km, fill_value, blocks=blocks)
-            device_0 = result.km.devices()[0]
-            result._nbytes = result.km.sum_reduce(
-                *nbytes_oids, syskwargs={"device": device_0}
-            )
-            result._nnz = result.km.sum_reduce(
-                *nnz_oids, syskwargs={"device": device_0}
-            )
             return result
-
-    @staticmethod
-    def ba_meta(a):
-        meta = {}
-        if isinstance(a, SparseBlockArray):
-            meta["type"] = "sparse"
-            meta["fill_value"] = a.fill_value
-        elif isinstance(a, BlockArray):
-            meta["type"] = "dense"
-        return meta
 
     def todense(self) -> BlockArray:
         return self.to_ba()
@@ -392,7 +382,9 @@ class SparseBlockArray(BlockArray):
         # Sparsity of result is same as self.
         result: SparseBlockArray = SparseBlockArray(self.grid, self.km, self.fill_value)
         for grid_entry in self.grid.get_entry_iterator():
-            dense_oids = [ba.blocks[grid_entry[i]].oid for i, ba in enumerate(block_arrays)]
+            dense_oids = [
+                ba.blocks[grid_entry[i]].oid for i, ba in enumerate(block_arrays)
+            ]
             result.blocks[grid_entry].oid = self.km.sdtp(
                 self.blocks[grid_entry].oid,
                 *dense_oids,
@@ -458,17 +450,13 @@ class SparseBlockArray(BlockArray):
 
     def __elementwise__(self, op_name, other):
         other = self.check_or_convert_other(other)  # other is dense BlockArray
-        densify = self.km.get(
-            self.km.sparse_bop_densify(
-                op_name,
-                SparseBlockArray.ba_meta(self),
-                SparseBlockArray.ba_meta(other),
-                syskwargs={"device": self.km.devices()[0]},
-            )
+        self_sample: SparseBlock = self.blocks[tuple(0 for _ in self.shape)]
+        other_sample: Block = other.blocks[tuple(0 for _ in other.shape)]
+        densify = array_utils.get_sparse_bop_return_type(
+            op_name, self_sample, other_sample
         )
         if self.shape == other.shape and self.block_shape == other.block_shape:
             return self._fast_elementwise(op_name, other, densify)
-        # Add densify dunder method signature?
         blocks_op = self.blocks.__getattribute__("__%s__" % op_name)
         if densify:
             result = BlockArray.from_blocks(
@@ -479,8 +467,9 @@ class SparseBlockArray(BlockArray):
         else:
             op_name = np_ufunc_map.get(op_name, op_name)
             ufunc = np.__getattribute__(op_name)
-            # FIXME: other may be dense
-            fill_value = ufunc(self.fill_value, other.fill_value)
+            fill_value = self.fill_value
+            if isinstance(other, SparseBlockArray):
+                fill_value = ufunc(self.fill_value, other.fill_value)
             result = SparseBlockArray.from_blocks(
                 blocks_op(other.blocks),
                 result_shape=None,
@@ -503,14 +492,17 @@ class SparseBlockArray(BlockArray):
             self.shape, self.ndim, other.shape, other.ndim, axes
         ):
             raise ValueError("shape-mismatch for sum")
-        densify = self.km.get(
-            self.km.sparse_bop_densify(
-                "tensordot",
-                SparseBlockArray.ba_meta(self),
-                SparseBlockArray.ba_meta(other),
-                syskwargs={"device": self.km.devices()[0]},
-            )
+
+        # Pydata/Sparse only works with fill_value=0
+        assert self.fill_value == 0
+        if isinstance(other, SparseBlockArray):
+            assert other.fill_value == 0
+        self_sample: SparseBlock = self.blocks[tuple(0 for _ in self.shape)]
+        other_sample: Block = other.blocks[tuple(0 for _ in other.shape)]
+        densify = array_utils.get_sparse_bop_return_type(
+            "tensordot", self_sample, other_sample
         )
+
         this_axes = self.grid.grid_shape[:-axes]
         this_sum_axes = self.grid.grid_shape[-axes:]
         other_axes = other.grid.grid_shape[axes:]
@@ -526,7 +518,10 @@ class SparseBlockArray(BlockArray):
             ).__name__,
         )
         assert result_grid.grid_shape == tuple(this_axes + other_axes)
-        result = BlockArray(result_grid, self.km)
+        if densify:
+            result = BlockArray(result_grid, self.km)
+        else:
+            result = SparseBlockArray(result_grid, self.km, self.fill_value)
         this_dims = list(itertools.product(*map(range, this_axes)))
         other_dims = list(itertools.product(*map(range, other_axes)))
         sum_dims = list(itertools.product(*map(range, this_sum_axes)))
@@ -560,6 +555,14 @@ class SparseBlockArray(BlockArray):
                 result_block.oid = self._tree_reduce(
                     "sum", sum_oids, result_block.grid_entry, result_block.grid_shape
                 )
+                if not densify:
+                    result_block._nnz = self.km.sparse_nnz(
+                        result_block.oid,
+                        syskwargs={
+                            "grid_entry": result_block.grid_entry,
+                            "grid_shape": result_block.grid_shape,
+                        },
+                    )
         return result
 
     def __add__(self, other):

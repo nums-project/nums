@@ -21,8 +21,7 @@ import numpy as np
 import sparse
 import scipy.linalg
 import scipy.special
-from numpy.random import Generator, RandomState
-from numpy.random import PCG64
+from numpy.random import Generator, RandomState, PCG64
 from sparse import COO
 
 from nums.core.kernel.kernel_interface import KernelImp, RNGInterface
@@ -529,10 +528,16 @@ class KernelCls(KernelImp):
 
     def dense_to_sparse(self, arr, fill_value):
         result = COO.from_numpy(arr, fill_value=fill_value)
-        return result, result.nbytes, result.nnz
+        return result
 
     def sparse_to_dense(self, arr):
         return arr.todense()
+
+    def sparse_nnz(self, arr):
+        return arr.nnz
+
+    def sparse_nbytes(self, arr):
+        return arr.nbytes
 
     def sparse_random_block(
         self,
@@ -545,21 +550,21 @@ class KernelCls(KernelImp):
         fill_value,
     ):
         rng = block_rng_legacy(*rng_params)
-        op_func = rng.__getattribute__(rfunc_name)
+        rfunc = rng.__getattribute__(rfunc_name)
         # Sample nnz from Binomial(size, p)
         nnz = rng.binomial(np.product(shape), p)
         result = sparse.random(
             shape,
             nnz=nnz,
             random_state=rng,
-            data_rvs=lambda s: op_func(**rfunc_args, size=s),
+            data_rvs=lambda s: rfunc(**rfunc_args, size=s),
             format="coo",
             fill_value=fill_value,
         )
         if rfunc_name != "randint":
             # Only random and integer supports sampling of a specific type.
             result = result.astype(dtype)
-        return result, result.nbytes, result.nnz
+        return result
 
     def sparse_map_uop(self, op_name, arr, args, kwargs):
         """
@@ -572,30 +577,7 @@ class KernelCls(KernelImp):
         args = list(args)
         args.insert(0, arr)
         result = sparse.elemwise(ufunc, *args, **kwargs)
-        return result, result.nbytes, result.nnz
-
-    def sparse_bop_densify(self, op_name, a1_meta, a2_meta):
-        def sample_array(meta):
-            a = np.eye(2)
-            if meta["type"] == "sparse":
-                return sparse.COO.from_numpy(a, fill_value=meta["fill_value"])
-            elif meta["type"] == "dense":
-                return a
-
-        a1 = sample_array(a1_meta)
-        a2 = sample_array(a2_meta)
-        if op_name == "tensordot":
-            result = sparse.tensordot(a1, a2)
-        else:
-            op_name = np_ufunc_map.get(op_name, op_name)
-            try:
-                ufunc = np.__getattribute__(op_name)
-            except Exception as _:
-                ufunc = scipy.special.__getattribute__(op_name)
-            result = sparse.elemwise(ufunc, a1, a2)
-        if isinstance(result, sparse.SparseArray):
-            return False
-        return True
+        return result
 
     def sparse_bop(self, op, a1, a2, a1_T, a2_T, axes, densify):
         if a1_T:
@@ -619,31 +601,9 @@ class KernelCls(KernelImp):
             result = sparse.elemwise(ufunc, a1, a2)
         if densify and isinstance(result, sparse.SparseArray):
             result = result.todense()
-        if isinstance(result, np.ndarray):
-            return result, -1, -1
-        return result, result.nbytes, result.nnz
-
-    # def sparse_bop_reduce(self, op, a1, a2, a1_T, a2_T):
-    #     if a1_T:
-    #         a1 = a1.T
-    #     if a2_T:
-    #         a2 = a2.T
-
-    #     # These are faster.
-    #     if op == "sum":
-    #         r = a1 + a2
-    #     elif op == "prod":
-    #         r = a1 * a2
-    #     else:
-    #         reduce_op = np.__getattribute__(op)
-    #         a = np.stack([a1, a2], axis=0)
-    #         r = reduce_op(a, axis=0, keepdims=False)
-
-    #     if a1 is np.nan or a2 is np.nan or r is np.nan:
-    #         assert np.isscalar(a1) and np.isscalar(a2) and np.isscalar(r)
-    #     else:
-    #         assert a1.shape == a2.shape == r.shape
-    #     return r, r.nbytes, r.nnz
+        elif not densify:
+            assert isinstance(result, sparse.SparseArray)
+        return result
 
     def sdtp(self, s: sparse.COO, *dense_arrays):
         data = np.copy(s.data)

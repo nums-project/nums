@@ -173,6 +173,12 @@ class Kernel:
     def sparse_to_dense(self, arr, syskwargs: Dict):
         raise NotImplementedError()
 
+    def sparse_nnz(self, arr, syskwargs: Dict):
+        raise NotImplementedError()
+
+    def sparse_nbytes(self, arr, syskwargs: Dict):
+        raise NotImplementedError()
+
     def sparse_random_block(
         self,
         rng_params,
@@ -187,9 +193,6 @@ class Kernel:
         raise NotImplementedError()
 
     def sparse_map_uop(self, op_name, arr, args, kwargs, syskwargs: Dict):
-        raise NotImplementedError()
-
-    def sparse_bop_densify(self, op_name, a1_meta, a2_meta, syskwargs: Dict):
         raise NotImplementedError()
 
     def sparse_bop(self, op, a1, a2, a1_T, a2_T, axes, densify, syskwargs: Dict):

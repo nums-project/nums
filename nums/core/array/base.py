@@ -46,7 +46,7 @@ class Block:
         self.oid: np.object = None
         self.shape: tuple = shape
         self.dtype = dtype
-        self.num_dims = len(self.shape)
+        self.ndim = len(self.shape)
         self.transposed = transposed
         self.id = id
         if self.id is None:
@@ -217,9 +217,9 @@ class Block:
         return result_grid_entry, result_grid_shape, result_shape, dtype
 
     @staticmethod
-    def init_block(op, block1, block2, args, device=None):
+    def init_block(op_name, block1, block2, args, device=None):
         result_grid_entry, result_grid_shape, result_shape, dtype = Block.block_meta(
-            op, block1, block2, args
+            op_name, block1, block2, args
         )
         block = Block(
             grid_entry=result_grid_entry,
@@ -232,16 +232,16 @@ class Block:
         block._device = device
         return block
 
-    def bop(self, op, other, args: dict, device=None):
+    def bop(self, op_name, other, args: dict, device=None):
         if not isinstance(other, Block):
             other = self._block_from_other(other)
-        block: Block = self.init_block(op, self, other, args, device)
+        block: Block = self.init_block(op_name, self, other, args, device)
         if device is None:
             syskwargs = {"grid_entry": block.grid_entry, "grid_shape": block.grid_shape}
         else:
             syskwargs = {"device": device}
         block.oid = self._km.bop(
-            op,
+            op_name,
             self.oid,
             other.oid,
             self.transposed,
