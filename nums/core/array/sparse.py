@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import List
 from nums.core.array import utils as array_utils
 from nums.core.array.base import BlockArrayBase, Block
 from nums.core.array.blockarray import BlockArray
@@ -165,15 +165,6 @@ class SparseBlock(Block):
     def tensordot(self, other, axes):
         return self.bop("tensordot", other, args={"axes": axes})
 
-    def __add__(self, other):
-        return self.bop("add", other, args={})
-
-    def __sub__(self, other):
-        return self.bop("sub", other, args={})
-
-    def __mul__(self, other):
-        return self.bop("mul", other, args={})
-
 
 class SparseBlockArray(BlockArray):
     def __init__(
@@ -295,22 +286,15 @@ class SparseBlockArray(BlockArray):
             )
         return ba
 
+    def todense(self) -> BlockArray:
+        return self.to_ba()
+
     def copy(self):
         grid_copy = self.grid.from_meta(self.grid.to_meta())
         rarr_copy = SparseBlockArray(grid_copy, self.km, self.fill_value)
         for grid_entry in grid_copy.get_entry_iterator():
             rarr_copy.blocks[grid_entry] = self.blocks[grid_entry].copy()
         return rarr_copy
-
-    def ufunc(self, op_name):
-        result = self.copy()
-        for grid_entry in self.grid.get_entry_iterator():
-            result.blocks[grid_entry] = self.blocks[grid_entry].ufunc(op_name)
-        op_name = np_ufunc_map.get(op_name, op_name)
-        func = np.__getattribute__(op_name)
-        result.fill_value = func(self.fill_value)
-        result._nnz = -1
-        return result
 
     @staticmethod
     def to_block_array(obj, km: KernelManager, block_shape=None):
@@ -332,43 +316,15 @@ class SparseBlockArray(BlockArray):
         block_shape = None if compute_block_shape else self.block_shape
         return SparseBlockArray.to_block_array(other, self.km, block_shape=block_shape)
 
-    def _fast_elementwise(self, op_name, other, densify):
-        dtype = array_utils.get_bop_output_type(op_name, self.dtype, other.dtype)
-        if densify:
-            blocks = np.empty(shape=self.grid_shape, dtype=Block)
-        else:
-            blocks = np.empty(shape=self.grid_shape, dtype=SparseBlock)
+    def ufunc(self, op_name):
+        result = self.copy()
         for grid_entry in self.grid.get_entry_iterator():
-            self_block: SparseBlock = self.blocks[grid_entry]
-            other_block: Block = other.blocks[grid_entry]
-            blocks[grid_entry] = block = self_block.bop(op_name, other_block, args={})
-            block.oid = self.km.sparse_bop(
-                op_name,
-                self_block.oid,
-                other_block.oid,
-                self_block.transposed,
-                other_block.transposed,
-                axes={},
-                densify=densify,
-                syskwargs={
-                    "grid_entry": grid_entry,
-                    "grid_shape": self.grid.grid_shape,
-                },
-            )
-        grid = ArrayGrid(self.shape, self.block_shape, dtype.__name__)
-        if densify:
-            return BlockArray(grid, self.km, blocks=blocks)
-        else:
-            op_name = np_ufunc_map.get(op_name, op_name)
-            ufunc = np.__getattribute__(op_name)
-            fill_value = self.fill_value
-            if isinstance(other, SparseBlockArray):
-                fill_value = ufunc(self.fill_value, other.fill_value)
-            result = SparseBlockArray(grid, self.km, fill_value, blocks=blocks)
-            return result
-
-    def todense(self) -> BlockArray:
-        return self.to_ba()
+            result.blocks[grid_entry] = self.blocks[grid_entry].ufunc(op_name)
+        op_name = np_ufunc_map.get(op_name, op_name)
+        func = np.__getattribute__(op_name)
+        result.fill_value = func(self.fill_value)
+        result._nnz = -1
+        return result
 
     def sdtp(self, *block_arrays: List[BlockArray]):
         """
@@ -448,8 +404,43 @@ class SparseBlockArray(BlockArray):
                 )
         return result
 
+    def _fast_elementwise(self, op_name, other, densify):
+        dtype = array_utils.get_bop_output_type(op_name, self.dtype, other.dtype)
+        if densify:
+            blocks = np.empty(shape=self.grid_shape, dtype=Block)
+        else:
+            blocks = np.empty(shape=self.grid_shape, dtype=SparseBlock)
+        for grid_entry in self.grid.get_entry_iterator():
+            self_block: SparseBlock = self.blocks[grid_entry]
+            other_block: Block = other.blocks[grid_entry]
+            blocks[grid_entry] = block = self_block.bop(op_name, other_block, args={})
+            block.oid = self.km.sparse_bop(
+                op_name,
+                self_block.oid,
+                other_block.oid,
+                self_block.transposed,
+                other_block.transposed,
+                axes={},
+                densify=densify,
+                syskwargs={
+                    "grid_entry": grid_entry,
+                    "grid_shape": self.grid.grid_shape,
+                },
+            )
+        grid = ArrayGrid(self.shape, self.block_shape, dtype.__name__)
+        if densify:
+            return BlockArray(grid, self.km, blocks=blocks)
+        else:
+            op_name = np_ufunc_map.get(op_name, op_name)
+            ufunc = np.__getattribute__(op_name)
+            fill_value = self.fill_value
+            if isinstance(other, SparseBlockArray):
+                fill_value = ufunc(self.fill_value, other.fill_value)
+            result = SparseBlockArray(grid, self.km, fill_value, blocks=blocks)
+            return result
+
     def __elementwise__(self, op_name, other):
-        other = self.check_or_convert_other(other)  # other is dense BlockArray
+        other = self.check_or_convert_other(other)
         self_sample: SparseBlock = self.blocks[tuple(0 for _ in self.shape)]
         other_sample: Block = other.blocks[tuple(0 for _ in other.shape)]
         densify = array_utils.get_sparse_bop_return_type(
@@ -569,16 +560,69 @@ class SparseBlockArray(BlockArray):
         return self.__elementwise__("add", other)
 
     def __radd__(self, other):
-        pass
+        return self.__elementwise__("add", other)
+
+    __iadd__ = __add__
 
     def __sub__(self, other):
         return self.__elementwise__("sub", other)
 
     def __rsub__(self, other):
-        pass
+        # FIXME: not commutative
+        return self.__elementwise__("sub", other)
+
+    __isub__ = __sub__
 
     def __mul__(self, other):
         return self.__elementwise__("mul", other)
 
     def __rmul__(self, other):
-        pass
+        return self.__elementwise__("mul", other)
+
+    __imul__ = __mul__
+
+    def __truediv__(self, other):
+        return self.__elementwise__("truediv", other)
+
+    def __rtruediv__(self, other):
+        return self.__elementwise__("truediv", other)
+
+    __itruediv__ = __truediv__
+
+    def __floordiv__(self, other):
+        return self.__elementwise__("floordiv", other)
+
+    def __rfloordiv__(self, other):
+        return self.__elementwise__("floordiv", other)
+
+    __ifloordiv__ = __floordiv__
+
+    def __pow__(self, other):
+        return self.__elementwise__("pow", other)
+
+    def __rpow__(self, other):
+        return self.__elementwise__("pow", other)
+
+    __ipow__ = __pow__
+
+    def __inequality__(self, op_name, other):
+        other = self.check_or_convert_other(other)
+        assert other.shape == (), "Currently supports comparison with scalars only."
+        shape = array_utils.broadcast(self.shape, other.shape).shape
+        block_shape = array_utils.broadcast_block_shape(
+            self.shape, other.shape, self.block_shape
+        )
+        dtype = bool.__name__
+        grid = ArrayGrid(shape, block_shape, dtype)
+        op_name = np_ufunc_map.get(op_name, op_name)
+        ufunc = np.__getattribute__(op_name)
+        fill_value = self.fill_value
+        if isinstance(other, SparseBlockArray):
+            fill_value = ufunc(self.fill_value, other.fill_value)
+        result = SparseBlockArray(grid, self.km, fill_value)
+        for grid_entry in result.grid.get_entry_iterator():
+            other_block: Block = other.blocks.item()
+            result.blocks[grid_entry] = self.blocks[grid_entry].bop(
+                op_name, other_block, args={}
+            )
+        return result

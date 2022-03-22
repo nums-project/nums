@@ -37,7 +37,7 @@ def test_sparse_uop(app_inst: ArrayApplication):
     x_sp = sparse.elemwise(np.negative, x_sp)
     x_ba = app_inst.array(x, block_shape=(2, 2))
     x_sba = SparseBlockArray.from_ba(x_ba, fill_value=1)
-    y_sba = x_sba.ufunc("negative")
+    y_sba = -x_sba
     assert y_sba.fill_value == x_sp.fill_value  # -1
     assert y_sba.nnz == x_sp.nnz  # 12
     y_ba = y_sba.to_ba()
@@ -60,8 +60,17 @@ def test_sparse_add(app_inst: ArrayApplication):
     y_ba = y_sba.to_ba()
     assert np.array_equal(x1 + x2, y_ba.get())
 
-    y_ba = x1_sba + x2_ba
-    assert np.array_equal(x1_sp + x2, y_ba.get())
+    # Test sparse-dense.
+    y_ba = x2_ba + x1_sba  # __radd__
+    assert np.array_equal(x2 + x1_sp, y_ba.get())
+
+    # Test sparse-scalar.
+    y_sp = x1_sp - 1
+    y_sba = x1_sba - 1
+    assert y_sba.fill_value == y_sp.fill_value  # 4
+    assert y_sba.nnz == y_sp.nnz  # 16
+    y_ba = y_sba.to_ba()
+    assert np.array_equal(x1 - 1, y_ba.get())
 
 
 def test_sparse_mul(app_inst: ArrayApplication):
@@ -80,7 +89,7 @@ def test_sparse_mul(app_inst: ArrayApplication):
     y_ba = y_sba.to_ba()
     assert np.array_equal(x1 * x2, y_ba.get())
 
-    # Sparse-dense
+    # Test sparse-dense.
     rs: NumsRandomState = app_inst.random_state(1337)
     x1_sba = rs.sparse_randint(
         1, high=5, dtype=int, shape=(100, 50), block_shape=(5, 5), p=0.1, fill_value=0
@@ -95,11 +104,24 @@ def test_sparse_mul(app_inst: ArrayApplication):
     x1_sp = sparse.COO.from_numpy(x1, fill_value=0)
     x2_sp = sparse.COO.from_numpy(x2, fill_value=0)
     y_sp = x1_sp * x2
-    y_sba = x1_sba * x2_ba
+    y_sba = x2_ba * x1_sba  # __rmul__
     assert y_sba.fill_value == y_sp.fill_value
     assert y_sba.nnz == y_sp.nnz
     y_ba = y_sba.to_ba()
     assert np.array_equal(x1 * x2, y_ba.get())
+
+
+def test_neq(app_inst: ArrayApplication):
+    x1 = np.array([[0, 0, 1, 1], [0, 0, 1, 1], [2, 2, 0, 0], [2, 2, 0, 0]])
+    x1_sp = sparse.COO.from_numpy(x1, fill_value=2)
+    x1_ba = app_inst.array(x1, block_shape=(2, 2))
+    x1_sba = SparseBlockArray.from_ba(x1_ba, fill_value=2)
+    y_sp = x1_sp > 0
+    y_sba = x1_sba > 0
+    assert y_sba.fill_value == y_sp.fill_value  # True
+    assert y_sba.nnz == y_sp.nnz  # 8 (nnz increases!)
+    y_ba = y_sba.to_ba()
+    assert np.array_equal(x1 > 0, y_ba.get())
 
 
 def test_tensordot(app_inst: ArrayApplication):

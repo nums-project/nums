@@ -17,6 +17,7 @@ import warnings
 import itertools
 
 import numpy as np
+import nums.core.array.sparse as array_sparse
 
 from nums.core.array import utils as array_utils
 from nums.core.array.base import BlockArrayBase, Block
@@ -937,54 +938,78 @@ class BlockArray(BlockArrayBase):
     __imod__ = __mod__
 
     def __add__(self, other):
+        if isinstance(other, array_sparse.SparseBlockArray):
+            return NotImplemented
         return self.__elementwise__("add", other)
 
     def __radd__(self, other):
+        if isinstance(other, array_sparse.SparseBlockArray):
+            return NotImplemented
         other = self.check_or_convert_other(other)
         return other.__elementwise__("add", self)
 
     __iadd__ = __add__
 
     def __sub__(self, other):
+        if isinstance(other, array_sparse.SparseBlockArray):
+            return NotImplemented
         return self.__elementwise__("sub", other)
 
     def __rsub__(self, other):
+        if isinstance(other, array_sparse.SparseBlockArray):
+            return NotImplemented
         other = self.check_or_convert_other(other)
         return other.__elementwise__("sub", self)
 
     __isub__ = __sub__
 
     def __mul__(self, other):
+        if isinstance(other, array_sparse.SparseBlockArray):
+            return NotImplemented
         return self.__elementwise__("mul", other)
 
     def __rmul__(self, other):
+        if isinstance(other, array_sparse.SparseBlockArray):
+            return NotImplemented
         other = self.check_or_convert_other(other)
         return other.__elementwise__("mul", self)
 
     __imul__ = __mul__
 
     def __truediv__(self, other):
+        if isinstance(other, array_sparse.SparseBlockArray):
+            return NotImplemented
         return self.__elementwise__("truediv", other)
 
     def __rtruediv__(self, other):
+        if isinstance(other, array_sparse.SparseBlockArray):
+            return NotImplemented
         other = self.check_or_convert_other(other)
         return other / self
 
     __itruediv__ = __truediv__
 
     def __floordiv__(self, other):
+        if isinstance(other, array_sparse.SparseBlockArray):
+            return NotImplemented
         return self.__elementwise__("floor_divide", other)
 
     def __rfloordiv__(self, other):
+        if isinstance(other, array_sparse.SparseBlockArray):
+            return NotImplemented
         other = self.check_or_convert_other(other)
         return other.__elementwise__("floor_divide", self)
 
     __ifloordiv__ = __floordiv__
 
     def __pow__(self, other):
+        if isinstance(other, array_sparse.SparseBlockArray):
+            return NotImplemented
         return self.__elementwise__("pow", other)
 
     def __rpow__(self, other):
+        if isinstance(other, array_sparse.SparseBlockArray):
+            return NotImplemented
         other = self.check_or_convert_other(other)
         return other**self
 
