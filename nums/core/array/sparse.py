@@ -136,7 +136,9 @@ class SparseBlock(Block):
         return block
 
     def bop(self, op_name, other, args: dict, device=None):
-        densify = array_utils.get_sparse_bop_return_type(op_name, self, other)
+        densify = array_utils.get_sparse_bop_return_type(
+            op_name, self.fill_value, other.fill_value
+        )
         if densify:
             block = Block.init_block(op_name, self, other, args, device)
         else:
@@ -160,6 +162,9 @@ class SparseBlock(Block):
         )
         if not densify:
             block._nnz = self._km.sparse_nnz(block.oid, syskwargs=syskwargs)
+            block.fill_value = array_utils.get_bop_fill_value(
+                op_name, self.fill_value, other.fill_value
+            )
         return block
 
     def tensordot(self, other, axes):
@@ -320,7 +325,6 @@ class SparseBlockArray(BlockArray):
         result = self.copy()
         for grid_entry in self.grid.get_entry_iterator():
             result.blocks[grid_entry] = self.blocks[grid_entry].ufunc(op_name)
-        op_name = np_ufunc_map.get(op_name, op_name)
         func = np.__getattribute__(op_name)
         result.fill_value = func(self.fill_value)
         result._nnz = -1
@@ -431,20 +435,23 @@ class SparseBlockArray(BlockArray):
         if densify:
             return BlockArray(grid, self.km, blocks=blocks)
         else:
-            op_name = np_ufunc_map.get(op_name, op_name)
-            ufunc = np.__getattribute__(op_name)
-            fill_value = self.fill_value
-            if isinstance(other, SparseBlockArray):
-                fill_value = ufunc(self.fill_value, other.fill_value)
+            # op_name = np_ufunc_map.get(op_name, op_name)
+            # ufunc = np.__getattribute__(op_name)
+            # fill_value = self.fill_value
+            # if isinstance(other, SparseBlockArray):
+            #     fill_value = ufunc(self.fill_value, other.fill_value)
+            fill_value = array_utils.get_bop_fill_value(
+                op_name, self.fill_value, other.fill_value
+            )
             result = SparseBlockArray(grid, self.km, fill_value, blocks=blocks)
             return result
 
     def __elementwise__(self, op_name, other):
         other = self.check_or_convert_other(other)
-        self_sample: SparseBlock = self.blocks[tuple(0 for _ in self.shape)]
-        other_sample: Block = other.blocks[tuple(0 for _ in other.shape)]
         densify = array_utils.get_sparse_bop_return_type(
-            op_name, self_sample, other_sample
+            op_name,
+            self.fill_value,
+            other.fill_value,
         )
         if self.shape == other.shape and self.block_shape == other.block_shape:
             return self._fast_elementwise(op_name, other, densify)
@@ -456,11 +463,14 @@ class SparseBlockArray(BlockArray):
                 km=self.km,
             )
         else:
-            op_name = np_ufunc_map.get(op_name, op_name)
-            ufunc = np.__getattribute__(op_name)
-            fill_value = self.fill_value
-            if isinstance(other, SparseBlockArray):
-                fill_value = ufunc(self.fill_value, other.fill_value)
+            # op_name = np_ufunc_map.get(op_name, op_name)
+            # ufunc = np.__getattribute__(op_name)
+            # fill_value = self.fill_value
+            # if isinstance(other, SparseBlockArray):
+            #     fill_value = ufunc(self.fill_value, other.fill_value)
+            fill_value = array_utils.get_bop_fill_value(
+                op_name, self.fill_value, other.fill_value
+            )
             result = SparseBlockArray.from_blocks(
                 blocks_op(other.blocks),
                 result_shape=None,
@@ -488,10 +498,10 @@ class SparseBlockArray(BlockArray):
         assert self.fill_value == 0
         if isinstance(other, SparseBlockArray):
             assert other.fill_value == 0
-        self_sample: SparseBlock = self.blocks[tuple(0 for _ in self.shape)]
-        other_sample: Block = other.blocks[tuple(0 for _ in other.shape)]
         densify = array_utils.get_sparse_bop_return_type(
-            "tensordot", self_sample, other_sample
+            "tensordot",
+            self.fill_value,
+            other.fill_value,
         )
 
         if axes > 0:
@@ -624,11 +634,14 @@ class SparseBlockArray(BlockArray):
         )
         dtype = bool.__name__
         grid = ArrayGrid(shape, block_shape, dtype)
-        op_name = np_ufunc_map.get(op_name, op_name)
-        ufunc = np.__getattribute__(op_name)
-        fill_value = self.fill_value
-        if isinstance(other, SparseBlockArray):
-            fill_value = ufunc(self.fill_value, other.fill_value)
+        # op_name = np_ufunc_map.get(op_name, op_name)
+        # ufunc = np.__getattribute__(op_name)
+        # fill_value = self.fill_value
+        # if isinstance(other, SparseBlockArray):
+        #     fill_value = ufunc(self.fill_value, other.fill_value)
+        fill_value = array_utils.get_bop_fill_value(
+            op_name, self.fill_value, other.fill_value
+        )
         result = SparseBlockArray(grid, self.km, fill_value)
         for grid_entry in result.grid.get_entry_iterator():
             other_block: Block = other.blocks.item()

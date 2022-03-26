@@ -54,6 +54,7 @@ class Block:
             self.id = Block.block_id_counter
         # Set if a device id was used to compute this block.
         self._device = None
+        self.fill_value = None
 
     def __repr__(self):
         return "Block(" + str(self.oid) + ")"
@@ -345,6 +346,7 @@ class BlockArrayBase:
                     transposed=False,
                     km=self.km,
                 )
+        self.fill_value = None
 
     def __repr__(self):
         return "BlockArray(" + str(self.blocks) + ")"

@@ -455,15 +455,38 @@ def normalize_axis_index(axis, ndim):
     return axis % ndim
 
 
-def get_sparse_bop_return_type(op_name, a: Block, b: Block):
-    def sample_array(block):
+# def get_sparse_bop_return_type(op_name, a: Block, b: Block):
+#     def sample_array(block):
+#         s = np.eye(2)
+#         if isinstance(block, SparseBlock):
+#             return sparse.COO.from_numpy(s, fill_value=block.fill_value)
+#         return s
+
+#     sa = sample_array(a)
+#     sb = sample_array(b)
+#     if op_name == "tensordot":
+#         result = sparse.tensordot(sa, sb)
+#     else:
+#         op_name = np_ufunc_map.get(op_name, op_name)
+#         try:
+#             ufunc = np.__getattribute__(op_name)
+#         except Exception as _:
+#             ufunc = scipy.special.__getattribute__(op_name)
+#         result = sparse.elemwise(ufunc, sa, sb)
+#     if isinstance(result, sparse.SparseArray):
+#         return False
+#     return True
+
+
+def get_sparse_bop_return_type(op_name, a_fv, b_fv):
+    def sample_array(fv):
         s = np.eye(2)
-        if isinstance(block, SparseBlock):
-            return sparse.COO.from_numpy(s, fill_value=block.fill_value)
+        if fv is not None:
+            return sparse.COO.from_numpy(s, fill_value=fv)
         return s
 
-    sa = sample_array(a)
-    sb = sample_array(b)
+    sa = sample_array(a_fv)
+    sb = sample_array(b_fv)
     if op_name == "tensordot":
         result = sparse.tensordot(sa, sb)
     else:
@@ -476,3 +499,18 @@ def get_sparse_bop_return_type(op_name, a: Block, b: Block):
     if isinstance(result, sparse.SparseArray):
         return False
     return True
+
+
+def get_bop_fill_value(op_name, a_fv, b_fv):
+    if a_fv is None and b_fv is None:
+        return None
+    if a_fv is None:
+        return b_fv
+    if b_fv is None:
+        return a_fv
+    op_name = np_ufunc_map.get(op_name, op_name)
+    try:
+        func = np.__getattribute__(op_name)
+    except Exception as _:
+        func = scipy.special.__getattribute__(op_name)
+    return func(a_fv, b_fv)
