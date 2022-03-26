@@ -30,6 +30,7 @@ from nums.core.backends import (
     RayBackend,
     MPIBackend,
     RayBackendStockScheduler,
+    GPUSerialBackend,
 )
 
 # pylint: disable=global-statement
@@ -85,6 +86,8 @@ def create():
         )
     elif backend_name == "mpi":
         backend: Backend = MPIBackend()
+    elif backend_name == "gpu":
+        backend: Backend = GPUSerialBackend() #TODO: For now implementing a serial backend
     elif backend_name == "ray-scheduler":
         use_head = settings.use_head
         num_nodes = int(np.product(settings.cluster_shape))
