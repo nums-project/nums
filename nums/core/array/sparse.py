@@ -20,8 +20,8 @@ class SparseBlock(Block):
         dtype,
         transposed,
         km: KernelManager,
-        id=None,
         fill_value=0,
+        id=None,
         index_dtype=np.int64,
     ):
         super().__init__(grid_entry, grid_shape, shape, dtype, transposed, km, id)

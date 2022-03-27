@@ -172,6 +172,47 @@ def test_bop(app_inst_mock_small):
     mu_ba.touch()
 
 
+def test_sparse_bop(app_inst_mock_small):
+    from nums.core.array.application import ArrayApplication
+    from nums.experimental.optimizer.grapharray import GraphArray
+    from nums.experimental.optimizer.tree_search import RandomTS
+
+    random_seed = 1337
+
+    def collapse_graph_array(app: ArrayApplication, ga):
+        return RandomTS(
+            seed=random_seed,
+            max_samples_per_step=1,
+            max_reduction_pairs=1,
+            force_final_action=True,
+        ).solve(ga)
+
+    def compute_graph_array(app: ArrayApplication, ga) -> BlockArray:
+        result_ga: GraphArray = RandomTS(
+            seed=random_seed,
+            max_samples_per_step=1,
+            max_reduction_pairs=1,
+            force_final_action=True,
+        ).solve(ga)
+        return BlockArray(result_ga.grid, app.km, result_ga.to_blocks())
+
+    app = app_inst_mock_small
+    cluster_state = ClusterState(app.km.devices())
+    X = app.random.sparse_normal(shape=(10, 3), block_shape=(5, 3))
+    # y = app.random.integers(0, 2, shape=(10,), block_shape=(5,))
+    Xc = X
+    theta: GraphArray = app.zeros((Xc.shape[1],), (Xc.block_shape[1],), dtype=Xc.dtype)
+    X_ga: GraphArray = GraphArray.from_ba(Xc, cluster_state)
+    # y_ga: GraphArray = GraphArray.from_ba(y, cluster_state)
+    theta_ga: GraphArray = GraphArray.from_ba(theta, cluster_state)
+    Z_ga: GraphArray = X_ga @ theta_ga
+    Z_ga: GraphArray = collapse_graph_array(app, Z_ga)
+    one_ga: GraphArray = GraphArray.from_ba(app.one, cluster_state)
+    mu_ga: GraphArray = collapse_graph_array(app, one_ga / (one_ga + app.exp(-Z_ga)))
+    mu_ba: BlockArray = compute_graph_array(app, mu_ga)
+    mu_ba.touch()
+
+
 if __name__ == "__main__":
     import conftest
 
