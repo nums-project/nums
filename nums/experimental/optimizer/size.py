@@ -75,10 +75,21 @@ class TreeNodeSize:
             fill_value=fill_value,
         )
 
-    def reduce_axis(self, shape):
-        result = self.copy()
-        result.shape = shape
-        return result
+    def reduce_axis(self, op_name, axis, keepdims, transposed):
+        # Assume dense for now
+        shape = list(self.shape)
+        if axis is None:
+            shape = []
+        elif keepdims:
+            shape[axis] = 1
+        else:
+            shape.pop(axis)
+        return TreeNodeSize(
+            shape=tuple(shape),
+            nnz=np.prod(shape),
+            dtype=array_utils.get_uop_output_type(op_name, self.dtype),
+            fill_value=None,
+        )
 
     def _nnz_disjunction(self, other, shape):
         # If either element is nonzero, result is nonzero.
@@ -220,7 +231,7 @@ class TreeNodeSize:
 
     __pow__ = pow
 
-    def tensordot(self, other, axes=2):
+    def tensordot(self, other, axes):
         if axes > 0:
             shape = tuple(self.shape[:-axes] + other.shape[axes:])
             sum_shape = tuple(self.shape[-axes:])
@@ -273,7 +284,10 @@ class TreeNodeSize:
             fill_value=fill_value,
         )
 
-    def bop_dense(self, other, shape, dtype):
+    def bop_dense(self, other):
+        # NOTE: as catch-all fallback, this may be wrong for unknown non-elementwise binary ops.
+        shape = array_utils.broadcast_shape(self.shape, other.shape)
+        dtype = array_utils.get_bop_output_type("add", self.dtype, other.dtype)
         return TreeNodeSize(
             shape=shape,
             nnz=np.prod(shape),

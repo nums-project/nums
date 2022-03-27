@@ -451,14 +451,24 @@ class ReduceAxis(UnaryOp):
         block._device = device
         leaf: Leaf = Leaf(self.cluster_state)
         leaf.block = block
-        leaf.tree_node_size = self.child.tree_node_size.reduce_axis(self.shape())
+        leaf.tree_node_size = self.child.tree_node_size.reduce_axis(
+            self.op_name,
+            self.axis,
+            self.keepdims,
+            self.child.block.transposed,
+        )
         leaf.copy_on_op = self.copy_on_op
         return leaf, block
 
     def _mem_cost(self):
         assert isinstance(self.child, Leaf)
         # return np.product(self.shape())
-        return self.child.tree_node_size.reduce_axis(self.shape()).nbytes
+        return self.child.tree_node_size.reduce_axis(
+            self.op_name,
+            self.axis,
+            self.keepdims,
+            self.child.block.transposed,
+        ).nbytes
 
     def update_tuple_property(self, val, keep_dim_val: Union[int, tuple] = 1):
         result = []
