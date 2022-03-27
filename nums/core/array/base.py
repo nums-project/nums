@@ -56,6 +56,14 @@ class Block:
         self._device = None
         self.fill_value = None
 
+    @property
+    def nnz(self):
+        return np.prod(self.shape)
+
+    @property
+    def is_dense(self):
+        return self.fill_value is None
+
     def __repr__(self):
         return "Block(" + str(self.oid) + ")"
 
@@ -347,6 +355,14 @@ class BlockArrayBase:
                     km=self.km,
                 )
         self.fill_value = None
+
+    @property
+    def nnz(self):
+        return np.prod(self.shape)
+
+    @property
+    def is_dense(self):
+        return self.fill_value is None
 
     def __repr__(self):
         return "BlockArray(" + str(self.blocks) + ")"

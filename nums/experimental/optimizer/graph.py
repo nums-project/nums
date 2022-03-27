@@ -152,6 +152,7 @@ class Leaf(TreeNode):
         super().__init__(cluster_state, tree_node_id)
         self.block = None
         self.marker = -1
+        self.tree_node_size = None
 
     def get_children(self):
         return []
@@ -178,10 +179,13 @@ class Leaf(TreeNode):
         leaf._dtype = self._dtype
         leaf.parent = parent
         leaf.block = self.block
+        leaf.copy_on_op = self.copy_on_op
 
         # This property is only used for fusion.
         leaf.marker = self.marker
-        leaf.copy_on_op = self.copy_on_op
+
+        # This property is for experimental output size estimation.
+        leaf.tree_node_size = self.tree_node_size
         return leaf
 
     def get_leafs(self):
@@ -309,7 +313,10 @@ class UnaryOp(TreeNode):
         new_leaf: Leaf = result[0]
         new_block: Block = result[1]
         self.cluster_state.commit_uop(self._mem_cost(), self.child.block.id, device)
-        self.cluster_state.add_block(new_block.id, new_block.size(), [device])
+        # self.cluster_state.add_block(new_block.id, new_block.size(), [device])
+        self.cluster_state.add_block(
+            new_block.id, new_leaf.tree_node_size.nbytes, [device]
+        )
         if not self.cluster_state.created_on_only:
             assert self.cluster_state.blocks_local(
                 self.child.block.id, new_leaf.block.id
@@ -329,13 +336,15 @@ class UnaryOp(TreeNode):
             block: Block = block.ufunc(op_name, device=device)
         leaf: Leaf = Leaf(self.cluster_state)
         leaf.block = block
+        leaf.tree_node_size = self.child.tree_node_size.uop(op_name)
         leaf.copy_on_op = self.copy_on_op
         return leaf, block
 
     def _mem_cost(self):
         assert isinstance(self.child, Leaf)
-        block: Block = self.child.block
-        return np.product(block.shape)
+        # block: Block = self.child.block
+        # return np.product(block.shape)
+        return self.child.tree_node_size.uop(self.op_name).nbytes
 
     def shape(self):
         if self._shape is None:
@@ -442,12 +451,14 @@ class ReduceAxis(UnaryOp):
         block._device = device
         leaf: Leaf = Leaf(self.cluster_state)
         leaf.block = block
+        leaf.tree_node_size = self.child.tree_node_size.reduce_axis(self.shape())
         leaf.copy_on_op = self.copy_on_op
         return leaf, block
 
     def _mem_cost(self):
         assert isinstance(self.child, Leaf)
-        return np.product(self.shape())
+        # return np.product(self.shape())
+        return self.child.tree_node_size.reduce_axis(self.shape()).nbytes
 
     def update_tuple_property(self, val, keep_dim_val: Union[int, tuple] = 1):
         result = []
@@ -640,7 +651,10 @@ class BinaryOp(TreeNode):
             self._mem_cost(), self.left.block.id, self.right.block.id, device
         )
         # Update cluster state with new block.
-        self.cluster_state.add_block(new_block.id, new_block.size(), [device])
+        # self.cluster_state.add_block(new_block.id, new_block.size(), [device])
+        self.cluster_state.add_block(
+            new_block.id, new_leaf.tree_node_size.nbytes, [device]
+        )
         if not self.cluster_state.created_on_only:
             assert self.cluster_state.blocks_local(
                 self.left.block.id, self.right.block.id
@@ -669,13 +683,33 @@ class BinaryOp(TreeNode):
         block: Block = lblock.bop(op_name, rblock, args=args, device=device)
         leaf: Leaf = Leaf(self.cluster_state)
         leaf.block = block
+        leaf.tree_node_size = self.left.tree_node_size.bop(
+            op_name,
+            self.right.tree_node_size,
+            **args,
+        )
         leaf.copy_on_op = self.copy_on_op
         return leaf, block
 
     def _mem_cost(self):
         # Computes the memory required to perform this operation.
         # We approximate by just computing the memory required to store the result.
-        return np.product(self.shape())
+        # return np.product(self.shape())
+        assert isinstance(self.left, Leaf) and isinstance(self.right, Leaf)
+        lblock: Block = self.left.block
+        rblock: Block = self.right.block
+        if self.op_name == "matmul":
+            op_name, args = "tensordot", {"axes": 1}
+        elif self.op_name == "tensordot":
+            op_name, args = "tensordot", self.args
+        else:
+            op_name, args = self.op_name, {}
+            assert array_utils.can_broadcast_shapes(lblock.shape, rblock.shape)
+        return self.left.tree_node_size.bop(
+            op_name,
+            self.right.tree_node_size,
+            **args,
+        ).nbytes
 
     def _compute_block_params(self):
         left_shape = self.left.shape()

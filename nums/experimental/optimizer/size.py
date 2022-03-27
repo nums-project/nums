@@ -3,36 +3,54 @@ import numpy as np
 from nums.core.array import utils as array_utils
 
 
-# TODO: integrate this class with TreeNode and FuseGraph.
+# TODO: integrate this class with FuseGraph.
 class TreeNodeSize:
     """
     Encapsulated by each TreeNode to keep track of estimated or observed sizes of blocks.
     Sparse binary operations use B(n, p) to estimate nnz as needed.
     """
 
-    def __init__(
-        self, is_dense, shape, nnz, dtype, fill_value=None, index_dtype=np.int64
-    ):
-        if is_dense:
-            assert nnz == np.prod(shape)
-        else:
-            assert fill_value is not None and index_dtype is not None
-        self.is_dense = is_dense
+    def __init__(self, shape, nnz, dtype, fill_value=None, index_dtype=np.int64):
         self.shape = shape
         self.nnz = nnz
         self.dtype = dtype
         self.fill_value = fill_value
         self.index_dtype = index_dtype
+        if self.is_dense:
+            assert nnz == np.prod(shape)
+        else:
+            assert index_dtype is not None
+
+        self.bop_estimation_map = {
+            "add": self.add,
+            "sum": self.add,
+            "sub": self.add,
+            "mul": self.mul,
+            "prod": self.mul,
+            "truediv": self.truediv,
+            "pow": self.pow,
+            "matmul": lambda other: self.tensordot(other, axes=1),
+            "tensordot": self.tensordot,
+            "lt": lambda other: self.inequality("lt", other),
+            "le": lambda other: self.inequality("le", other),
+            "gt": lambda other: self.inequality("gt", other),
+            "ge": lambda other: self.inequality("ge", other),
+            "eq": lambda other: self.inequality("eq", other),
+            "ne": lambda other: self.inequality("ne", other),
+        }
 
     def copy(self):
         return TreeNodeSize(
-            self.is_dense,
             self.shape,
             self.nnz,
             self.dtype,
             self.fill_value,
             self.index_dtype,
         )
+
+    @property
+    def is_dense(self):
+        return self.fill_value is None
 
     @property
     def nbytes(self):
@@ -46,13 +64,21 @@ class TreeNodeSize:
             )
 
     def uop(self, op_name):
+        if self.fill_value is None:
+            fill_value = None
+        else:
+            fill_value = np.__getattribute__(op_name)(self.fill_value)
         return TreeNodeSize(
-            is_dense=self.is_dense,
             shape=self.shape,
             nnz=self.nnz,
             dtype=array_utils.get_uop_output_type(op_name, self.dtype),
-            fill_value=np.__getattribute__(op_name)(self.fill_value),
+            fill_value=fill_value,
         )
+
+    def reduce_axis(self, shape):
+        result = self.copy()
+        result.shape = shape
+        return result
 
     def _nnz_disjunction(self, other, shape):
         # If either element is nonzero, result is nonzero.
@@ -77,15 +103,16 @@ class TreeNodeSize:
         p1 = self.nnz / n1
         return int(p1 * np.prod(shape))
 
-    def __add__(self, other):
+    def add(self, other):
         shape = array_utils.broadcast_shape(self.shape, other.shape)
         dtype = array_utils.get_bop_output_type("add", self.dtype, other.dtype)
         is_dense = array_utils.get_sparse_bop_return_type(
-            "add", self.fill_value, other.fill_value
+            "add",
+            self.fill_value,
+            other.fill_value,
         )
         if is_dense:
             return TreeNodeSize(
-                is_dense=True,
                 shape=shape,
                 nnz=np.prod(shape),
                 dtype=dtype,
@@ -96,7 +123,6 @@ class TreeNodeSize:
                 "TreeNodeSize.__add__ is inconsistent with sparse bop rules."
             )
         return TreeNodeSize(
-            is_dense=False,
             shape=shape,
             nnz=self._nnz_disjunction(other, shape),
             dtype=dtype,
@@ -105,15 +131,18 @@ class TreeNodeSize:
             ),
         )
 
-    def __mul__(self, other):
+    __add__ = add
+
+    def mul(self, other):
         shape = array_utils.broadcast_shape(self.shape, other.shape)
         dtype = array_utils.get_bop_output_type("mul", self.dtype, other.dtype)
         is_dense = array_utils.get_sparse_bop_return_type(
-            "mul", self.fill_value, other.fill_value
+            "mul",
+            self.fill_value,
+            other.fill_value,
         )
         if is_dense:
             return TreeNodeSize(
-                is_dense=True,
                 shape=shape,
                 nnz=np.prod(shape),
                 dtype=dtype,
@@ -137,7 +166,6 @@ class TreeNodeSize:
                 "TreeNodeSize.__mul__ is inconsistent with sparse bop rules."
             )
         return TreeNodeSize(
-            is_dense=False,
             shape=shape,
             nnz=nnz,
             dtype=dtype,
@@ -145,6 +173,52 @@ class TreeNodeSize:
                 "mul", self.fill_value, other.fill_value
             ),
         )
+
+    __mul__ = mul
+
+    def truediv(self, other):
+        shape = array_utils.broadcast_shape(self.shape, other.shape)
+        dtype = array_utils.get_bop_output_type("truediv", self.dtype, other.dtype)
+        is_dense = array_utils.get_sparse_bop_return_type(
+            "truediv",
+            self.fill_value,
+            other.fill_value,
+        )
+        if is_dense:
+            return TreeNodeSize(
+                shape=shape,
+                nnz=np.prod(shape),
+                dtype=dtype,
+                fill_value=None,
+            )
+        if self.is_dense or other.is_dense:
+            raise ValueError(
+                "TreeNodeSize.__add__ is inconsistent with sparse bop rules."
+            )
+        if other.fill_value == 0:  # nan
+            nnz = other._nnz_selection(self, shape)
+        elif self.fill_value == 0:
+            nnz = self._nnz_selection(other, shape)
+        else:
+            nnz = self._nnz_disjunction(other, shape)
+        return TreeNodeSize(
+            shape=shape,
+            nnz=nnz,
+            dtype=dtype,
+            fill_value=array_utils.get_bop_fill_value(
+                "truediv", self.fill_value, other.fill_value
+            ),
+        )
+
+    __truediv__ = truediv
+
+    def floordiv(self, other):
+        raise NotImplementedError()
+
+    def pow(self, other):
+        raise NotImplementedError()
+
+    __pow__ = pow
 
     def tensordot(self, other, axes=2):
         if axes > 0:
@@ -159,7 +233,6 @@ class TreeNodeSize:
         )
         if is_dense:
             return TreeNodeSize(
-                is_dense=True,
                 shape=shape,
                 nnz=np.prod(shape),
                 dtype=dtype,
@@ -181,9 +254,32 @@ class TreeNodeSize:
         m = np.prod(shape)
         k = np.prod(sum_shape)
         return TreeNodeSize(
-            is_dense=False,
             shape=shape,
             nnz=int((1 - (1 - p1 * p2) ** k) * m),
             dtype=dtype,
             fill_value=0,
         )
+
+    def inequality(self, op_name, other):
+        assert other.shape == ()
+        dtype = array_utils.get_bop_output_type(op_name, self.dtype, other.dtype)
+        fill_value = array_utils.get_bop_fill_value(
+            op_name, self.fill_value, other.fill_value
+        )
+        return TreeNode(
+            shape=self.shape,
+            nnz=self.nnz,
+            dtype=dtype,
+            fill_value=fill_value,
+        )
+
+    def bop_dense(self, other, shape, dtype):
+        return TreeNodeSize(
+            shape=shape,
+            nnz=np.prod(shape),
+            dtype=dtype,
+            fill_value=None,
+        )
+
+    def bop(self, op_name, other, **kwargs):
+        return self.bop_estimation_map.get(op_name, self.bop_dense)(other, **kwargs)

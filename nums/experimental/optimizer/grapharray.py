@@ -37,6 +37,7 @@ from nums.experimental.optimizer.graph import (
 from nums.experimental.optimizer.reduction_ops import TreeReductionOp
 from nums.experimental.optimizer.fusion import FuseGraph
 from nums.experimental.optimizer.fusion_utils import set_using_marker, traverse_marker
+from nums.experimental.optimizer.size import TreeNodeSize
 
 
 class GraphArray(object):
@@ -52,14 +53,25 @@ class GraphArray(object):
             device: Device = km.device_grid.get_device(
                 block.true_grid_entry(), block.true_grid_shape()
             )
-            cluster_state.add_block(block.id, block.size(), devices=[device])
-            cluster_state.init_mem_load(device, block.id)
+            # cluster_state.add_block(block.id, block.size(), devices=[device])
+            # cluster_state.init_mem_load(device, block.id)
 
             # Create the leaf representing this block for future computations.
             leaf: Leaf = Leaf(cluster_state)
             leaf.block = block
+            leaf.tree_node_size = TreeNodeSize(
+                block.shape,
+                block.nnz,  # Blocking
+                block.dtype,
+                block.fill_value,
+            )
             leaf.copy_on_op = copy_on_op
             graphs[grid_entry] = leaf
+
+            cluster_state.add_block(
+                block.id, leaf.tree_node_size.nbytes, devices=[device]
+            )
+            cluster_state.init_mem_load(device, block.id)
         return graphs
 
     @classmethod

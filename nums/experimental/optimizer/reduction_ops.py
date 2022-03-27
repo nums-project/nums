@@ -228,7 +228,10 @@ class TreeReductionOp(TreeNode):
             self._mem_cost(leafs), left.block.id, right.block.id, device
         )
         # Update cluster state with new block.
-        self.cluster_state.add_block(new_block.id, new_block.size(), [device])
+        # self.cluster_state.add_block(new_block.id, new_block.size(), [device])
+        self.cluster_state.add_block(
+            new_block.id, new_leaf.tree_node_size.nbytes, [device]
+        )
         if not self.cluster_state.created_on_only:
             assert self.cluster_state.blocks_local(left.block.id, right.block.id)
             assert self.cluster_state.blocks_local(left.block.id, new_leaf.block.id)
@@ -274,13 +277,19 @@ class TreeReductionOp(TreeNode):
 
         leaf: Leaf = Leaf(self.cluster_state)
         leaf.block = block
+        leaf.tree_node_size = left.tree_node_size.bop(
+            op_name,
+            right.tree_node_size,
+            **args,
+        )
         leaf.copy_on_op = self.copy_on_op
         return leaf, block
 
     def _mem_cost(self, leafs):
         # Computes the memory required to perform this operation.
         # We approximate by just computing the memory required to store the result.
-        assert leafs is not None and len(leafs) > 0
+        # assert leafs is not None and len(leafs) > 0
+        assert leafs is not None and len(leafs) == 2
         shape = None
         for leaf in leafs:
             assert leaf.tree_node_id in self.leafs_dict
@@ -289,8 +298,16 @@ class TreeReductionOp(TreeNode):
                 shape = leaf_block.shape
             else:
                 assert leaf_block.shape == shape
-        leaf_block: Block = leafs[0].block
-        return leaf_block.size()
+        # leaf_block: Block = leafs[0].block
+        # return leaf_block.size()
+        return (
+            leafs[0]
+            .tree_node_size.bop(
+                self.op_name,
+                leafs[1].tree_node_size,
+            )
+            .nbytes
+        )
 
     def _sample_child(self) -> TreeNode:
         for _, leaf in self.leafs_dict.items():

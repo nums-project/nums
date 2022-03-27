@@ -4,11 +4,13 @@ from nums.core.array.base import BlockArrayBase, Block
 from nums.core.array.blockarray import BlockArray
 from nums.core.kernel.kernel_manager import KernelManager
 from nums.core.grid.grid import ArrayGrid
-from nums.core.settings import np_ufunc_map
 import numpy as np
 import itertools
+import sparse
 
 
+# TODO: merge with Block
+# TODO: RHS binary operations
 class SparseBlock(Block):
     def __init__(
         self,
@@ -25,19 +27,24 @@ class SparseBlock(Block):
         super().__init__(grid_entry, grid_shape, shape, dtype, transposed, km, id)
         self.fill_value = fill_value
         self.index_dtype = index_dtype
+        self.oid = None
         self._nnz: object = None
-        # self._nbytes: object = None
+        self._nbytes: object = (
+            None  # TODO: implement as lazily fetched exact result, same as nnz
+        )
 
-    def __getattr__(self, item):
-        if item == "nnz":
-            if not array_utils.is_int(self._nnz):
-                self._nnz = self._km.get(self._nnz)
-            return self._nnz
-        elif item == "nbytes":
-            return self._estimate_nbytes(format="coo")
-        else:
-            super().__getattr__(item)
+    @property
+    def nnz(self):
+        if not array_utils.is_int(self._nnz):
+            self._nnz = self._km.get(self._nnz)
+        return self._nnz
 
+    # TODO: implement as lazily fetched exact result
+    @property
+    def nbytes(self):
+        return self._estimate_nbytes(format="coo")
+
+    # TODO: deprecate
     def _estimate_nbytes(self, format=None):
         if format is None:
             return self.nnz
@@ -109,6 +116,27 @@ class SparseBlock(Block):
         block.fill_value = np.__getattribute__(op_name)(self.fill_value)
         return block
 
+    def _block_from_scalar(self, other):
+        assert array_utils.is_scalar(other)
+        block = SparseBlock(
+            self.grid_entry,
+            self.grid_shape,
+            (1,),
+            self.dtype,
+            False,
+            self._km,
+            fill_value=other,
+        )
+        # TODO: generalize for different kernels
+        block.oid = self._km.put(
+            sparse.COO.from_numpy(np.array(other), fill_value=other),
+            syskwargs={
+                "grid_entry": self.grid_entry,
+                "grid_shape": self.grid_shape,
+            },
+        )
+        return block
+
     @staticmethod
     def init_block(op_name, block1, block2, args, device=None):
         (
@@ -117,11 +145,9 @@ class SparseBlock(Block):
             result_shape,
             dtype,
         ) = Block.block_meta(op_name, block1, block2, args)
-        op_name = np_ufunc_map.get(op_name, op_name)
-        func = np.__getattribute__(op_name)
-        fill_value = block1.fill_value
-        if isinstance(block2, SparseBlock):
-            fill_value = func(block1.fill_value, block2.fill_value)
+        fill_value = array_utils.get_bop_fill_value(
+            op_name, block1.fill_value, block2.fill_value
+        )
         # TODO: what happens when different index_dtype?
         block = SparseBlock(
             grid_entry=result_grid_entry,
@@ -135,7 +161,10 @@ class SparseBlock(Block):
         block._device = device
         return block
 
+    # TODO: check or convert other (could be scalar)
     def bop(self, op_name, other, args: dict, device=None):
+        if not isinstance(other, Block):
+            other = self._block_from_scalar(other)
         densify = array_utils.get_sparse_bop_return_type(
             op_name, self.fill_value, other.fill_value
         )
@@ -162,15 +191,13 @@ class SparseBlock(Block):
         )
         if not densify:
             block._nnz = self._km.sparse_nnz(block.oid, syskwargs=syskwargs)
-            block.fill_value = array_utils.get_bop_fill_value(
-                op_name, self.fill_value, other.fill_value
-            )
         return block
 
     def tensordot(self, other, axes):
         return self.bop("tensordot", other, args={"axes": axes})
 
 
+# TODO: merge with BlockArray
 class SparseBlockArray(BlockArray):
     def __init__(
         self,
@@ -204,13 +231,13 @@ class SparseBlockArray(BlockArray):
         self._nnz = -1
         self._nbytes = -1
 
-    def __getattr__(self, item):
-        if item == "nnz":
-            return self._get_nnz()
-        elif item == "nbytes":
-            return self._get_nbytes()
-        else:
-            super().__getattr__(item)
+    @property
+    def nnz(self):
+        return self._get_nnz()
+
+    @property
+    def nbytes(self):
+        return self._get_nbytes()
 
     def _get_nnz(self):
         if self._nnz == -1:
@@ -435,11 +462,6 @@ class SparseBlockArray(BlockArray):
         if densify:
             return BlockArray(grid, self.km, blocks=blocks)
         else:
-            # op_name = np_ufunc_map.get(op_name, op_name)
-            # ufunc = np.__getattribute__(op_name)
-            # fill_value = self.fill_value
-            # if isinstance(other, SparseBlockArray):
-            #     fill_value = ufunc(self.fill_value, other.fill_value)
             fill_value = array_utils.get_bop_fill_value(
                 op_name, self.fill_value, other.fill_value
             )
@@ -463,11 +485,6 @@ class SparseBlockArray(BlockArray):
                 km=self.km,
             )
         else:
-            # op_name = np_ufunc_map.get(op_name, op_name)
-            # ufunc = np.__getattribute__(op_name)
-            # fill_value = self.fill_value
-            # if isinstance(other, SparseBlockArray):
-            #     fill_value = ufunc(self.fill_value, other.fill_value)
             fill_value = array_utils.get_bop_fill_value(
                 op_name, self.fill_value, other.fill_value
             )
@@ -634,11 +651,6 @@ class SparseBlockArray(BlockArray):
         )
         dtype = bool.__name__
         grid = ArrayGrid(shape, block_shape, dtype)
-        # op_name = np_ufunc_map.get(op_name, op_name)
-        # ufunc = np.__getattribute__(op_name)
-        # fill_value = self.fill_value
-        # if isinstance(other, SparseBlockArray):
-        #     fill_value = ufunc(self.fill_value, other.fill_value)
         fill_value = array_utils.get_bop_fill_value(
             op_name, self.fill_value, other.fill_value
         )

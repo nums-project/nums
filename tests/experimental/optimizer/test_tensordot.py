@@ -127,7 +127,7 @@ def test_load_sqr(app_inst_mock_big):
     assert mem_diff == net_in_diff == net_out_diff == 0
     # Block-cyclic distribution of 100 blocks of size 25 over 10 nodes == 10*25 == 250
     # We have 2 such matrices, so expect initial memory to be 500.
-    assert max(cluster_state.resources[0]) == 500
+    assert max(cluster_state.resources[0]) == 4000  # 500
     assert max(cluster_state.resources[1]) == max(cluster_state.resources[2]) == 0
     result_ga: GraphArray = RandomTS(
         seed=np.random.RandomState(1337),
@@ -172,7 +172,7 @@ def test_load_single_block_rhs(app_inst_mock_big):
     net_in_diff = max(cluster_state.resources[1]) - min(cluster_state.resources[1])
     net_out_diff = max(cluster_state.resources[2]) - min(cluster_state.resources[2])
     print(mem_diff, net_in_diff, net_out_diff)
-    assert mem_diff == 25  # b/c single block array is placed in node 1.
+    assert mem_diff == 200  # 25  # b/c single block array is placed in node 1.
     assert net_in_diff == net_out_diff == 0
     assert max(cluster_state.resources[1]) == max(cluster_state.resources[2]) == 0
     result_ga: GraphArray = RandomTS(

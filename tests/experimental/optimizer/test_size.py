@@ -8,7 +8,6 @@ def test_nbytes():
     x1 = np.eye(10)
     x1_sp = sparse.COO.from_numpy(x1, fill_value=0)
     x1_ts = TreeNodeSize(
-        False,
         (10, 10),
         10,
         np.int64,
@@ -17,35 +16,44 @@ def test_nbytes():
     assert x1_sp.nbytes == x1_ts.nbytes
 
 
-def test_add():
+def test_uop():
     x1_ts = TreeNodeSize(
-        False,
         (10, 10),
         10,
         np.int64,
-        0,
+        1,
+    )
+    y_ts = x1_ts.uop("negative")
+    assert np.allclose(y_ts.nnz, x1_ts.nnz)
+    assert y_ts.fill_value == -1
+
+
+def test_add():
+    x1_ts = TreeNodeSize(
+        (10, 10),
+        10,
+        np.int64,
+        1,
     )
     x2_ts = TreeNodeSize(
-        False,
         (10, 10),
         20,
         np.int64,
-        0,
+        2,
     )
     y_ts = x1_ts + x2_ts
     assert np.allclose(y_ts.nnz, int((1 - 0.9 * 0.8) * 100))
+    assert y_ts.fill_value == 3
 
 
 def test_mul():
     x1_ts = TreeNodeSize(
-        False,
         (10, 10),
         10,
         np.int64,
         0,
     )
     x2_ts = TreeNodeSize(
-        False,
         (10, 10),
         20,
         np.int64,
@@ -55,7 +63,6 @@ def test_mul():
     assert np.allclose(y_ts.nnz, int(0.1 * 0.2 * 100))
 
     x2_ts = TreeNodeSize(
-        False,
         (10, 1),
         10,
         np.int64,
@@ -65,7 +72,6 @@ def test_mul():
     assert np.allclose(y_ts.nnz, int(0.1 * 100))
 
     x2_ts = TreeNodeSize(
-        True,
         (10, 1),
         10,
         np.int64,
@@ -77,14 +83,12 @@ def test_mul():
 
 def test_tensordot():
     x1_ts = TreeNodeSize(
-        False,
         (10, 10),
         10,
         np.int64,
         0,
     )
     x2_ts = TreeNodeSize(
-        False,
         (10, 10),
         20,
         np.int64,
