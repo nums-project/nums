@@ -64,7 +64,14 @@ class TreeNodeSize:
             )
 
     def uop(self, op_name):
-        if self.fill_value is None:
+        if op_name == "transpose":
+            return TreeNodeSize(
+                shape=tuple(reversed(self.shape)),
+                nnz=self.nnz,
+                dtype=self.dtype,
+                fill_value=self.fill_value,
+            )
+        if self.is_dense:
             fill_value = None
         else:
             fill_value = np.__getattribute__(op_name)(self.fill_value)
