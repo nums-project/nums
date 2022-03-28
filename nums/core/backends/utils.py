@@ -17,6 +17,7 @@ import errno
 import inspect
 import socket
 import types
+import os
 from functools import wraps
 import warnings
 
@@ -42,6 +43,13 @@ def get_num_cores(reserved_for_os=2):
     cores -= reserved_for_os
     assert cores >= 2
     return cores
+
+
+def get_num_gpus():
+    gpus = int(
+        os.popen("nvidia-smi --query-gpu=name --format=csv,noheader | wc -l").read()
+    )
+    return gpus
 
 
 def method_meta(num_returns=1):

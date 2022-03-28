@@ -87,14 +87,15 @@ class KernelCls(KernelImp):
 
     # I/O operations.
     def touch(self, arr):
-        return isinstance(arr, np.ndarray)
+        cp.cuda.Device(0).synchronize()
+        return isinstance(arr, cp.ndarray)
 
     def new_block(self, op_name, grid_entry, grid_meta):
-        op_func = np.__getattribute__(op_name)
+        op_func = cp.__getattribute__(op_name)
         grid = ArrayGrid.from_meta(grid_meta)
         block_shape = grid.get_block_shape(grid_entry)
         if op_name == "eye":
-            assert np.all(np.diff(grid_entry) == 0)
+            assert cp.all(cp.diff(grid_entry) == 0)
             return op_func(*block_shape, dtype=grid.dtype)
         else:
             return op_func(block_shape, dtype=grid.dtype)
@@ -106,17 +107,18 @@ class KernelCls(KernelImp):
         if rfunc_name not in ("random", "integers"):
             # Only random and integer supports sampling of a specific type.
             result = result.astype(dtype)
-        return result
+        # return result
+        return cp.array(result, dtype=dtype)
 
     def permutation(self, rng_params, size):
         rng: Generator = block_rng(*rng_params)
         return rng.permutation(size)
 
     def create_block(self, *src_arrs, src_params, dst_params, dst_shape, dst_shape_bc):
-        result = np.empty(shape=dst_shape, dtype=src_arrs[0].dtype)
+        result = cp.empty(shape=dst_shape, dtype=src_arrs[0].dtype)
         assert len(src_params) == len(dst_params)
         for i in range(len(src_params)):
-            src_arr: np.ndarray = src_arrs[i]
+            src_arr: cp.ndarray = src_arrs[i]
             src_sel, srcT = src_params[i]
             if srcT:
                 src_arr = src_arr.T
@@ -136,7 +138,7 @@ class KernelCls(KernelImp):
         if dstT:
             dst_arr = dst_arr.T
         for i in range(len(src_params)):
-            src_arr: np.ndarray = src_arrs[i]
+            src_arr: cp.ndarray = src_arrs[i]
             src_sel, src_shape_bc, srcT = src_params[i]
             if srcT:
                 src_arr = src_arr.T
@@ -169,7 +171,7 @@ class KernelCls(KernelImp):
         # unless we're performing an operation on it.
         # We just need the destination array's shape
         # to determine whether we need to modify it.
-        if isinstance(dst_arr_or_args, np.ndarray):
+        if isinstance(dst_arr_or_args, cp.ndarray):
             dst_arr_shape = dst_arr_or_args.shape
         else:
             dst_arr_shape, _ = dst_arr_or_args
@@ -178,11 +180,11 @@ class KernelCls(KernelImp):
         # Slice and index subscript bounds are tested in the control process.
         # This could be optimized, but in its current state, it's simple and not a bottleneck.
         array = ss[src_axis]
-        dst_vec = np.arange(len(array))
+        dst_vec = cp.arange(len(array))
         dst_mask = (dst_coord[dst_axis] <= dst_vec) & (
             dst_vec < dst_coord[dst_axis] + dst_arr_shape[dst_axis]
         )
-        src_vec = np.array(array)
+        src_vec = cp.array(array)
         src_mask = (src_coord[src_axis] <= src_vec) & (
             src_vec < src_coord[src_axis] + src_arr.shape[src_axis]
         )
@@ -196,12 +198,12 @@ class KernelCls(KernelImp):
             # which dominate the execution time of this function.
             return dst_arr_or_args
 
-        if isinstance(dst_arr_or_args, np.ndarray):
+        if isinstance(dst_arr_or_args, cp.ndarray):
             # We need to update the array.
             dst_arr = dst_arr_or_args.copy()
         else:
             # We allocate an array of zeros on initial update.
-            dst_arr = np.zeros(shape=dst_arr_or_args[0], dtype=dst_arr_or_args[1])
+            dst_arr = cp.zeros(shape=dst_arr_or_args[0], dtype=dst_arr_or_args[1])
 
         # Create and apply the subscript argument.
         src_sel, dst_sel = [], []
@@ -227,7 +229,7 @@ class KernelCls(KernelImp):
         # Slice and index subscript bounds are tested in the control process.
         # This could be optimized, but in its current state, it's simple and not a bottleneck.
         array = ss[axis]
-        dst_vec = np.array(array)
+        dst_vec = cp.array(array)
         dst_mask = (dst_coord[axis] <= dst_vec) & (
             dst_vec < dst_coord[axis] + dst_arr.shape[axis]
         )
@@ -238,14 +240,14 @@ class KernelCls(KernelImp):
             # scalar
             mask = dst_mask
         elif len(src_arr.shape) == 1:
-            src_vec = np.arange(len(array))
+            src_vec = cp.arange(len(array))
             src_mask = (src_coord[0] <= src_vec) & (
                 src_vec < src_coord[0] + src_arr.shape[0]
             )
             mask = dst_mask & src_mask
             src_vec = src_vec[mask] - src_coord[0]
         else:
-            src_vec = np.arange(len(array))
+            src_vec = cp.arange(len(array))
             src_mask = (src_coord[axis] <= src_vec) & (
                 src_vec < src_coord[axis] + src_arr.shape[axis]
             )
@@ -282,16 +284,16 @@ class KernelCls(KernelImp):
         return dst_arr
 
     def diag(self, arr, offset):
-        return np.diag(arr, k=offset)
+        return cp.diag(arr, k=offset)
 
     def arange(self, start, stop, step, dtype):
-        return np.arange(start, stop, step, dtype)
+        return cp.arange(start, stop, step, dtype)
 
     def sum_reduce(self, *arrs):
-        return np.add.reduce(arrs)
+        return cp.add.reduce(arrs)
 
     def reduce_axis(self, op_name, arr, axis, keepdims, transposed):
-        op_func = np.__getattribute__(op_name)
+        op_func = cp.__getattribute__(op_name)
         if transposed:
             arr = arr.T
         if (
@@ -304,22 +306,22 @@ class KernelCls(KernelImp):
             if len(arr.shape) == 2:
                 assert axis in (0, 1)
                 if axis == 0:
-                    return np.matmul(np.ones(arr.shape[0]), arr)
+                    return cp.matmul(cp.ones(arr.shape[0]), arr)
                 else:
-                    return np.matmul(arr, np.ones(arr.shape[1]))
+                    return cp.matmul(arr, cp.ones(arr.shape[1]))
             else:
-                return np.tensordot(np.ones(arr.shape[axis]), arr, axes=(0, axis))
+                return cp.tensordot(cp.ones(arr.shape[axis]), arr, axes=(0, axis))
         return op_func(arr, axis=axis, keepdims=keepdims)
 
     # This is essentially a map.
     def map_uop(self, op_name, arr, args, kwargs):
-        ufunc = np.__getattribute__(op_name)
+        ufunc = cp.__getattribute__(op_name)
         return ufunc(arr, *args, **kwargs)
 
     def where(self, arr, x, y, block_slice_tuples):
         if x is None:
             assert y is None
-            res = np.where(arr)
+            res = cp.where(arr)
             for i, (start, stop) in enumerate(block_slice_tuples):
                 arr = res[i]
                 arr += start
@@ -328,15 +330,15 @@ class KernelCls(KernelImp):
             res.append(shape)
             return tuple(res)
         else:
-            assert isinstance(x, np.ndarray) and isinstance(y, np.ndarray)
+            assert isinstance(x, cp.ndarray) and isinstance(y, cp.ndarray)
             assert arr.shape == x.shape == y.shape
-            return np.where(arr, x, y)
+            return cp.where(arr, x, y)
 
     def xlogy(self, arr_x, arr_y):
         return scipy.special.xlogy(arr_x, arr_y)
 
     def astype(self, arr, dtype_str):
-        dtype = getattr(np, dtype_str)
+        dtype = getattr(cp, dtype_str)
         return arr.astype(dtype)
 
     def transpose(self, arr):
@@ -348,7 +350,7 @@ class KernelCls(KernelImp):
     def split(self, arr, indices_or_sections, axis, transposed):
         if transposed:
             arr = arr.T
-        return np.split(arr, indices_or_sections, axis)
+        return cp.split(arr, indices_or_sections, axis)
 
     def shape_dtype(self, arr):
         return arr.shape, arr.dtype
@@ -370,7 +372,7 @@ class KernelCls(KernelImp):
 
         t = TDigest()
         t.merge(*digests)
-        return np.array(t.quantile(q))
+        return cp.array(t.quantile(q))
 
     def select_median(self, arr):
         """Find value in `arr` closest to median as part of quickselect algorithm."""
@@ -378,16 +380,16 @@ class KernelCls(KernelImp):
         if arr.size == 0:
             return 0  # Dummy value that has no effect on weighted median.
         index = arr.size // 2
-        return np.partition(arr, index)[index]
+        return cp.partition(arr, index)[index]
 
     def weighted_median(self, *arr_and_weights):
         """Find the weighted median of an array."""
         mid = len(arr_and_weights) // 2
         arr, weights = arr_and_weights[:mid], arr_and_weights[mid:]
-        argsorted_arr = np.argsort(arr)
-        sorted_weights_sum = np.cumsum(np.take(weights, argsorted_arr))
+        argsorted_arr = cp.argsort(arr)
+        sorted_weights_sum = cp.cumsum(cp.take(weights, argsorted_arr))
         half = sorted_weights_sum[-1] / 2
-        return arr[argsorted_arr[np.searchsorted(sorted_weights_sum, half)]]
+        return arr[argsorted_arr[cp.searchsorted(sorted_weights_sum, half)]]
 
     def pivot_partition(
         self,
@@ -420,11 +422,11 @@ class KernelCls(KernelImp):
                 # Execute this as a matmul.
                 # TODO: Outer product is optimized.
                 #  detect here and execute np.outer(...)
-                return np.matmul(a1, a2)
-            return np.tensordot(a1, a2, axes=axes)
+                return cp.matmul(a1, a2)
+            return cp.tensordot(a1, a2, axes=axes)
         op = np_ufunc_map.get(op, op)
         try:
-            ufunc = np.__getattribute__(op)
+            ufunc = cp.__getattribute__(op)
         except Exception as _:
             ufunc = scipy.special.__getattribute__(op)
         return ufunc(a1, a2)
@@ -441,12 +443,12 @@ class KernelCls(KernelImp):
         elif op == "prod":
             r = a1 * a2
         else:
-            reduce_op = np.__getattribute__(op)
-            a = np.stack([a1, a2], axis=0)
+            reduce_op = cp.__getattribute__(op)
+            a = cp.stack([a1, a2], axis=0)
             r = reduce_op(a, axis=0, keepdims=False)
 
-        if a1 is np.nan or a2 is np.nan or r is np.nan:
-            assert np.isscalar(a1) and np.isscalar(a2) and np.isscalar(r)
+        if a1 is cp.nan or a2 is cp.nan or r is cp.nan:
+            assert cp.isscalar(a1) and cp.isscalar(a2) and cp.isscalar(r)
         else:
             assert a1.shape == a2.shape == r.shape
         return r
@@ -454,31 +456,31 @@ class KernelCls(KernelImp):
     def qr(self, *arrays, mode="reduced", axis=None):
         if len(arrays) > 1:
             assert axis is not None
-            arr = np.concatenate(arrays, axis=axis)
+            arr = cp.concatenate(arrays, axis=axis)
         else:
             arr = arrays[0]
-        return np.linalg.qr(arr, mode=mode)
+        return cp.linalg.qr(arr, mode=mode)
 
     def cholesky(self, arr):
-        return np.linalg.cholesky(arr)
+        return cp.linalg.cholesky(arr)
 
     def svd(self, arr):
-        u, sigma, vT = np.linalg.svd(arr)
+        u, sigma, vT = cp.linalg.svd(arr)
         u = u[: sigma.shape[0]]
         return u, sigma, vT
 
     def inv(self, arr):
-        return np.linalg.inv(arr)
+        return cp.linalg.inv(arr)
 
     # Boolean
 
-    def array_compare(self, func_name: str, a: np.ndarray, b: np.ndarray, args):
-        eq_func = getattr(np, func_name)
+    def array_compare(self, func_name: str, a: cp.ndarray, b: cp.ndarray, args):
+        eq_func = getattr(cp, func_name)
         if func_name == "allclose":
             assert len(args) == 2
             rtol = args[0]
             atol = args[1]
-            return np.allclose(a, b, rtol, atol)
+            return cp.allclose(a, b, rtol, atol)
 
         assert len(args) == 0
         return eq_func(a, b)
@@ -486,19 +488,19 @@ class KernelCls(KernelImp):
     # Logic
 
     def logical_and(self, *bool_list):
-        return np.all(bool_list)
+        return cp.all(bool_list)
 
     def arg_op(
         self, op_name, arr, block_slice, other_argoptima=None, other_optima=None
     ):
         if op_name == "argmin":
-            arr_argmin = np.argmin(arr)
+            arr_argmin = cp.argmin(arr)
             arr_min = arr[arr_argmin]
             if other_optima is not None and other_optima < arr_min:
                 return other_argoptima, other_optima
             return block_slice.start + arr_argmin, arr_min
         elif op_name == "argmax":
-            arr_argmax = np.argmax(arr)
+            arr_argmax = cp.argmax(arr)
             arr_max = arr[arr_argmax]
             if other_optima is not None and other_optima > arr_max:
                 return other_argoptima, other_optima

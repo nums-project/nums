@@ -24,6 +24,7 @@ from nums.core.array.application import ArrayApplication
 def init(
     address: Optional[str] = None,
     num_cpus: Optional[int] = None,
+    num_gpus: Optional[int] = None,
     cluster_shape: Optional[tuple] = None,
 ):
     # pylint: disable = import-outside-toplevel
@@ -32,6 +33,7 @@ def init(
     if cluster_shape is not None:
         settings.cluster_shape = cluster_shape
         settings.num_cpus = num_cpus
+        # settings.num_gpus = num_gpus #TODO: This is not yet implemented.
     if address is not None:
         settings.address = address
     _instance()

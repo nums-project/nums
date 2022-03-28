@@ -87,7 +87,9 @@ def create():
     elif backend_name == "mpi":
         backend: Backend = MPIBackend()
     elif backend_name == "gpu":
-        backend: Backend = GPUSerialBackend() #TODO: For now implementing a serial backend
+        backend: Backend = (
+            GPUSerialBackend()
+        )  # TODO: For now implementing a serial backend
     elif backend_name == "ray-scheduler":
         use_head = settings.use_head
         num_nodes = int(np.product(settings.cluster_shape))
@@ -117,15 +119,25 @@ def create():
         raise Exception("Unexpected backend name %s" % settings.backend_name)
     backend.init()
 
-    kernel_module = {"numpy": numpy_kernel}[settings.kernel_name]
+    device_type = "cpu"
+    # TODO: this is temporary
+    if backend_name == "gpu":
+        from nums.core.kernel import cupy_kernel
+
+        kernel_module = {"cupy": cupy_kernel}[
+            "cupy"
+        ]  # TODO: Figure out what is going on here
+        device_type = "gpu"
+    else:
+        kernel_module = {"numpy": numpy_kernel}[settings.kernel_name]
 
     if settings.device_grid_name == "cyclic":
         device_grid: DeviceGrid = CyclicDeviceGrid(
-            settings.cluster_shape, "cpu", backend.devices()
+            settings.cluster_shape, device_type, backend.devices()
         )
     elif settings.device_grid_name == "packed":
         device_grid: DeviceGrid = PackedDeviceGrid(
-            settings.cluster_shape, "cpu", backend.devices()
+            settings.cluster_shape, device_type, backend.devices()  # TODO: GPU?
         )
     else:
         raise Exception("Unexpected device grid name %s" % settings.device_grid_name)

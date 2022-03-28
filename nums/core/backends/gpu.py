@@ -21,22 +21,18 @@ import ray
 
 from nums.core.grid.grid import Device
 
-from .utils import get_num_cores
+from .utils import get_num_cores, get_num_gpus
 from .base import Backend
 from .utils import get_private_ip
 
-
-#TODO:
-# from nums.core.kernel import cupy_kernel
-
-
 ### This is a serial gpu implementation (No communication)
 class GPUSerialBackend(Backend):
-
-    def __init__(self, num_cpus: Optional[int] = None):
+    def __init__(self, num_cpus: Optional[int] = None, num_gpus: Optional[int] = None):
         self.num_cpus = int(get_num_cores()) if num_cpus is None else num_cpus
         self._remote_functions: dict = {}
         self._actors: dict = {}
+        # self.num_gpus = int(get_num_gpus()) if num_gpus is None else num_gpus #TODO: implement multiple gpus
+        self.num_gpus = 1
 
     def init(self):
         pass
@@ -48,7 +44,13 @@ class GPUSerialBackend(Backend):
         """
         Put object into backend storage and force placement on the relevant node.
         """
-        return self.call("identity", [value], {}, device, {})
+        import cupy as cp
+        import numpy as np
+
+        if np.isscalar(value):
+            return value
+
+        return cp.array(value)
 
     def get(self, object_ids: Union[Any, List]):
         """
@@ -56,21 +58,22 @@ class GPUSerialBackend(Backend):
 
         CuPy also uses .get() to copy to CPU memory to serve to user.
         """
-        self.cp.cuda.Device(0).synchronize()
-        if isinstance(x, list):
-            return [a.get() for a in x]
+        import cupy as cp
+
+        cp.cuda.Device(0).synchronize()
+        if isinstance(object_ids, list):
+            return [a.get() for a in object_ids if type(a) is not bool]
         else:
-            return x.get()
+            return object_ids.get()
 
     def remote(self, function: FunctionType, remote_params: Dict):
         """
         Return a callable remote function with remote_params.
         """
-        r = ray.remote(num_cpus=1, **remote_params)
-        return r(function)
+        return function
 
     def devices(self):
-        return [Device(0, "localhost", "gpu", 0)] # Just maps to 1 GPU
+        return [Device(0, "localhost", "gpu", 0)]  # Just maps to 1 GPU
         # node_id: int
         # node_addr: str
         # device_type: str
@@ -79,12 +82,12 @@ class GPUSerialBackend(Backend):
     def register(self, name: str, func: callable, remote_params: Dict = None):
         if name in self._remote_functions:
             return
+        if remote_params is None:
+            remote_params = {}
         self._remote_functions[name] = self.remote(func, remote_params)
 
     def call(self, name: str, args, kwargs, device: Device, options: Dict):
-        raise NotImplementedError(
-            "Implement RPC as e.g. " "self.remote_functions[name](*args, **new_kwargs)"
-        )
+        return self._remote_functions[name](*args, **kwargs)
 
     def register_actor(self, name: str, cls: type):
         """
@@ -92,7 +95,8 @@ class GPUSerialBackend(Backend):
         :param cls: The Python class to convert into an actor.
         :return: None
         """
-        raise NotImplementedError()
+        assert name not in self._actors
+        self._actors[name] = cls
 
     def make_actor(self, name: str, *args, device: Device = None, **kwargs):
         """
@@ -102,7 +106,7 @@ class GPUSerialBackend(Backend):
         :param kwargs: kwargs to pass to __init__.
         :return: An Actor.
         """
-        raise NotImplementedError()
+        return self._actors[name](*args, **kwargs)
 
     def call_actor_method(self, actor, method: str, *args, **kwargs):
         """
@@ -112,7 +116,7 @@ class GPUSerialBackend(Backend):
         :param kwargs: Method kwargs.
         :return: Result of calling method.
         """
-        raise NotImplementedError()
+        return getattr(actor, method)(*args, **kwargs)
 
     def num_cores_total(self):
-        raise NotImplementedError()
+        return self.num_gpus
