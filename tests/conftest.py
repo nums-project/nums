@@ -23,7 +23,7 @@ from nums.core.kernel.kernel_manager import KernelManager
 from nums.core.grid.grid import DeviceGrid, CyclicDeviceGrid, PackedDeviceGrid
 from nums.core.backends import utils as backend_utils
 from nums.core.filesystem import FileSystem
-from nums.core.backends import Backend, SerialBackend, RayBackend, MPIBackend
+from nums.core.backends import Backend, SerialBackend, RayBackend, MPIBackend, GPUSerialBackend
 
 
 # pylint: disable=protected-access, import-outside-toplevel
@@ -140,6 +140,10 @@ def get_app(backend_name, device_grid_name="cyclic"):
         backend: Backend = MPIBackend()
         backend.init()
         cluster_shape = (len(backend.devices()), 1)
+    elif backend_name == "gpu":
+        backend: Backend = GPUSerialBackend()
+        backend.init()
+        cluster_shape = (1, 1) #TODO temporary
     else:
         raise Exception("Unexpected backend name %s" % backend_name)
 
