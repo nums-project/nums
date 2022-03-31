@@ -160,7 +160,7 @@ def test_bop(app_inst_mock_small):
         axis=1,
         axis_block_size=X.block_shape[1],
     )
-    theta: GraphArray = app.zeros((Xc.shape[1],), (Xc.block_shape[1],), dtype=Xc.dtype)
+    theta: BlockArray = app.zeros((Xc.shape[1],), (Xc.block_shape[1],), dtype=Xc.dtype)
     X_ga: GraphArray = GraphArray.from_ba(Xc, cluster_state)
     # y_ga: GraphArray = GraphArray.from_ba(y, cluster_state)
     theta_ga: GraphArray = GraphArray.from_ba(theta, cluster_state)
@@ -170,10 +170,12 @@ def test_bop(app_inst_mock_small):
     mu_ga: GraphArray = collapse_graph_array(app, one_ga / (one_ga + app.exp(-Z_ga)))
     mu_ba: BlockArray = compute_graph_array(app, mu_ga)
     mu_ba.touch()
+    print(mu_ba.get())
 
 
 def test_sparse_bop(app_inst_mock_small):
     from nums.core.array.application import ArrayApplication
+    from nums.core.array.sparse import SparseBlockArray
     from nums.experimental.optimizer.grapharray import GraphArray
     from nums.experimental.optimizer.tree_search import RandomTS
 
@@ -194,23 +196,67 @@ def test_sparse_bop(app_inst_mock_small):
             max_reduction_pairs=1,
             force_final_action=True,
         ).solve(ga)
-        return BlockArray(result_ga.grid, app.km, result_ga.to_blocks())
+        return result_ga.to_ba()
 
     app = app_inst_mock_small
     cluster_state = ClusterState(app.km.devices())
     X = app.random.sparse_normal(shape=(10, 3), block_shape=(5, 3))
-    # y = app.random.integers(0, 2, shape=(10,), block_shape=(5,))
     Xc = X
-    theta: GraphArray = app.zeros((Xc.shape[1],), (Xc.block_shape[1],), dtype=Xc.dtype)
+    theta: SparseBlockArray = SparseBlockArray.from_ba(
+        app.zeros((Xc.shape[1],), (Xc.block_shape[1],), dtype=Xc.dtype)
+    )
     X_ga: GraphArray = GraphArray.from_ba(Xc, cluster_state)
-    # y_ga: GraphArray = GraphArray.from_ba(y, cluster_state)
     theta_ga: GraphArray = GraphArray.from_ba(theta, cluster_state)
     Z_ga: GraphArray = X_ga @ theta_ga
     Z_ga: GraphArray = collapse_graph_array(app, Z_ga)
-    one_ga: GraphArray = GraphArray.from_ba(app.one, cluster_state)
+    one_ga: GraphArray = GraphArray.from_ba(
+        SparseBlockArray.from_scalar(1, app.km), cluster_state
+    )
     mu_ga: GraphArray = collapse_graph_array(app, one_ga / (one_ga + app.exp(-Z_ga)))
-    mu_ba: BlockArray = compute_graph_array(app, mu_ga)
-    mu_ba.touch()
+    mu_ba: SparseBlockArray = compute_graph_array(app, mu_ga)
+    print(mu_ba.todense().get())
+
+
+def test_sparse_bop_2(app_inst_mock_small):
+    from nums.core.array.application import ArrayApplication
+    from nums.core.array.sparse import SparseBlockArray
+    from nums.experimental.optimizer.grapharray import GraphArray
+    from nums.experimental.optimizer.tree_search import RandomTS
+
+    random_seed = 1337
+
+    def collapse_graph_array(app: ArrayApplication, ga):
+        return RandomTS(
+            seed=random_seed,
+            max_samples_per_step=1,
+            max_reduction_pairs=1,
+            force_final_action=True,
+        ).solve(ga)
+
+    def compute_graph_array(app: ArrayApplication, ga) -> BlockArray:
+        result_ga: GraphArray = RandomTS(
+            seed=random_seed,
+            max_samples_per_step=1,
+            max_reduction_pairs=1,
+            force_final_action=True,
+        ).solve(ga)
+        return result_ga.to_ba()
+
+    app = app_inst_mock_small
+    cluster_state = ClusterState(app.km.devices())
+    P_sba = app.random.sparse_normal(shape=(10, 3), block_shape=(5, 3), p=0.2)
+    Q_sba = app.random.sparse_normal(shape=(10, 3), block_shape=(5, 3), p=0.2)
+    S_sba = app.random.sparse_uniform(shape=(10, 10), block_shape=(5, 5), p=0.5)
+    P_ga = GraphArray.from_ba(P_sba, cluster_state)
+    Q_ga = GraphArray.from_ba(Q_sba, cluster_state)
+    S_ga = GraphArray.from_ba(S_sba, cluster_state)
+    X_sba: SparseBlockArray = compute_graph_array(app, S_ga - P_ga @ Q_ga.T)
+    X_sba.touch()
+
+    P = P_sba.to_ba().get()
+    Q = Q_sba.to_ba().get()
+    S = S_sba.to_ba().get()
+    assert np.allclose(S - P @ Q.T, X_sba.to_ba().get())
 
 
 if __name__ == "__main__":

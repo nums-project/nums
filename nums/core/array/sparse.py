@@ -35,6 +35,14 @@ class SparseBlock(Block):
 
     @property
     def nnz(self):
+        if self._nnz is None:
+            self._nnz = self._km.sparse_nnz(
+                self.oid,
+                syskwargs={
+                    "grid_entry": self.grid_entry,
+                    "grid_shape": self.grid_shape,
+                },
+            )
         if not array_utils.is_int(self._nnz):
             self._nnz = self._km.get(self._nnz)
         return self._nnz
@@ -84,6 +92,7 @@ class SparseBlock(Block):
             transposed=not self.transposed,
             km=self._km,
         )
+        blockT.oid = self.oid
         if not defer:
             blockT.transposed = False
             if redistribute:
@@ -161,7 +170,6 @@ class SparseBlock(Block):
         block._device = device
         return block
 
-    # TODO: check or convert other (could be scalar)
     def bop(self, op_name, other, args: dict, device=None):
         if not isinstance(other, Block):
             other = self._block_from_scalar(other)
@@ -193,11 +201,15 @@ class SparseBlock(Block):
             block._nnz = self._km.sparse_nnz(block.oid, syskwargs=syskwargs)
         return block
 
+    # TODO: densify when fill_value != 0
     def tensordot(self, other, axes):
+        assert self.fill_value == 0
+        if not other.is_dense:
+            assert other.fill_value == 0
         return self.bop("tensordot", other, args={"axes": axes})
 
 
-# TODO: merge with BlockArray
+# TODO: merge with BlockArray, have decorator for dense-only methods?
 class SparseBlockArray(BlockArray):
     def __init__(
         self,
@@ -254,15 +266,36 @@ class SparseBlockArray(BlockArray):
         return self._nbytes
 
     @classmethod
-    def from_scalar(cls, val, km, fill_value=None):
-        if fill_value is None:
-            fill_value = val
-        ba = BlockArray.from_np(np.array(val), block_shape=(), copy=False, km=km)
-        return SparseBlockArray.from_ba(ba, fill_value)
+    def from_np(cls, arr, block_shape, copy, km, fill_value=0):
+        dtype_str = str(arr.dtype)
+        grid = ArrayGrid(arr.shape, block_shape, dtype_str)
+        rarr = SparseBlockArray(grid, km, fill_value)
+        grid_entry_iterator = grid.get_entry_iterator()
+        for grid_entry in grid_entry_iterator:
+            grid_slice = grid.get_slice(grid_entry)
+            block = arr[grid_slice]
+            if copy:
+                block = np.copy(block)
+            # TODO: generalize for different kernels
+            block = sparse.COO.from_numpy(block, fill_value)
+            rarr.blocks[grid_entry].oid = km.put(
+                block,
+                syskwargs={"grid_entry": grid_entry, "grid_shape": grid.grid_shape},
+            )
+            rarr.blocks[grid_entry].dtype = getattr(np, dtype_str)
+        return rarr
+
+    @classmethod
+    def from_scalar(cls, val, km):
+        if not array_utils.is_scalar(val):
+            raise ValueError("%s is not a scalar." % val)
+        return SparseBlockArray.from_np(
+            np.array(val), (), copy=False, km=km, fill_value=val
+        )
 
     @classmethod
     def from_blocks(cls, arr: np.ndarray, result_shape, km, fill_value):
-        sample_idx = tuple(0 for dim in arr.shape)
+        sample_idx = tuple(0 for _ in arr.shape)
         if isinstance(arr, SparseBlock):
             sample_block = arr
             result_shape = ()
@@ -287,6 +320,9 @@ class SparseBlockArray(BlockArray):
 
     @classmethod
     def from_ba(cls, ba: BlockArrayBase, fill_value=0):
+        assert (
+            ba.shape != ()
+        ), "from_ba does not support scalar BlockArray. Use from_scalar."
         grid = ArrayGrid(ba.shape, ba.block_shape, ba.dtype.__name__)
         sba = SparseBlockArray(grid, ba.km, fill_value)
         for grid_entry in grid.get_entry_iterator():
@@ -343,6 +379,21 @@ class SparseBlockArray(BlockArray):
         if block_shape is None:
             block_shape = km.get_block_shape(np_array.shape, np_array.dtype)
         return BlockArray.from_np(np_array, block_shape, False, km)
+
+    def transpose(self, defer=False, redistribute=False):
+        if defer and redistribute:
+            warnings.warn("defer is True, redistribute=True will be ignored.")
+        metaT = self.grid.to_meta()
+        metaT["shape"] = tuple(reversed(metaT["shape"]))
+        metaT["block_shape"] = tuple(reversed(metaT["block_shape"]))
+        gridT = ArrayGrid.from_meta(metaT)
+        rarrT = SparseBlockArray(gridT, self.km, self.fill_value)
+        rarrT.blocks = np.copy(self.blocks.T)
+        for grid_entry in rarrT.grid.get_entry_iterator():
+            rarrT.blocks[grid_entry] = rarrT.blocks[grid_entry].transpose(
+                defer, redistribute
+            )
+        return rarrT
 
     def check_or_convert_other(self, other, compute_block_shape=False):
         block_shape = None if compute_block_shape else self.block_shape
@@ -511,7 +562,8 @@ class SparseBlockArray(BlockArray):
         ):
             raise ValueError("shape-mismatch for sum")
 
-        # Pydata/Sparse only works with fill_value=0
+        # Pydata/Sparse only works with fill_value == 0
+        # TODO: densify when fill_value != 0
         assert self.fill_value == 0
         if isinstance(other, SparseBlockArray):
             assert other.fill_value == 0

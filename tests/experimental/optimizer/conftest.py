@@ -41,7 +41,8 @@ def compute_graph_array(ga: GraphArray) -> BlockArray:
         seed=rs, max_samples_per_step=1, max_reduction_pairs=1, force_final_action=True
     ).solve(ga)
     result_ga.grid, result_ga.to_blocks()
-    return BlockArray(result_ga.grid, KernelManager.instance, result_ga.to_blocks())
+    # return BlockArray(result_ga.grid, KernelManager.instance, result_ga.to_blocks())
+    return result_ga.to_ba()
 
 
 def collapse_graph_array(ga: GraphArray) -> GraphArray:

@@ -11,7 +11,7 @@ from nums.core.array.random import NumsRandomState
 def test_sparse_init(app_inst: ArrayApplication):
     x1 = np.array([[0, 0, 1, 1], [0, 0, 1, 1], [2, 2, 0, 0], [2, 2, 0, 0]])
     x_ba = app_inst.array(x1, block_shape=(2, 2))
-    x_sba = SparseBlockArray.from_ba(x_ba)
+    x_sba = SparseBlockArray.from_ba(x_ba, fill_value=0)
     assert x_sba.nnz == 8
     assert x_sba.nbytes == 8 * 8 + 2 * 8 * 8
     y_ba = x_sba.to_ba()
@@ -95,7 +95,7 @@ def test_sparse_mul(app_inst: ArrayApplication):
         1, high=5, dtype=int, shape=(100, 50), block_shape=(5, 5), p=0.1, fill_value=0
     )
     x2_sba = rs.sparse_randint(
-        1, high=5, dtype=int, shape=(100, 50), block_shape=(5, 5), p=0.1, fill_value=0
+        1, high=5, dtype=int, shape=(1, 50), block_shape=(5, 5), p=0.1, fill_value=0
     )
     x1_ba = x1_sba.to_ba()
     x2_ba = x2_sba.to_ba()

@@ -23,6 +23,8 @@ import opt_einsum as oe
 
 from nums.core.array import utils as array_utils
 from nums.core.array.base import BlockArrayBase, Block
+from nums.core.array.blockarray import BlockArray
+from nums.core.array.sparse import SparseBlockArray
 from nums.core.kernel.kernel_manager import KernelManager
 from nums.core.grid.grid import Device
 from nums.core.storage.storage import ArrayGrid
@@ -94,6 +96,17 @@ class GraphArray(object):
             GraphArray.graphs_from_ba(ba, cluster_state, copy_on_op),
             ba.km,
             copy_on_op=copy_on_op,
+        )
+
+    def to_ba(self):
+        sample_node = self.graphs[tuple(0 for _ in self.graphs.shape)]
+        assert isinstance(
+            sample_node, Leaf
+        ), "Cannot convert unsolved GraphArray to BlockArray."
+        if sample_node.block.is_dense:
+            return BlockArray(self.grid, self.km, self.to_blocks())
+        return SparseBlockArray(
+            self.grid, self.km, sample_node.block.fill_value, self.to_blocks()
         )
 
     def __init__(
