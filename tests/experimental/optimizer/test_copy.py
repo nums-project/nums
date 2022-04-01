@@ -85,7 +85,7 @@ def graphs_equal(ga1: GraphArray, ga2: GraphArray):
 def tensordot(
     lhs: BlockArrayBase, rhs: BlockArrayBase, axes, copy_on_op=True
 ) -> GraphArray:
-    cluster_state = ClusterState(lhs.cm.devices())
+    cluster_state = ClusterState(lhs.km.devices())
     lhs_ga: GraphArray = GraphArray.from_ba(lhs, cluster_state, copy_on_op=copy_on_op)
     rhs_ga: GraphArray = GraphArray.from_ba(rhs, cluster_state, copy_on_op=copy_on_op)
     return lhs_ga.tensordot(rhs_ga, axes=axes)
@@ -101,8 +101,7 @@ def optimized_tensordot(
         max_reduction_pairs=1,
         force_final_action=True,
     ).solve(tensordot_ga)
-    return BlockArray(result_ga.grid, lhs.cm, result_ga.to_blocks())
-
+    return BlockArray(result_ga.grid, lhs.km, result_ga.to_blocks())
 
 def test_matmat(app_inst: ArrayApplication):
     X_shape, X_block_shape = (5, 10), (5, 5)
@@ -117,6 +116,6 @@ def test_matmat(app_inst: ArrayApplication):
 
 if __name__ == "__main__":
     from tests import conftest
-
-    app_inst = conftest.get_app("serial")
+    # pylint: disable=import-error
+    app_inst = conftest.get_app("ray", "packed")
     test_matmat(app_inst)

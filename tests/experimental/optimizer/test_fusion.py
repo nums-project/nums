@@ -33,14 +33,12 @@ from nums.experimental.optimizer.grapharray import (
 from nums.experimental.optimizer.tree_search import RandomTS
 from nums.experimental.optimizer.fusion import FuseGraph
 from nums.experimental.optimizer.graph import TreeNode, Leaf, FunctionNode
-
 import conftest
 
 
 def fusion1(app, x, y):
     # An element-wise expression that benefits from fusion.
     return 1.0 / (1.0 + app.exp(x - y))
-
 
 def fusion2(app, x, y):
     return x @ y
@@ -89,14 +87,13 @@ def ga_op_sparse(
         max_reduction_pairs=1,
         force_final_action=True,
     ).solve(fused_ga)
-
-    return BlockArray(result_ga.grid, s.cm, result_ga.to_blocks())
-
+    print("tree search time", time.time() - t)
+    return BlockArray(result_ga.grid, x.km, result_ga.to_blocks())
 
 def test_fusion(app_inst_mock_none):
     app = app_inst_mock_none
-    x_shape, x_block_shape = (10,), (2,)
-    y_shape, y_block_shape = (10,), (2,)
+    x_shape, x_block_shape = (10,), (5,)
+    y_shape, y_block_shape = (10,), (5,)
     real_x = np.random.random(np.product(x_shape)).reshape(x_shape)
     real_y = np.random.random(np.product(y_shape)).reshape(y_shape)
     x: BlockArray = app.array(real_x, x_block_shape)
@@ -116,10 +113,6 @@ def test_tensordot(app_inst_mock_none):
     app = app_inst_mock_none
     x_shape, x_block_shape = (4, 2), (2, 2)
     y_shape, y_block_shape = (2, 4), (2, 2)
-    real_x = np.random.random(np.product(x_shape)).reshape(x_shape)
-    real_y = np.random.random(np.product(y_shape)).reshape(y_shape)
-    x: BlockArray = app.array(real_x, x_block_shape)
-    y: BlockArray = app.array(real_y, y_block_shape)
     z: BlockArray = fusion2(app, x, y)
     start_time = time.time()
     opt_z: BlockArray = ga_op(app, fusion2, x, y)
@@ -151,7 +144,6 @@ def test_sparse_array(app_inst_mock_none):
 
 if __name__ == "__main__":
     import conftest
-
     app = conftest.mock_cluster((1, 1))
     # test_sparse_array(app)
     test_fusion(app)

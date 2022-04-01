@@ -6,7 +6,7 @@ import numpy as np
 
 from nums.core.array import utils as array_utils
 from nums.core.array.base import Block
-from nums.core.grid.grid import DeviceID
+from nums.core.grid.grid import Device
 from nums.experimental.optimizer.clusterstate import ClusterState
 from nums.experimental.optimizer.grapharray import GraphArray
 
@@ -20,13 +20,13 @@ from nums.experimental.optimizer.graph import (
 )
 
 from nums.experimental.optimizer.reduction_ops import TreeReductionOp
-from nums.core.compute.compute_manager import ComputeManager
+from nums.core.kernel.kernel_manager import KernelManager
 
 
 class FuseGraph(object):
-    def __init__(self, root: TreeNode, cm: ComputeManager, max_args=2, max_scalars=100):
+    def __init__(self, root: TreeNode, km: KernelManager, max_args=2, max_scalars=100):
         self.root = root
-        self.cm = cm
+        self.km = km
         self.max_args = max_args
         self.max_scalars = max_scalars
 
@@ -51,7 +51,6 @@ class FuseGraph(object):
             if child_leafs is None:
                 # This branch has been pruned.
                 return None, None, None
-
             if len(child_block_id_set) <= self.max_args:
                 # If it's a frontier node, then there's no point in fusing it.
                 # If it's a leaf, we still want to count toward node_leafs,
@@ -68,8 +67,7 @@ class FuseGraph(object):
             # This branch is no longer fuseable.
             # We prune here and update fuseable_nodes with child nodes.
             fuseable_nodes += fuseable_children
-            return None, None, 0
-
+            return None, None
     def __call__(self):
         fuseable_nodes = []
         root_copy = self.root.copy(self.root.cluster_state, parent=None, new_ids=False)
@@ -105,7 +103,7 @@ class FuseGraph(object):
 
     def fuse_node(self, node: TreeNode):
         result = FunctionNode(node.cluster_state)
-        result.op_func, result.children = node.fuse(result, self.cm)
+        result.op_func, result.children = node.fuse(result, self.km)
         result.set_shape(node.shape())
         result.set_grid_entry(node.grid_entry())
         result.set_grid_shape(node.grid_shape())
@@ -114,12 +112,11 @@ class FuseGraph(object):
         expression_str = node.expression()
         result.set_expression(expression_str)
         result.op_hash = self.hash_str(expression_str)
-        result.finalize(self.cm)
+        result.finalize(self.km)
         return result
 
     def hash_str(self, val: str):
         return "fused-%s" % hashlib.sha1(val.encode("utf-8")).hexdigest()
-
     @staticmethod
     def traverse_marker(node: TreeNode, marker, inputs={}):
         """

@@ -38,7 +38,7 @@ import conftest
 def optimized_tensordot(
     lhs: BlockArrayBase, rhs: BlockArrayBase, axes, copy_on_op=True
 ) -> BlockArray:
-    cluster_state: ClusterState = ClusterState(lhs.cm.devices())
+    cluster_state: ClusterState = ClusterState(lhs.km.devices())
     lhs_ga: GraphArray = GraphArray.from_ba(lhs, cluster_state, copy_on_op=copy_on_op)
     rhs_ga: GraphArray = GraphArray.from_ba(rhs, cluster_state, copy_on_op=copy_on_op)
     tensordot_ga = lhs_ga.tensordot(rhs_ga, axes=axes)
@@ -57,8 +57,7 @@ def optimized_tensordot(
     print("net_in", cluster_state.resources[1])
     print("net_out", cluster_state.resources[2])
     print("*" * 50)
-    return BlockArray(result_ga.grid, lhs.cm, result_ga.to_blocks())
-
+    return BlockArray(result_ga.grid, lhs.km, result_ga.to_blocks())
 
 def test_matvec(app_inst_mock_none):
     app = app_inst_mock_none
@@ -116,7 +115,7 @@ def test_load_sqr(app_inst_mock_big):
     Y: BlockArray = app.array(real_Y, Y_block_shape)
 
     lhs, rhs, axes = X.transpose(defer=True), Y, 1
-    cluster_state: ClusterState = ClusterState(app.cm.devices())
+    cluster_state: ClusterState = ClusterState(app.km.devices())
     lhs_ga: GraphArray = GraphArray.from_ba(lhs, cluster_state)
     rhs_ga: GraphArray = GraphArray.from_ba(rhs, cluster_state)
     tensordot_ga = lhs_ga.tensordot(rhs_ga, axes=axes)
@@ -160,7 +159,7 @@ def test_load_single_block_rhs(app_inst_mock_big):
     Y: BlockArray = app.array(real_Y, Y_block_shape)
 
     lhs, rhs, axes = X, Y, 1
-    cluster_state: ClusterState = ClusterState(app.cm.devices())
+    cluster_state: ClusterState = ClusterState(app.km.devices())
     lhs_ga: GraphArray = GraphArray.from_ba(lhs, cluster_state)
     rhs_ga: GraphArray = GraphArray.from_ba(rhs, cluster_state)
     tensordot_ga = lhs_ga.tensordot(rhs_ga, axes=axes)

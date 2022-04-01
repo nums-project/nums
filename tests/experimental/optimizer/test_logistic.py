@@ -100,8 +100,7 @@ def test_graph_array_logistic(app_inst_mock_small):
         axis_block_size=X.block_shape[1],
     )
     theta: BlockArray = app.zeros((Xc.shape[1],), (Xc.block_shape[1],), dtype=Xc.dtype)
-
-    cluster_state = ClusterState(app.cm.devices())
+    cluster_state = ClusterState(app.km.devices())
     X_ga = GraphArray.from_ba(Xc, cluster_state)
     y_ga = GraphArray.from_ba(y, cluster_state)
     theta_ga = GraphArray.from_ba(theta, cluster_state)
@@ -123,7 +122,6 @@ def test_graph_array_logistic(app_inst_mock_small):
 
 if __name__ == "__main__":
     import conftest
-
     app = conftest.mock_cluster((4, 1))
     test_logistic(app)
     test_graph_array_logistic(app)
