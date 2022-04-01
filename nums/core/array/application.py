@@ -351,45 +351,6 @@ class ArrayApplication(object):
         return rarr
 
     def diag(self, X: BlockArray) -> BlockArray:
-        def find_diag_output_blocks(X: BlockArray, total_elements: int):
-            # The i,j entry corresponding to a block in X_blocks.
-            block_i, block_j = 0, 0
-
-            # The i,j entry within the current block.
-            element_i, element_j = 0, 0
-
-            # Keep track of the no of elements found so far.
-            count = 0
-
-            # Start at block 0,0.
-            block = X.blocks[(0, 0)]
-
-            # Each element contains block indices, diag offset,
-            # and the total elements required from the block.
-            diag_meta = []
-
-            while count < total_elements:
-                if element_i > block.shape[0] - 1:
-                    block_i = block_i + 1
-                    element_i = 0
-                if element_j > block.shape[1] - 1:
-                    block_j = block_j + 1
-                    element_j = 0
-
-                block = X.blocks[(block_i, block_j)]
-                block_rows, block_cols = block.shape[0], block.shape[1]
-                offset = -element_i if element_i > element_j else element_j
-                total_elements_block = (
-                    min(block_rows - 1 - element_i, block_cols - 1 - element_j) + 1
-                )
-                diag_meta.append(((block_i, block_j), offset, total_elements_block))
-                count, element_i = (
-                    count + total_elements_block,
-                    element_i + total_elements_block,
-                )
-                element_j = element_j + total_elements_block
-            return diag_meta
-
         if len(X.shape) == 1:
             shape = X.shape[0], X.shape[0]
             block_shape = X.block_shape[0], X.block_shape[0]
@@ -412,7 +373,7 @@ class ArrayApplication(object):
             out_block_shape = (min(X.block_shape),)
             # Obtain the block indices which contain the diagonal of the matrix.
 
-            diag_meta = find_diag_output_blocks(X, out_shape[0])
+            diag_meta = array_utils.find_diag_output_blocks(X.blocks, out_shape[0])
             output_block_arrays = []
             out_grid_shape = (len(diag_meta),)
             count = 0
@@ -440,6 +401,90 @@ class ArrayApplication(object):
         else:
             raise ValueError("X must have 1 or 2 axes.")
         return rarr
+
+    def _stack_copy(self, X):
+        assert len(X.shape) == 1
+        output_shape = (max(X.shape), max(X.shape))
+        output_block_shape = (X.block_shape[0], X.block_shape[0])
+        output_arr_grid = ArrayGrid(output_shape, output_block_shape, X.dtype.__name__)
+        output_block_array = BlockArray(output_arr_grid, self.cm)
+        max_block_rows, max_block_cols = (
+            output_block_array.blocks.shape[0],
+            output_block_array.blocks.shape[1],
+        )
+        block_row_index = 0
+        for i in range(max_block_rows):
+            block_row_index = 0
+            for j in range(max_block_cols):
+                syskwargs = {
+                    "grid_entry": (i, j),
+                    "grid_shape": output_arr_grid.grid_shape,
+                }
+                block = output_block_array.blocks[(i, j)]
+                rows, cols = block.shape[0], block.shape[1]
+                output_block_array.blocks[(i, j)].oid = self.cm.triu_copy(
+                    X.blocks[block_row_index].oid, rows, cols, syskwargs=syskwargs
+                )
+                block_row_index += 1
+        return output_block_array
+
+    def triu(self, X: BlockArray):
+        if len(X.shape) == 1:
+            return self.triu(self._stack_copy(X))
+        elif len(X.shape) == 2:
+            if X.shape[0] == 1:
+                return X
+            diag_meta = array_utils.find_diag_output_blocks(X.blocks, min(X.shape))
+            output_arr_grid = ArrayGrid(X.shape, X.block_shape, X.dtype.__name__)
+            output_block_array = BlockArray(output_arr_grid, self.cm)
+            visited = dict()
+            total_row_blocks, total_col_blocks = X.blocks.shape[0], X.blocks.shape[1]
+            for block_indices, offset, total_elements in diag_meta:
+                syskwargs = {
+                    "grid_entry": block_indices,
+                    "grid_shape": output_arr_grid.grid_shape,
+                }
+                output_block_array.blocks[block_indices].oid = self.cm.triu(
+                    X.blocks[block_indices].oid,
+                    offset,
+                    False,
+                    total_elements,
+                    syskwargs=syskwargs,
+                )
+                visited[block_indices] = 1
+            for block_indices, offset, total_elements in diag_meta:
+                row_c, col_c = block_indices[0] + 1, block_indices[1]
+                while row_c < total_row_blocks:
+                    syskwargs = {
+                        "grid_entry": (row_c, col_c),
+                        "grid_shape": output_arr_grid.grid_shape,
+                    }
+                    if (row_c, col_c) in visited:
+                        output_block_array.blocks[(row_c, col_c)].oid = self.cm.triu(
+                            output_block_array.blocks[(row_c, col_c)].oid,
+                            offset,
+                            True,
+                            total_elements,
+                            syskwargs=syskwargs,
+                        )
+                    else:
+                        output_block_array.blocks[(row_c, col_c)].oid = self.cm.triu(
+                            X.blocks[(row_c, col_c)].oid,
+                            offset,
+                            True,
+                            total_elements,
+                            syskwargs=syskwargs,
+                        )
+                        visited[(row_c, col_c)] = 1
+                    row_c += 1
+
+            for i in range(total_row_blocks):
+                for j in range(total_col_blocks):
+                    if (i, j) not in visited:
+                        output_block_array.blocks[(i, j)].oid = X.blocks[(i, j)].oid
+            return output_block_array
+        else:
+            raise NotImplementedError()
 
     def arange(self, start_in, shape, block_shape, step=1, dtype=None) -> BlockArray:
         assert step == 1
