@@ -173,6 +173,7 @@ class Leaf(TreeNode):
         leaf.parent = parent
         leaf.block = self.block
         leaf.copy_on_op = self.copy_on_op
+        leaf.marker = self.marker
         return leaf
 
     def get_leafs(self):

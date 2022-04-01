@@ -49,6 +49,7 @@ class GraphArray(object):
             leaf: Leaf = Leaf(cluster_state)
             leaf.block = block
             leaf.copy_on_op = copy_on_op
+            leaf.marker = -1
             graphs[grid_entry] = leaf
         return graphs
 

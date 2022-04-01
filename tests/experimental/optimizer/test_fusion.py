@@ -53,6 +53,7 @@ def fusion3(app, s, q, p):
 def ga_op(
     app, func, x: BlockArray, y: BlockArray, copy_on_op=True, max_args=2
 ) -> BlockArray:
+    cluster_state: ClusterState = ClusterState(x.cm.devices())
     x_ga: GraphArray = GraphArray.from_ba(x, cluster_state, copy_on_op=copy_on_op)
     y_ga: GraphArray = GraphArray.from_ba(y, cluster_state, copy_on_op=copy_on_op)
     op_ga: GraphArray = func(app, x_ga, y_ga)
@@ -94,8 +95,8 @@ def ga_op_sparse(
 
 def test_fusion(app_inst_mock_none):
     app = app_inst_mock_none
-    x_shape, x_block_shape = (100,), (2,)
-    y_shape, y_block_shape = (100,), (2,)
+    x_shape, x_block_shape = (10,), (2,)
+    y_shape, y_block_shape = (10,), (2,)
     real_x = np.random.random(np.product(x_shape)).reshape(x_shape)
     real_y = np.random.random(np.product(y_shape)).reshape(y_shape)
     x: BlockArray = app.array(real_x, x_block_shape)
@@ -130,9 +131,9 @@ def test_tensordot(app_inst_mock_none):
 
 def test_sparse_array(app_inst_mock_none):
     app = app_inst_mock_none
-    q_shape, q_block_shape = (100, 2), (2, 2)
-    p_shape, p_block_shape = (200, 2), (2, 2)
-    s_shape, s_block_shape = (100, 200), (2, 2)
+    q_shape, q_block_shape = (10, 2), (2, 2)
+    p_shape, p_block_shape = (20, 2), (2, 2)
+    s_shape, s_block_shape = (10, 20), (2, 2)
     real_q = np.random.random(np.product(q_shape)).reshape(q_shape)
     real_p = np.random.random(np.product(p_shape)).reshape(p_shape)
     real_s = np.random.random(np.product(s_shape)).reshape(s_shape)
@@ -152,8 +153,8 @@ if __name__ == "__main__":
     import conftest
 
     app = conftest.mock_cluster((1, 1))
-    test_sparse_array(app)
-    # test_fusion(app)
+    # test_sparse_array(app)
+    test_fusion(app)
     conftest.destroy_mock_cluster(app)
 
     # app = conftest.mock_cluster((10, 1))
