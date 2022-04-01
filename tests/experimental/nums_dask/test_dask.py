@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +14,7 @@
 
 
 # pylint: disable=import-outside-toplevel
-def test_dask_system():
+def test_dask_backend():
     import numpy as np
     from nums.core import linalg
     import nums.numpy as nps
@@ -23,13 +22,13 @@ def test_dask_system():
     from nums.core.array.application import ArrayApplication
     from nums.core.array.blockarray import BlockArray
     from nums.core import application_manager
-    from nums.experimental.nums_dask.dask_system import DaskSystem
+    from nums.experimental.nums_dask.dask_backend import DaskBackend
 
-    settings.system_name = "dask"
+    settings.backend_name = "dask"
     assert not application_manager.is_initialized()
     app: ArrayApplication = application_manager.instance()
 
-    assert isinstance(app.cm.system, DaskSystem)
+    assert isinstance(app.km.backend, DaskBackend)
 
     X: BlockArray = app.random.normal(shape=(3, 3), block_shape=(3, 3))
     Y: BlockArray = app.random.normal(shape=(3, 3), block_shape=(3, 3))
@@ -51,4 +50,4 @@ def test_dask_system():
 
 
 if __name__ == "__main__":
-    test_dask_system()
+    test_dask_backend()

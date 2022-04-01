@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,7 +56,7 @@ def test_quickselect(app_inst: ArrayApplication):
     correct = [7, 6, 5, 5, 4, 3, 2, 1]
     for i in range(-8, 8):
         value_oid = app_inst._quickselect(ba_oids, i)
-        value = app_inst.cm.get(value_oid)
+        value = app_inst.km.get(value_oid)
         assert value == correct[i]
 
     # Randomized tests
@@ -68,7 +67,7 @@ def test_quickselect(app_inst: ArrayApplication):
         ba_x = app_inst.random.random(shape=shape, block_shape=block_shape)
         ba_oids = ba_x.flattened_oids()
         value_oid = app_inst._quickselect(ba_oids, k)
-        value = app_inst.cm.get(value_oid)
+        value = app_inst.km.get(value_oid)
         assert value == np.partition(ba_x.get(), -k - 1)[-k - 1]
 
 
@@ -164,11 +163,11 @@ if __name__ == "__main__":
     from nums.core import application_manager
     from nums.core import settings
 
-    settings.system_name = "serial"
+    settings.backend_name = "mpi"
     app_inst = application_manager.instance()
 
     test_quantile_percentile(app_inst)
+    test_median(app_inst)
     test_cov(app_inst)
-    # test_quickselect(app_inst)
-    # test_median(app_inst)
-    # test_top_k(app_inst)
+    test_quickselect(app_inst)
+    test_top_k(app_inst)

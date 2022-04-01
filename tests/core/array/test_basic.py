@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,18 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+# pylint: disable=import-error, wrong-import-order, unused-import
 import numpy as np
 import pytest
 
 from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray
 from nums.core.grid.grid import ArrayGrid
-from nums.core.grid.grid import DeviceID
+from nums.core.grid.grid import Device
 from nums.core.storage.storage import BimodalGaussian
-from nums.core.systems import utils as systems_utils
+from nums.core.backends import utils as backend_utils
 
-import common  # pylint: disable=import-error, wrong-import-order
+import common
 
 
 def test_scalar_op(app_inst: ArrayApplication):
@@ -38,10 +37,10 @@ def test_scalar_op(app_inst: ArrayApplication):
         app_inst.scalar(np.array(1))
 
 
-def test_device_id_hashing(app_inst: ArrayApplication):
+def test_device_hashing(app_inst: ArrayApplication):
     assert app_inst is not None
-    d1 = DeviceID(0, "node:localhost1", "cpu", 0)
-    d2 = DeviceID(1, "node:localhost2", "cpu", 0)
+    d1 = Device(0, "node:localhost1", "cpu", 0)
+    d2 = Device(1, "node:localhost2", "cpu", 0)
     x = {}
     x[d1] = "one"
     x[d2] = "two"
@@ -85,7 +84,8 @@ def test_concatenate(app_inst: ArrayApplication):
     real_X_concated = np.concatenate([real_X, real_ones], axis=axis)
     assert np.allclose(X_concated.get(), real_X_concated)
 
-    real_X2 = np.random.random_sample(1000 * 17).reshape(1000, 17)
+    rs = np.random.RandomState(1337)
+    real_X2 = rs.random_sample(1000 * 17).reshape(1000, 17)
     X2 = app_inst.array(real_X2, block_shape=(X.block_shape[0], 3))
     X_concated = app_inst.concatenate(
         [X, ones, X2], axis=axis, axis_block_size=X.block_shape[axis]
@@ -108,10 +108,10 @@ def test_split(app_inst: ArrayApplication):
         "grid_shape": x.blocks[0].grid_shape,
         "options": {"num_returns": 2},
     }
-    res1, res2 = x.cm.split(
+    res1, res2 = x.km.split(
         x.blocks[0].oid, 2, axis=0, transposed=False, syskwargs=syskwargs
     )
-    ba = BlockArray(ArrayGrid((4,), (2,), x.dtype.__name__), x.cm)
+    ba = BlockArray(ArrayGrid((4,), (2,), x.dtype.__name__), x.km)
     ba.blocks[0].oid = res1
     ba.blocks[1].oid = res2
     assert np.allclose([1.0, 2.0, 3.0, 4.0], ba.get())
@@ -120,10 +120,6 @@ def test_split(app_inst: ArrayApplication):
 def test_touch(app_inst: ArrayApplication):
     ones = app_inst.ones((123, 456), (12, 34))
     assert ones.touch() is ones
-
-
-def test_num_cores(app_inst: ArrayApplication):
-    assert np.allclose(app_inst.cm.num_cores_total(), systems_utils.get_num_cores())
 
 
 def ideal_tall_skinny_shapes(size, dtype):
@@ -218,7 +214,7 @@ def test_compute_block_shape(app_inst: ArrayApplication):
         shape, expected_block_shape, expected_grid_shape = ideal_tall_skinny_shapes(
             size_str, dtype
         )
-        block_shape = app_inst.cm.compute_block_shape(
+        block_shape = app_inst.km.compute_block_shape(
             shape, dtype, cluster_shape, num_nodes * cores_per_node
         )
         grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype.__name__)
@@ -240,7 +236,7 @@ def test_compute_block_shape(app_inst: ArrayApplication):
         shape, expected_block_shape, expected_grid_shape = ideal_square_shapes(
             size_str, dtype
         )
-        block_shape = app_inst.cm.compute_block_shape(
+        block_shape = app_inst.km.compute_block_shape(
             shape, dtype, cluster_shape, num_nodes * cores_per_node
         )
         grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype.__name__)
@@ -263,12 +259,17 @@ def test_compute_block_shape(app_inst: ArrayApplication):
 
 if __name__ == "__main__":
     # pylint: disable=import-error, no-member
-    import conftest
+    import nums
+    from nums.core import application_manager, settings
 
-    app_inst = conftest.get_app("serial")
-    test_scalar_op(app_inst)
-    test_array_integrity(app_inst)
+    np.random.seed(1331)
+
+    settings.system_name = "mpi"
+    app_inst = application_manager.instance()
+
+    # test_scalar_op(app_inst)
+    # test_array_integrity(app_inst)
     test_concatenate(app_inst)
     test_touch(app_inst)
-    test_split(app_inst)
-    test_compute_block_shape(app_inst)
+    # test_split(app_inst)
+    # test_compute_block_shape(app_inst)

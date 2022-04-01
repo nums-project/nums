@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,7 +20,7 @@ from nums.core.array import utils as _array_utils
 from nums.core.array.blockarray import BlockArray
 
 
-class RandomState(object):
+class RandomState:
     def __init__(self, seed=None):
         self._seed = seed
         self._rs = None

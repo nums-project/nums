@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -62,7 +61,7 @@ from nums.core import linalg
 #   g(mu) = (b')^{-1}(mu) = ln(mu/(1-mu)) = ln(p/(1-p)) = theta(p)
 
 
-class GLM(object):
+class GLM:
     def __init__(
         self,
         penalty="none",
@@ -87,7 +86,7 @@ class GLM(object):
             self.rs: NumsRandomState = self._app.random
         elif array_utils.is_int(random_state):
             self.rs: NumsRandomState = NumsRandomState(
-                cm=self._app.cm, seed=random_state
+                km=self._app.km, seed=random_state
             )
         elif isinstance(random_state, NumsRandomState):
             self.rs: NumsRandomState = random_state

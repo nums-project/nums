@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,7 +21,16 @@ import os
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
 
-from nums.api import init, read, write, delete, read_csv, from_modin
+from nums.api import init, read, write, delete, read_csv, from_modin, zarr_group
 from nums.core.version import __version__
 
-__all__ = ["numpy", "init", "read", "write", "delete", "read_csv", "from_modin"]
+__all__ = [
+    "numpy",
+    "init",
+    "read",
+    "write",
+    "delete",
+    "read_csv",
+    "from_modin",
+    "zarr_group",
+]

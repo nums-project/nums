@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,11 +21,11 @@ from nums.core.array import selection
 from nums.core.array import utils as array_utils
 from nums.core.array.base import Block, BlockArrayBase
 from nums.core.array.selection import BasicSelection
-from nums.core.compute.compute_manager import ComputeManager
+from nums.core.kernel.kernel_manager import KernelManager
 from nums.core.grid.grid import ArrayGrid
 
 
-class ArrayView(object):
+class ArrayView:
     @classmethod
     def from_block_array(cls, bab):
         assert isinstance(bab, BlockArrayBase)
@@ -39,7 +38,7 @@ class ArrayView(object):
 
     def __init__(self, source, sel: BasicSelection = None, block_shape: tuple = None):
         self._source: BlockArrayBase = source
-        self._cm: ComputeManager = self._source.cm
+        self._km: KernelManager = self._source.km
 
         if sel is None:
             sel = BasicSelection.from_shape(self._source.shape)
@@ -105,7 +104,7 @@ class ArrayView(object):
     def create_references(self, concrete_cls) -> BlockArrayBase:
         # TODO (hme): Double check this.
         array_cls = BlockArrayBase if concrete_cls is None else concrete_cls
-        dst_ba: BlockArrayBase = array_cls(self.grid, self._cm)
+        dst_ba: BlockArrayBase = array_cls(self.grid, self._km)
         if 0 in self.shape:
             return dst_ba
         grid_offset = self.sel.position().value // np.array(
@@ -134,7 +133,7 @@ class ArrayView(object):
 
     def create_basic_single_step(self, concrete_cls) -> BlockArrayBase:
         array_cls = BlockArrayBase if concrete_cls is None else concrete_cls
-        dst_ba: BlockArrayBase = array_cls(self.grid, self._cm)
+        dst_ba: BlockArrayBase = array_cls(self.grid, self._km)
         if 0 in self.shape:
             return dst_ba
 
@@ -162,7 +161,7 @@ class ArrayView(object):
             if dst_sel_offset_block.is_empty():
                 continue
             src_dst_intersection_arr = src_sel_clipped & dst_sel_offset_block
-            cm: ComputeManager = self._cm
+            km: KernelManager = self._km
             src_oids = []
             src_params = []
             dst_params = []
@@ -184,7 +183,7 @@ class ArrayView(object):
             dst_block: Block = dst_ba.blocks.reshape(dst_grid_bc.grid_shape)[
                 dst_grid_entry_bc
             ]
-            dst_block.oid = cm.create_block(
+            dst_block.oid = km.create_block(
                 *src_oids,
                 src_params=src_params,
                 dst_params=dst_params,
@@ -423,7 +422,7 @@ class ArrayView(object):
                 dst_params.append((dst_block_sel_loc.selector(), dst_block.transposed))
             if len(src_oids) == 0:
                 continue
-            dst_block.oid = self._cm.update_block(
+            dst_block.oid = self._km.update_block(
                 dst_block.oid,
                 *src_oids,
                 src_params=src_params,

@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright (C) 2020 NumS Development Team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,16 +26,16 @@ import nums.numpy as nps
 from nums.core.application_manager import instance as _instance
 from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray, Block
-from nums.core.compute.compute_manager import ComputeManager
+from nums.core.kernel.kernel_manager import KernelManager
 from nums.core.grid.grid import ArrayGrid
-from nums.core.systems import utils as systems_utils
+from nums.core.backends import utils as backend_utils
 
 
 def _start_rabit_tracker(num_workers: int):
     """Start Rabit tracker. The workers connect to this tracker to share
     their results."""
     # TODO (hme): Cleanup thread and tracker after training.
-    host = systems_utils.get_private_ip()
+    host = backend_utils.get_private_ip()
 
     env = {"DMLC_NUM_WORKER": num_workers}
     rabit_tracker = xgb.RabitTracker(hostIP=host, nslave=num_workers)
@@ -115,8 +114,8 @@ def train(params: Dict, data: NumsDMatrix, *args, evals=(), **kwargs):
     assert len(y.shape) == 1 or (len(y.shape) == 2 and y.shape[1] == 1)
 
     app: ArrayApplication = _instance()
-    cm: ComputeManager = app.cm
-    cm.register("xgb_train", xgb_train_remote, {})
+    km: KernelManager = app.km
+    km.register("xgb_train", xgb_train_remote, {})
 
     # Start tracker
     num_workers = X.grid.grid_shape[0]
@@ -135,7 +134,7 @@ def train(params: Dict, data: NumsDMatrix, *args, evals=(), **kwargs):
 
     X: BlockArray = X.reshape(block_shape=(X.block_shape[0], X.shape[1]))
     result: BlockArray = BlockArray(
-        ArrayGrid(shape=(X.grid.grid_shape[0],), block_shape=(1,), dtype="dict"), cm
+        ArrayGrid(shape=(X.grid.grid_shape[0],), block_shape=(1,), dtype="dict"), km
     )
     for grid_entry in X.grid.get_entry_iterator():
         X_block: Block = X.blocks[grid_entry]
@@ -145,7 +144,7 @@ def train(params: Dict, data: NumsDMatrix, *args, evals=(), **kwargs):
         else:
             y_block: Block = y.blocks[i, 0]
         syskwargs = {"grid_entry": grid_entry, "grid_shape": X.grid.grid_shape}
-        result.blocks[i].oid = cm.call(
+        result.blocks[i].oid = km.call(
             "xgb_train",
             X_block.oid,
             y_block.oid,
@@ -159,7 +158,7 @@ def train(params: Dict, data: NumsDMatrix, *args, evals=(), **kwargs):
     return result
 
 
-class XGBClassifier(object):
+class XGBClassifier:
     def __init__(
         self,
         n_estimators=100,
@@ -194,8 +193,8 @@ class XGBClassifier(object):
 
     def predict(self, X: BlockArray):
         app: ArrayApplication = _instance()
-        cm: ComputeManager = app.cm
-        cm.register("xgb_predict", xgb_predict_remote, {})
+        km: KernelManager = app.km
+        km.register("xgb_predict", xgb_predict_remote, {})
         model_block: Block = self.model.blocks[0]
         result: BlockArray = BlockArray(
             ArrayGrid(
@@ -203,14 +202,14 @@ class XGBClassifier(object):
                 block_shape=(X.block_shape[0],),
                 dtype=int.__name__,
             ),
-            cm,
+            km,
         )
         for grid_entry in X.grid.get_entry_iterator():
             i = grid_entry[0]
             X_block: Block = X.blocks[grid_entry]
             r_block: Block = result.blocks[i]
             syskwargs = {"grid_entry": grid_entry, "grid_shape": X.grid.grid_shape}
-            r_block.oid = cm.call(
+            r_block.oid = km.call(
                 "xgb_predict", model_block.oid, X_block.oid, syskwargs=syskwargs
             )
         return result
