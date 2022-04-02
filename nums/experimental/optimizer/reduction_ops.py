@@ -150,6 +150,7 @@ class TreeReductionOp(TreeNode):
         result = sorted(result, key=lambda v: (v[1].node_id, v[1].device))
         leafs, _ = zip(*result)
         return leafs
+
     def _get_actions(self, leaf_ids, **kwargs):
         assert len(leaf_ids) == 2
         use_all_devices = kwargs.get("use_all_devices", False)
@@ -250,7 +251,7 @@ class TreeReductionOp(TreeNode):
             new_leaf.parent = self.parent
             return new_leaf
         return self
-      
+
     def _collapse(self, device: Device, left: Leaf, right: Leaf):
         lblock: Block = left.block
         rblock: Block = right.block

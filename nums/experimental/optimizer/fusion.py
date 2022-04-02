@@ -68,6 +68,7 @@ class FuseGraph(object):
             # We prune here and update fuseable_nodes with child nodes.
             fuseable_nodes += fuseable_children
             return None, None
+
     def __call__(self):
         fuseable_nodes = []
         root_copy = self.root.copy(self.root.cluster_state, parent=None, new_ids=False)
@@ -117,6 +118,7 @@ class FuseGraph(object):
 
     def hash_str(self, val: str):
         return "fused-%s" % hashlib.sha1(val.encode("utf-8")).hexdigest()
+
     @staticmethod
     def traverse_marker(node: TreeNode, marker, inputs={}):
         """

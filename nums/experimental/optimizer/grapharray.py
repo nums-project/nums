@@ -60,6 +60,7 @@ class GraphArray(object):
             return GraphArray.from_ba(val, cluster_state, copy_on_op)
         else:
             from nums.core.array.blockarray import BlockArray
+
             ba: BlockArrayBase = BlockArray.to_block_array(val, km)
             return GraphArray.from_ba(ba, cluster_state, copy_on_op)
 
@@ -189,7 +190,7 @@ class GraphArray(object):
             self.cluster_state,
             result_graphs,
             self.km,
-          copy_on_op=self.copy_on_op,
+            copy_on_op=self.copy_on_op,
         )
 
     def __matmul__(self, other):
@@ -245,6 +246,7 @@ class GraphArray(object):
             self.graphs ** other.graphs,
             array_utils.broadcast_shape(self.shape, other.shape),
         )
+
     __iadd__ = __add__
     __isub__ = __sub__
     __imul__ = __mul__

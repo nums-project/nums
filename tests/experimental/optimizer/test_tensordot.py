@@ -59,6 +59,7 @@ def optimized_tensordot(
     print("*" * 50)
     return BlockArray(result_ga.grid, lhs.km, result_ga.to_blocks())
 
+
 def test_matvec(app_inst_mock_none):
     app = app_inst_mock_none
     A_shape, A_block_shape = (5, 10), (5, 5)

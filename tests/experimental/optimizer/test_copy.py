@@ -103,6 +103,7 @@ def optimized_tensordot(
     ).solve(tensordot_ga)
     return BlockArray(result_ga.grid, lhs.km, result_ga.to_blocks())
 
+
 def test_matmat(app_inst: ArrayApplication):
     X_shape, X_block_shape = (5, 10), (5, 5)
     Y_shape, Y_block_shape = (10, 5), (5, 5)
@@ -116,6 +117,7 @@ def test_matmat(app_inst: ArrayApplication):
 
 if __name__ == "__main__":
     from tests import conftest
+
     # pylint: disable=import-error
     app_inst = conftest.get_app("ray", "packed")
     test_matmat(app_inst)

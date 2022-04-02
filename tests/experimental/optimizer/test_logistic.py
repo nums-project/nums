@@ -122,6 +122,7 @@ def test_graph_array_logistic(app_inst_mock_small):
 
 if __name__ == "__main__":
     import conftest
+
     app = conftest.mock_cluster((4, 1))
     test_logistic(app)
     test_graph_array_logistic(app)

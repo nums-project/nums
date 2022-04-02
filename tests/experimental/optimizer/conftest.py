@@ -43,6 +43,7 @@ def compute_graph_array(ga: GraphArray) -> BlockArray:
     result_ga.grid, result_ga.to_blocks()
     return BlockArray(result_ga.grid, KernelManager.instance, result_ga.to_blocks())
 
+
 def collapse_graph_array(ga: GraphArray) -> GraphArray:
     return RandomTS(
         seed=rs, max_samples_per_step=1, max_reduction_pairs=1, force_final_action=True
@@ -60,6 +61,7 @@ def check_block_integrity(arr: BlockArray):
         assert arr.blocks[grid_entry].grid_entry == grid_entry
         assert arr.blocks[grid_entry].shape == arr.grid.get_block_shape(grid_entry)
 
+
 class MockMultiNodeRayBackend(RayBackend):
     def mock_devices(self, num_nodes):
         assert len(self._available_nodes) == 1
@@ -73,6 +75,7 @@ class MockMultiNodeRayBackend(RayBackend):
             did = Device(node_id, src_node_key, "cpu", 0)
             self._devices.append(did)
             self._device_to_node[did] = src_node
+
 
 class MockMultiNodeDaskBackend(DaskBackend):
     def mock_devices(self, num_workers, workers_per_node):
@@ -146,6 +149,7 @@ def mock_ray_cluster(cluster_shape):
 def destroy_mock_cluster(app: ArrayApplication):
     app.km.backend.shutdown()
     KernelManager.destroy()
+
 
 @pytest.fixture(scope="function", params=[(1, 1)])
 def app_inst_mock_none(request):

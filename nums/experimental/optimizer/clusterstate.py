@@ -20,6 +20,7 @@ import numpy as np
 
 from nums.core.grid.grid import Device
 
+
 class Counter(object):
     def __init__(self):
         self.n = -1
@@ -100,7 +101,7 @@ class ClusterState(object):
         assert block_id not in self.block_sizes and block_id not in self.block_devices
         self.block_sizes[block_id] = block_size
         self.block_devices[block_id] = devices
-        
+
     def _get_block_size(self, block_id: int) -> int:
         return self.block_sizes[block_id]
 
@@ -198,6 +199,7 @@ class ClusterState(object):
             self.commit_copy_block(block_id, device)
         self.add_resource_load(self.resources, self.mem_idx, device, op_mem)
         # self.resources[self.mem_idx][device.device] += op_mem
+
     def simulate_nary_op(
         self,
         op_mem: int,

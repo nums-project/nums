@@ -177,7 +177,7 @@ class ProgramState(object):
         else:
             root: TreeNode = tnode.get_root()
         return root.grid_entry()
-      
+
     def update_root(self, old_root, new_root):
         tree_root_grid_entry = self.get_tnode_grid_entry(old_root)
         self.arr.graphs[tree_root_grid_entry] = new_root
