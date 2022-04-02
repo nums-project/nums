@@ -151,6 +151,7 @@ class Leaf(TreeNode):
         # evolving its state across all leafs holding a reference to the block.
         super().__init__(cluster_state, tree_node_id)
         self.block = None
+        self.marker = -1
 
     def get_children(self):
         return []
