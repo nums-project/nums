@@ -201,6 +201,7 @@ class TreeReductionOp(TreeNode):
         left, right = leafs
         assert isinstance(left, Leaf) and isinstance(right, Leaf)
         resources = self.cluster_state.resources.copy()
+        resources = self.cluster_state.simulate_op(
             self._mem_cost(leafs), left.block.id, right.block.id, device, resources
         )
         return resources

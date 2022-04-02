@@ -25,6 +25,7 @@ from nums.core.grid.grid import Device
 from nums.experimental.optimizer.clusterstate import ClusterState
 from nums.core.kernel.kernel_manager import KernelManager
 
+
 def subsample(total_items, max_items, rs: np.random.RandomState):
     perms = rs.permutation(total_items)
     if total_items < max_items:
@@ -161,6 +162,7 @@ class Leaf(TreeNode):
             str(self.block.id),
             str(device),
         )
+
     def num_nodes(self):
         return 1
 
@@ -175,8 +177,8 @@ class Leaf(TreeNode):
         leaf._dtype = self._dtype
         leaf.parent = parent
         leaf.block = self.block
-        leaf.copy_on_op = self.copy_on_op
         leaf.marker = self.marker
+        leaf.copy_on_op = self.copy_on_op
         return leaf
 
     def get_leafs(self):
@@ -229,6 +231,7 @@ class UnaryOp(TreeNode):
         super().__init__(cluster_state, tree_node_id)
         self.child: TreeNode = None
         self.op_name = None
+
     def __repr__(self):
         return "UnaryOp(name=%s, id=%s, child=%s)" % (
             self.op_name,
@@ -648,7 +651,7 @@ class BinaryOp(TreeNode):
         if self.parent is not None:
             self.parent.update_child([self], [new_leaf])
         return new_leaf
-      
+
     def _collapse(self, device: Device):
         assert isinstance(self.left, Leaf) and isinstance(self.right, Leaf)
         lblock: Block = self.left.block
@@ -756,6 +759,7 @@ class BinaryOp(TreeNode):
         right_op, right_args = self.right.fuse(func_node, km)
 
         self_op = km.get_fuseable("bop")
+
         axes = 1 if self.args is None else self.args.get("axes", 1)
         self_op = partial(self_op, op=self.op_name, a1_T=False, a2_T=False, axes=axes)
         num_left = len(left_args)
@@ -844,7 +848,7 @@ class FunctionNode(TreeNode):
         new_children = []
         for child in self.children:
             if child.tree_node_id == old_child.tree_node_id:
-                new_children.append(new_children)
+                new_children.append(new_child)
             else:
                 new_children.append(child)
         self.children = new_children
@@ -934,6 +938,7 @@ class FunctionNode(TreeNode):
         if self.parent is not None:
             self.parent.update_child([self], [new_leaf])
         return new_leaf
+
     def _collapse(self, device: Device):
         km: KernelManager = None
         block_oids = []

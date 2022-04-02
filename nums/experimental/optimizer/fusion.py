@@ -161,7 +161,7 @@ class FuseGraph(object):
             _, leaf_inputs = FuseGraph.traverse_marker(graph, 0)
             if grid_entry == (0,) or grid_entry == (0, 0):  # generic
                 result_graphs[grid_entry] = FuseGraph(
-                    graph, app.cm, max_args=max_args
+                    graph, app.km, max_args=max_args
                 )()
                 fused_graph = result_graphs[grid_entry]
                 fused_graph.op_expression = fused_graph._expression
@@ -172,12 +172,12 @@ class FuseGraph(object):
                 )
                 fused_graph_copy.set_grid_entry(grid_entry)
                 result_graphs[grid_entry] = fused_graph_copy
-        return GraphArray(r.grid.copy(), r.cluster_state, result_graphs, r.cm)
+        return GraphArray(r.grid.copy(), r.cluster_state, result_graphs, r.km)
 
     @staticmethod
     def fuse_ga_unoptimized(app, r: GraphArray) -> GraphArray:
         result_graphs = np.empty_like(r.graphs, dtype=r.graphs.dtype)
         for grid_entry in r.grid.get_entry_iterator():
             graph = r.graphs[grid_entry]
-            result_graphs[grid_entry] = FuseGraph(graph, app.cm)()
-        return GraphArray(r.grid.copy(), r.cluster_state, result_graphs, r.cm)
+            result_graphs[grid_entry] = FuseGraph(graph, app.km)()
+        return GraphArray(r.grid.copy(), r.cluster_state, result_graphs, r.km)
