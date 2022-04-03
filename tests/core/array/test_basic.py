@@ -125,50 +125,50 @@ def test_touch(app_inst: ArrayApplication):
 def ideal_tall_skinny_shapes(size, dtype):
     assert dtype in (np.float32, np.float64)
     denom = 2 if dtype is np.float64 else 1
-    num_cols = 2 ** 8
+    num_cols = 2**8
     if size == "1024GB":
         # Approximately 1 TB, 1024 blocks, 1 GB / block.
-        num_rows = 2 ** 30 // denom
-        grid_shape = (2 ** 10, 1)
+        num_rows = 2**30 // denom
+        grid_shape = (2**10, 1)
     elif size == "512GB":
         # 512GB, 512 blocks, 1 GB / block.
         # Perfect fit on 8 nodes.
-        num_rows = 2 ** 29 // denom
-        grid_shape = (2 ** 9, 1)
+        num_rows = 2**29 // denom
+        grid_shape = (2**9, 1)
     elif size == "256GB":
         # 256GB, 256 blocks, 1 GB / block.
         # Perfect fit on 4 nodes.
-        num_rows = 2 ** 28 // denom
-        grid_shape = (2 ** 8, 1)
+        num_rows = 2**28 // denom
+        grid_shape = (2**8, 1)
     elif size == "128GB":
         # 128GB, 128 blocks, 1 GB / block.
         # Perfect fit on 2 nodes.
-        num_rows = 2 ** 27 // denom
-        grid_shape = (2 ** 7, 1)
+        num_rows = 2**27 // denom
+        grid_shape = (2**7, 1)
     elif size == "64GB":
         # Approximately 64GB, 64 blocks, 1 GB / block.
         # Perfect fit on 1 nodes.
-        num_rows = 2 ** 26 // denom
-        grid_shape = (2 ** 6, 1)
+        num_rows = 2**26 // denom
+        grid_shape = (2**6, 1)
     elif size == "32GB":
-        num_rows = 2 ** 25 // denom
-        grid_shape = (2 ** 6, 1)
+        num_rows = 2**25 // denom
+        grid_shape = (2**6, 1)
     elif size == "16GB":
-        num_rows = 2 ** 24 // denom
-        grid_shape = (2 ** 6, 1)
+        num_rows = 2**24 // denom
+        grid_shape = (2**6, 1)
     elif size == "8GB":
-        num_rows = 2 ** 23 // denom
-        grid_shape = (2 ** 6, 1)
+        num_rows = 2**23 // denom
+        grid_shape = (2**6, 1)
     elif size == "4GB":
-        num_rows = 2 ** 22 // denom
-        grid_shape = (2 ** 6, 1)
+        num_rows = 2**22 // denom
+        grid_shape = (2**6, 1)
     elif size == "2GB":
-        num_rows = 2 ** 21 // denom
-        grid_shape = (2 ** 6, 1)
+        num_rows = 2**21 // denom
+        grid_shape = (2**6, 1)
     elif size == "1GB":
         # Approximately 1GB, 64 blocks, 16 MB / block.
-        num_rows = 2 ** 20 // denom
-        grid_shape = (2 ** 6, 1)
+        num_rows = 2**20 // denom
+        grid_shape = (2**6, 1)
     else:
         raise Exception()
     shape = (num_rows, num_cols)
@@ -180,7 +180,7 @@ def ideal_square_shapes(size, dtype):
     assert dtype in (np.float32, np.float64)
     denom = 2 if dtype is np.float64 else 1
     # Assume 4 bytes, and start with a 1GB square array.
-    shape = np.array([2 ** 14, 2 ** 14], dtype=int)
+    shape = np.array([2**14, 2**14], dtype=int)
     if size == "4GB":
         shape *= 1 // denom
         grid_shape = (8, 8)
@@ -223,7 +223,7 @@ def test_compute_block_shape(app_inst: ArrayApplication):
             "cluster_shape=%s" % str(cluster_shape),
             "grid_shape=%s" % str(expected_grid_shape),
             "size=%s" % size_str,
-            "bytes computed=%s" % (grid.nbytes() / 10 ** 9),
+            "bytes computed=%s" % (grid.nbytes() / 10**9),
         )
         assert expected_grid_shape == grid.grid_shape
         assert expected_block_shape == block_shape
@@ -245,7 +245,7 @@ def test_compute_block_shape(app_inst: ArrayApplication):
             "cluster_shape=%s" % str(cluster_shape),
             "grid_shape=%s" % str(expected_grid_shape),
             "size=%s" % size_str,
-            "bytes computed=%s" % (grid.nbytes() / 10 ** 9),
+            "bytes computed=%s" % (grid.nbytes() / 10**9),
         )
         assert expected_grid_shape == grid.grid_shape, "%s != %s" % (
             expected_grid_shape,

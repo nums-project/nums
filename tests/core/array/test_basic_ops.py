@@ -43,7 +43,7 @@ def test_bops(app_inst: ArrayApplication):
         assert np.allclose(np_a - np_b, (ba_a - ba_b).get())
         assert np.allclose(np_a * np_b, (ba_a * ba_b).get())
         assert np.allclose(np_a / np_b, (ba_a / ba_b).get())
-        assert np.allclose(np_a ** np_b, (ba_a ** ba_b).get())
+        assert np.allclose(np_a**np_b, (ba_a**ba_b).get())
         assert np.allclose(
             scipy.special.xlogy(np_a, np_b), app_inst.xlogy(ba_a, ba_b).get()
         )

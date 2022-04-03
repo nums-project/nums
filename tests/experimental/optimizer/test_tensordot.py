@@ -90,7 +90,7 @@ def test_matmat(app_inst_mock_none):
 
 def test_big_matmat(app_inst_mock_none):
     app = app_inst_mock_none
-    num_blocks = 10 ** 3
+    num_blocks = 10**3
     X_shape, X_block_shape = (5, 5 * num_blocks), (5, 5)
     Y_shape, Y_block_shape = (5 * num_blocks, 5), (5, 5)
     real_X = np.random.random(np.product(X_shape)).reshape(X_shape)

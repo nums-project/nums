@@ -64,7 +64,7 @@ def test_ufunc(nps_app_inst):
             np_b = np.array([4, 12, 13], dtype=int)
             check_bop(name, np_a, np_b)
         elif name.endswith("shift"):
-            np_a = np.array([7 * 10 ** 3, 8 * 10 ** 3, 9 * 10 ** 3], dtype=int)
+            np_a = np.array([7 * 10**3, 8 * 10**3, 9 * 10**3], dtype=int)
             np_b = np.array([1, 2, 3], dtype=int)
             check_bop(name, np_a, np_b)
         else:
@@ -401,7 +401,7 @@ def test_overloads(nps_app_inst):
         lambda a, b: a * b,
         lambda a, b: a / b,
         lambda a, b: a // b,
-        lambda a, b: a ** b,
+        lambda a, b: a**b,
     ]
     bitwise_ops = [
         lambda a, b: a ^ b,
