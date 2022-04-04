@@ -57,7 +57,7 @@ def ga_op(
     y_ga: GraphArray = GraphArray.from_ba(y, cluster_state, copy_on_op=copy_on_op)
     op_ga: GraphArray = func(app, x_ga, y_ga)
     start_time = time.time()
-    fused_ga: GraphArray = FuseGraph.fuse_ga(app, op_ga, max_args)
+    fused_ga: GraphArray = op_ga.compile_fuse_ga(max_args)
     end_time = time.time()
     print(end_time - start_time)
     result_ga: GraphArray = RandomTS(
@@ -79,7 +79,7 @@ def ga_op_sparse(
     q_ga: GraphArray = GraphArray.from_ba(q, cluster_state, copy_on_op=copy_on_op)
     op_ga: GraphArray = func(app, s_ga, p_ga, q_ga)
     start_time = time.time()
-    fused_ga: GraphArray = FuseGraph.fuse_ga(app, op_ga, max_args)
+    fused_ga: GraphArray = op_ga.compile_fuse_ga(max_args)
     end_time = time.time()
     print(end_time - start_time)
     result_ga: GraphArray = RandomTS(
@@ -151,7 +151,7 @@ def test_sparse_array(app_inst_mock_none):
 if __name__ == "__main__":
     import conftest
 
-    app = conftest.mock_cluster((1, 1))
+    app = conftest.mock_ray_cluster((1, 1))
     # test_sparse_array(app)
     test_fusion(app)
     conftest.destroy_mock_cluster(app)

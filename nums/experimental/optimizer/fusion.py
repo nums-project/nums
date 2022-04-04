@@ -8,7 +8,8 @@ from nums.core.array import utils as array_utils
 from nums.core.array.base import Block
 from nums.core.grid.grid import Device
 from nums.experimental.optimizer.clusterstate import ClusterState
-from nums.experimental.optimizer.grapharray import GraphArray
+
+# from nums.experimental.optimizer.grapharray import GraphArray
 
 from nums.experimental.optimizer.graph import (
     TreeNode,
@@ -119,67 +120,9 @@ class FuseGraph(object):
     def hash_str(self, val: str):
         return "fused-%s" % hashlib.sha1(val.encode("utf-8")).hexdigest()
 
-    @staticmethod
-    def traverse_marker(node: TreeNode, marker, inputs={}):
-        """
-        Recursively traverse this node and return the number of unique blocks.
-        If <= max_args, then it's a fusion candidate.
-        """
-        if isinstance(node, Leaf):
-            node.marker = marker + 1
-            inputs[node.marker] = node
-            return marker + 1, inputs
-        new_marker = marker
-        for child in node.get_children():
-            new_marker, inputs = FuseGraph.traverse_marker(child, new_marker, inputs)
-        return new_marker, inputs
-
-    @staticmethod
-    def print_marker(node):
-        if isinstance(node, Leaf):
-            print(node, node.marker)
-            return
-        for child in node.get_children():
-            print_marker(child)
-
-    @staticmethod
-    def set_using_marker(node, inputs):
-        assert isinstance(node, FunctionNode)
-        if len(node.get_children()) == 0:
-            return node
-        children = list(node.get_children())
-        for child in children:
-            assert isinstance(child, Leaf)
-            node.update_child([child], [inputs[child.marker]])
-            inputs[child.marker].parent = node
-        return node
-
-    @staticmethod
-    def fuse_ga(app, r: GraphArray, max_args: int) -> GraphArray:
-        result_graphs = np.empty_like(r.graphs, dtype=r.graphs.dtype)
-        counter = 0
-        for grid_entry in r.grid.get_entry_iterator():
-            graph = r.graphs[grid_entry]
-            _, leaf_inputs = FuseGraph.traverse_marker(graph, 0)
-            if grid_entry == (0,) or grid_entry == (0, 0):  # generic
-                result_graphs[grid_entry] = FuseGraph(
-                    graph, app.km, max_args=max_args
-                )()
-                fused_graph = result_graphs[grid_entry]
-                fused_graph.op_expression = fused_graph._expression
-            else:
-                fused_graph_copy = fused_graph.copy(r.cluster_state, new_ids=True)
-                fused_graph_copy = FuseGraph.set_using_marker(
-                    fused_graph_copy, leaf_inputs
-                )
-                fused_graph_copy.set_grid_entry(grid_entry)
-                result_graphs[grid_entry] = fused_graph_copy
-        return GraphArray(r.grid.copy(), r.cluster_state, result_graphs, r.km)
-
-    @staticmethod
-    def fuse_ga_unoptimized(app, r: GraphArray) -> GraphArray:
-        result_graphs = np.empty_like(r.graphs, dtype=r.graphs.dtype)
-        for grid_entry in r.grid.get_entry_iterator():
-            graph = r.graphs[grid_entry]
-            result_graphs[grid_entry] = FuseGraph(graph, app.km)()
-        return GraphArray(r.grid.copy(), r.cluster_state, result_graphs, r.km)
+    # def fuse_ga_unoptimized(app, r: GraphArray) -> GraphArray:
+    #     result_graphs = np.empty_like(r.graphs, dtype=r.graphs.dtype)
+    #     for grid_entry in r.grid.get_entry_iterator():
+    #         graph = r.graphs[grid_entry]
+    #         result_graphs[grid_entry] = FuseGraph(graph, app.km)()
+    #     return GraphArray(r.grid.copy(), r.cluster_state, result_graphs, r.km)
