@@ -808,7 +808,7 @@ def var(a: BlockArray, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     The doctests shown below are copied from NumPy.
     They won’t show the correct result until you operate ``get()``.
 
-    >>> a = nps.array([[1, 2], [3, 4]]) # doctest: +SKIP
+    >>> a = nps.array([[1, 2], [3, 4]]) # doctest: + SKIP
     >>> nps.var(a).get()  # doctest: +SKIP
     array(1.25)
     >>> nps.var(a, axis=0).get()  # doctest: +SKIP
