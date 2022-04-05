@@ -62,7 +62,7 @@ def _check_array(array, strict=False):
     if not array.is_single_block():
         if strict:
             raise ValueError("Input array is not a single block.")
-        array_size_gb = array.nbytes / 10 ** 9
+        array_size_gb = array.nbytes / 10**9
         if array_size_gb > 100.0:
             raise MemoryError(
                 "Operating on an "

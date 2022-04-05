@@ -137,7 +137,7 @@ def get_parts_fs(filename: AnyStr, grid_meta: Dict):
     results = []
     grid: ArrayGrid = ArrayGrid.from_meta(grid_meta)
     # This is a multi-dimensional array of blocks, so entries should be relatively small.
-    assert np.all(np.array(grid.block_shape) < 2 ** 32)
+    assert np.all(np.array(grid.block_shape) < 2**32)
     contains_all = True
     for grid_entry in grid.get_entry_iterator():
         entry_name = "_".join(list(map(str, grid_entry))) + "." + ARRAY_FILETYPE
