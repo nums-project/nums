@@ -600,9 +600,6 @@ def arctanh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Bloc
     )
 
 
-bitwise_not = invert
-
-
 def cbrt(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     """Return the cube-root of an array, element-wise.
 
@@ -1441,6 +1438,9 @@ def invert(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Block
         where=where,
         kwargs=numpy_utils.ufunc_kwargs(kwargs),
     )
+
+
+bitwise_not = invert
 
 
 def isfinite(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
