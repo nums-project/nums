@@ -192,7 +192,7 @@ class KernelManager(Kernel):
         size = np.product(shape) * nbytes
         # If the object is less than 100 megabytes, there's not much value in constructing
         # a block tensor.
-        if size < 10 ** 8:
+        if size < 10**8:
             block_shape = shape
             return block_shape
 
@@ -218,7 +218,7 @@ class KernelManager(Kernel):
 
         # Compute dimensions of grid shape
         # so that the number of blocks are close to the number of cores.
-        grid_shape_frac = num_cores ** weighted_shape_fracs
+        grid_shape_frac = num_cores**weighted_shape_fracs
         grid_shape = np.floor(grid_shape_frac)
         # Put remainder on largest axis.
         remaining = np.sum(grid_shape_frac - grid_shape)

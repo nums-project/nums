@@ -298,7 +298,7 @@ def test_basic_assignment_broadcasting(app_inst: ArrayApplication):
             pbar = tqdm.tqdm(
                 total=len(a_mode_iterator) * len(b_mode_iterator),
                 desc="Testing assignment broadcasting %d/%d"
-                % (a_len * num_axes + b_len, num_axes ** 2),
+                % (a_len * num_axes + b_len, num_axes**2),
             )
             # Create some valid intervals.
             for a_mode in a_mode_iterator:
