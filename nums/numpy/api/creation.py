@@ -1132,7 +1132,7 @@ def asarray(a, dtype=None, order=None, *, like=None):
 
     Returns
     -------
-    out : ndarray
+    out : BlockArray
         Array interpretation of `a`.  No copy is performed if the input
         is already an ndarray with matching dtype and order.  If `a` is a
         subclass of ndarray, a base class ndarray is returned.
