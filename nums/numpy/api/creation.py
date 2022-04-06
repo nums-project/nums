@@ -1145,10 +1145,7 @@ def asarray(a, dtype=None, order=None, *, like=None):
     See Also
     --------
     asanyarray : Similar function which passes through subclasses.
-    ascontiguousarray : Convert input to a contiguous array.
     asfarray : Convert input to a floating point ndarray.
-    asfortranarray : Convert input to an ndarray with column-major
-                     memory order.
     asarray_chkfinite : Similar function which checks input for NaNs and Infs.
     fromiter : Create an array from an iterator.
     fromfunction : Construct an array by executing a function on grid
