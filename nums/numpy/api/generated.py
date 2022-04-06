@@ -699,6 +699,9 @@ def bitwise_not(
     )
 
 
+invert = bitwise_not
+
+
 def cbrt(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     """Return the cube-root of an array, element-wise.
 
