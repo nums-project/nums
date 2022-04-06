@@ -158,6 +158,12 @@ class Kernel:
 
     def identity(self, value):
         raise NotImplementedError()
+    
+    def triu_copy(self, arr, rows, cols, syskwargs: Dict):
+        raise NotImplementedError()
+    
+    def triu(self, arr, offset, zero_out, total_elements, syskwargs: Dict):
+        raise NotImplementedError()
 
 
 class KernelImp:

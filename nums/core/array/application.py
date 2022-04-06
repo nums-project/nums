@@ -441,6 +441,90 @@ class ArrayApplication:
         else:
             raise ValueError("X must have 1 or 2 axes.")
         return rarr
+    
+    def _stack_copy(self, X):
+        assert len(X.shape) == 1
+        output_shape = (max(X.shape), max(X.shape))
+        output_block_shape = (X.block_shape[0], X.block_shape[0])
+        output_arr_grid = ArrayGrid(output_shape, output_block_shape, X.dtype.__name__)
+        output_block_array = BlockArray(output_arr_grid, self.km)
+        max_block_rows, max_block_cols = (
+            output_block_array.blocks.shape[0],
+            output_block_array.blocks.shape[1],
+        )
+        block_row_index = 0
+        for i in range(max_block_rows):
+            block_row_index = 0
+            for j in range(max_block_cols):
+                syskwargs = {
+                    "grid_entry": (i, j),
+                    "grid_shape": output_arr_grid.grid_shape,
+                }
+                block = output_block_array.blocks[(i, j)]
+                rows, cols = block.shape[0], block.shape[1]
+                output_block_array.blocks[(i, j)].oid = self.km.triu_copy(
+                    X.blocks[block_row_index].oid, rows, cols, syskwargs=syskwargs
+                )
+                block_row_index += 1
+        return output_block_array
+
+    def triu(self, X: BlockArray):
+        if len(X.shape) == 1:
+            return self.triu(self._stack_copy(X))
+        elif len(X.shape) == 2:
+            if X.shape[0] == 1:
+                return X
+            diag_meta = array_utils.find_diag_output_blocks(X.blocks, min(X.shape))
+            output_arr_grid = ArrayGrid(X.shape, X.block_shape, X.dtype.__name__)
+            output_block_array = BlockArray(output_arr_grid, self.km)
+            visited = dict()
+            total_row_blocks, total_col_blocks = X.blocks.shape[0], X.blocks.shape[1]
+            for block_indices, offset, total_elements in diag_meta:
+                syskwargs = {
+                    "grid_entry": block_indices,
+                    "grid_shape": output_arr_grid.grid_shape,
+                }
+                output_block_array.blocks[block_indices].oid = self.km.triu(
+                    X.blocks[block_indices].oid,
+                    offset,
+                    False,
+                    total_elements,
+                    syskwargs=syskwargs,
+                )
+                visited[block_indices] = 1
+            for block_indices, offset, total_elements in diag_meta:
+                row_c, col_c = block_indices[0] + 1, block_indices[1]
+                while row_c < total_row_blocks:
+                    syskwargs = {
+                        "grid_entry": (row_c, col_c),
+                        "grid_shape": output_arr_grid.grid_shape,
+                    }
+                    # if (row_c, col_c) in visited:
+                    #     output_block_array.blocks[(row_c, col_c)].oid = self.km.triu(
+                    #         output_block_array.blocks[(row_c, col_c)].oid,
+                    #         offset,
+                    #         True,
+                    #         total_elements,
+                    #         syskwargs=syskwargs,
+                    #     )
+                    # else:
+                    output_block_array.blocks[(row_c, col_c)].oid = self.km.triu(
+                        X.blocks[(row_c, col_c)].oid,
+                        offset,
+                        True,
+                        total_elements,
+                        syskwargs=syskwargs,
+                    )
+                    # visited[(row_c, col_c)] = 1
+                    row_c += 1
+
+            for i in range(total_row_blocks):
+                for j in range(total_col_blocks):
+                    if (i, j) not in visited:
+                        output_block_array.blocks[(i, j)].oid = X.blocks[(i, j)].oid
+            return output_block_array
+        else:
+            raise NotImplementedError()
 
     def arange(self, start_in, shape, block_shape, step=1, dtype=None) -> BlockArray:
         assert step == 1

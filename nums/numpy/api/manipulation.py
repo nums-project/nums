@@ -847,3 +847,6 @@ def vstack(tup):
            [4]])
     """
     return _instance().vstack(tup)
+
+def triu(a: BlockArray):
+    return _instance().triu(a)
