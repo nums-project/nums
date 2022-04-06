@@ -1116,3 +1116,77 @@ def zeros_like(prototype, dtype=None, order="K", shape=None):
     if order is not None and order != "K":
         raise NotImplementedError("Only order='K' is supported.")
     return zeros(shape, dtype)
+
+
+def asarray(a, dtype=None, order=None, *, like=None):
+    """Convert the input to an array.
+
+    Parameters
+    ----------
+    a : array_like
+        Input data, in any form that can be converted to an array.  This
+        includes lists, lists of tuples, tuples, tuples of tuples, tuples
+        of lists and ndarrays.
+    dtype : data-type, optional
+        By default, the data-type is inferred from the input data.
+
+    Returns
+    -------
+    out : ndarray
+        Array interpretation of `a`.  No copy is performed if the input
+        is already an ndarray with matching dtype and order.  If `a` is a
+        subclass of ndarray, a base class ndarray is returned.
+
+    Raises
+    ------
+    NotImplementedError
+        If you pass a non-`None` value to `order` or `like`.
+
+    See Also
+    --------
+    asanyarray : Similar function which passes through subclasses.
+    ascontiguousarray : Convert input to a contiguous array.
+    asfarray : Convert input to a floating point ndarray.
+    asfortranarray : Convert input to an ndarray with column-major
+                     memory order.
+    asarray_chkfinite : Similar function which checks input for NaNs and Infs.
+    fromiter : Create an array from an iterator.
+    fromfunction : Construct an array by executing a function on grid
+                   positions.
+
+    Examples
+    --------
+    Convert a list into an array:
+
+    >>> a = [1, 2]
+    >>> nps.asarray(a).get()
+    array([1, 2])
+
+    Existing arrays are not copied:
+
+    >>> a = nps.array([1, 2])
+    >>> nps.asarray(a) is a
+    True
+
+    If `dtype` is set, array is copied only if dtype does not match:
+
+    >>> a = nps.array([1, 2], dtype=np.float32)
+    >>> nps.asarray(a, dtype=np.float32) is a
+    True
+    >>> nps.asarray(a, dtype=np.float64) is a
+    False
+    """
+    if order is not None:
+        raise NotImplementedError("The `order` parameter isn't supported.")
+    if like is not None:
+        raise NotImplementedError("The `like` parameter isn't supported.")
+
+    if type(a) is BlockArray:  # pylint: disable=unidiomatic-typecheck
+        is_matching_dtype = not dtype or a.dtype == dtype
+        if is_matching_dtype:
+            return a
+        else:
+            return a.astype(dtype)
+
+    a = np.asarray(a, dtype=dtype)
+    return array(a, dtype=a.dtype, copy=True)
