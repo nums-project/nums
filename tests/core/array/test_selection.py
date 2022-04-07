@@ -403,7 +403,7 @@ def test_multiselect_intersection():
     num_axes = 2
     limit = 4
     ss = BasicSelection.from_subscript
-    arr: np.ndarray = np.arange(size ** num_axes).reshape((size,) * num_axes)
+    arr: np.ndarray = np.arange(size**num_axes).reshape((size,) * num_axes)
 
     num_axes_pairs = list(itertools.product(np.arange(1, num_axes + 1), repeat=2))
     for num_axes_idx, (num_axes_a, num_axes_b) in enumerate(num_axes_pairs):
