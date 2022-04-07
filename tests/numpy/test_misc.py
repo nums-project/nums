@@ -68,7 +68,7 @@ def test_where(nps_app_inst):
 
     assert nps_app_inst is not None
 
-    shapes = [(), (10**6,), (10**6, 1), (10**5, 10)]
+    shapes = [(), (10 ** 6,), (10 ** 6, 1), (10 ** 5, 10)]
     for shape in shapes:
         arr: BlockArray = nps.random.rand(*shape)
         x: BlockArray = nps.random.rand(*shape)

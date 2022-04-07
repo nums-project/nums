@@ -197,8 +197,8 @@ def test_bops(bop_data: tuple):
     common.check_block_integrity(Z)
 
     # Power
-    Z = X**Y
-    npZ = npX**npY
+    Z = X ** Y
+    npZ = npX ** npY
     assert np.allclose(Z.get(), npZ)
     common.check_block_integrity(Z)
 
@@ -281,16 +281,16 @@ def test_conversions(conversions_data: tuple):
         common.check_block_integrity(Z)
 
     # Power
-    Z = X**Y
-    npZ = npX**Y
+    Z = X ** Y
+    npZ = npX ** Y
     assert np.allclose(Z.get(), npZ)
     common.check_block_integrity(Z)
     if isinstance(Y, np.ndarray):
         with pytest.raises(TypeError):
-            Z = Y**X
+            Z = Y ** X
     else:
-        Z = Y**X
-        npZ = Y**npX
+        Z = Y ** X
+        npZ = Y ** npX
         assert np.allclose(Z.get(), npZ)
         common.check_block_integrity(Z)
 
