@@ -10,8 +10,8 @@ nums.init(cluster_shape=(len(ray.nodes()), 1))
 
 
 def main():
-    X = nps.random.rand(10 ** 4)
-    Y = nps.random.rand(10 ** 4)
+    X = nps.random.rand(10**4)
+    Y = nps.random.rand(10**4)
     Z = nps.add(X, Y)
     print("X + Y = ", Z.get())
 

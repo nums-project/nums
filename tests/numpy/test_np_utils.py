@@ -27,7 +27,7 @@ from nums.core.backends import utils as backend_utils
 def _inspect_block_shape(nps_app_inst):
     app = nps_app_inst
     dtypes = [np.float32, np.float64]
-    shapes = [(10 ** 9, 250), (10 ** 4, 10 ** 4), (10 ** 7, 10), (10, 10 ** 7)]
+    shapes = [(10**9, 250), (10**4, 10**4), (10**7, 10), (10, 10**7)]
     cluster_shapes = [(1, 1), (2, 1), (4, 1), (16, 1)]
     cores_per_node = 64
     combos = itertools.product(dtypes, shapes, cluster_shapes)
@@ -46,16 +46,16 @@ def _inspect_block_shape(nps_app_inst):
         print("grid_shape", grid.grid_shape, "block_shape", block_shape)
         print(
             "array size (GB)",
-            np.product(shape) * dtype().nbytes / 10 ** 9,
+            np.product(shape) * dtype().nbytes / 10**9,
             "block size (GB)",
-            np.product(block_shape) * dtype().nbytes / 10 ** 9,
+            np.product(block_shape) * dtype().nbytes / 10**9,
         )
 
 
 def test_block_shape(nps_app_inst):
     app = nps_app_inst
     dtype = np.float64
-    shape = (10 ** 9, 250)
+    shape = (10**9, 250)
     cluster_shape = (1, 1)
     num_cores = 64
     block_shape = app.compute_block_shape(
@@ -72,7 +72,7 @@ def test_block_shape(nps_app_inst):
     grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype.__name__)
     assert grid.grid_shape == (num_cores, 1)
 
-    shape = (250, 10 ** 9)
+    shape = (250, 10**9)
     cluster_shape = (1, 16)
     block_shape = app.compute_block_shape(
         shape=shape, dtype=dtype, cluster_shape=cluster_shape, num_cores=num_cores
@@ -80,31 +80,31 @@ def test_block_shape(nps_app_inst):
     grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype.__name__)
     assert grid.grid_shape == (1, num_cores)
 
-    shape = (10 ** 4, 10 ** 4)
+    shape = (10**4, 10**4)
     cluster_shape = (1, 1)
     num_cores = 64
     block_shape = app.compute_block_shape(
         shape=shape, dtype=dtype, cluster_shape=cluster_shape, num_cores=num_cores
     )
     grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype.__name__)
-    assert grid.grid_shape == (int(num_cores ** 0.5), int(num_cores ** 0.5))
+    assert grid.grid_shape == (int(num_cores**0.5), int(num_cores**0.5))
 
     # Here we are testing the behaviour for objects size == and < 100 MB.
-    shape = (10 ** 4, 10 ** 4 // dtype(0).nbytes)
+    shape = (10**4, 10**4 // dtype(0).nbytes)
     block_shape = app.compute_block_shape(
         shape=shape, dtype=dtype, cluster_shape=cluster_shape, num_cores=num_cores
     )
     grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype.__name__)
     assert grid.grid_shape != (1, 1)
 
-    shape = (10 ** 4, 10 ** 4 // dtype(0).nbytes - 1)
+    shape = (10**4, 10**4 // dtype(0).nbytes - 1)
     block_shape = app.compute_block_shape(
         shape=shape, dtype=dtype, cluster_shape=cluster_shape, num_cores=num_cores
     )
     grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype.__name__)
     assert grid.grid_shape == (1, 1)
 
-    shape = (10 ** 4, 10 ** 4)
+    shape = (10**4, 10**4)
     cluster_shape = (12, 1)
     num_cores = backend_utils.get_num_cores()
     block_shape = app.compute_block_shape(
