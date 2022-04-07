@@ -167,6 +167,44 @@ def broadcastable(a_shape, b_shape, a_block_shape, b_block_shape):
     return True
 
 
+def get_tensordot_block_params(shape1, ge1, gs1, shape2, ge2, gs2, axes):
+    result_grid_entry = tuple(list(ge1[:-axes]) + list(ge2[axes:]))
+    result_grid_shape = tuple(list(gs1[:-axes]) + list(gs2[axes:]))
+    result_shape = tuple(list(shape1[:-axes]) + list(shape2[axes:]))
+    return result_shape, result_grid_entry, result_grid_shape
+
+
+def get_elementwise_bop_block_params(shape1, ge1, gs1, shape2, ge2, gs2):
+    # Broadcasting starts from trailing dimensions.
+    # Resulting shape is max of trailing shapes
+    num_dims1 = len(shape1)
+    num_dims2 = len(shape2)
+    result_grid_entry = []
+    result_grid_shape = []
+    result_shape = []
+    for i in range(1, max(num_dims1, num_dims2) + 1):
+        other_i = num_dims2 - i
+        self_i = num_dims1 - i
+        if other_i < 0:
+            is_self = True
+        elif self_i < 0:
+            is_self = False
+        else:
+            is_self = shape2[other_i] < shape1[self_i]
+        if is_self:
+            result_grid_entry.append(ge1[self_i])
+            result_grid_shape.append(gs1[self_i])
+            result_shape.append(shape1[self_i])
+        else:
+            result_grid_entry.append(ge2[other_i])
+            result_grid_shape.append(gs2[other_i])
+            result_shape.append(shape2[other_i])
+    result_grid_entry = tuple(reversed(result_grid_entry))
+    result_grid_shape = tuple(reversed(result_grid_shape))
+    result_shape = tuple(reversed(result_shape))
+    return result_shape, result_grid_entry, result_grid_shape
+
+
 def is_1d(shape):
     _shape = [i for i in shape if i != 1]
     return len(_shape) == 1
