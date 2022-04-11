@@ -18,7 +18,7 @@ from typing import Union
 
 import numpy as np
 
-from nums.core.kernel.kernel_manager import KernelManager
+from nums.core.grid.grid import DeviceGrid
 from nums.experimental.optimizer.grapharray import GraphArray
 
 from nums.experimental.optimizer.graph import (
@@ -52,12 +52,14 @@ class ProgramState(object):
     def __init__(
         self,
         arr: GraphArray,
+        device_grid: DeviceGrid,
         max_reduction_pairs=None,
         force_final_action=True,
         unique_reduction_pairs=False,
         use_all_devices=False,
     ):
         self.arr: GraphArray = arr
+        self.device_grid: DeviceGrid = device_grid
         self.force_final_action = force_final_action
         self.get_action_kwargs = {
             "max_reduction_pairs": max_reduction_pairs,
@@ -90,10 +92,9 @@ class ProgramState(object):
         # Gets the final action to perform on a graph array.
         # This is to ensure the output graph array satisfies device grid layout
         # assumptions.
-        cm: KernelManager = KernelManager.instance
         grid_entry = self.get_tnode_grid_entry(tnode)
         grid_shape = self.arr.grid.grid_shape
-        device = cm.device_grid.get_device(grid_entry, grid_shape)
+        device = self.device_grid.get_device(grid_entry, grid_shape)
         if isinstance(tnode, BinaryOp):
             actions = [(tnode.tree_node_id, {"device": device})]
         elif isinstance(tnode, TreeReductionOp):
@@ -130,6 +131,7 @@ class ProgramState(object):
     def copy(self):
         return ProgramState(
             self.arr.copy(),
+            self.device_grid,
             **self.get_action_kwargs,
             force_final_action=self.force_final_action,
         )
@@ -232,6 +234,7 @@ class TreeSearch(object):
     def solve(self, arr: GraphArray):
         state: ProgramState = ProgramState(
             arr,
+            arr.km.device_grid,
             max_reduction_pairs=self.max_reduction_pairs,
             force_final_action=self.force_final_action,
         )

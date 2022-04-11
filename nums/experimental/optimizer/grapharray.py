@@ -38,7 +38,7 @@ class GraphArray(object):
         for grid_entry in ba.grid.get_entry_iterator():
             block: Block = ba.blocks[grid_entry]
             # Allocate the block to the node on which it's created.
-            km: KernelManager = KernelManager.instance
+            km: KernelManager = ba.km
             device: Device = km.device_grid.get_device(
                 block.true_grid_entry(), block.true_grid_shape()
             )
