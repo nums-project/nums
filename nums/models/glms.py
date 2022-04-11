@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
 
 import warnings
 
@@ -23,42 +24,6 @@ from nums.core.array.application import ArrayApplication
 from nums.core.array.blockarray import BlockArray
 from nums.core.array.random import NumsRandomState
 from nums.core import linalg
-
-# The GLMs are expressed in the following notation.
-# f(y) = exp((y.T @ theta - b(theta))/phi + c(y, phi))
-# phi is the dispersion parameter.
-# theta is the parameter of a model in canonical form.
-# b is the cumulant generating function.
-#
-# The link function is expressed as follows.
-# E(Y | X) = mu
-# Define the linear predictor eta = X.T @ beta
-# Define g as the link function, so that g(mu) = eta
-# E(Y | X) = g^{-1}(eta)
-#
-# The canonical link is given by g(mu) = (b')^{-1}(mu) = theta
-#
-# Note, for GLMs, the mean mu is some function of the model's parameter.
-# Normal: mu(mu) = mu
-# Bernoulli: mu(p) = p
-# Exponential: mu(lambda) = 1 / lambda
-# Poisson: mu(lambda) = lambda
-# Dirichlet: mu_i(a) = a_i / sum(a)
-#
-# Theta is generally a function of the model parameter:
-# Normal: theta(mu) = mu
-# Bernoulli: theta(p) = ln(p/(1-p))
-# Exponential: theta(lambda) = -lambda
-# Poisson: theta(lambda) = ln(lambda)
-# ...
-#
-# The canonical link maps mu to theta
-# Normal: mu(mu) = mu, theta(mu) = mu, b(theta) = theta^2/2, g(mu) = mu
-# Bernoulli:
-#   mu(p) = p, p(mu) = mu
-#   theta(p) = ln(p/(1-p)) = theta(mu) = ln(mu/(1-mu))
-#   b(theta) = log(1 + exp(theta))
-#   g(mu) = (b')^{-1}(mu) = ln(mu/(1-mu)) = ln(p/(1-p)) = theta(p)
 
 
 class GLM:
@@ -113,10 +78,27 @@ class GLM:
         self._beta0 = None
 
     def fit(self, X: BlockArray, y: BlockArray):
-        # Note, it's critically important from a performance point-of-view
-        # to maintain the original block shape of X below, along axis 1.
-        # Otherwise, the concatenation operation will not construct the new X
-        # by referencing X's existing blocks.
+        """Fit generalized linear model.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Training data.
+        y : BlockArray of shape (n_samples,) or (n_samples, n_targets)
+            Target values.
+
+        Returns
+        -------
+        self : object
+            Fitted Estimator.
+
+        Notes
+        -----
+        Note, it's critically important from a performance point-of-view
+        to maintain the original block shape of X below, along axis 1.
+        Otherwise, the concatenation operation will not construct the new X
+        by referencing X's existing blocks.
+        """
         # TODO: Option to do concat.
         # TODO: Provide support for batching.
         if np.issubdtype(X.dtype, np.integer):
@@ -192,15 +174,65 @@ class GLM:
         self._beta = beta[:-1]
 
     def forward(self, X, beta=None):
+        """Inference on X using the model given by beta.
+
+        If beta is None, then use the beta fitted by this model instance.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Training data.
+        beta : BlockArray of shape (n_features,)
+            Model parameters.
+
+        Returns
+        -------
+        mu : BlockArray
+            Inference on X.
+        """
         if beta:
             return self.link_inv(X @ beta)
         return self.link_inv(self._beta0 + X @ self._beta)
 
     def grad_norm_sq(self, X: BlockArray, y: BlockArray, beta=None):
+        """Compute the norm of the gradient squared.
+
+        If beta is None, then use the beta fitted by this model instance.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Training data.
+        y : BlockArray of shape (n_samples,)
+            Target values.
+        beta : BlockArray of shape (n_features,)
+            Model parameters.
+
+        Returns
+        -------
+        g : BlockArray
+            Returns the norm of the gradient squared.
+        """
         g = self.gradient(X, y, self.forward(X, beta), beta=beta)
         return g.transpose(defer=True) @ g
 
     def predict(self, X):
+        """Predict using the GLM model.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        Returns
+        -------
+        C : array, shape (n_samples,)
+            Returns predicted values.
+
+        Notes
+        -----
+        Predict is not implemented yet for this GLM.
+        """
         raise NotImplementedError()
 
     def link_inv(self, eta: BlockArray):
@@ -230,9 +262,42 @@ class GLM:
         raise NotImplementedError()
 
     def deviance(self, y, y_pred):
+        """Computes the deviance of the model with respect to y_pred.
+
+        Parameters
+        ----------
+        y : BlockArray of shape (n_samples,)
+            Samples.
+
+        y_pred : BlockArray of shape (n_samples,)
+            Predicted values.
+
+        Returns
+        -------
+        C : BlockArray
+            Returns deviance between y and y_pred.
+
+        Notes
+        -----
+        The deviance is not implemented yet for this GLM.
+        """
         raise NotImplementedError()
 
     def deviance_sqr(self, X, y):
+        """Deviance squared metric.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Training data.
+        y : BlockArray of shape (n_samples,) or (n_samples, n_targets)
+            Target values.
+
+        Returns
+        -------
+        C : float
+            Deviance squared.
+        """
         y_pred = self.predict(X)
         dev = self.deviance(y, y_pred)
         y_mean = self._app.mean(y)
@@ -240,6 +305,18 @@ class GLM:
         return 1 - dev / dev_null
 
     def obj_penalty(self, beta):
+        """Returns the penalty term for the object function used in regularization.
+
+        Parameters
+        ----------
+        beta : float
+            Model parameters.
+
+        Returns
+        -------
+        C : float
+            Objective penalty.
+        """
         if self._penalty == "l1":
             return self._l1penalty * self._app.norm(beta, order=1)
         elif self._penalty == "l2":
@@ -252,6 +329,18 @@ class GLM:
             raise ValueError("Unexpected call to objective term, penalty=None.")
 
     def grad_penalty(self, beta):
+        """Returns the gradient of the penalty used in regularization.
+
+        Parameters
+        ----------
+        beta : float
+            Model parameters.
+
+        Returns
+        -------
+        C : float
+            Returns gradient of the penalty.
+        """
         if self._penalty == "l1":
             return self._l1penalty_vec * self._app.map_uop("sign", beta)
         elif self._penalty == "l2":
@@ -264,6 +353,13 @@ class GLM:
             raise ValueError("Unexpected call to objective term, penalty=None.")
 
     def hessian_penalty(self):
+        """Returns the hessian of the penalty used in regularization.
+
+        Returns
+        -------
+        C : float
+            Returns the hessian of the penalty.
+        """
         if self._penalty == "l1":
             return 0.0
         elif self._penalty == "l2" or self._penalty == "elasticnet":
@@ -282,6 +378,22 @@ class LinearRegressionBase(GLM):
     # inverse canonical link: mu = b(theta) = b(eta) = eta
 
     def link_inv(self, eta: BlockArray):
+        """Computes the inverse link function
+
+        The inverse link function is denoted by the
+        inverse canonical link function::
+            mu = b(theta) = b(eta) = eta
+
+        Parameters
+        ----------
+        eta : BlockArray
+            eta
+
+        Returns
+        -------
+        eta: BlockArray
+            Returns eta.
+        """
         return eta
 
     def objective(
@@ -291,6 +403,29 @@ class LinearRegressionBase(GLM):
         beta: BlockArray = None,
         mu: BlockArray = None,
     ):
+        """Computes the objective function.
+
+        If beta is None, then use the beta fitted by this model instance.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        y : BlockArray of shape (n_samples,)
+            Target values.
+
+        mu : BlockArray of shape (n_samples,)
+            Hessian penalty
+
+        beta: BlockArray of shape (n_features,)
+            Model parameters.
+
+        Returns
+        -------
+        C : BlockArray, shape (n_samples,)
+            Returns the objective.
+        """
         assert beta is not None or self._beta is not None
         mu = self.forward(X, beta) if mu is None else mu
         r = self._app.sum((y - mu) ** self._app.two)
@@ -306,6 +441,29 @@ class LinearRegressionBase(GLM):
         mu: BlockArray = None,
         beta: BlockArray = None,
     ):
+        """Computes the gradient with respect to beta.
+
+        If beta is None, then use the beta fitted by this model instance.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        y : BlockArray of shape (n_samples,)
+            Target values.
+
+        mu : BlockArray of shape (n_samples,)
+            Hessian penalty
+
+        beta: BlockArray of shape (n_features,)
+            Model parameters.
+
+        Returns
+        -------
+        C : array, shape (n_samples,)
+            Returns the gradient with respect to beta.
+        """
         if mu is None:
             mu = self.forward(X)
         r = X.transpose(defer=True) @ (mu - y)
@@ -315,19 +473,112 @@ class LinearRegressionBase(GLM):
         return r
 
     def hessian(self, X: BlockArray, y: BlockArray, mu: BlockArray = None):
+        """Computes the hessian with respect to the hessian penalty.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        y : BlockArray of shape (n_samples,)
+            Target values.
+
+        mu : BlockArray of shape (n_samples,)
+            Hessian penalty
+
+        Returns
+        -------
+        C : array, shape (n_samples,)
+            Returns the hessian with respect to the hessian penalty.
+        """
         r = X.transpose(defer=True) @ X
         if self._penalty is not None:
             r += self.hessian_penalty()
         return r
 
     def deviance(self, y, y_pred):
+        """Computes the deviance of the model with respect to y_pred.
+
+        Parameters
+        ----------
+        y : BlockArray of shape (n_samples,)
+            Samples.
+
+        y_pred : BlockArray of shape (n_samples,)
+            Predicted values.
+
+        Returns
+        -------
+        C : BlockArray
+            Returns deviance between y and y_pred.
+        """
         return self._app.sum((y - y_pred) ** self._app.two)
 
     def predict(self, X: BlockArray) -> BlockArray:
+        """Predict using the Linear Regression model. Calls forward internally.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        Returns
+        -------
+        C : array, shape (n_samples,)
+            Returns predicted values.
+        """
         return self.forward(X)
 
 
 class LinearRegression(LinearRegressionBase):
+    """Ordinary least squares Linear Regression.
+
+    LinearRegression fits a linear model with coefficients w = (w1, ..., wp)
+    to minimize the residual sum of squares between the observed targets in
+    the dataset, and the targets predicted by the linear approximation.
+
+    This docstring was copied from sklearn.linear_model.LinearRegression.
+
+    Parameters
+    ----------
+    tol : float, default=0.0001
+        Tolerance for stopping criteria.
+
+    max_iter : int, default=100
+        Maximum number of iterations taken for the solvers to converge.
+
+    solver : {'gd', 'sgd', 'block_sgd', 'newton', 'newton-cg', 'irls', 'lbfgs'}, default='newton'
+        Algorithm to use in the optimization problem. Default is ‘newton’.
+
+    lr : float, default=0.01
+        Learning Rate. Used in the optimization of the model.
+
+    random_state : NumsRandomState, default=None
+        Seeds for randomness in model.
+
+    fit_intercept : bool, default=True
+        The intercept of regression is calculated for this model.
+        When data is centered, the intercept is calculated to 0.
+        Setting this option to False is unsupported.
+
+    normalize : bool, default=False
+        Normalizes the regressors before regression.
+        Setting this option to True is not yet supported.
+
+    See Also
+    --------
+    Ridge : Ridge regression addresses some of the
+        problems of Ordinary Least Squares by imposing a penalty on the
+        size of the coefficients with l2 regularization.
+    Lasso : The Lasso is a linear model that estimates
+        sparse coefficients with l1 regularization.
+    ElasticNet : Elastic-Net is a linear regression
+        model trained with both l1 and l2 -norm regularization of the
+        coefficients.
+    Notes
+    -----
+    """
+
     def __init__(
         self,
         tol=0.0001,
@@ -350,6 +601,53 @@ class LinearRegression(LinearRegressionBase):
 
 
 class Ridge(LinearRegressionBase):
+    """Linear least squares with l2 regularization.
+
+    Minimizes the objective function::
+
+    ||y - Xw||^2_2 + alpha * ||w||^2_2
+
+    This model solves a regression model where the loss function is
+    the linear least squares function and regularization is given by
+    the l2-norm. Also known as Ridge Regression or Tikhonov regularization.
+    This estimator has built-in support for multi-variate regression
+    (i.e., when y is a 2d BlockArray of shape (n_samples, n_targets)).
+
+    This docstring was copied from sklearn.linear_model.ridge_regression.
+
+    Parameters
+    ----------
+    alpha : float
+        Regularization strength; must be a positive float. Regularization
+        improves the conditioning of the problem and reduces the variance of
+        the estimates. Larger values specify stronger regularization.
+        Alpha corresponds to ``1 / (2C)``.
+
+    tol : float, default=0.0001
+        Tolerance for stopping criteria.
+
+    max_iter : int, default=100
+        Maximum number of iterations taken for the solvers to converge.
+
+    solver : {'gd', 'sgd', 'block_sgd', 'newton', 'newton-cg', 'irls', 'lbfgs'}, default='newton'
+        Algorithm to use in the optimization problem. Default is ‘newton’.
+
+    lr : float, default=0.01
+        Learning Rate. Used in the optimization of the model.
+
+    random_state : NumsRandomState, default=None
+        Seeds for randomness in model.
+
+    fit_intercept : bool, default=True
+        The intercept of regression is calculated for this model.
+        When data is centered, the intercept is calculated to 0.
+        Setting this option to False is unsupported.
+
+    normalize : bool, default=False
+        Normalizes the regressors before regression.
+        Setting this option to True is not yet supported.
+    """
+
     def __init__(
         self,
         alpha=1.0,
@@ -375,9 +673,79 @@ class Ridge(LinearRegressionBase):
 
 
 class ElasticNet(LinearRegressionBase):
-    # Reference: https://glm-tools.github.io/pyglmnet/tutorial.html
-    # sklearn documentation suggests lasso and elastic net have different coefficients
-    # than linear regression, but this does not appear to be the case in any other source.
+    """Linear regression with combined L1 and L2 priors as regularizer.
+
+    Minimizes the objective function::
+
+            1 / (2 * n_samples) * ||y - Xw||^2_2
+            + alpha * l1_ratio * ||w||_1
+            + 0.5 * alpha * (1 - l1_ratio) * ||w||^2_2
+
+    If you are interested in controlling the L1 and L2 penalty
+    separately, keep in mind that this is equivalent to::
+
+            a * ||w||_1 + 0.5 * b * ||w||_2^2
+
+    where::
+
+            alpha = a + b and l1_ratio = a / (a + b)
+
+    The parameter l1_ratio corresponds to alpha in the glmnet R package while
+    alpha corresponds to the lambda parameter in glmnet. Specifically, l1_ratio
+    = 1 is the lasso penalty. Currently, l1_ratio <= 0.01 is not reliable,
+    unless you supply your own sequence of alpha.
+
+    This docstring was copied from sklearn.linear_model.ElasticNet.
+
+    Parameters
+    ----------
+    alpha : float or array-like of shape (n_targets,)
+        Regularization strength; must be a positive float. Regularization
+        improves the conditioning of the problem and reduces the variance of
+        the estimates. Larger values specify stronger regularization.
+        Alpha corresponds to ``1 / (2C)``.
+
+    l1_ratio : float, default=0.5
+        The ElasticNet mixing parameter, with ``0 <= l1_ratio <= 1``. For
+        ``l1_ratio = 0`` the penalty is an L2 penalty. ``For l1_ratio = 1`` it
+        is an L1 penalty.  For ``0 < l1_ratio < 1``, the penalty is a
+        combination of L1 and L2.
+
+    tol : float, default=0.0001
+        Tolerance for stopping criteria.
+
+    max_iter : int, default=100
+        Maximum number of iterations taken for the solvers to converge.
+
+    solver : {'gd', 'sgd', 'block_sgd', 'newton', 'newton-cg', 'irls', 'lbfgs'}, default='newton'
+        Algorithm to use in the optimization problem. Default is ‘newton’.
+
+    lr : float, default=0.01
+        Learning Rate. Used in the optimization of the model.
+
+    random_state : NumsRandomState, default=None
+        Seeds for randomness in model.
+
+    fit_intercept : bool, default=True
+        The intercept of regression is calculated for this model.
+        When data is centered, the intercept is calculated to 0.
+        Setting this option to False is unsupported.
+
+    normalize : bool, default=False
+        Normalizes the regressors before regression.
+        Setting this option to True is not yet supported.
+
+    Notes
+    -----
+    Sklearn documentation suggests lasso and elastic net have different coefficients
+    than linear regression, but this does not appear to be the case in any other source.
+
+    References
+    ----------
+    pyglmnet -- A python implementation of elastic-net regularized generalized linear models
+        https://glm-tools.github.io/pyglmnet/tutorial.html
+    """
+
     def __init__(
         self,
         alpha=1.0,
@@ -405,6 +773,46 @@ class ElasticNet(LinearRegressionBase):
 
 
 class Lasso(LinearRegressionBase):
+    """Linear model trained with L1 prior as regularizer (aka the Lasso).
+
+    The optimization objective for Lasso is::
+        (1 / (2 * n_samples)) * ||y - Xw||^2_2 + alpha * ||w||_1
+
+    Technically the Lasso model is optimizing the same objective function as
+    the Elastic Net with ``l1_ratio=1.0`` (no L2 penalty).
+
+    This docstring was copied from sklearn.linear_model.Lasso.
+
+    Parameters
+    ----------
+    alpha : float, default=1.0
+        Constant that multiplies the L1 term. Defaults to 1.0.
+
+    tol : float, default=0.0001
+        Tolerance for stopping criteria.
+
+    max_iter : int, default=100
+        Maximum number of iterations taken for the solvers to converge.
+
+    solver : {'gd', 'sgd', 'block_sgd', 'newton', 'newton-cg', 'irls', 'lbfgs'}, default='newton'
+        Algorithm to use in the optimization problem. Default is ‘newton’.
+
+    lr : float, default=0.01
+        Learning Rate. Used in the optimization of the model.
+
+    random_state : NumsRandomState, default=None
+        Seeds for randomness in model.
+
+    fit_intercept : bool, default=True
+        The intercept of regression is calculated for this model.
+        When data is centered, the intercept is calculated to 0.
+        Setting this option to False is unsupported.
+
+    normalize : bool, default=False
+        Normalizes the regressors before regression.
+        Setting this option to True is not yet supported.
+    """
+
     def __init__(
         self,
         alpha=1.0,
@@ -430,6 +838,49 @@ class Lasso(LinearRegressionBase):
 
 
 class LogisticRegression(GLM):
+    """Logistic Regression (aka logit, MaxEnt) classifier.
+
+    This docstring was copied from sklearn.linear_model.LogisticRegression.
+
+    Parameters
+    ----------
+    penalty : {'l1', 'l2', 'elasticnet', 'none'}, default='none'
+        Specify the norm of the penalty:
+        - `'none'`: no penalty is added and it is the default choice;
+        - `'l2'`: add a L2 penalty term;
+        - `'l1'`: add a L1 penalty term;
+        - `'elasticnet'`: both L1 and L2 penalty terms are added.
+
+    C : float, default=1.0
+        Inverse of regularization strength; must be a positive float.
+        Like in support vector machines, smaller values specify stronger
+        regularization.
+
+    tol : float, default=0.0001
+        Tolerance for stopping criteria.
+
+    max_iter : int, default=100
+        Maximum number of iterations taken for the solvers to converge.
+
+    solver : {'gd', 'sgd', 'block_sgd', 'newton', 'newton-cg', 'irls', 'lbfgs'}, default='newton'
+        Algorithm to use in the optimization problem. Default is ‘newton’.
+
+    lr : float, default=0.01
+        Learning Rate. Used in the optimization of the model.
+
+    random_state : NumsRandomState, default=None
+        Seeds for randomness in model.
+
+    fit_intercept : bool, default=True
+        The intercept of regression is calculated for this model.
+        When data is centered, the intercept is calculated to 0.
+        Setting this option to False is unsupported.
+
+    normalize : bool, default=False
+        Normalizes the regressors before regression.
+        Setting this option to True is not yet supported.
+    """
+
     def __init__(
         self,
         penalty="none",
@@ -455,6 +906,18 @@ class LogisticRegression(GLM):
         )
 
     def link_inv(self, eta: BlockArray):
+        """Computes the inverse link function.
+
+        Parameters
+        ----------
+        eta : BlockArray
+            eta
+
+        Returns
+        -------
+        eta: BlockArray
+            Returns eta.
+        """
         return self._app.one / (self._app.one + self._app.exp(-eta))
 
     def objective(
@@ -464,6 +927,27 @@ class LogisticRegression(GLM):
         beta: BlockArray = None,
         mu: BlockArray = None,
     ):
+        """Computes the objective function.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        y : BlockArray of shape (n_samples,)
+            Target values.
+
+        mu : BlockArray of shape (n_samples,)
+            Hessian penalty
+
+        beta: BlockArray of shape (n_features,)
+            Model parameters.
+
+        Returns
+        -------
+        C : BlockArray, shape (n_samples,)
+            Returns the objective.
+        """
         assert beta is not None or self._beta is not None
         log, one = self._app.log, self._app.one
         mu = self.forward(X, beta) if mu is None else mu
@@ -480,6 +964,27 @@ class LogisticRegression(GLM):
         mu: BlockArray = None,
         beta: BlockArray = None,
     ):
+        """Computes the gradient with respect to beta
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        y : BlockArray of shape (n_samples,)
+            Target values.
+
+        mu : BlockArray of shape (n_samples,)
+            Hessian penalty
+
+        beta: BlockArray of shape (n_features,)
+            Model parameters.
+
+        Returns
+        -------
+        C : array, shape (n_samples,)
+            Returns the gradient with respect to beta.
+        """
         if mu is None:
             mu = self.forward(X)
         r = X.transpose(defer=True) @ (mu - y)
@@ -489,6 +994,24 @@ class LogisticRegression(GLM):
         return r
 
     def hessian(self, X: BlockArray, y: BlockArray, mu: BlockArray = None):
+        """Computes the hessian with respect to the hessian penalty.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        y : BlockArray of shape (n_samples,)
+            Target values.
+
+        mu : BlockArray of shape (n_samples,)
+            Hessian penalty
+
+        Returns
+        -------
+        C : array, shape (n_samples,)
+            Returns the hessian with respect to the hessian penalty.
+        """
         if mu is None:
             mu = self.forward(X)
         dim, block_dim = mu.shape[0], mu.block_shape[0]
@@ -499,12 +1022,56 @@ class LogisticRegression(GLM):
         return r
 
     def deviance(self, y, y_pred):
+        """Computes the deviance of the model with respect to y_pred.
+
+        Parameters
+        ----------
+        y : BlockArray of shape (n_samples,)
+            Samples.
+
+        y_pred : BlockArray of shape (n_samples,)
+            Predicted values.
+
+        Notes
+        -----
+        The deviance for logistic regression is not implemented yet.
+
+        Returns
+        -------
+        C : BlockArray
+            Returns deviance between y and y_pred.
+        """
         raise NotImplementedError()
 
     def predict(self, X: BlockArray) -> BlockArray:
+        """Predict using the Linear Regression model. Calls forward internally.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        Returns
+        -------
+        C : array, shape (n_samples,)
+            Returns predicted values.
+        """
         return (self.forward(X) > 0.5).astype(np.int)
 
     def predict_proba(self, X: BlockArray) -> BlockArray:
+        """Probability estimates.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Vector to be scored, where `n_samples` is the number of samples and
+            `n_features` is the number of features.
+
+        Returns
+        -------
+        T : BlockArray of shape (n_samples, n_classes)
+            Returns the probability of the sample for each class in the model.
+        """
         y_pos = self.forward(X).reshape(
             (X.shape[0], 1), block_shape=(X.block_shape[0], 1)
         )
@@ -513,7 +1080,52 @@ class LogisticRegression(GLM):
 
 
 class PoissonRegression(GLM):
+    """Generalized Linear Model with a Poisson distribution.
+
+    This regressor uses the 'log' link function.
+
+    This docstring was copied from sklearn.linear_model.PoissonRegressor.
+
+    Parameters
+    ----------
+    tol : float, default=0.0001
+        Tolerance for stopping criteria.
+
+    max_iter : int, default=100
+        Maximum number of iterations taken for the solvers to converge.
+
+    solver : {'gd', 'sgd', 'block_sgd', 'newton', 'newton-cg', 'irls', 'lbfgs'}, default='newton'
+        Algorithm to use in the optimization problem. Default is ‘newton’.
+
+    lr : float, default=0.01
+        Learning Rate. Used in the optimization of the model.
+
+    random_state : NumsRandomState, default=None
+        Seeds for randomness in model.
+
+    fit_intercept : bool, default=True
+        The intercept of regression is calculated for this model.
+        When data is centered, the intercept is calculated to 0.
+        Setting this option to False is unsupported.
+
+    normalize : bool, default=False
+        Normalizes the regressors before regression.
+        Setting this option to True is not yet supported.
+    """
+
     def link_inv(self, eta: BlockArray):
+        """Computes the inverse link function.
+
+        Parameters
+        ----------
+        eta : BlockArray
+            eta
+
+        Returns
+        -------
+        eta: BlockArray
+            Returns eta.
+        """
         return self._app.exp(eta)
 
     def objective(
@@ -523,6 +1135,29 @@ class PoissonRegression(GLM):
         beta: BlockArray = None,
         mu: BlockArray = None,
     ):
+        """Computes the objective function.
+
+        If beta is None, then use the beta fitted by this model instance.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        y : BlockArray of shape (n_samples,)
+            Target values.
+
+        mu : BlockArray of shape (n_samples,)
+            Hessian penalty
+
+        beta: BlockArray of shape (n_features,)
+            Model parameters.
+
+        Returns
+        -------
+        C : array, shape (n_samples,)
+            Returns the objective.
+        """
         if beta is None:
             eta = X @ self._beta + self._beta0
         else:
@@ -537,33 +1172,148 @@ class PoissonRegression(GLM):
         mu: BlockArray = None,
         beta: BlockArray = None,
     ):
+        """Computes the gradient with respect to beta
+
+        If beta is None, then use the beta fitted by this model instance.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        y : BlockArray of shape (n_samples,)
+            Target values.
+
+        mu : BlockArray of shape (n_samples,)
+            Hessian penalty
+
+        beta: BlockArray of shape (n_features,)
+            Model parameters.
+
+        Returns
+        -------
+        C : array, shape (n_samples,)
+            Returns the gradient with respect to beta.
+        """
         if mu is None:
             mu = self.forward(X)
         return X.transpose(defer=True) @ (mu - y)
 
     def hessian(self, X: BlockArray, y: BlockArray, mu: BlockArray = None):
+        """Computes the hessian with respect to the hessian penalty.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        y : BlockArray of shape (n_samples,)
+            Target values.
+
+        mu : BlockArray of shape (n_samples,)
+            Hessian penalty
+
+        Returns
+        -------
+        C : array, shape (n_samples,)
+            Returns the hessian with respect to the hessian penalty.
+        """
         if mu is None:
             mu = self.forward(X)
         # TODO (hme): This is sub-optimal as it forces the computation of X.T.
         return (X.transpose(defer=True) * mu) @ X
 
     def deviance(self, y: BlockArray, y_pred: BlockArray) -> BlockArray:
+        """Computes the deviance of the model with respect to y_pred.
+
+        Parameters
+        ----------
+        y : BlockArray of shape (n_samples,)
+            Samples.
+
+        y_pred : BlockArray of shape (n_samples,)
+            Predicted values.
+
+        Returns
+        -------
+        C : BlockArray
+            Returns deviance between y and y_pred.
+        """
         return self._app.sum(
             self._app.two * self._app.xlogy(y, y / y_pred) - y + y_pred
         )
 
     def predict(self, X: BlockArray) -> BlockArray:
+        """Predict using the Linear Regression model. Calls forward internally.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        Returns
+        -------
+        C : BlockArray, shape (n_samples,)
+            Returns predicted values.
+        """
         return self.forward(X)
 
 
 class ExponentialRegression(GLM):
-    # canonical parameter: theta = - lambda
-    # b(theta) = -log(-theta)
-    # b'(theta) = -1/theta
-    # canonical link: g(mu) = theta = eta = X @ beta
-    # inverse canonical link: mu = b'(theta) = -1/theta = -1/eta
+    """Exponential linear regression.
+
+    Parameters
+    ----------
+    tol : float, default=0.0001
+        Tolerance for stopping criteria.
+
+    max_iter : int, default=100
+        Maximum number of iterations taken for the solvers to converge.
+
+    solver : {'gd', 'sgd', 'block_sgd', 'newton', 'newton-cg', 'irls', 'lbfgs'}, default='newton'
+        Algorithm to use in the optimization problem. Default is ‘newton’.
+
+    lr : float, default=0.01
+        Learning Rate. Used in the optimization of the model.
+
+    random_state : NumsRandomState, default=None
+        Seeds for randomness in model.
+
+    fit_intercept : bool, default=True
+        The intercept of regression is calculated for this model.
+        When data is centered, the intercept is calculated to 0.
+        Setting this option to False is unsupported.
+
+    normalize : bool, default=False
+        Normalizes the regressors before regression.
+        Setting this option to True is not yet supported.
+
+    Notes
+    -----
+    * canonical parameter: theta = -lambda
+    * b(theta) = -log(-theta)
+    * b'(theta) = -1/theta
+    * canonical link: g(mu) = theta = eta = X @ beta
+    * inverse canonical link: mu = b'(theta) = -1/theta = -1/eta
+    """
 
     def link_inv(self, eta: BlockArray):
+        """Computes the inverse link function.
+
+        Parameters
+        ----------
+        eta : BlockArray
+            eta
+
+        Returns
+        -------
+        eta: BlockArray
+            Returns eta.
+
+        Notes
+        -----
+        Inverse link function for exponential regression is not implemented yet.
+        """
         raise NotImplementedError()
 
     def objective(
@@ -573,6 +1323,33 @@ class ExponentialRegression(GLM):
         beta: BlockArray = None,
         mu: BlockArray = None,
     ):
+        """Computes the objective function.
+
+        If beta is None, then use the beta fitted by this model instance.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        y : BlockArray of shape (n_samples,)
+            Target values.
+
+        mu : BlockArray of shape (n_samples,)
+            Hessian penalty
+
+        beta: BlockArray of shape (n_features,)
+            Model parameters.
+
+        Returns
+        -------
+        C : BlockArray, shape (n_samples,)
+            Returns the objective.
+
+        Notes
+        -----
+        Objective function for exponential regression is not implemented yet.
+        """
         raise NotImplementedError()
 
     def gradient(
@@ -582,9 +1359,58 @@ class ExponentialRegression(GLM):
         mu: BlockArray = None,
         beta: BlockArray = None,
     ):
+        """Computes the gradient with respect to beta
+
+        If beta is None, then use the beta fitted by this model instance.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        y : BlockArray of shape (n_samples,)
+            Target values.
+
+        mu : BlockArray of shape (n_samples,)
+            Hessian penalty
+
+        beta: BlockArray of shape (n_features,)
+            Model parameters.
+
+        Returns
+        -------
+        C : array, shape (n_samples,)
+            Returns the gradient with respect to beta.
+
+        Notes
+        -----
+        Gradient for exponential regression is not implemented yet.
+        """
         raise NotImplementedError()
 
     def hessian(self, X: BlockArray, y: BlockArray, mu: BlockArray = None):
+        """Computes the hessian with respect to the hessian penalty.
+
+        Parameters
+        ----------
+        X : BlockArray of shape (n_samples, n_features)
+            Samples.
+
+        y : BlockArray of shape (n_samples,)
+            Target values.
+
+        mu : BlockArray of shape (n_samples,)
+            Hessian penalty
+
+        Returns
+        -------
+        C : array, shape (n_samples,)
+            Returns the hessian with respect to the hessian penalty.
+
+        Notes
+        -----
+        Hessian for exponential regression is not implemented yet.
+        """
         raise NotImplementedError()
 
 

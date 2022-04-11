@@ -146,3 +146,9 @@ notebooks
 
 *.lock
 **/dask-worker-space
+
+# MacOS
+.DS_Store
+
+# readthedocs
+docs/source/generated
