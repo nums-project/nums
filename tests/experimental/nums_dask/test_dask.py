@@ -13,7 +13,11 @@
 # limitations under the License.
 
 
+import pytest
+
+
 # pylint: disable=import-outside-toplevel
+@pytest.mark.skip
 def test_dask_backend():
     import numpy as np
     from nums.core import linalg
@@ -23,8 +27,17 @@ def test_dask_backend():
     from nums.core.array.blockarray import BlockArray
     from nums.core import application_manager
     from nums.experimental.nums_dask.dask_backend import DaskBackend
+    from nums.core.backends.utils import get_num_cores
 
-    settings.backend_name = "dask"
+    prev_settings = (
+        settings.system_name,
+        settings.device_grid_name,
+        settings.cluster_shape,
+    )
+    settings.device_grid_name = "cyclic"
+    settings.system_name = "dask"
+    settings.cluster_shape = (get_num_cores(), 1)
+
     assert not application_manager.is_initialized()
     app: ArrayApplication = application_manager.instance()
 
@@ -47,6 +60,11 @@ def test_dask_backend():
     Q, R = linalg.direct_tsqr(app, X)
     assert nps.allclose(Q @ R, X)
     application_manager.destroy()
+    (
+        settings.system_name,
+        settings.device_grid_name,
+        settings.cluster_shape,
+    ) = prev_settings
 
 
 if __name__ == "__main__":

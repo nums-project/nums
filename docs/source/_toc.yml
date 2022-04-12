@@ -1,0 +1,57 @@
+format: jb-book
+root: index
+parts:
+  - caption: Getting Started
+    chapters:
+      - file: getting-started/installation
+      - file: getting-started/basic-usage
+      - file: getting-started/faq
+
+  - caption: User Guide
+    chapters:
+      - file: user-guide/core-concepts/index
+        title: Core Concepts
+        sections:
+          - file: user-guide/core-concepts/block-arrays
+          - file: user-guide/core-concepts/backends
+          - file: user-guide/core-concepts/kernels
+      - file: user-guide/running-nums-on-a-cluster
+      - file: user-guide/view-semantics
+      - file: user-guide/benchmarks
+
+  - caption: API Reference
+    chapters:
+      - file: api-reference/array-objects
+      - file: api-reference/array-creation-routines
+      - file: api-reference/array-manipulation-routines
+      - file: api-reference/binary-operations
+      - file: api-reference/constants
+      - file: api-reference/input-and-output
+      - file: api-reference/linear-algebra
+      - file: api-reference/logic-functions
+      - file: api-reference/mathematical-functions
+      - file: api-reference/sorting-searching-and-counting
+      - file: api-reference/statistics
+      
+  - caption: Developer Guides
+    chapters:
+      - file: developer-guides/architecture
+      - file: developer-guides/contributing-code/index
+        title: Contributing Code
+        sections:
+          - file: developer-guides/contributing-code/finding-an-issue-to-work-on
+          - file: developer-guides/contributing-code/setting-up-your-development-environment
+          - file: developer-guides/contributing-code/testing-and-linting-your-code
+          - file: developer-guides/contributing-code/adding-documentation
+          - file: developer-guides/contributing-code/submitting-a-pull-request
+      - file: developer-guides/release-process
+
+  - caption: Community
+    chapters:
+      - url: https://google.com
+        title: Discord
+      - url: https://google.com
+        title: StackOverflow
+
+          
+        

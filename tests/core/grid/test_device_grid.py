@@ -21,11 +21,12 @@ import numpy as np
 from nums.core.grid.grid import Device, ArrayGrid, CyclicDeviceGrid, PackedDeviceGrid
 
 
-def mock_devices(num_nodes):
+def mock_devices(num_nodes, devices_per_node=1):
     r = []
     for node_id in range(num_nodes):
-        did = Device(node_id, "node%s" % node_id, "cpu", 1)
-        r.append(did)
+        for device in range(devices_per_node):
+            did = Device(node_id, "node%s" % node_id, "cpu", device)
+            r.append(did)
     return r
 
 
@@ -124,8 +125,21 @@ def test_device():
     assert len(touched_devices) == len(devices)
 
 
+def visualize():
+    devices: List[Device] = mock_devices(4, 4)
+    array_grid: ArrayGrid = ArrayGrid(
+        shape=(64, 64), block_shape=(4, 4), dtype="float64"
+    )
+    device_grid: CyclicDeviceGrid = CyclicDeviceGrid(
+        (2, 2), device_type="cpu", devices=devices
+    )
+    for grid_entry in array_grid.get_entry_iterator():
+        print(device_grid.get_cluster_entry(grid_entry, array_grid.grid_shape))
+
+
 if __name__ == "__main__":
-    test_bounds()
-    test_computations()
-    test_errors()
-    test_device()
+    # test_bounds()
+    # test_computations()
+    # test_errors()
+    # test_device()
+    visualize()
