@@ -6,7 +6,7 @@ body:
   - type: textarea
     attributes:
       label: Description
-      description: A short description of your feature
+      description: A short description of your feature.
       placeholder: >
         This should be a clear and concise description of what you want to happen.
 
@@ -14,7 +14,7 @@ body:
     attributes:
       label: Use case
       description: >
-        Describe the use case of your feature request. It will help us understand and
+        Describe the use case for your proposed feature. It'll help us understand and
         prioritize the feature request.
       placeholder: >
         Rather than telling us how you might implement this feature, try to take a
