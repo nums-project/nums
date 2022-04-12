@@ -9,7 +9,7 @@
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#
+from datetime import datetime
 import os
 import sys
 
@@ -21,7 +21,9 @@ sys.path.insert(0, os.path.abspath("../.."))
 # -- Project information -----------------------------------------------------
 
 project = "NumS"
-copyright = "2022, The NumS Team"  # pylint: disable=redefined-builtin
+copyright = (  # pylint: disable=redefined-builtin
+    str(datetime.now().year) + ", The NumS Team"
+)
 author = "The NumS Team"
 
 
@@ -31,15 +33,11 @@ author = "The NumS Team"
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "sphinx.ext.coverage",
-    "sphinx.ext.napoleon",
-    "sphinx.ext.mathjax",
-    "sphinx.ext.viewcode",
     "sphinx_panels",
-    "sphinx_autodoc_typehints",
-    "sphinx_rtd_theme",
+    "myst_parser",
+    "sphinx_external_toc",
+    "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
-    "m2r2",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -50,88 +48,34 @@ templates_path = ["_templates"]
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
 
-# sphinx-panels shouldn't add bootstrap css since the pydata-sphinx-theme
-# already loads it
-panels_add_bootstrap_css = False
-
 version = str(nums.__version__)
 
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-#
-html_theme = "pydata_sphinx_theme"
+html_theme = "sphinx_book_theme"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
 
-html_css_files = [
-    "css/nums.css",
-]
+html_title = ""
 
 html_logo = "_static/logo.svg"
 
 html_favicon = "_static/favicon.ico"
 
 html_theme_options = {
-    "icon_links": [
-        {
-            "name": "GitHub",
-            "url": "https://github.com/nums-project/nums",
-            "icon": "fab fa-github-square",
-            "type": "fontawesome",
-        },
-        {
-            "name": "Twitter",
-            "url": "https://twitter.com/nums_project",
-            "icon": "fab fa-twitter-square",
-            "type": "fontawesome",
-        },
-    ],
-    "favicons": [
-        {"rel": "icon", "sizes": "16x16", "href": "icon.svg"},
-        {
-            "rel": "icon",
-            "sizes": "32x32",
-            "href": "icon.svg",
-        },
-        {
-            "rel": "apple-touch-icon",
-            "sizes": "180x180",
-            "href": "apple-touch-icon-180x180.png",
-        },
-    ],
+    "repository_url": "https://github.com/nums-project/nums",
+    "use_repository_button": True,
+    "use_issues_button": True,
 }
 
-http_favicon = "_static/logo.jpeg"
+html_css_files = [
+    "css/custom.css",
+]
 
 # Source files supported by Sphinx.
 source_suffix = [".rst", ".md"]
-
-autosummary_generate = True
-
-# A way to automatically generate API documentation upon push to GitHub.
-# https://github.com/readthedocs/readthedocs.org/issues/1139
-def run_apidoc(_):
-    ignore_paths = []
-
-    argv = ["-f", "-T", "-e", "-M", "-o", "source/generated", ".."] + ignore_paths
-
-    try:
-        # Sphinx 1.7+
-        from sphinx.ext import apidoc
-
-        apidoc.main(argv)
-    except ImportError:
-        # Sphinx 1.6 (and earlier)
-        from sphinx import apidoc
-
-        argv.insert(0, apidoc.__file__)
-        apidoc.main(argv)
-
-
-def setup(app):
-    app.connect("builder-inited", run_apidoc)
