@@ -7,6 +7,8 @@ body:
     attributes:
       label: Description
       description: A short description of your feature
+      placeholder: >
+        This should be a clear and concise description of what you want to happen.
 
   - type: textarea
     attributes:
