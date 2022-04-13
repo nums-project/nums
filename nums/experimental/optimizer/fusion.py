@@ -8,7 +8,6 @@ from nums.core.array import utils as array_utils
 from nums.core.array.base import Block
 from nums.core.grid.grid import Device
 from nums.experimental.optimizer.clusterstate import ClusterState
-from nums.experimental.optimizer.grapharray import GraphArray
 
 from nums.experimental.optimizer.graph import (
     TreeNode,
@@ -61,13 +60,14 @@ class FuseGraph(object):
             node_block_id_set |= child_block_id_set
             node_num_scalars += child_num_scalars
         if len(node_block_id_set) <= self.max_args:
+            print(len(node_block_id_set))
             # This is fuseable. We keep going.
             return node_leafs, node_block_id_set, node_num_scalars
         else:
             # This branch is no longer fuseable.
             # We prune here and update fuseable_nodes with child nodes.
             fuseable_nodes += fuseable_children
-            return None, None
+            return None, None, 0
 
     def __call__(self):
         fuseable_nodes = []

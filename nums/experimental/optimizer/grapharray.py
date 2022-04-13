@@ -27,6 +27,8 @@ from nums.core.storage.storage import ArrayGrid
 from nums.experimental.optimizer.clusterstate import ClusterState
 from nums.experimental.optimizer.graph import TreeNode, Leaf, UnaryOp, ReduceAxis
 from nums.experimental.optimizer.reduction_ops import TreeReductionOp
+from nums.experimental.optimizer.fusion import FuseGraph
+from nums.experimental.optimizer.fusion_utils import set_using_marker, traverse_marker
 
 
 class GraphArray(object):
@@ -440,3 +442,22 @@ class GraphArray(object):
 
     def sum(self, axis=None, keepdims=False):
         return self.reduce_axis("sum", axis, keepdims)
+    
+    def compile_fuse_ga(self, max_args: int):
+        result_graphs = np.empty_like(self.graphs, dtype=self.graphs.dtype)
+        counter = 0
+        for grid_entry in self.grid.get_entry_iterator():
+            graph = self.graphs[grid_entry]
+            _, leaf_inputs = traverse_marker(graph, 0)
+            if grid_entry == (0,) or grid_entry == (0, 0):  # generic
+                result_graphs[grid_entry] = FuseGraph(
+                    graph, self.km, max_args=max_args
+                )()
+                fused_graph = result_graphs[grid_entry]
+                fused_graph.op_expression = fused_graph._expression
+            else:
+                fused_graph_copy = fused_graph.copy(self.cluster_state, new_ids=True)
+                fused_graph_copy = set_using_marker(fused_graph_copy, leaf_inputs)
+                fused_graph_copy.set_grid_entry(grid_entry)
+                result_graphs[grid_entry] = fused_graph_copy
+        return GraphArray(self.grid.copy(), self.cluster_state, result_graphs, self.km)
