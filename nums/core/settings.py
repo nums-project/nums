@@ -42,6 +42,7 @@ kernel_name = os.environ.get("NUMS_KERNEL", "numpy")
 
 # Device grid settings.
 num_cpus = None
+num_gpus = None
 cluster_shape = (1, 1)
 device_grid_name = os.environ.get("NUMS_DEVICE_GRID", "packed")
 

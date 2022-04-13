@@ -11,14 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import ray
+import os
 import nums
 from nums import numpy as nps
 from nums.core import settings
 from nums.core.application_manager import instance
 
 # pylint: disable=import-outside-toplevel
-
 
 
 print(settings.backend_name)
@@ -43,10 +43,12 @@ def test_serial_gpu():
     # print(c.get())
     assert c.shape == a.shape
 
+
 def test_serial_gpu_benchmark():
     settings.backend_name = "gpu"
     nums.init()
     import time
+
     a = nps.random.rand(1000, 1000)
     b = nps.random.rand(1000, 1000)
     begin = time.time()
@@ -56,10 +58,12 @@ def test_serial_gpu_benchmark():
     end = time.time()
     print(end - begin)
 
+
 def test_serial_cpu_benchmark():
     settings.backend_name = "ray"
     nums.init()
     import time
+
     a = nps.random.rand(1000, 1000)
     b = nps.random.rand(1000, 1000)
     begin = time.time()
@@ -68,5 +72,34 @@ def test_serial_cpu_benchmark():
     end = time.time()
     print(end - begin)
 
+
+def test_ray_gpu():
+    settings.backend_name = "gpu-ray"
+    # settings.backend_name = "gpu"
+    print(settings.backend_name)
+    ray.init(num_gpus=4)
+    nums.init()
+    os.environ["RAY_PROFILING"] = "1"
+    import time
+
+    a = nps.random.rand(10 ** 8)
+    # a.get()
+    b = nps.random.rand(10 ** 8)
+    print(a.grid_shape, a.block_shape)
+    begin = time.time()
+    c = nps.max(a)
+    # d = a + b
+    # e = a + b
+    # f = a + b
+
+    # c.touch()
+
+    c.get()
+    end = time.time()
+    print(end - begin)
+    ray.timeline(filename="/tmp/timeline.json")
+
+
 if __name__ == "__main__":
-    test_serial_gpu()
+    # test_serial_gpu()
+    test_ray_gpu()

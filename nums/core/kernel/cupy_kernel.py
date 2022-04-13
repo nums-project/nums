@@ -87,7 +87,8 @@ class KernelCls(KernelImp):
 
     # I/O operations.
     def touch(self, arr):
-        cp.cuda.Device(0).synchronize()
+        # cp.cuda.Device(0).synchronize()
+        arr.device.synchronize()
         return isinstance(arr, cp.ndarray)
 
     def new_block(self, op_name, grid_entry, grid_meta):
@@ -107,8 +108,9 @@ class KernelCls(KernelImp):
         if rfunc_name not in ("random", "integers"):
             # Only random and integer supports sampling of a specific type.
             result = result.astype(dtype)
-        # return result
-        return cp.array(result, dtype=dtype)
+        result = cp.array(result, dtype=dtype)
+        result.device.synchronize()
+        return result
 
     def permutation(self, rng_params, size):
         rng: Generator = block_rng(*rng_params)
@@ -315,7 +317,9 @@ class KernelCls(KernelImp):
 
     # This is essentially a map.
     def map_uop(self, op_name, arr, args, kwargs):
-        ufunc = cp.__getattribute__(op_name)
+        ufunc = cp.__getattribute__(
+            op_name
+        )  # TODO: Not all ufuncs by CuPy are handled.
         return ufunc(arr, *args, **kwargs)
 
     def where(self, arr, x, y, block_slice_tuples):
@@ -385,7 +389,7 @@ class KernelCls(KernelImp):
     def weighted_median(self, *arr_and_weights):
         """Find the weighted median of an array."""
         mid = len(arr_and_weights) // 2
-        arr, weights = arr_and_weights[:mid], arr_and_weights[mid:]
+        arr, weights = cp.array(arr_and_weights[:mid]), cp.array(arr_and_weights[mid:])
         argsorted_arr = cp.argsort(arr)
         sorted_weights_sum = cp.cumsum(cp.take(weights, argsorted_arr))
         half = sorted_weights_sum[-1] / 2
@@ -488,7 +492,7 @@ class KernelCls(KernelImp):
     # Logic
 
     def logical_and(self, *bool_list):
-        return cp.all(bool_list)
+        return cp.all(cp.array(bool_list))
 
     def arg_op(
         self, op_name, arr, block_slice, other_argoptima=None, other_optima=None

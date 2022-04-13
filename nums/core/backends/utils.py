@@ -46,6 +46,7 @@ def get_num_cores(reserved_for_os=2):
 
 
 def get_num_gpus():
+    # TODO: Try to get the number of GPUs from Ray
     gpus = int(
         os.popen("nvidia-smi --query-gpu=name --format=csv,noheader | wc -l").read()
     )

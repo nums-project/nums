@@ -31,6 +31,7 @@ from nums.core.backends import (
     MPIBackend,
     RayBackendStockScheduler,
     GPUSerialBackend,
+    GPUParallelBackend,
 )
 
 # pylint: disable=global-statement
@@ -86,10 +87,18 @@ def create():
         )
     elif backend_name == "mpi":
         backend: Backend = MPIBackend()
+    # TODO: These are temporary names, change once finalized
     elif backend_name == "gpu":
-        backend: Backend = (
-            GPUSerialBackend()
-        )  # TODO: For now implementing a serial backend
+        backend: Backend = GPUSerialBackend()
+    elif backend_name == "gpu-ray":
+        num_nodes = int(np.product(settings.cluster_shape))
+        backend: Backend = GPUParallelBackend(
+            address=settings.address,
+            use_head=True,  # TODO: temporary
+            num_nodes=num_nodes,
+            num_cpus=settings.num_cpus,
+            num_gpus=settings.num_gpus,
+        )
     elif backend_name == "ray-scheduler":
         use_head = settings.use_head
         num_nodes = int(np.product(settings.cluster_shape))
@@ -121,7 +130,7 @@ def create():
 
     device_type = "cpu"
     # TODO: this is temporary
-    if backend_name == "gpu":
+    if backend_name == "gpu" or backend_name == "gpu-ray":
         from nums.core.kernel import cupy_kernel
 
         kernel_module = {"cupy": cupy_kernel}[
