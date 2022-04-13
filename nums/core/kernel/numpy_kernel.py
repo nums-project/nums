@@ -511,3 +511,6 @@ class KernelCls(KernelImp):
 
     def identity(self, value):
         return value
+
+    def einsum(self, subscript, *operands):
+        return np.einsum(subscript, *operands)

@@ -920,6 +920,106 @@ class ArrayApplication:
     ) -> BlockArray:
         return arr_1.tensordot(arr_2, axes)
 
+    def einsum(self, subscript, *operands):
+        import opt_einsum as oe
+        import functools
+        import itertools
+
+        input_strings, output_string, operands = oe.parser.parse_einsum_input(
+            (subscript,) + operands
+        )
+        input_strings = input_strings.split(",")
+        all_vars = set(functools.reduce(lambda x, s: set(x) | set(s), input_strings))
+
+        output_vars = set(output_string)
+        assert len(output_vars) == len(output_string), "Repeated vars in output not supported."
+        sum_vars = all_vars - output_vars
+        sorted_vars = sorted(list(output_vars)) + sorted(list(sum_vars))
+        var_to_idx = {v: i for i, v in enumerate(sorted_vars)}
+
+        # Typecheck.
+        axis_dims = {}
+        axis_block_dims = {}
+        axis_grid_dims = {}
+        for i, ba in enumerate(operands):
+            assert isinstance(ba, BlockArray)
+            input_string = input_strings[i]
+            for j, char in enumerate(input_string):
+                if char not in axis_dims:
+                    axis_dims[char] = ba.shape[j]
+                    axis_block_dims[char] = ba.block_shape[j]
+                    axis_grid_dims[char] = ba.grid_shape[j]
+                else:
+                    assert axis_dims[char] == ba.shape[j]
+                    assert axis_block_dims[char] == ba.block_shape[j]
+                    assert axis_grid_dims[char] == ba.grid_shape[j]
+
+        # Construct output BlockArray.
+        output_shape = []
+        output_block_shape = []
+        output_variable_to_axis = {}
+        for i, char in enumerate(output_string):
+            output_shape.append(axis_dims[char])
+            output_block_shape.append(axis_block_dims[char])
+            output_variable_to_axis[char] = i
+        output_shape = tuple(output_shape)
+        output_block_shape = tuple(output_block_shape)
+
+        # Just sample a dtype for now.
+        dtype = operands[0].dtype
+        grid: ArrayGrid = ArrayGrid(output_shape, output_block_shape, dtype.__name__)
+
+        einsum_outputs = np.empty(shape=grid.grid_shape, dtype=list)
+
+        # Construct iteration space.
+        grid_idx_iterator = itertools.product(
+            *[axis_grid_dims[char] for char in sorted_vars]
+        )
+        for grid_idx in grid_idx_iterator:
+
+            # Map input block grid entries.
+            input_block_oids = []
+            for i, input_string in enumerate(input_strings):
+                input_grid_entry = []
+                for char in input_string:
+                    input_grid_entry.append(grid_idx[var_to_idx[char]])
+                input_grid_entry = tuple(input_grid_entry)
+                input_block_oids.append(operands[i].blocks[input_grid_entry])
+
+            # Map output block grid entry.
+            output_grid_entry = []
+            for char in output_string:
+                output_grid_entry.append(grid_idx[var_to_idx[char]])
+            output_grid_entry = tuple(output_grid_entry)
+
+            # Execute einsum kernel.
+            if einsum_outputs[output_grid_entry] is None:
+                einsum_outputs[output_grid_entry] = []
+
+            einsum_oid = self.km.einsum(
+                subscript,
+                *input_block_oids,
+                syskwargs={
+                    "grid_entry": output_grid_entry,
+                    "grid_shape": grid.grid_shape,
+                }
+            )
+
+            einsum_outputs[output_grid_entry].append(
+                (einsum_oid, output_grid_entry, grid.grid_shape, False)
+            )
+
+        result: BlockArray = BlockArray(grid, self.km)
+        for grid_entry in grid.get_entry_iterator():
+            result_block: Block = result[grid_entry].block
+            result_block.oid = result._tree_reduce(
+                "sum",
+                einsum_outputs[grid_entry],
+                result_block.grid_entry,
+                result_block.grid_shape,
+            )
+        return result
+
     def map_bop(
         self,
         op_name: str,
