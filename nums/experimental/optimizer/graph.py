@@ -179,7 +179,7 @@ class Leaf(TreeNode):
         leaf.parent = parent
         leaf.block = self.block
 
-        # This property is only used for fusion. 
+        # This property is only used for fusion.
         leaf.marker = self.marker
         leaf.copy_on_op = self.copy_on_op
         return leaf
