@@ -32,7 +32,7 @@ from nums.experimental.optimizer.grapharray import (
 )
 from nums.experimental.optimizer.tree_search import RandomTS
 from nums.experimental.optimizer.fusion import FuseGraph
-
+from nums.experimental.optimizer.graph import TreeNode, Leaf, FunctionNode
 import conftest
 
 
@@ -41,31 +41,53 @@ def fusion1(app, x, y):
     return 1.0 / (1.0 + app.exp(x - y))
 
 
-def fuse_ga(app, r: GraphArray) -> GraphArray:
-    result_graphs = np.empty_like(r.graphs, dtype=r.graphs.dtype)
-    t = time.time()
-    for grid_entry in r.grid.get_entry_iterator():
-        graph = r.graphs[grid_entry]
-        result_graphs[grid_entry] = FuseGraph(graph, app.km)()
-    print("fusion time", time.time() - t)
-    return GraphArray(r.grid.copy(), r.cluster_state, result_graphs, r.km)
+def fusion2(app, x, y):
+    return x @ y
 
 
-def ga_op(app, func, x: BlockArray, y: BlockArray, copy_on_op=True) -> BlockArray:
+def fusion3(app, s, q, p):
+    return s * (q @ p.T)
+
+
+def ga_op(
+    app, func, x: BlockArray, y: BlockArray, copy_on_op=True, max_args=2
+) -> BlockArray:
     cluster_state: ClusterState = ClusterState(x.km.devices())
     x_ga: GraphArray = GraphArray.from_ba(x, cluster_state, copy_on_op=copy_on_op)
     y_ga: GraphArray = GraphArray.from_ba(y, cluster_state, copy_on_op=copy_on_op)
     op_ga: GraphArray = func(app, x_ga, y_ga)
-    fused_ga: GraphArray = fuse_ga(app, op_ga)
-    t = time.time()
+    start_time = time.time()
+    fused_ga: GraphArray = op_ga.compile(max_args)
+    end_time = time.time()
     result_ga: GraphArray = RandomTS(
         seed=conftest.rs,
         max_samples_per_step=1,
         max_reduction_pairs=1,
         force_final_action=True,
     ).solve(fused_ga)
-    print("tree search time", time.time() - t)
+
     return BlockArray(result_ga.grid, x.km, result_ga.to_blocks())
+
+
+def ga_op_sampled_dense_dense(
+    app, func, s: BlockArray, p: BlockArray, q: BlockArray, copy_on_op=True, max_args=3
+) -> BlockArray:
+    cluster_state: ClusterState = ClusterState(s.km.devices())
+    s_ga: GraphArray = GraphArray.from_ba(s, cluster_state, copy_on_op=copy_on_op)
+    p_ga: GraphArray = GraphArray.from_ba(p, cluster_state, copy_on_op=copy_on_op)
+    q_ga: GraphArray = GraphArray.from_ba(q, cluster_state, copy_on_op=copy_on_op)
+    op_ga: GraphArray = func(app, s_ga, p_ga, q_ga)
+    start_time = time.time()
+    fused_ga: GraphArray = op_ga.compile(max_args)
+    end_time = time.time()
+    result_ga: GraphArray = RandomTS(
+        seed=conftest.rs,
+        max_samples_per_step=1,
+        max_reduction_pairs=1,
+        force_final_action=True,
+    ).solve(fused_ga)
+
+    return BlockArray(result_ga.grid, s.km, result_ga.to_blocks())
 
 
 def test_fusion(app_inst_mock_none):
@@ -77,7 +99,10 @@ def test_fusion(app_inst_mock_none):
     x: BlockArray = app.array(real_x, x_block_shape)
     y: BlockArray = app.array(real_y, y_block_shape)
     z: BlockArray = fusion1(app, x, y)
+    start_time = time.time()
     opt_z: BlockArray = ga_op(app, fusion1, x, y)
+    end_time = time.time()
+    print(end_time - start_time)
     assert np.allclose(z.get(), fusion1(np, real_x, real_y))
     assert app.allclose(z, opt_z).get()
     for grid_entry in opt_z.grid.get_entry_iterator():
@@ -88,16 +113,24 @@ def test_fusion(app_inst_mock_none):
         assert block.dtype == opt_z.dtype
 
 
-def test_fusion_time(app_inst_mock_none):
+# matrix multiply
+# tensordot operation
+def test_tensordot(app_inst_mock_none):
     app = app_inst_mock_none
-    x_shape, x_block_shape = (1024,), (1,)
-    y_shape, y_block_shape = (1024,), (1,)
+    x_shape, x_block_shape = (4, 2), (2, 2)
+    y_shape, y_block_shape = (2, 4), (2, 2)
+    t = time.time()
     real_x = np.random.random(np.product(x_shape)).reshape(x_shape)
     real_y = np.random.random(np.product(y_shape)).reshape(y_shape)
     x: BlockArray = app.array(real_x, x_block_shape)
     y: BlockArray = app.array(real_y, y_block_shape)
-    t = time.time()
-    opt_z: BlockArray = ga_op(app, fusion1, x, y)
+    z: BlockArray = fusion2(app, x, y)
+    start_time = time.time()
+    opt_z: BlockArray = ga_op(app, fusion2, x, y)
+    end_time = time.time()
+    print(end_time - start_time)
+    assert np.allclose(z.get(), fusion2(np, real_x, real_y))
+    assert app.allclose(z, opt_z).get()
     print("schedule time", time.time() - t)
     for grid_entry in opt_z.grid.get_entry_iterator():
         block = opt_z.blocks[grid_entry]
@@ -107,16 +140,33 @@ def test_fusion_time(app_inst_mock_none):
         assert block.dtype == opt_z.dtype
 
 
-def test_fused_placement():
-    pass
+def test_sparse_array(app_inst_mock_none):
+    app = app_inst_mock_none
+    q_shape, q_block_shape = (10, 2), (2, 2)
+    p_shape, p_block_shape = (20, 2), (2, 2)
+    s_shape, s_block_shape = (10, 20), (2, 2)
+    real_q = np.random.random(np.product(q_shape)).reshape(q_shape)
+    real_p = np.random.random(np.product(p_shape)).reshape(p_shape)
+    real_s = np.random.random(np.product(s_shape)).reshape(s_shape)
+    q: BlockArray = app.array(real_q, q_block_shape)
+    p: BlockArray = app.array(real_p, p_block_shape)
+    s: BlockArray = app.array(real_s, s_block_shape)
+    z: BlockArray = fusion3(app, s, q, p)
+    start_time = time.time()
+    opt_z: BlockArray = ga_op_sampled_dense_dense(app, fusion3, s, q, p)
+    end_time = time.time()
+    print(end_time - start_time)
+    assert np.allclose(z.get(), fusion3(np, real_s, real_q, real_p))
+    assert app.allclose(z, opt_z).get()
 
 
 if __name__ == "__main__":
     import conftest
 
     app = conftest.mock_ray_cluster((1, 1))
+    # test_sparse_array(app)
     # test_fusion(app)
-    test_fusion_time(app)
+    test_tensordot_variant2(app)
     conftest.destroy_mock_cluster(app)
 
     # app = conftest.mock_cluster((10, 1))
