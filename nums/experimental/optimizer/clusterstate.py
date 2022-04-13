@@ -43,6 +43,7 @@ class ClusterState(object):
         created_on_only=False,
         local_transfer_coeff=0.1,
     ):
+        self.num_ops = 0
         self.created_on_only = created_on_only
         # Intra-node transfers are faster than inter-node transfers.
         # It's critical we account for this when objects need to be transferred within a node.
@@ -136,10 +137,19 @@ class ClusterState(object):
         devices: List[Device] = self.get_block_devices(block_id)
         if to_device in devices:
             return resources
-        # Pick the first device. This is the worst-case assumption,
-        # since it imposes the greatest load (w.r.t. cost function) on the network,
-        # though we really don't have control over this.
+
+        # Pick the device which minimizes cost.
+        # We can prevent this from happening by setting created_on_only.
         from_device: Device = devices[0]
+        for device in devices:
+            if device.node_id == to_device.node_id:
+                from_device = device
+                break
+        for device in devices:
+            if device.node_id == to_device.node_id and device.device == to_device.device:
+                from_device = device
+                break
+
         # Update load.
         transfer_cost = size
         if from_device.node_id == to_device.node_id:
@@ -179,6 +189,7 @@ class ClusterState(object):
             block_devices.append(to_device)
 
     def commit_op(self, op_mem: int, block_id_a: int, block_id_b: int, device: Device):
+        self.num_ops += 1
         if device not in self.get_block_devices(block_id_a):
             self.commit_copy_block(block_id_a, device)
         if device not in self.get_block_devices(block_id_b):
@@ -196,6 +207,7 @@ class ClusterState(object):
         return resources
 
     def commit_uop(self, op_mem: int, block_id: int, device: Device):
+        self.num_ops += 1
         if device not in self.get_block_devices(block_id):
             self.commit_copy_block(block_id, device)
         self.add_resource_load(self.resources, self.mem_idx, device, op_mem)
@@ -215,6 +227,7 @@ class ClusterState(object):
         return resources
 
     def commit_nary_op(self, op_mem: int, block_ids: List[int], device: Device):
+        self.num_ops += 1
         for block_id in block_ids:
             if device not in self.get_block_devices(block_id):
                 self.commit_copy_block(block_id, device)
