@@ -60,7 +60,6 @@ class FuseGraph(object):
             node_block_id_set |= child_block_id_set
             node_num_scalars += child_num_scalars
         if len(node_block_id_set) <= self.max_args:
-            print(len(node_block_id_set))
             # This is fuseable. We keep going.
             return node_leafs, node_block_id_set, node_num_scalars
         else:

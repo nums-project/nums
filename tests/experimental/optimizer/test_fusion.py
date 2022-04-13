@@ -57,7 +57,7 @@ def ga_op(
     y_ga: GraphArray = GraphArray.from_ba(y, cluster_state, copy_on_op=copy_on_op)
     op_ga: GraphArray = func(app, x_ga, y_ga)
     start_time = time.time()
-    fused_ga: GraphArray = op_ga.compile_fuse_ga(max_args)
+    fused_ga: GraphArray = op_ga.compile(max_args)
     end_time = time.time()
     result_ga: GraphArray = RandomTS(
         seed=conftest.rs,
@@ -69,7 +69,7 @@ def ga_op(
     return BlockArray(result_ga.grid, x.km, result_ga.to_blocks())
 
 
-def ga_op_sparse(
+def ga_op_sampled_dense_dense(
     app, func, s: BlockArray, p: BlockArray, q: BlockArray, copy_on_op=True, max_args=3
 ) -> BlockArray:
     cluster_state: ClusterState = ClusterState(s.km.devices())
@@ -78,7 +78,7 @@ def ga_op_sparse(
     q_ga: GraphArray = GraphArray.from_ba(q, cluster_state, copy_on_op=copy_on_op)
     op_ga: GraphArray = func(app, s_ga, p_ga, q_ga)
     start_time = time.time()
-    fused_ga: GraphArray = op_ga.compile_fuse_ga(max_args)
+    fused_ga: GraphArray = op_ga.compile(max_args)
     end_time = time.time()
     result_ga: GraphArray = RandomTS(
         seed=conftest.rs,
@@ -105,6 +105,12 @@ def test_fusion(app_inst_mock_none):
     print(end_time - start_time)
     assert np.allclose(z.get(), fusion1(np, real_x, real_y))
     assert app.allclose(z, opt_z).get()
+    for grid_entry in opt_z.grid.get_entry_iterator():
+        block = opt_z.blocks[grid_entry]
+        assert block.grid_entry == grid_entry
+        assert block.grid_shape == opt_z.grid_shape
+        assert block.shape == opt_z.grid.get_block_shape(grid_entry)
+        assert block.dtype == opt_z.dtype
 
 
 # matrix multiply
@@ -113,6 +119,7 @@ def test_tensordot(app_inst_mock_none):
     app = app_inst_mock_none
     x_shape, x_block_shape = (4, 2), (2, 2)
     y_shape, y_block_shape = (2, 4), (2, 2)
+    t = time.time()
     real_x = np.random.random(np.product(x_shape)).reshape(x_shape)
     real_y = np.random.random(np.product(y_shape)).reshape(y_shape)
     x: BlockArray = app.array(real_x, x_block_shape)
@@ -124,6 +131,13 @@ def test_tensordot(app_inst_mock_none):
     print(end_time - start_time)
     assert np.allclose(z.get(), fusion2(np, real_x, real_y))
     assert app.allclose(z, opt_z).get()
+    print("schedule time", time.time() - t)
+    for grid_entry in opt_z.grid.get_entry_iterator():
+        block = opt_z.blocks[grid_entry]
+        assert block.grid_entry == grid_entry
+        assert block.grid_shape == opt_z.grid_shape
+        assert block.shape == opt_z.grid.get_block_shape(grid_entry)
+        assert block.dtype == opt_z.dtype
 
 
 def test_sparse_array(app_inst_mock_none):
@@ -139,7 +153,7 @@ def test_sparse_array(app_inst_mock_none):
     s: BlockArray = app.array(real_s, s_block_shape)
     z: BlockArray = fusion3(app, s, q, p)
     start_time = time.time()
-    opt_z: BlockArray = ga_op_sparse(app, fusion3, s, q, p)
+    opt_z: BlockArray = ga_op_sampled_dense_dense(app, fusion3, s, q, p)
     end_time = time.time()
     print(end_time - start_time)
     assert np.allclose(z.get(), fusion3(np, real_s, real_q, real_p))

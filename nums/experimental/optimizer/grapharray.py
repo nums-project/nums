@@ -443,7 +443,7 @@ class GraphArray(object):
     def sum(self, axis=None, keepdims=False):
         return self.reduce_axis("sum", axis, keepdims)
 
-    def compile_fuse_ga(self, max_args: int):
+    def compile(self, max_args: int):
         result_graphs = np.empty_like(self.graphs, dtype=self.graphs.dtype)
         counter = 0
         for grid_entry in self.grid.get_entry_iterator():
