@@ -8,7 +8,6 @@ from nums.core.array import utils as array_utils
 from nums.core.array.base import Block
 from nums.core.grid.grid import Device
 from nums.experimental.optimizer.clusterstate import ClusterState
-from nums.experimental.optimizer.grapharray import GraphArray
 
 from nums.experimental.optimizer.graph import (
     TreeNode,
@@ -67,7 +66,7 @@ class FuseGraph(object):
             # This branch is no longer fuseable.
             # We prune here and update fuseable_nodes with child nodes.
             fuseable_nodes += fuseable_children
-            return None, None
+            return None, None, 0
 
     def __call__(self):
         fuseable_nodes = []
