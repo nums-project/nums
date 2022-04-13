@@ -151,7 +151,7 @@ if __name__ == "__main__":
 
     app = conftest.mock_ray_cluster((1, 1))
     # test_sparse_array(app)
-    #test_fusion(app)
+    # test_fusion(app)
     test_tensordot_variant2(app)
     conftest.destroy_mock_cluster(app)
 
