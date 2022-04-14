@@ -74,12 +74,12 @@ def test_serial_cpu_benchmark():
 
 
 def test_ray_gpu():
-    settings.backend_name = "gpu-ray"
+    settings.backend_name = "gpu-ray-actor"
     # settings.backend_name = "gpu"
     print(settings.backend_name)
-    ray.init(num_gpus=4)
+    # ray.init(num_gpus=4)
     nums.init()
-    os.environ["RAY_PROFILING"] = "1"
+    # os.environ["RAY_PROFILING"] = "1"
     import time
 
     a = nps.random.rand(10 ** 8)
@@ -97,7 +97,7 @@ def test_ray_gpu():
     c.get()
     end = time.time()
     print(end - begin)
-    ray.timeline(filename="/tmp/timeline.json")
+    # ray.timeline(filename="/tmp/timeline.json")
 
 
 if __name__ == "__main__":

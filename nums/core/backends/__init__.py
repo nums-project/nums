@@ -14,5 +14,5 @@
 from .base import Backend
 from .ray import RayBackend, RayBackendStockScheduler
 from .mpi import MPIBackend
-from .gpu import GPUSerialBackend, GPUParallelBackend
+from .gpu import GPUSerialBackend, GPUParallelBackend, GPURayActorBackend
 from .serial import SerialBackend

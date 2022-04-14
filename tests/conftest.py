@@ -154,7 +154,7 @@ def get_app(backend_name, device_grid_name="cyclic"):
     elif backend_name == "gpu-ray":
         backend: Backend = GPUParallelBackend()
         backend.init()
-        cluster_shape = (4, 1)  # TODO temporary
+        cluster_shape = (1, 1)  # TODO temporary
     else:
         raise Exception("Unexpected backend name %s" % backend_name)
 
