@@ -14,7 +14,10 @@
 
 
 from typing import List, Tuple, Dict, Union
+import functools
+import itertools
 
+import opt_einsum as oe
 import numpy as np
 
 from nums.core.array import utils as array_utils
@@ -921,9 +924,6 @@ class ArrayApplication:
         return arr_1.tensordot(arr_2, axes)
 
     def einsum(self, subscript, *operands):
-        import opt_einsum as oe
-        import functools
-        import itertools
 
         input_strings, output_string, operands = oe.parser.parse_einsum_input(
             (subscript,) + operands
@@ -932,7 +932,9 @@ class ArrayApplication:
         all_vars = set(functools.reduce(lambda x, s: set(x) | set(s), input_strings))
 
         output_vars = set(output_string)
-        assert len(output_vars) == len(output_string), "Repeated vars in output not supported."
+        assert len(output_vars) == len(
+            output_string
+        ), "Repeated vars in output not supported."
         sum_vars = all_vars - output_vars
         sorted_vars = sorted(list(output_vars)) + sorted(list(sum_vars))
         var_to_idx = {v: i for i, v in enumerate(sorted_vars)}
@@ -1013,7 +1015,7 @@ class ArrayApplication:
         result: BlockArray = BlockArray(grid, self.km)
         for grid_entry in grid.get_entry_iterator():
             result_block: Block = result.blocks[grid_entry]
-            result_block.oid = result._tree_reduce(
+            result_block.oid = result.tree_reduce(
                 "sum",
                 einsum_outputs[grid_entry],
                 result_block.grid_entry,

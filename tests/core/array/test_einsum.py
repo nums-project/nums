@@ -13,12 +13,7 @@
 # limitations under the License.
 
 
-import itertools
-
-# pylint: disable=wrong-import-order
-import common  # pylint: disable=import-error
 import numpy as np
-import pytest
 
 from nums.core.array.application import ArrayApplication
 
