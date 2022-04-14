@@ -1,4 +1,5 @@
-# Binary Operations
+Binary Operations
+*****************
 
 .. currentmodule:: nums.numpy
 
@@ -13,18 +14,3 @@ Elementwise bit operations
    bitwise_xor
    left_shift
    right_shift
-
-Bit packing
------------
-.. autosummary::
-   :toctree: generated/
-
-   packbits
-   unpackbits
-
-Output formatting
------------------
-.. autosummary::
-   :toctree: generated/
-
-   binary_repr
