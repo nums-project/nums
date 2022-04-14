@@ -937,7 +937,7 @@ class ArrayApplication:
         sorted_vars = sorted(list(output_vars)) + sorted(list(sum_vars))
         var_to_idx = {v: i for i, v in enumerate(sorted_vars)}
 
-        # Typecheck.
+        # Type check.
         axis_dims = {}
         axis_block_dims = {}
         axis_grid_dims = {}
@@ -954,7 +954,7 @@ class ArrayApplication:
                     assert axis_block_dims[char] == ba.block_shape[j]
                     assert axis_grid_dims[char] == ba.grid_shape[j]
 
-        # Construct output BlockArray.
+        # Construct output ArrayGrid.
         output_shape = []
         output_block_shape = []
         output_variable_to_axis = {}
@@ -969,12 +969,12 @@ class ArrayApplication:
         dtype = operands[0].dtype
         grid: ArrayGrid = ArrayGrid(output_shape, output_block_shape, dtype.__name__)
 
-        einsum_outputs = np.empty(shape=grid.grid_shape, dtype=list)
-
         # Construct iteration space.
         grid_idx_iterator = itertools.product(
-            *[axis_grid_dims[char] for char in sorted_vars]
+            *[range(axis_grid_dims[char]) for char in sorted_vars]
         )
+        # Perform einsum kernel operations.
+        einsum_outputs = np.empty(shape=grid.grid_shape, dtype=list)
         for grid_idx in grid_idx_iterator:
 
             # Map input block grid entries.
@@ -984,7 +984,7 @@ class ArrayApplication:
                 for char in input_string:
                     input_grid_entry.append(grid_idx[var_to_idx[char]])
                 input_grid_entry = tuple(input_grid_entry)
-                input_block_oids.append(operands[i].blocks[input_grid_entry])
+                input_block_oids.append(operands[i].blocks[input_grid_entry].oid)
 
             # Map output block grid entry.
             output_grid_entry = []
@@ -1009,9 +1009,10 @@ class ArrayApplication:
                 (einsum_oid, output_grid_entry, grid.grid_shape, False)
             )
 
+        # Compute output BlockArray by summing einsums.
         result: BlockArray = BlockArray(grid, self.km)
         for grid_entry in grid.get_entry_iterator():
-            result_block: Block = result[grid_entry].block
+            result_block: Block = result.blocks[grid_entry]
             result_block.oid = result._tree_reduce(
                 "sum",
                 einsum_outputs[grid_entry],

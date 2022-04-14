@@ -514,3 +514,5 @@ class KernelCls(KernelImp):
 
     def einsum(self, subscript, *operands):
         return np.einsum(subscript, *operands)
+        # import opt_einsum as oe
+        # return oe.contract(subscript, *operands)
