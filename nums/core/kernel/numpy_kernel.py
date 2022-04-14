@@ -16,6 +16,7 @@
 import operator
 import random
 
+import opt_einsum as oe
 import numpy as np
 import scipy.linalg
 import scipy.special
@@ -511,3 +512,6 @@ class KernelCls(KernelImp):
 
     def identity(self, value):
         return value
+
+    def einsum(self, subscript, *operands):
+        return oe.contract(subscript, *operands)

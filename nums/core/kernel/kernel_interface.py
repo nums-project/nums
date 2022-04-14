@@ -159,6 +159,9 @@ class Kernel:
     def identity(self, value):
         raise NotImplementedError()
 
+    def einsum(self, subscript, *operands, syskwargs: Dict):
+        raise NotImplementedError()
+
 
 class KernelImp:
     pass

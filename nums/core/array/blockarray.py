@@ -640,7 +640,7 @@ class BlockArray(BlockArrayBase):
             result.blocks[grid_entry] = self.blocks[grid_entry].ufunc(op_name)
         return result
 
-    def _tree_reduce(
+    def tree_reduce(
         self, op_name, blocks_or_oids, result_grid_entry, result_grid_shape
     ):
         """
@@ -742,7 +742,7 @@ class BlockArray(BlockArrayBase):
                 result_block: Block = result.blocks[()]
             else:
                 result_block: Block = result.blocks[:].item()
-            result_block.oid = self._tree_reduce(
+            result_block.oid = self.tree_reduce(
                 op_name,
                 block_reduced_oids.flatten().tolist(),
                 result_block.grid_entry,
@@ -760,7 +760,7 @@ class BlockArray(BlockArrayBase):
                     grid_entry = tuple(grid_entry)
                     block_reduced_oids_axis.append(block_reduced_oids[grid_entry])
                 result_block: Block = result.blocks[result_grid_entry]
-                result_block.oid = self._tree_reduce(
+                result_block.oid = self.tree_reduce(
                     op_name,
                     block_reduced_oids_axis,
                     result_block.grid_entry,
@@ -849,7 +849,7 @@ class BlockArray(BlockArrayBase):
                     sum_oids.append(
                         (dotted_oid, dot_grid_args[0], dot_grid_args[1], False)
                     )
-                result_block.oid = self._tree_reduce(
+                result_block.oid = self.tree_reduce(
                     "sum", sum_oids, result_block.grid_entry, result_block.grid_shape
                 )
         return result

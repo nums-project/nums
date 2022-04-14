@@ -1,18 +1,14 @@
-# Array Manipulation Routines
-
-.. currentmodule:: nums.numpy
-
-
-Array manipulation routines
+Array Manipulation Routines
 ***************************
 
-.. currentmodule:: numpy
+.. currentmodule:: nums.numpy
 
 Basic operations
 ================
 .. autosummary::
    :toctree: generated/
 
+    copyto
     shape
 
 Changing array shape
@@ -28,6 +24,7 @@ Transpose-like operations
    :toctree: generated/
 
    swapaxes
+   ndarray.T
    transpose
 
 Changing number of dimensions
@@ -40,6 +37,13 @@ Changing number of dimensions
    atleast_3d
    expand_dims
    squeeze
+
+Changing kind of array
+======================
+.. autosummary::
+   :toctree: generated/
+
+   asarray
 
 Joining arrays
 ==============
@@ -60,14 +64,12 @@ Splitting arrays
 
    split
 
-Tiling arrays
-=============
+Adding and removing elements
+============================
 .. autosummary::
    :toctree: generated/
 
-   tile
-   repeat
-
+   append
 
 Rearranging elements
 ====================
