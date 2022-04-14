@@ -259,11 +259,11 @@ class BlockArray(BlockArrayBase):
             >>> x.T.get()
             array([[1., 3.],
                    [2., 4.]])
-            >>> x = np.array([[1., 2., 3., 4.]])
+            >>> x = np.array([1., 2., 3., 4.])
             >>> x.get()
             array([1., 2., 3., 4.])
             >>> x.T.get()
-            array([ 1., 2., 3., 4.])
+            array([1., 2., 3., 4.])
         """
         return self.transpose()
 
