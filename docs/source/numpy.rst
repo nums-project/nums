@@ -79,7 +79,6 @@ NumS Supported API
    arcsinh
    arctan
    arctanh
-   bitwise_not
    cbrt
    ceil
    conj

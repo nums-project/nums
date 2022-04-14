@@ -600,105 +600,6 @@ def arctanh(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Bloc
     )
 
 
-def bitwise_not(
-    x: BlockArray, out: BlockArray = None, where=True, **kwargs
-) -> BlockArray:
-    """Compute bit-wise inversion, or bit-wise NOT, element-wise.
-
-    This docstring was copied from numpy.bitwise_not.
-
-    Some inconsistencies with the NumS version may exist.
-
-    Computes the bit-wise NOT of the underlying binary representation of
-    the integers in the input arrays. This ufunc implements the C/Python
-    operator ``~``.
-
-    For signed integer inputs, the two's complement is returned.  In a
-    two's-complement system negative numbers are represented by the two's
-    complement of the absolute value. This is the most common method of
-    representing signed integers on computers [1]_. A N-bit
-    two's-complement system can represent every integer in the range
-    :math:`-2^{N-1}` to :math:`+2^{N-1}-1`.
-
-    Parameters
-    ----------
-    x : BlockArray
-        Only integer and boolean types are handled.
-    out : BlockArray, None, or optional
-        A location into which the result is stored. If provided, it must have
-        a shape that the inputs broadcast to. If not provided or None,
-        a freshly-allocated array is returned. A tuple (possible only as a
-        keyword argument) must have length equal to the number of outputs.
-    where : BlockArray, optional
-        This condition is broadcast over the input. At locations where the
-        condition is True, the `out` array will be set to the ufunc result.
-        Elsewhere, the `out` array will retain its original value.
-        Note that if an uninitialized `out` array is created via the default
-        ``out=None``, locations within it where the condition is False will
-        remain uninitialized.
-    **kwargs
-        For other keyword-only arguments, see the
-        :ref:`ufunc docs <ufuncs.kwargs>`.
-
-    Returns
-    -------
-    out : BlockArray or scalar
-        Result.
-
-    See Also
-    --------
-    bitwise_and, bitwise_or, bitwise_xor
-    logical_not
-    binary_repr :
-        Return the binary representation of the input number as a string.
-
-    References
-    ----------
-    .. [1] Wikipedia, "Two's complement",
-        https://en.wikipedia.org/wiki/Two's_complement
-
-    Examples
-    --------
-    The doctests shown below are copied from NumPy.
-    They won’t show the correct result until you operate ``get()``.
-
-    We've seen that 13 is represented by ``00001101``.
-    The invert or bit-wise NOT of 13 is then:
-
-    >>> x = nps.invert(nps.array(13, dtype=nps.uint8))  # doctest: +SKIP
-    >>> x.get()  # doctest: +SKIP
-    array(242, dtype=uint8)
-
-    The result depends on the bit-width:
-
-    >>> x = nps.invert(nps.array(13, dtype=nps.uint16)).get()  # doctest: +SKIP
-    >>> x  # doctest: +SKIP
-    65522
-    >>> nps.binary_repr(x, width=16).get()  # doctest: +SKIP
-    '1111111111110010'
-
-    When using signed integer types the result is the two's complement of
-    the result for the unsigned type:
-
-    >>> nps.invert(nps.array([13], dtype=nps.int8)).get()  # doctest: +SKIP
-    array([-14], dtype=int8)
-    >>> nps.binary_repr(-14, width=8).get()  # doctest: +SKIP
-    '11110010'
-
-    Booleans are accepted as well:
-
-    >>> nps.invert(nps.array([True, False])).get()  # doctest: +SKIP
-    array([False,  True])
-    """
-    return _instance().map_uop(
-        op_name="bitwise_not",
-        arr=x,
-        out=out,
-        where=where,
-        kwargs=numpy_utils.ufunc_kwargs(kwargs),
-    )
-
-
 def cbrt(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
     """Return the cube-root of an array, element-wise.
 
@@ -1537,6 +1438,9 @@ def invert(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> Block
         where=where,
         kwargs=numpy_utils.ufunc_kwargs(kwargs),
     )
+
+
+bitwise_not = invert
 
 
 def isfinite(x: BlockArray, out: BlockArray = None, where=True, **kwargs) -> BlockArray:
