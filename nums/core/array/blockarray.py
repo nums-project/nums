@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from __future__ import annotations
 
 import warnings
 import itertools
@@ -247,14 +247,32 @@ class BlockArray(BlockArrayBase):
             )
         return rarrT
 
+    @property
+    def T(self) -> BlockArray:
+        """The transposed array.
+
+        Examples:
+            >>> x = nps.array([[1., 2.], [3., 4.]])
+            >>> x.get()
+            array([[1., 2.],
+                   [3., 4.]])
+            >>> x.T.get()
+            array([[1., 3.],
+                   [2., 4.]])
+            >>> x = np.array([[1., 2., 3., 4.]])
+            >>> x.get()
+            array([1., 2., 3., 4.])
+            >>> x.T.get()
+            array([ 1., 2., 3., 4.])
+        """
+        return self.transpose()
+
     def __getattr__(self, item):
         if item == "__array_priority__" or item == "__array_struct__":
             # This is triggered by a numpy array on the LHS.
             raise TypeError("Unexpected conversion attempt from BlockArray to ndarray.")
         elif item == "ndim":
             return len(self.shape)
-        elif item == "T":
-            return self.transpose()
         else:
             raise NotImplementedError(item)
 
