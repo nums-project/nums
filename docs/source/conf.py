@@ -40,7 +40,6 @@ extensions = [
     "sphinx.ext.autosummary",
 ]
 
-autosummary_generate = True
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 
@@ -50,6 +49,8 @@ templates_path = ["_templates"]
 exclude_patterns = []
 
 version = str(nums.__version__)
+
+autosummary_generate = True
 
 # -- Options for HTML output -------------------------------------------------
 
