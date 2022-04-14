@@ -104,7 +104,7 @@ def create():
     elif backend_name == "gpu":
         backend: Backend = GPUSerialBackend()
     elif backend_name == "gpu-ray":
-        num_nodes = int(np.product(settings.cluster_shape))
+        num_nodes = int(np.product(cluster_shape))
         backend: Backend = GPUParallelBackend(
             address=settings.address,
             use_head=True,  # TODO: temporary
@@ -113,7 +113,7 @@ def create():
             num_gpus=settings.num_gpus,
         )
     elif backend_name == "gpu-ray-actor":
-        num_nodes = int(np.product(settings.cluster_shape))
+        num_nodes = int(np.product(cluster_shape))
         backend: Backend = GPURayActorBackend(
             address=settings.address,
             use_head=True,  # TODO: temporary
@@ -174,11 +174,11 @@ def create():
 
     if settings.device_grid_name == "cyclic":
         device_grid: DeviceGrid = CyclicDeviceGrid(
-            settings.cluster_shape, device_type, backend.devices()
+            cluster_shape, device_type, backend.devices()
         )
     elif settings.device_grid_name == "packed":
         device_grid: DeviceGrid = PackedDeviceGrid(
-            settings.cluster_shape, device_type, backend.devices()  # TODO: GPU?
+            cluster_shape, device_type, backend.devices()  # TODO: GPU?
         )
     else:
         raise Exception("Unexpected device grid name %s" % settings.device_grid_name)
