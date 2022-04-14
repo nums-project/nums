@@ -17,6 +17,7 @@
 import warnings
 
 from nums.numpy.api.algebra import *
+from nums.numpy.api.constants import *
 from nums.numpy.api.creation import *
 from nums.numpy.api.generated import *
 from nums.numpy.api.manipulation import *
@@ -61,43 +62,3 @@ def _default_to_numpy(func):
         return nps_res
 
     return wrapped
-
-
-############################################
-# Constants
-############################################
-
-# Distributed memory access of these values will be optimized downstream.
-pi = np.pi
-e = np.e
-euler_gamma = np.euler_gamma
-inf = infty = Inf = Infinity = PINF = np.inf
-NINF = np.NINF
-PZERO = np.PZERO
-NZERO = np.NZERO
-nan = NAN = NaN = np.nan
-
-############################################
-# Data Types
-############################################
-
-
-bool_ = np.bool_
-
-uint = np.uint
-uint8 = np.uint8
-uint16 = np.uint16
-uint32 = np.uint32
-uint64 = np.uint64
-
-int8 = np.int8
-int16 = np.int16
-int32 = np.int32
-int64 = np.int64
-
-float16 = np.float16
-float32 = np.float32
-float64 = np.float64
-
-complex64 = np.complex64
-complex128 = np.complex128
