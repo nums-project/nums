@@ -24,16 +24,17 @@ from nums.core.kernel import numpy_kernel
 from nums.core.kernel.kernel_manager import KernelManager
 from nums.core.grid.grid import DeviceGrid, CyclicDeviceGrid, PackedDeviceGrid
 from nums.core.filesystem import FileSystem
+from nums.core.backends import Backend
 from nums.core.backends import (
-    Backend,
     SerialBackend,
     RayBackend,
-    MPIBackend,
     RayBackendStockScheduler,
     GPUSerialBackend,
     GPUParallelBackend,
     GPURayActorBackend,
+    MPIBackend,
 )
+from nums.core.backends import utils as backend_utils
 
 # pylint: disable=global-statement
 
@@ -73,18 +74,25 @@ def create():
     if _instance is not None:
         raise Exception("create() called more than once.")
 
-    # Initialize compute interface and backend.
+    num_cpus = (
+        int(backend_utils.get_num_cores())
+        if settings.num_cpus is None
+        else settings.num_cpus
+    )
+    cluster_shape = (1, 1) if settings.cluster_shape is None else settings.cluster_shape
+
+    # Initialize kernel interface and backend.
     backend_name = settings.backend_name
     if backend_name == "serial":
-        backend: Backend = SerialBackend(settings.num_cpus)
+        backend: Backend = SerialBackend(num_cpus)
     elif backend_name == "ray":
         use_head = settings.use_head
-        num_nodes = int(np.product(settings.cluster_shape))
+        num_devices = int(np.product(cluster_shape))
         backend: Backend = RayBackend(
             address=settings.address,
             use_head=use_head,
-            num_nodes=num_nodes,
-            num_cpus=settings.num_cpus,
+            num_nodes=num_devices,
+            num_cpus=num_cpus,
         )
     elif backend_name == "mpi":
         backend: Backend = MPIBackend()
@@ -119,28 +127,34 @@ def create():
 
     elif backend_name == "ray-scheduler":
         use_head = settings.use_head
-        num_nodes = int(np.product(settings.cluster_shape))
+        num_devices = int(np.product(cluster_shape))
         backend: Backend = RayBackendStockScheduler(
             address=settings.address,
             use_head=use_head,
-            num_nodes=num_nodes,
-            num_cpus=settings.num_cpus,
+            num_nodes=num_devices,
+            num_cpus=num_cpus,
         )
     elif backend_name == "dask":
         # pylint: disable=import-outside-toplevel
         from nums.experimental.nums_dask.dask_backend import DaskBackend
 
-        num_nodes = int(np.product(settings.cluster_shape))
+        cluster_shape = (
+            (num_cpus,) if settings.cluster_shape is None else settings.cluster_shape
+        )
+        num_devices = int(np.product(cluster_shape))
         backend: Backend = DaskBackend(
-            address=settings.address, num_nodes=num_nodes, num_cpus=settings.num_cpus
+            address=settings.address, num_devices=num_devices, num_cpus=num_cpus
         )
     elif backend_name == "dask-scheduler":
         # pylint: disable=import-outside-toplevel
         from nums.experimental.nums_dask.dask_backend import DaskBackendStockScheduler
 
-        num_nodes = int(np.product(settings.cluster_shape))
+        cluster_shape = (
+            (num_cpus,) if settings.cluster_shape is None else settings.cluster_shape
+        )
+        num_devices = int(np.product(cluster_shape))
         backend: Backend = DaskBackendStockScheduler(
-            address=settings.address, num_nodes=num_nodes, num_cpus=settings.num_cpus
+            address=settings.address, num_devices=num_devices, num_cpus=num_cpus
         )
     else:
         raise Exception("Unexpected backend name %s" % settings.backend_name)

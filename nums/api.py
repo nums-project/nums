@@ -31,6 +31,7 @@ def init(
     import nums.core.settings as settings
 
     if cluster_shape is not None:
+        assert settings.cluster_shape is None
         settings.cluster_shape = cluster_shape
         settings.num_cpus = num_cpus
         settings.num_gpus = num_gpus

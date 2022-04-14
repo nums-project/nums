@@ -54,6 +54,7 @@ class KernelManager(Kernel):
         self.rng_cls = None
         self.methods: dict = {}
         self._block_shape_map = {}
+        self.fuseable_functions = {}
         self.init_kernel(kernel_module)
 
     def init_kernel(self, kernel_module):
@@ -76,6 +77,7 @@ class KernelManager(Kernel):
         for name, func in required_methods:
             function_signatures[name] = func
         for name, func in module_functions.items():
+            self.fuseable_functions[name] = func
             func_sig = function_signatures[name]
             try:
                 remote_params = func_sig.remote_params
@@ -192,7 +194,7 @@ class KernelManager(Kernel):
         size = np.product(shape) * nbytes
         # If the object is less than 100 megabytes, there's not much value in constructing
         # a block tensor.
-        if size < 10 ** 8:
+        if size < 10**8:
             block_shape = shape
             return block_shape
 
@@ -218,7 +220,7 @@ class KernelManager(Kernel):
 
         # Compute dimensions of grid shape
         # so that the number of blocks are close to the number of cores.
-        grid_shape_frac = num_cores ** weighted_shape_fracs
+        grid_shape_frac = num_cores**weighted_shape_fracs
         grid_shape = np.floor(grid_shape_frac)
         # Put remainder on largest axis.
         remaining = np.sum(grid_shape_frac - grid_shape)
@@ -269,6 +271,9 @@ class KernelManager(Kernel):
                 self.update_block_shape_map(shape_dim, block_shape_dim)
             final_block_shape.append(self._block_shape_map[shape_dim])
         return tuple(final_block_shape)
+
+    def get_fuseable(self, name):
+        return self.fuseable_functions[name]
 
 
 def instance() -> KernelManager:
