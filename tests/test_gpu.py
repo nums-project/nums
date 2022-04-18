@@ -20,10 +20,6 @@ from nums.core.application_manager import instance
 
 # pylint: disable=import-outside-toplevel
 
-
-print(settings.backend_name)
-
-
 def test_serial_gpu():
     settings.backend_name = "gpu"
     nums.init()
@@ -74,30 +70,51 @@ def test_serial_cpu_benchmark():
 
 
 def test_ray_gpu():
-    settings.backend_name = "gpu-ray-actor"
+    settings.backend_name = "gpu-intra"
+    settings.device_grid_name = "packed"
     # settings.backend_name = "gpu"
     print(settings.backend_name)
-    # ray.init(num_gpus=4)
+    # num_gpus = 4
+    # ray.init(num_gpus=num_gpus, num_cpus=42)
+    # nums.init(cluster_shape=(4, 4), num_gpus=num_gpus, num_cpus=42)
     nums.init()
-    # os.environ["RAY_PROFILING"] = "1"
+    os.environ["RAY_PROFILING"] = "1"
     import time
-
-    a = nps.random.rand(10 ** 8)
+    time.sleep(5)
+    n = 10 ** 8
+    a = nps.random.rand(n).astype(nps.float32)
     # a.get()
-    b = nps.random.rand(10 ** 8)
+    b = nps.random.rand(n).astype(nps.float32)
+
+    # if settings.backend_name == "gpu-intra":
+    #     a = a.reshape(block_shape=(a.block_shape[0] // 8, a.block_shape[1] // 8))
+    #     b = b.reshape(block_shape=(b.block_shape[0] // 8, b.block_shape[1] // 8))
+    a.touch()
+    b.touch()
+    time.sleep(5)
     print(a.grid_shape, a.block_shape)
     begin = time.time()
-    c = nps.max(a)
+    c = a + b
+    c += a * b
+    c += a - b
+    c += a * b
+    c += a - b
+    c += a * b
+    c += a - b
+    c += a * b
+    c += a - b
+
     # d = a + b
     # e = a + b
     # f = a + b
 
-    # c.touch()
+    c.touch()
 
-    c.get()
+    # c.get()
     end = time.time()
     print(end - begin)
-    # ray.timeline(filename="/tmp/timeline.json")
+    time.sleep(5)
+    ray.timeline(filename="/tmp/timeline.json")
 
 
 if __name__ == "__main__":

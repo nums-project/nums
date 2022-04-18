@@ -32,6 +32,7 @@ from nums.core.backends import (
     GPUSerialBackend,
     GPUParallelBackend,
     GPURayActorBackend,
+    GPUIntraBackend,
     MPIBackend,
 )
 from nums.core.backends import utils as backend_utils
@@ -101,6 +102,8 @@ def create():
 
 
     # TODO: These are temporary names, change once finalized
+
+    #TODO: Don't really need a head node for GPU support in general.
     elif backend_name == "gpu":
         backend: Backend = GPUSerialBackend()
     elif backend_name == "gpu-ray":
@@ -121,9 +124,11 @@ def create():
             num_cpus=settings.num_cpus,
             num_gpus=settings.num_gpus,
         )
-
-
-
+    elif backend_name == "gpu-intra":
+        backend: Backend = GPUIntraBackend()
+        #TODO: figure out how to explicitly handle the cluster shape
+        # Maybe handle a intra cluster shape?
+        cluster_shape = (8, 1) # make this parameterizable based on configuration
 
     elif backend_name == "ray-scheduler":
         use_head = settings.use_head
@@ -167,7 +172,14 @@ def create():
 
         kernel_module = {"cupy": cupy_kernel}[
             "cupy"
-        ]  # TODO: Figure out what is going on here
+        ]
+        device_type = "gpu"
+    elif backend_name == "gpu-intra":
+        from nums.core.kernel import cupy_parallel_kernel
+
+        kernel_module = {"cupy":  cupy_parallel_kernel}[
+            "cupy"
+        ]
         device_type = "gpu"
     else:
         kernel_module = {"numpy": numpy_kernel}[settings.kernel_name]
