@@ -20,12 +20,9 @@
 # DEALINGS IN THE SOFTWARE.
 
 
-import time
-
 import numpy as np
 
 from nums.core.array.application import BlockArray, ArrayApplication
-from nums.core.array.base import BlockArrayBase
 from nums.experimental.optimizer.clusterstate import ClusterState
 from nums.experimental.optimizer.grapharray import (
     GraphArray,
@@ -35,15 +32,17 @@ from nums.experimental.optimizer.tree_search import RandomTS
 import conftest
 
 
-def optimized_einsum(km, copy_on_op,
-                     subscript, *operands
-) -> BlockArray:
+def optimized_einsum(km, copy_on_op, subscript, *operands) -> BlockArray:
     cluster_state: ClusterState = ClusterState(km.devices())
     ga_operands = []
     for operand in operands:
         assert isinstance(operand, BlockArray)
-        ga_operands.append(GraphArray.from_ba(operand, cluster_state, copy_on_op=copy_on_op))
-    einsum_ga = GraphArray.einsum(cluster_state, km, copy_on_op, subscript, *ga_operands)
+        ga_operands.append(
+            GraphArray.from_ba(operand, cluster_state, copy_on_op=copy_on_op)
+        )
+    einsum_ga = GraphArray.einsum(
+        cluster_state, km, copy_on_op, subscript, *ga_operands
+    )
     global random_state
     print("*" * 50)
     print("op grid shape", einsum_ga.grid.grid_shape)

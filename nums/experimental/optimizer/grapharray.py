@@ -27,7 +27,13 @@ from nums.core.kernel.kernel_manager import KernelManager
 from nums.core.grid.grid import Device
 from nums.core.storage.storage import ArrayGrid
 from nums.experimental.optimizer.clusterstate import ClusterState
-from nums.experimental.optimizer.graph import TreeNode, Leaf, UnaryOp, ReduceAxis, Einsum
+from nums.experimental.optimizer.graph import (
+    TreeNode,
+    Leaf,
+    UnaryOp,
+    ReduceAxis,
+    Einsum,
+)
 from nums.experimental.optimizer.reduction_ops import TreeReductionOp
 from nums.experimental.optimizer.fusion import FuseGraph
 from nums.experimental.optimizer.fusion_utils import set_using_marker, traverse_marker
@@ -467,7 +473,13 @@ class GraphArray(object):
         return GraphArray(self.grid.copy(), self.cluster_state, result_graphs, self.km)
 
     @staticmethod
-    def einsum(cluster_state: ClusterState, km: KernelManager, copy_on_op, subscript: str, *operands):
+    def einsum(
+        cluster_state: ClusterState,
+        km: KernelManager,
+        copy_on_op,
+        subscript: str,
+        *operands
+    ):
         input_strings, output_string, operands = oe.parser.parse_einsum_input(
             (subscript,) + operands
         )
@@ -553,9 +565,7 @@ class GraphArray(object):
             einsum_node.children = input_subgraphs
             einsum_node.set_dtype(grid.dtype)
             # Output shape of einsum operation = shape of reduce output.
-            einsum_node.set_shape(
-                grid.get_block_shape(output_grid_entry)
-            )
+            einsum_node.set_shape(grid.get_block_shape(output_grid_entry))
             # This depends on multiple inputs,
             # so set the grid entry equal to grid entry of reduce node.
             einsum_node.set_grid_entry(output_grid_entry)

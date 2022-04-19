@@ -1000,7 +1000,6 @@ class FunctionNode(TreeNode):
 
 
 class Einsum(TreeNode):
-
     def __init__(self, cluster_state: ClusterState, tree_node_id=None):
         super().__init__(cluster_state, tree_node_id)
         self.subscript = None
