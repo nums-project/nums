@@ -80,29 +80,29 @@ def test_ray_gpu():
     nums.init()
     os.environ["RAY_PROFILING"] = "1"
     import time
-    time.sleep(5)
-    n = 10 ** 8
-    a = nps.random.rand(n).astype(nps.float32)
+    # time.sleep(5)
+    n = 10 ** 4
+    a = nps.random.rand(n, n)
     # a.get()
-    b = nps.random.rand(n).astype(nps.float32)
+    b = nps.random.rand(n, n)
 
     # if settings.backend_name == "gpu-intra":
     #     a = a.reshape(block_shape=(a.block_shape[0] // 8, a.block_shape[1] // 8))
     #     b = b.reshape(block_shape=(b.block_shape[0] // 8, b.block_shape[1] // 8))
     a.touch()
     b.touch()
-    time.sleep(5)
+    # time.sleep(5)
     print(a.grid_shape, a.block_shape)
     begin = time.time()
-    c = a + b
-    c += a * b
-    c += a - b
-    c += a * b
-    c += a - b
-    c += a * b
-    c += a - b
-    c += a * b
-    c += a - b
+    c = a @ b
+    # c += a * b
+    # c += a - b
+    # c += a * b
+    # c += a - b
+    # c += a * b
+    # c += a - b
+    # c += a * b
+    # c += a - b
 
     # d = a + b
     # e = a + b
@@ -113,8 +113,8 @@ def test_ray_gpu():
     # c.get()
     end = time.time()
     print(end - begin)
-    time.sleep(5)
-    ray.timeline(filename="/tmp/timeline.json")
+    # time.sleep(5)
+    # ray.timeline(filename="/tmp/timeline.json")
 
 
 if __name__ == "__main__":

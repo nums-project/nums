@@ -29,6 +29,10 @@ from .base import Backend
 from .utils import get_private_ip
 
 
+# CuPy and NCCL libaries
+from cupy.cuda.nccl import NcclCommunicator, NCCL_INT32, NCCL_SUM, groupStart, groupEnd
+import cupy as cp
+
 ### This is a serial gpu implementation (No communication)
 class GPUSerialBackend(Backend):
     def __init__(self, num_cpus: Optional[int] = None, num_gpus: Optional[int] = None):
@@ -38,7 +42,7 @@ class GPUSerialBackend(Backend):
         self._remote_functions: dict = {}
         self._actors: dict = {}
         self.num_gpus = 1
-        self.cp = cp  # This is somewhat pinning a CuPy isntance to a single GPU; will be useful with Ray actor
+        self.cp = cp  # TODO: don't need this?
 
     def init(self):
         pass
@@ -369,8 +373,6 @@ class GPURayActorBackend(Backend):
 
         self.init_devices()
 
-        self.init_devices()
-
 
 
     def init_devices(self):
@@ -505,7 +507,6 @@ class GPUActor(object):
         return "This actor is allowed to use GPUs {}.".format(ray.get_gpu_ids())
 
 
-
 class GPUIntraBackend(Backend):
     def __init__(self, num_cpus: Optional[int] = None, num_gpus: Optional[int] = None):
         import cupy as cp
@@ -519,6 +520,8 @@ class GPUIntraBackend(Backend):
         self.cp = cp
         self._available_nodes = []
         self._worker_nodes = []
+        self._gpu_list = list(range(int(get_num_gpus())))
+        self._comm = None
 
     def init(self):
         for gpu_id in range(self.num_gpus):
@@ -528,10 +531,9 @@ class GPUIntraBackend(Backend):
             self._available_nodes.append(pci_bus_id)
 
         self.init_devices()
+        self._comm = NcclCommunicator.initAll(self._gpu_list)
 
     def init_devices(self):
-        self._devices = []
-        self._device_to_node = {}
         for i in range(self.num_gpus):
             pci_bus_id = self.cp.cuda.Device(i).pci_bus_id
             gpu_device = self.cp.cuda.Device.from_pci_bus_id(pci_bus_id)
@@ -610,15 +612,33 @@ class GPUIntraBackend(Backend):
         gpu = self._device_to_node[device]
 
         # print(gpu, [arg.device for arg in args if isinstance(arg, self.cp.ndarray)])
+        # new_args = []
+        # for arg in args:
+        #     if isinstance(arg, self.cp.ndarray) and gpu != arg.device:
+        #         with gpu:
+        #             arg = self.cp.asarray(arg)
+        #             new_args.append(arg)
+        #
+        #     else:
+        #         new_args.append(arg)
+
         new_args = []
+        stream = cp.cuda.Stream.null.ptr
+
         for arg in args:
             if isinstance(arg, self.cp.ndarray) and gpu != arg.device:
+                groupStart()
                 with gpu:
-                    arg = self.cp.asarray(arg)
-                    new_args.append(arg)
-
+                    new_arg = self.cp.zeros(arg.shape, dtype=arg.dtype)
+                # print(arg.device.id, gpu.id)
+                # explicitly send data to GPU with NCCL using one process
+                self._comm[gpu.id].send(new_arg.data.ptr, new_arg.size, NCCL_INT32, arg.device.id, stream)
+                self._comm[arg.device.id].recv(arg.data.ptr, arg.size, NCCL_INT32, new_arg.device.id, stream)
+                new_args.append(new_arg)
+                groupEnd()
             else:
                 new_args.append(arg)
+
 
         with gpu:
             return self._remote_functions[name](*new_args, **kwargs)
