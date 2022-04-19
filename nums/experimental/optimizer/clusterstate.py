@@ -41,7 +41,7 @@ class ClusterState(object):
         devices: List[Device],
         counter: Counter = None,
         created_on_only=False,
-        local_transfer_coeff=0.1,
+        local_transfer_coeff=1e-4,
     ):
         self.num_ops = 0
         self.created_on_only = created_on_only
