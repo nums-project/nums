@@ -22,7 +22,7 @@ from nums.core import settings
 from nums.core.array.application import ArrayApplication
 from nums.core.kernel import numpy_kernel
 from nums.core.kernel.kernel_manager import KernelManager
-from nums.core.grid.grid import DeviceGrid, CyclicDeviceGrid, PackedDeviceGrid, HierarchicalDeviceGrid
+from nums.core.grid.grid import DeviceGrid, CyclicDeviceGrid, PackedDeviceGrid, HierarchicalDeviceGrid, HierarchicalNodeCyclicDeviceGrid
 from nums.core.filesystem import FileSystem
 from nums.core.backends import Backend
 from nums.core.backends import (
@@ -136,6 +136,10 @@ def create():
         )
     elif settings.device_grid_name == "nested":
         device_grid: DeviceGrid = HierarchicalDeviceGrid(
+            cluster_shape, "cpu", backend.devices()
+        )
+    elif settings.device_grid_name == "nestedcyclic":
+        device_grid: DeviceGrid = HierarchicalNodeCyclicDeviceGrid(
             cluster_shape, "cpu", backend.devices()
         )
     elif settings.device_grid_name == "packed":

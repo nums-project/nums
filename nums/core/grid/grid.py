@@ -200,6 +200,7 @@ class HierarchicalDeviceGrid(CyclicDeviceGrid):
         num_nodes, devices_per_node = self._check_devices(devices)
         node_grid_shape = factor_like(self.grid_shape, num_nodes)
         device_grid_shape = factor_like(self.grid_shape, devices_per_node)
+        # device_grid_shape = (devices_per_node, )
 
         # Create a nested grid of devices.
         result: np.ndarray = np.empty(shape=node_grid_shape, dtype=np.ndarray)
@@ -208,6 +209,34 @@ class HierarchicalDeviceGrid(CyclicDeviceGrid):
                 result[node_grid_entry] = np.empty(shape=device_grid_shape, dtype=Device)
             for j, device_grid_entry in enumerate(itertools.product(*map(range, device_grid_shape))):
                 result[node_grid_entry][device_grid_entry] = nested_map[i][j]
+
+        # Flatten.
+        ordered_devices = HierarchicalGrid.from_nested_grid(result, node_grid_shape, device_grid_shape, dtype=Device).arr
+        return ordered_devices.flatten()
+
+
+class HierarchicalNodeCyclicDeviceGrid(CyclicDeviceGrid):
+
+    def _order_devices(self, devices: List[Device]):
+        nested_map = {}
+        for device in devices:
+            if device.node_id not in nested_map:
+                nested_map[device.node_id] = {}
+            nested_map[device.node_id][device.device] = device
+
+        # Factor cluster shape into node-level and cluster-level shapes.
+        num_nodes, devices_per_node = self._check_devices(devices)
+        node_grid_shape = factor_like(self.grid_shape, num_nodes)
+        device_grid_shape = factor_like(self.grid_shape, devices_per_node)
+        # device_grid_shape = (devices_per_node, )
+
+        # Create a nested grid of devices.
+        result: np.ndarray = np.empty(shape=node_grid_shape, dtype=np.ndarray)
+        for i, node_grid_entry in enumerate(itertools.product(*map(range, node_grid_shape))):
+            if result[node_grid_entry] is None:
+                result[node_grid_entry] = np.empty(shape=device_grid_shape, dtype=Device)
+            for j, device_grid_entry in enumerate(itertools.product(*map(range, device_grid_shape))):
+                result[node_grid_entry][device_grid_entry] = nested_map[j][i]
 
         # Flatten.
         ordered_devices = HierarchicalGrid.from_nested_grid(result, node_grid_shape, device_grid_shape, dtype=Device).arr
