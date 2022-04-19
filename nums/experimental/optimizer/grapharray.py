@@ -21,6 +21,7 @@ from typing import Union
 import numpy as np
 import opt_einsum as oe
 
+from nums.core.settings import sync_nnz
 from nums.core.array import utils as array_utils
 from nums.core.array.base import BlockArrayBase, Block
 from nums.core.array.blockarray import BlockArray
@@ -61,9 +62,13 @@ class GraphArray(object):
             # Create the leaf representing this block for future computations.
             leaf: Leaf = Leaf(cluster_state)
             leaf.block = block
+            if sync_nnz > 0:
+                nnz = block.nnz  # Blocking fetch
+            else:
+                nnz = np.prod(block.shape)
             leaf.tree_node_size = TreeNodeSize(
                 block.shape,
-                block.nnz,  # Blocking
+                nnz,
                 block.dtype,
                 block.fill_value,
             )
@@ -104,9 +109,9 @@ class GraphArray(object):
             sample_node, Leaf
         ), "Cannot convert unsolved GraphArray to BlockArray."
         if sample_node.block.is_dense:
-            return BlockArray(self.grid, self.km, self.to_blocks())
+            return BlockArray(self.grid.copy(), self.km, self.to_blocks())
         return SparseBlockArray(
-            self.grid, self.km, sample_node.block.fill_value, self.to_blocks()
+            self.grid.copy(), self.km, sample_node.block.fill_value, self.to_blocks()
         )
 
     def __init__(

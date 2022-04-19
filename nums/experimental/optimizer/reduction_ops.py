@@ -19,6 +19,7 @@ import copy
 
 import numpy as np
 
+from nums.core.settings import sync_nnz
 from nums.core.array.base import Block
 from nums.core.grid.grid import Device
 from nums.core.kernel.kernel_manager import KernelManager
@@ -300,6 +301,9 @@ class TreeReductionOp(TreeNode):
                 assert leaf_block.shape == shape
         # leaf_block: Block = leafs[0].block
         # return leaf_block.size()
+        if sync_nnz > 1:
+            leafs[0].tree_node_size.nnz = leafs[0].block.nnz  # Blocking fetch
+            leafs[1].tree_node_size.nnz = leafs[1].block.nnz  # Blocking fetch
         return (
             leafs[0]
             .tree_node_size.bop(

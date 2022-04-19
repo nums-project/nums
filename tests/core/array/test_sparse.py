@@ -119,7 +119,7 @@ def test_neq(app_inst: ArrayApplication):
     y_sp = x1_sp > 0
     y_sba = x1_sba > 0
     assert y_sba.fill_value == y_sp.fill_value  # True
-    assert y_sba.nnz == y_sp.nnz  # 8 (nnz increases!)
+    assert y_sba.nnz == y_sp.nnz  # 8 (nnz changes!)
     y_ba = y_sba.to_ba()
     assert np.array_equal(x1 > 0, y_ba.get())
 

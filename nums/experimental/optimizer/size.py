@@ -85,6 +85,8 @@ class TreeNodeSize:
     def reduce_axis(self, op_name, axis, keepdims, transposed):
         # Assume dense for now
         shape = list(self.shape)
+        if transposed:
+            shape.reverse()
         if axis is None:
             shape = []
         elif keepdims:

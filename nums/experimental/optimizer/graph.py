@@ -19,6 +19,7 @@ from functools import partial
 
 import numpy as np
 
+from nums.core.settings import sync_nnz
 from nums.core.array import utils as array_utils
 from nums.core.array.base import Block
 from nums.core.grid.grid import Device
@@ -344,6 +345,8 @@ class UnaryOp(TreeNode):
         assert isinstance(self.child, Leaf)
         # block: Block = self.child.block
         # return np.product(block.shape)
+        if sync_nnz > 1:
+            self.child.tree_node_size.nnz = self.child.block.nnz  # Blocking fetch
         return self.child.tree_node_size.uop(self.op_name).nbytes
 
     def shape(self):
@@ -463,6 +466,8 @@ class ReduceAxis(UnaryOp):
     def _mem_cost(self):
         assert isinstance(self.child, Leaf)
         # return np.product(self.shape())
+        if sync_nnz > 1:
+            self.child.tree_node_size.nnz = self.child.block.nnz  # Blocking fetch
         return self.child.tree_node_size.reduce_axis(
             self.op_name,
             self.axis,
@@ -715,6 +720,9 @@ class BinaryOp(TreeNode):
         else:
             op_name, args = self.op_name, {}
             assert array_utils.can_broadcast_shapes(lblock.shape, rblock.shape)
+        if sync_nnz > 1:
+            self.left.tree_node_size.nnz = lblock.nnz  # Blocking fetch
+            self.right.tree_node_size.nnz = rblock.nnz  # Blocking fetch
         return self.left.tree_node_size.bop(
             op_name,
             self.right.tree_node_size,

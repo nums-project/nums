@@ -40,6 +40,13 @@ address = None
 kernel_name = os.environ.get("NUMS_KERNEL", "numpy")
 
 
+# Level of synchronization when fetching or estimating nnz.
+# 0 = no synchronization, always assume dense.
+# 1 = synchronize on initialization to fetch nnz, use nnz estimation afterwards.
+# 2 = synchronize on every node to fetch exact nnz.
+sync_nnz = int(os.environ.get("NUMS_SYNC_NNZ", "1"))
+
+
 # Device grid settings.
 num_cpus = None
 cluster_shape = None
