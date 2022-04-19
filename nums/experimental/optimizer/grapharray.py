@@ -15,9 +15,11 @@
 
 
 import itertools
+import functools
 from typing import Union
 
 import numpy as np
+import opt_einsum as oe
 
 from nums.core.array import utils as array_utils
 from nums.core.array.base import BlockArrayBase, Block
@@ -25,7 +27,13 @@ from nums.core.kernel.kernel_manager import KernelManager
 from nums.core.grid.grid import Device
 from nums.core.storage.storage import ArrayGrid
 from nums.experimental.optimizer.clusterstate import ClusterState
-from nums.experimental.optimizer.graph import TreeNode, Leaf, UnaryOp, ReduceAxis
+from nums.experimental.optimizer.graph import (
+    TreeNode,
+    Leaf,
+    UnaryOp,
+    ReduceAxis,
+    Einsum,
+)
 from nums.experimental.optimizer.reduction_ops import TreeReductionOp
 from nums.experimental.optimizer.fusion import FuseGraph
 from nums.experimental.optimizer.fusion_utils import set_using_marker, traverse_marker
@@ -92,6 +100,8 @@ class GraphArray(object):
         self.shape = self.grid.shape
         # The block_shape of the output corresponding to this GraphArray.
         self.block_shape = self.grid.block_shape
+        # The grid_shape of the output corresponding to this GraphArray.
+        self.grid_shape = grid.grid_shape
         self.dtype = self.grid.dtype
         # The graphs this data structure is comprised of.
         self.graphs = graphs
@@ -461,3 +471,112 @@ class GraphArray(object):
                 fused_graph_copy.set_grid_entry(grid_entry)
                 result_graphs[grid_entry] = fused_graph_copy
         return GraphArray(self.grid.copy(), self.cluster_state, result_graphs, self.km)
+
+    @staticmethod
+    def einsum(
+        cluster_state: ClusterState,
+        km: KernelManager,
+        copy_on_op,
+        subscript: str,
+        *operands
+    ):
+        input_strings, output_string, operands = oe.parser.parse_einsum_input(
+            (subscript,) + operands
+        )
+        input_strings = input_strings.split(",")
+        all_vars = set(functools.reduce(lambda x, s: set(x) | set(s), input_strings))
+
+        output_vars = set(output_string)
+        assert len(output_vars) == len(
+            output_string
+        ), "Repeated vars in output not supported."
+        sum_vars = all_vars - output_vars
+        sorted_vars = sorted(list(output_vars)) + sorted(list(sum_vars))
+        var_to_idx = {v: i for i, v in enumerate(sorted_vars)}
+
+        # Type check.
+        axis_dims = {}
+        axis_block_dims = {}
+        axis_grid_dims = {}
+        for i, ga in enumerate(operands):
+            assert isinstance(ga, GraphArray)
+            input_string = input_strings[i]
+            for j, char in enumerate(input_string):
+                if char not in axis_dims:
+                    axis_dims[char] = ga.shape[j]
+                    axis_block_dims[char] = ga.block_shape[j]
+                    axis_grid_dims[char] = ga.grid_shape[j]
+                else:
+                    assert axis_dims[char] == ga.shape[j]
+                    assert axis_block_dims[char] == ga.block_shape[j]
+                    assert axis_grid_dims[char] == ga.grid_shape[j]
+
+        # Construct output ArrayGrid.
+        output_shape = []
+        output_block_shape = []
+        output_variable_to_axis = {}
+        for i, char in enumerate(output_string):
+            output_shape.append(axis_dims[char])
+            output_block_shape.append(axis_block_dims[char])
+            output_variable_to_axis[char] = i
+        output_shape = tuple(output_shape)
+        output_block_shape = tuple(output_block_shape)
+
+        # Just sample a dtype for now.
+        dtype = operands[0].dtype
+        grid: ArrayGrid = ArrayGrid(output_shape, output_block_shape, dtype.__name__)
+
+        # Construct iteration space.
+        grid_idx_iterator = itertools.product(
+            *[range(axis_grid_dims[char]) for char in sorted_vars]
+        )
+        # Perform einsum kernel operations.
+        result_graphs = np.empty(shape=grid.grid_shape, dtype=np.object)
+        for grid_idx in grid_idx_iterator:
+
+            # Map input block grid entries.
+            input_subgraphs = []
+            for i, input_string in enumerate(input_strings):
+                input_grid_entry = []
+                for char in input_string:
+                    input_grid_entry.append(grid_idx[var_to_idx[char]])
+                input_grid_entry = tuple(input_grid_entry)
+                input_subgraphs.append(operands[i].graphs[input_grid_entry])
+
+            # Map output block grid entry.
+            output_grid_entry = []
+            for char in output_string:
+                output_grid_entry.append(grid_idx[var_to_idx[char]])
+            output_grid_entry = tuple(output_grid_entry)
+
+            # Execute einsum kernel.
+            if result_graphs[output_grid_entry] is None:
+                rop = TreeReductionOp(cluster_state)
+                rop.op_name = "sum"
+                rop.copy_on_op = copy_on_op
+                rop.set_grid_entry(output_grid_entry)
+                rop.set_grid_shape(grid.grid_shape)
+                rop.dtype = grid.dtype
+                result_graphs[output_grid_entry] = rop
+
+            rop = result_graphs[output_grid_entry]
+            einsum_node: Einsum = Einsum(cluster_state)
+            einsum_node.subscript = subscript
+            einsum_node.children = input_subgraphs
+            einsum_node.set_dtype(grid.dtype)
+            # Output shape of einsum operation = shape of reduce output.
+            einsum_node.set_shape(grid.get_block_shape(output_grid_entry))
+            # This depends on multiple inputs,
+            # so set the grid entry equal to grid entry of reduce node.
+            einsum_node.set_grid_entry(output_grid_entry)
+            einsum_node.set_grid_shape(grid.grid_shape)
+            einsum_node.parent = rop
+            rop.add_child(einsum_node)
+
+        return GraphArray(
+            grid,
+            cluster_state,
+            result_graphs,
+            km,
+            copy_on_op=copy_on_op,
+        )

@@ -997,3 +997,188 @@ class FunctionNode(TreeNode):
 
     def fuse(self, func_node, km: KernelManager):
         raise NotImplementedError()
+
+
+class Einsum(TreeNode):
+    def __init__(self, cluster_state: ClusterState, tree_node_id=None):
+        super().__init__(cluster_state, tree_node_id)
+        self.subscript = None
+        self.children: List[TreeNode] = None
+
+    def __repr__(self):
+        return "Einsum(id=%s, subscript=%s, operands=%s" % (
+            self.tree_node_id,
+            self.subscript,
+            len(self.children),
+        )
+
+    def get_children(self):
+        return self.children
+
+    def num_nodes(self):
+        # Count self.
+        num_nodes = 1
+        for child in self.children:
+            num_nodes += child.num_nodes()
+        return num_nodes
+
+    def copy(self, cluster_state, parent=None, new_ids=False):
+        rnode = Einsum(cluster_state, None if new_ids else self.tree_node_id)
+        assert rnode.tree_node_id is not None and (
+            new_ids or rnode.tree_node_id == self.tree_node_id
+        )
+        rnode._shape = self._shape
+        rnode._grid_entry = self._grid_entry
+        rnode._grid_shape = self._grid_shape
+        rnode._dtype = self._dtype
+        rnode.parent = parent
+        rnode.subscript = self.subscript
+        rnode.children = [
+            child.copy(cluster_state, rnode, new_ids=new_ids) for child in self.children
+        ]
+        rnode.copy_on_op = self.copy_on_op
+        return rnode
+
+    def update_child(self, old_children, new_children):
+        assert len(old_children) == len(new_children) == 1
+        old_child, new_child = old_children[0], new_children[0]
+        new_children = []
+        for child in self.children:
+            if child.tree_node_id == old_child.tree_node_id:
+                new_children.append(new_child)
+            else:
+                new_children.append(child)
+        self.children = new_children
+
+    def get_leafs(self):
+        leafs = []
+        for child in self.children:
+            leafs += child.get_leafs()
+        return leafs
+
+    def is_frontier(self):
+        _is_frontier = True
+        for child in self.children:
+            _is_frontier &= isinstance(child, Leaf)
+        return _is_frontier
+
+    def get_frontier(self):
+        if self.is_frontier():
+            # This is a frontier node.
+            return [self]
+        frontier = []
+        for child in self.children:
+            frontier += child.get_frontier()
+        return frontier
+
+    def get_actions(self, **kwargs):
+        """
+        Returns a list of actions.
+        An action is a tuple: First entry is a function. Second entry is kwargs.
+        Invoked actions return a new node without mutating the tree,
+        which is always a leaf for BinaryOp.
+        """
+        actions = []
+        if self.is_frontier():
+            use_all_devices = kwargs.get("use_all_devices", False)
+            if use_all_devices:
+                devices = self.cluster_state.devices
+            else:
+                # Restrict node ids to the nodes on which the leafs already reside.
+                devices = set()
+                for child in self.children:
+                    leaf: Leaf = child
+                    devices |= set(self.cluster_state.get_block_devices(leaf.block.id))
+            devices = list(devices)
+            for device in devices:
+                actions.append((self.tree_node_id, {"device": device}))
+        return actions
+
+    def simulate_on(self, device: Device, leaf_ids=None) -> np.ndarray:
+        assert leaf_ids is None
+        assert self.is_frontier()
+        block_ids = [child.block.id for child in self.children]
+        resources = self.cluster_state.resources.copy()
+        resources = self.cluster_state.simulate_nary_op(
+            self._mem_cost(),
+            block_ids,
+            device,
+            resources,
+        )
+        return resources
+
+    def execute_on(self, device: Device, leaf_ids=None) -> Leaf:
+        """
+        Update cluster state to reflect the cluster's load after computing this node.
+        We generate a leaf node for BinaryOp, updating the leaf node's computation
+        time based on object transfer costs, etc.
+        """
+        assert leaf_ids is None
+        assert self.is_frontier()
+        block_ids = [child.block.id for child in self.children]
+        result = self._collapse(device)
+        new_leaf: Leaf = result[0]
+        new_block: Block = result[1]
+        # This updates load on nodes and channels.
+        # This also updates block states to indicate that they now reside on the provided nodes.
+        # Update the cluster state after computing the leaf, so that transfer costs are properly
+        # captured by leaf node computations.
+        self.cluster_state.commit_nary_op(self._mem_cost(), block_ids, device)
+        # Update cluster state with new block.
+        self.cluster_state.add_block(new_block.id, new_block.size(), [device])
+        if not self.cluster_state.created_on_only:
+            for block_id in block_ids:
+                assert self.cluster_state.blocks_local(block_id, new_leaf.block.id)
+        # These are mutating operations.
+        # Eliminate references to this node and replace them with leaf.
+        new_leaf.parent = self.parent
+        if self.parent is not None:
+            self.parent.update_child([self], [new_leaf])
+        return new_leaf
+
+    def _collapse(self, device: Device):
+        km: KernelManager = None
+        block_oids = []
+        for child in self.children:
+            assert isinstance(child, Leaf)
+            block_oids.append(child.block.oid)
+            if km is None:
+                km = child.block._km
+        block: Block = Block(
+            self.grid_entry(), self.grid_shape(), self.shape(), self.dtype(), False, km
+        )
+        block._device = device
+        block.oid = block._km.einsum(
+            self.subscript, *block_oids, syskwargs={"device": device}
+        )
+        leaf: Leaf = Leaf(self.cluster_state)
+        leaf.block = block
+        leaf.copy_on_op = self.copy_on_op
+        return leaf, block
+
+    def _mem_cost(self):
+        return np.product(self._shape)
+
+    def shape(self):
+        return self._shape
+
+    def grid_entry(self):
+        return self._grid_entry
+
+    def grid_shape(self):
+        return self._grid_shape
+
+    def dtype(self):
+        return self._dtype
+
+    def set_shape(self, val):
+        self._shape = val
+
+    def set_grid_entry(self, val):
+        self._grid_entry = val
+
+    def set_grid_shape(self, val):
+        self._grid_shape = val
+
+    def set_dtype(self, val):
+        self._dtype = val
