@@ -924,6 +924,16 @@ class ArrayApplication:
         return arr_1.tensordot(arr_2, axes)
 
     def einsum(self, subscript, *operands):
+        def _compute_syskwargs(blocks):
+            # Schedule on largest block.
+            max_size = np.product(blocks[0].shape)
+            max_block = blocks[0]
+            for block in blocks:
+                blocksize = np.product(block.shape)
+                if blocksize > max_size:
+                    max_block = block
+                    max_size = blocksize
+            return max_block.true_grid_entry(), max_block.true_grid_shape()
 
         input_strings, output_string, operands = oe.parser.parse_einsum_input(
             (subscript,) + operands
@@ -980,13 +990,15 @@ class ArrayApplication:
         for grid_idx in grid_idx_iterator:
 
             # Map input block grid entries.
+            input_blocks = []
             input_block_oids = []
             for i, input_string in enumerate(input_strings):
                 input_grid_entry = []
                 for char in input_string:
                     input_grid_entry.append(grid_idx[var_to_idx[char]])
                 input_grid_entry = tuple(input_grid_entry)
-                input_block_oids.append(operands[i].blocks[input_grid_entry].oid)
+                input_blocks.append(operands[i].blocks[input_grid_entry])
+                input_block_oids.append(input_blocks[-1].oid)
 
             # Map output block grid entry.
             output_grid_entry = []
@@ -998,17 +1010,18 @@ class ArrayApplication:
             if einsum_outputs[output_grid_entry] is None:
                 einsum_outputs[output_grid_entry] = []
 
+            ge, gs = _compute_syskwargs(input_blocks)
             einsum_oid = self.km.einsum(
                 subscript,
                 *input_block_oids,
                 syskwargs={
-                    "grid_entry": output_grid_entry,
-                    "grid_shape": grid.grid_shape,
+                    "grid_entry": ge,
+                    "grid_shape": gs,
                 }
             )
 
             einsum_outputs[output_grid_entry].append(
-                (einsum_oid, output_grid_entry, grid.grid_shape, False)
+                (einsum_oid, ge, gs, False)
             )
 
         # Compute output BlockArray by summing einsums.
