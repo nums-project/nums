@@ -30,8 +30,10 @@ from .utils import get_private_ip
 
 
 # CuPy and NCCL libaries
-from cupy.cuda.nccl import NcclCommunicator, NCCL_INT32, NCCL_SUM, groupStart, groupEnd
-import cupy as cp
+# TODO: Fix these imports to not intefere if CuPy or no GPUS installed
+
+# from cupy.cuda.nccl import NcclCommunicator, NCCL_INT32, NCCL_SUM, groupStart, groupEnd
+# import cupy as cp
 
 ### This is a serial gpu implementation (No communication)
 class GPUSerialBackend(Backend):

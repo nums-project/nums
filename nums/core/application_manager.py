@@ -80,13 +80,32 @@ def create():
         if settings.num_cpus is None
         else settings.num_cpus
     )
-    try:
-        num_gpus = int(backend_utils.get_num_gpus())
+    num_gpus = int(backend_utils.get_num_gpus())
+
 
     cluster_shape = (1, 1) if settings.cluster_shape is None else settings.cluster_shape
 
+    """
+    #TODO: rename to these
+    gpu-serial
+    gpu-ray
+    gpu-nccl
+    """
+
     # Initialize kernel interface and backend.
     backend_name = settings.backend_name
+
+    # Catch errors for GPU support
+    if num_gpus == 0 and "gpu" in backend_name:
+        try:
+            import cupy
+        except ImportError:
+            raise Exception(
+                "GPU backend requested but CuPy is not installed. "
+                "Please install CuPy to use the GPU backend."
+            )
+        raise Exception("GPU backend requested but no GPUs found.")
+
     if backend_name == "serial":
         backend: Backend = SerialBackend(num_cpus)
     elif backend_name == "ray":
@@ -113,8 +132,8 @@ def create():
             address=settings.address,
             use_head=True,  # TODO: temporary
             num_nodes=num_nodes,
-            num_cpus=settings.num_cpus,
-            num_gpus=settings.num_gpus,
+            num_cpus=num_cpus,
+            num_gpus=num_gpus,
         )
     elif backend_name == "gpu-ray-actor": #TODO: Remove if not needed
         num_nodes = int(np.product(cluster_shape))
@@ -122,8 +141,8 @@ def create():
             address=settings.address,
             use_head=True,  # TODO: temporary
             num_nodes=num_nodes,
-            num_cpus=settings.num_cpus,
-            num_gpus=settings.num_gpus,
+            num_cpus=num_cpus,
+            num_gpus=num_gpus,
         )
     elif backend_name == "gpu-intra":
         backend: Backend = GPUIntraBackend()
