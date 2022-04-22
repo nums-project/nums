@@ -80,6 +80,9 @@ def create():
         if settings.num_cpus is None
         else settings.num_cpus
     )
+    try:
+        num_gpus = int(backend_utils.get_num_gpus())
+
     cluster_shape = (1, 1) if settings.cluster_shape is None else settings.cluster_shape
 
     # Initialize kernel interface and backend.
@@ -100,9 +103,7 @@ def create():
 
 
 
-
     # TODO: These are temporary names, change once finalized
-
     #TODO: Don't really need a head node for GPU support in general.
     elif backend_name == "gpu":
         backend: Backend = GPUSerialBackend()
@@ -115,7 +116,7 @@ def create():
             num_cpus=settings.num_cpus,
             num_gpus=settings.num_gpus,
         )
-    elif backend_name == "gpu-ray-actor":
+    elif backend_name == "gpu-ray-actor": #TODO: Remove if not needed
         num_nodes = int(np.product(cluster_shape))
         backend: Backend = GPURayActorBackend(
             address=settings.address,
@@ -128,7 +129,7 @@ def create():
         backend: Backend = GPUIntraBackend()
         #TODO: figure out how to explicitly handle the cluster shape
         # Maybe handle a intra cluster shape?
-        cluster_shape = (8, 1) # make this parameterizable based on configuration
+        cluster_shape = (num_gpus, 1)
 
     elif backend_name == "ray-scheduler":
         use_head = settings.use_head
