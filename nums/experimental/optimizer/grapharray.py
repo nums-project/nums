@@ -511,6 +511,11 @@ class GraphArray(object):
                     assert axis_block_dims[char] == ga.block_shape[j]
                     assert axis_grid_dims[char] == ga.grid_shape[j]
 
+        # How many blocks are we summing over?
+        num_sum_blocks = 1
+        for char in sum_vars:
+            num_sum_blocks *= axis_grid_dims[char]
+
         # Construct output ArrayGrid.
         output_shape = []
         output_block_shape = []
@@ -549,17 +554,7 @@ class GraphArray(object):
                 output_grid_entry.append(grid_idx[var_to_idx[char]])
             output_grid_entry = tuple(output_grid_entry)
 
-            # Execute einsum kernel.
-            if result_graphs[output_grid_entry] is None:
-                rop = TreeReductionOp(cluster_state)
-                rop.op_name = "sum"
-                rop.copy_on_op = copy_on_op
-                rop.set_grid_entry(output_grid_entry)
-                rop.set_grid_shape(grid.grid_shape)
-                rop.dtype = grid.dtype
-                result_graphs[output_grid_entry] = rop
-
-            rop = result_graphs[output_grid_entry]
+            # TODO: Do we need a reduce node? Can we use a single einsum? Can we use a binary op?
             einsum_node: Einsum = Einsum(cluster_state)
             einsum_node.subscript = subscript
             einsum_node.children = input_subgraphs
@@ -570,8 +565,25 @@ class GraphArray(object):
             # so set the grid entry equal to grid entry of reduce node.
             einsum_node.set_grid_entry(output_grid_entry)
             einsum_node.set_grid_shape(grid.grid_shape)
-            einsum_node.parent = rop
-            rop.add_child(einsum_node)
+            if num_sum_blocks == 1:
+                # There is only one block along the sum dims.
+                assert result_graphs[output_grid_entry] is None
+                result_graphs[output_grid_entry] = einsum_node
+            else:
+                # We have multiple blocks along sum dims,
+                # so create a reduce node and add einsum nodes to it.
+                if result_graphs[output_grid_entry] is None:
+                    # Construct reduce node.
+                    rop = TreeReductionOp(cluster_state)
+                    rop.op_name = "sum"
+                    rop.copy_on_op = copy_on_op
+                    rop.set_grid_entry(output_grid_entry)
+                    rop.set_grid_shape(grid.grid_shape)
+                    rop.dtype = grid.dtype
+                    result_graphs[output_grid_entry] = rop
+                rop = result_graphs[output_grid_entry]
+                einsum_node.parent = rop
+                rop.add_child(einsum_node)
 
         return GraphArray(
             grid,
