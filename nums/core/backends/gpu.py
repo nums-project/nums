@@ -28,12 +28,12 @@ from .utils import get_num_cores, get_num_gpus
 from .base import Backend
 from .utils import get_private_ip
 
+try:
+    import cupy as cp
+    from cupy.cuda.nccl import NcclCommunicator, NCCL_INT32, NCCL_SUM, groupStart, groupEnd
+except:
+    pass
 
-# CuPy and NCCL libaries
-# TODO: Fix these imports to not intefere if CuPy or no GPUS installed
-
-# from cupy.cuda.nccl import NcclCommunicator, NCCL_INT32, NCCL_SUM, groupStart, groupEnd
-# import cupy as cp
 
 ### This is a serial gpu implementation (No communication)
 class GPUSerialBackend(Backend):
@@ -295,34 +295,34 @@ class GPUParallelBackend(Backend):
             options["resources"] = {node_key: 1.0 / 10 ** 4}
         return self._remote_functions[name].options(**options).remote(*args, **kwargs)
 
-    # def register_actor(self, name: str, cls: type):
-    #     """
-    #     :param name: Name of the actor. This should be unique.
-    #     :param cls: The Python class to convert into an actor.
-    #     :return: None
-    #     """
-    #     assert name not in self._actors
-    #     self._actors[name] = cls
-    #
-    # def make_actor(self, name: str, *args, device: Device = None, **kwargs):
-    #     """
-    #     :param name: The name of the actor.
-    #     :param args: args to pass to __init__.
-    #     :param device: A device. This is captured by the system and not passed to __init__.
-    #     :param kwargs: kwargs to pass to __init__.
-    #     :return: An Actor.
-    #     """
-    #     return self._actors[name](*args, **kwargs)
-    #
-    # def call_actor_method(self, actor, method: str, *args, **kwargs):
-    #     """
-    #     :param actor: Actor instance.
-    #     :param method: Method name.
-    #     :param args: Method args.
-    #     :param kwargs: Method kwargs.
-    #     :return: Result of calling method.
-    #     """
-    #     return getattr(actor, method)(*args, **kwargs)
+    def register_actor(self, name: str, cls: type):
+        """
+        :param name: Name of the actor. This should be unique.
+        :param cls: The Python class to convert into an actor.
+        :return: None
+        """
+        assert name not in self._actors
+        self._actors[name] = cls
+
+    def make_actor(self, name: str, *args, device: Device = None, **kwargs):
+        """
+        :param name: The name of the actor.
+        :param args: args to pass to __init__.
+        :param device: A device. This is captured by the system and not passed to __init__.
+        :param kwargs: kwargs to pass to __init__.
+        :return: An Actor.
+        """
+        return self._actors[name](*args, **kwargs)
+
+    def call_actor_method(self, actor, method: str, *args, **kwargs):
+        """
+        :param actor: Actor instance.
+        :param method: Method name.
+        :param args: Method args.
+        :param kwargs: Method kwargs.
+        :return: Result of calling method.
+        """
+        return getattr(actor, method)(*args, **kwargs)
 
     def num_cores_total(self):
         return self.num_gpus
@@ -469,34 +469,34 @@ class GPURayActorBackend(Backend):
             options["resources"] = {node_key: 1.0 / 10 ** 4}
         return self._remote_functions[name].options(**options).remote(*args, **kwargs)
 
-    # def register_actor(self, name: str, cls: type):
-    #     """
-    #     :param name: Name of the actor. This should be unique.
-    #     :param cls: The Python class to convert into an actor.
-    #     :return: None
-    #     """
-    #     assert name not in self._actors
-    #     self._actors[name] = cls
-    #
-    # def make_actor(self, name: str, *args, device: Device = None, **kwargs):
-    #     """
-    #     :param name: The name of the actor.
-    #     :param args: args to pass to __init__.
-    #     :param device: A device. This is captured by the system and not passed to __init__.
-    #     :param kwargs: kwargs to pass to __init__.
-    #     :return: An Actor.
-    #     """
-    #     return self._actors[name](*args, **kwargs)
-    #
-    # def call_actor_method(self, actor, method: str, *args, **kwargs):
-    #     """
-    #     :param actor: Actor instance.
-    #     :param method: Method name.
-    #     :param args: Method args.
-    #     :param kwargs: Method kwargs.
-    #     :return: Result of calling method.
-    #     """
-    #     return getattr(actor, method)(*args, **kwargs)
+    def register_actor(self, name: str, cls: type):
+        """
+        :param name: Name of the actor. This should be unique.
+        :param cls: The Python class to convert into an actor.
+        :return: None
+        """
+        assert name not in self._actors
+        self._actors[name] = cls
+
+    def make_actor(self, name: str, *args, device: Device = None, **kwargs):
+        """
+        :param name: The name of the actor.
+        :param args: args to pass to __init__.
+        :param device: A device. This is captured by the system and not passed to __init__.
+        :param kwargs: kwargs to pass to __init__.
+        :return: An Actor.
+        """
+        return self._actors[name](*args, **kwargs)
+
+    def call_actor_method(self, actor, method: str, *args, **kwargs):
+        """
+        :param actor: Actor instance.
+        :param method: Method name.
+        :param args: Method args.
+        :param kwargs: Method kwargs.
+        :return: Result of calling method.
+        """
+        return getattr(actor, method)(*args, **kwargs)
 
     def num_cores_total(self):
         return self.num_gpus
@@ -512,6 +512,7 @@ class GPUActor(object):
 class GPUIntraBackend(Backend):
     def __init__(self, num_cpus: Optional[int] = None, num_gpus: Optional[int] = None):
         import cupy as cp
+
 
         self.num_cpus = int(get_num_cores()) if num_cpus is None else num_cpus
         self._remote_functions: dict = {}
