@@ -188,7 +188,6 @@ class CyclicDeviceGrid(DeviceGrid):
 
 
 class HierarchicalDeviceGrid(CyclicDeviceGrid):
-
     def _order_devices(self, devices: List[Device]):
         nested_map = {}
         for device in devices:
@@ -204,19 +203,26 @@ class HierarchicalDeviceGrid(CyclicDeviceGrid):
 
         # Create a nested grid of devices.
         result: np.ndarray = np.empty(shape=node_grid_shape, dtype=np.ndarray)
-        for i, node_grid_entry in enumerate(itertools.product(*map(range, node_grid_shape))):
+        for i, node_grid_entry in enumerate(
+            itertools.product(*map(range, node_grid_shape))
+        ):
             if result[node_grid_entry] is None:
-                result[node_grid_entry] = np.empty(shape=device_grid_shape, dtype=Device)
-            for j, device_grid_entry in enumerate(itertools.product(*map(range, device_grid_shape))):
+                result[node_grid_entry] = np.empty(
+                    shape=device_grid_shape, dtype=Device
+                )
+            for j, device_grid_entry in enumerate(
+                itertools.product(*map(range, device_grid_shape))
+            ):
                 result[node_grid_entry][device_grid_entry] = nested_map[i][j]
 
         # Flatten.
-        ordered_devices = HierarchicalGrid.from_nested_grid(result, node_grid_shape, device_grid_shape, dtype=Device).arr
+        ordered_devices = HierarchicalGrid.from_nested_grid(
+            result, node_grid_shape, device_grid_shape, dtype=Device
+        ).arr
         return ordered_devices.flatten()
 
 
 class HierarchicalNodeCyclicDeviceGrid(CyclicDeviceGrid):
-
     def _order_devices(self, devices: List[Device]):
         nested_map = {}
         for device in devices:
@@ -232,14 +238,22 @@ class HierarchicalNodeCyclicDeviceGrid(CyclicDeviceGrid):
 
         # Create a nested grid of devices.
         result: np.ndarray = np.empty(shape=node_grid_shape, dtype=np.ndarray)
-        for i, node_grid_entry in enumerate(itertools.product(*map(range, node_grid_shape))):
+        for i, node_grid_entry in enumerate(
+            itertools.product(*map(range, node_grid_shape))
+        ):
             if result[node_grid_entry] is None:
-                result[node_grid_entry] = np.empty(shape=device_grid_shape, dtype=Device)
-            for j, device_grid_entry in enumerate(itertools.product(*map(range, device_grid_shape))):
+                result[node_grid_entry] = np.empty(
+                    shape=device_grid_shape, dtype=Device
+                )
+            for j, device_grid_entry in enumerate(
+                itertools.product(*map(range, device_grid_shape))
+            ):
                 result[node_grid_entry][device_grid_entry] = nested_map[j][i]
 
         # Flatten.
-        ordered_devices = HierarchicalGrid.from_nested_grid(result, node_grid_shape, device_grid_shape, dtype=Device).arr
+        ordered_devices = HierarchicalGrid.from_nested_grid(
+            result, node_grid_shape, device_grid_shape, dtype=Device
+        ).arr
         return ordered_devices.flatten()
 
 
@@ -290,7 +304,7 @@ def factor_like(shape: tuple, n: int):
     dim_weights = np.exp(np.array(shape)) / np.sum(np.exp(shape))
 
     # Compute factoring of n so that the distribution of dims is close to shape.
-    factored_n_fracs = n ** dim_weights
+    factored_n_fracs = n**dim_weights
     factored_n = np.floor(factored_n_fracs)
     # Put remainder on largest axis.
     factored_n[np.argmax(shape)] += np.sum(factored_n_fracs - factored_n)
@@ -302,6 +316,7 @@ class HierarchicalGrid:
     """
     Convert an array into a hierarchical grid of arrays.
     """
+
     def __init__(self, arr: np.ndarray, node_grid_shape, device_grid_shape):
         self.arr = arr
         self.node_grid_shape = node_grid_shape
@@ -312,22 +327,38 @@ class HierarchicalGrid:
         num_devices = np.product(self.device_grid_shape)
         node_grid_shape = self.node_grid_shape
         device_grid_shape = self.device_grid_shape
-        assert self.arr.shape == tuple(np.array(node_grid_shape)*np.array(device_grid_shape))
+        assert self.arr.shape == tuple(
+            np.array(node_grid_shape) * np.array(device_grid_shape)
+        )
         result: np.ndarray = np.empty(shape=node_grid_shape, dtype=np.ndarray)
-        for i, node_grid_entry in enumerate(itertools.product(*map(range, node_grid_shape))):
+        for i, node_grid_entry in enumerate(
+            itertools.product(*map(range, node_grid_shape))
+        ):
             if result[node_grid_entry] is None:
-                result[node_grid_entry] = np.empty(shape=device_grid_shape, dtype=arr.dtype)
-            for j, device_grid_entry in enumerate(itertools.product(*map(range, device_grid_shape))):
-                arr_idx = i*num_devices + j
+                result[node_grid_entry] = np.empty(
+                    shape=device_grid_shape, dtype=arr.dtype
+                )
+            for j, device_grid_entry in enumerate(
+                itertools.product(*map(range, device_grid_shape))
+            ):
+                arr_idx = i * num_devices + j
                 result[node_grid_entry][device_grid_entry] = arr[arr_idx]
         return result
 
     @classmethod
-    def from_nested_grid(cls, nested_arr, node_grid_shape, device_grid_shape, dtype=object):
-        flat_arr = np.empty(shape=tuple(np.array(node_grid_shape)*np.array(device_grid_shape)), dtype=dtype)
+    def from_nested_grid(
+        cls, nested_arr, node_grid_shape, device_grid_shape, dtype=object
+    ):
+        flat_arr = np.empty(
+            shape=tuple(np.array(node_grid_shape) * np.array(device_grid_shape)),
+            dtype=dtype,
+        )
         for node_grid_entry in itertools.product(*map(range, node_grid_shape)):
             for device_grid_entry in itertools.product(*map(range, device_grid_shape)):
-                grid_entry = tuple(np.array(node_grid_entry) * np.array(device_grid_shape) + np.array(device_grid_entry))
+                grid_entry = tuple(
+                    np.array(node_grid_entry) * np.array(device_grid_shape)
+                    + np.array(device_grid_entry)
+                )
                 flat_arr[grid_entry] = nested_arr[node_grid_entry][device_grid_entry]
         return cls(flat_arr, node_grid_shape, device_grid_shape)
 
@@ -336,9 +367,9 @@ def ut_refactor_shape():
     p = 16
     k = 4
     r = 4
-    for i in range(int(np.sqrt(p))+1):
-        p1, p2 = shape = int(2**i), int(2**(4-i))
-        assert p1*p2 == p
+    for i in range(int(np.sqrt(p)) + 1):
+        p1, p2 = shape = int(2**i), int(2 ** (4 - i))
+        assert p1 * p2 == p
         k1, k2 = factor_like(shape, k)
         r1, r2 = factor_like(shape, r)
         print("p", shape)

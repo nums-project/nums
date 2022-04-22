@@ -1020,9 +1020,7 @@ class ArrayApplication:
                 }
             )
 
-            einsum_outputs[output_grid_entry].append(
-                (einsum_oid, ge, gs, False)
-            )
+            einsum_outputs[output_grid_entry].append((einsum_oid, ge, gs, False))
 
         # Compute output BlockArray by summing einsums.
         result: BlockArray = BlockArray(grid, self.km)

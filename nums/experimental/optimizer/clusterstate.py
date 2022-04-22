@@ -146,7 +146,10 @@ class ClusterState(object):
                 from_device = device
                 break
         for device in devices:
-            if device.node_id == to_device.node_id and device.device == to_device.device:
+            if (
+                device.node_id == to_device.node_id
+                and device.device == to_device.device
+            ):
                 from_device = device
                 break
 

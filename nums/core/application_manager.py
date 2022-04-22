@@ -22,7 +22,13 @@ from nums.core import settings
 from nums.core.array.application import ArrayApplication
 from nums.core.kernel import numpy_kernel
 from nums.core.kernel.kernel_manager import KernelManager
-from nums.core.grid.grid import DeviceGrid, CyclicDeviceGrid, PackedDeviceGrid, HierarchicalDeviceGrid, HierarchicalNodeCyclicDeviceGrid
+from nums.core.grid.grid import (
+    DeviceGrid,
+    CyclicDeviceGrid,
+    PackedDeviceGrid,
+    HierarchicalDeviceGrid,
+    HierarchicalNodeCyclicDeviceGrid,
+)
 from nums.core.filesystem import FileSystem
 from nums.core.backends import Backend
 from nums.core.backends import (
