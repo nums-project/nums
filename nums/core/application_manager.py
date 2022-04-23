@@ -82,7 +82,6 @@ def create():
     )
     num_gpus = int(backend_utils.get_num_gpus())
 
-
     cluster_shape = (1, 1) if settings.cluster_shape is None else settings.cluster_shape
 
     """
@@ -104,7 +103,7 @@ def create():
                 "GPU backend requested but CuPy is not installed. "
                 "Please install CuPy to use the GPU backend."
             )
-        raise Exception("GPU backend requested but no GPUs found.")
+        raise Exception("GPU backend requested but no GPUs found through nvidia-smi.")
 
     if backend_name == "serial":
         backend: Backend = SerialBackend(num_cpus)
@@ -119,12 +118,9 @@ def create():
         )
     elif backend_name == "mpi":
         backend: Backend = MPIBackend()
-
-
-
-    # TODO: These are temporary names, change once finalized
-    #TODO: Don't really need a head node for GPU support in general.
     elif backend_name == "gpu":
+        # TODO: These are temporary names, change once finalized
+        # TODO: Don't really need a head node for GPU support in general.
         backend: Backend = GPUSerialBackend()
     elif backend_name == "gpu-ray":
         num_nodes = int(np.product(cluster_shape))
@@ -135,7 +131,7 @@ def create():
             num_cpus=num_cpus,
             num_gpus=num_gpus,
         )
-    elif backend_name == "gpu-ray-actor": #TODO: Remove if not needed
+    elif backend_name == "gpu-ray-actor":  # TODO: Remove if not needed
         num_nodes = int(np.product(cluster_shape))
         backend: Backend = GPURayActorBackend(
             address=settings.address,
@@ -146,7 +142,7 @@ def create():
         )
     elif backend_name == "gpu-intra":
         backend: Backend = GPUIntraBackend()
-        #TODO: figure out how to explicitly handle the cluster shape
+        # TODO: figure out how to explicitly handle the cluster shape
         # Maybe handle a intra cluster shape?
         cluster_shape = (num_gpus, 1)
 
@@ -187,19 +183,19 @@ def create():
 
     device_type = "cpu"
     # TODO: this is temporary
-    if backend_name == "gpu" or backend_name == "gpu-ray" or backend_name == "gpu-ray-actor":
+    if (
+        backend_name == "gpu"
+        or backend_name == "gpu-ray"
+        or backend_name == "gpu-ray-actor"
+    ):
         from nums.core.kernel import cupy_kernel
 
-        kernel_module = {"cupy": cupy_kernel}[
-            "cupy"
-        ]
+        kernel_module = {"cupy": cupy_kernel}["cupy"]
         device_type = "gpu"
     elif backend_name == "gpu-intra":
         from nums.core.kernel import cupy_parallel_kernel
 
-        kernel_module = {"cupy":  cupy_parallel_kernel}[
-            "cupy"
-        ]
+        kernel_module = {"cupy": cupy_parallel_kernel}["cupy"]
         device_type = "gpu"
     else:
         kernel_module = {"numpy": numpy_kernel}[settings.kernel_name]

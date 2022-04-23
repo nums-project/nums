@@ -30,7 +30,14 @@ from .utils import get_private_ip
 
 try:
     import cupy as cp
-    from cupy.cuda.nccl import NcclCommunicator, NCCL_INT32, NCCL_SUM, groupStart, groupEnd
+    from cupy.cuda.nccl import (
+        NcclCommunicator,
+        NCCL_INT32,
+        NCCL_INT64,
+        NCCL_SUM,
+        groupStart,
+        groupEnd,
+    )
 except:
     pass
 
@@ -44,7 +51,7 @@ class GPUSerialBackend(Backend):
         self._remote_functions: dict = {}
         self._actors: dict = {}
         self.num_gpus = 1
-        self.cp = cp  # TODO: don't need this?
+        self.cp = cp
 
     def init(self):
         pass
@@ -292,7 +299,7 @@ class GPUParallelBackend(Backend):
             node_key = self._node_key(node)
             if "resources" in options:
                 assert node_key not in options
-            options["resources"] = {node_key: 1.0 / 10 ** 4}
+            options["resources"] = {node_key: 1.0 / 10**4}
         return self._remote_functions[name].options(**options).remote(*args, **kwargs)
 
     def register_actor(self, name: str, cls: type):
@@ -330,12 +337,12 @@ class GPUParallelBackend(Backend):
 
 class GPURayActorBackend(Backend):
     def __init__(
-            self,
-            address: Optional[str] = None,
-            use_head: bool = True,  # TODO: Probably not needed for a GPU setup?
-            num_cpus: Optional[int] = None,
-            num_gpus: Optional[int] = None,
-            num_nodes: Optional[int] = None,
+        self,
+        address: Optional[str] = None,
+        use_head: bool = True,  # TODO: Probably not needed for a GPU setup?
+        num_cpus: Optional[int] = None,
+        num_gpus: Optional[int] = None,
+        num_nodes: Optional[int] = None,
     ):
         # NOTES: use_head is ignored for now
         self._use_head = use_head
@@ -375,8 +382,6 @@ class GPURayActorBackend(Backend):
 
         self.init_devices()
 
-
-
     def init_devices(self):
         self._devices = []
         self._device_to_node = {}
@@ -389,7 +394,6 @@ class GPURayActorBackend(Backend):
 
     def _gpu_key(self, pci_bus_id):
         return "gpu:{}".format(pci_bus_id)
-
 
     def _has_cpu_resources(self, node: dict) -> bool:
         return self._node_cpu_resources(node) > 0.0
@@ -466,7 +470,7 @@ class GPURayActorBackend(Backend):
             node_key = self._node_key(node)
             if "resources" in options:
                 assert node_key not in options
-            options["resources"] = {node_key: 1.0 / 10 ** 4}
+            options["resources"] = {node_key: 1.0 / 10**4}
         return self._remote_functions[name].options(**options).remote(*args, **kwargs)
 
     def register_actor(self, name: str, cls: type):
@@ -502,7 +506,7 @@ class GPURayActorBackend(Backend):
         return self.num_gpus
 
 
-# This serves as a layer of indirection between sending stuff via actor.
+# This serves as a layer of indirection between sending stuff via actor. #TODO: Explore this later
 @ray.remote(num_gpus=1)
 class GPUActor(object):
     def __init__(self):
@@ -513,11 +517,10 @@ class GPUIntraBackend(Backend):
     def __init__(self, num_cpus: Optional[int] = None, num_gpus: Optional[int] = None):
         import cupy as cp
 
-
         self.num_cpus = int(get_num_cores()) if num_cpus is None else num_cpus
         self._remote_functions: dict = {}
         self._actors: dict = {}
-        self.num_gpus = 8#int(get_num_gpus()) if num_gpus is None else num_gpus
+        self.num_gpus = int(get_num_gpus()) if num_gpus is None else num_gpus
         self._devices = []
         self._device_to_node = {}
         self.cp = cp
@@ -547,7 +550,6 @@ class GPUIntraBackend(Backend):
     def _gpu_key(self, pci_bus_id):
         return "gpu:{}".format(pci_bus_id)
 
-
     def shutdown(self):
         mempool = self.cp.get_default_memory_pool()
         mempool.free_all_blocks()
@@ -565,6 +567,7 @@ class GPUIntraBackend(Backend):
 
         import cupy as cp
         import numpy as np
+
         with gpu:
             if np.isscalar(value):
                 return value
@@ -614,17 +617,6 @@ class GPUIntraBackend(Backend):
     def call(self, name: str, args, kwargs, device: Device, options: Dict):
         gpu = self._device_to_node[device]
 
-        # print(gpu, [arg.device for arg in args if isinstance(arg, self.cp.ndarray)])
-        # new_args = []
-        # for arg in args:
-        #     if isinstance(arg, self.cp.ndarray) and gpu != arg.device:
-        #         with gpu:
-        #             arg = self.cp.asarray(arg)
-        #             new_args.append(arg)
-        #
-        #     else:
-        #         new_args.append(arg)
-
         new_args = []
         stream = cp.cuda.Stream.null.ptr
 
@@ -635,13 +627,16 @@ class GPUIntraBackend(Backend):
                     new_arg = self.cp.zeros(arg.shape, dtype=arg.dtype)
                 # print(arg.device.id, gpu.id)
                 # explicitly send data to GPU with NCCL using one process
-                self._comm[gpu.id].send(new_arg.data.ptr, new_arg.size, NCCL_INT32, arg.device.id, stream)
-                self._comm[arg.device.id].recv(arg.data.ptr, arg.size, NCCL_INT32, new_arg.device.id, stream)
+                self._comm[gpu.id].send(
+                    new_arg.data.ptr, new_arg.size, NCCL_INT64, arg.device.id, stream
+                )
+                self._comm[arg.device.id].recv(
+                    arg.data.ptr, arg.size, NCCL_INT64, new_arg.device.id, stream
+                )
                 new_args.append(new_arg)
                 groupEnd()
             else:
                 new_args.append(arg)
-
 
         with gpu:
             return self._remote_functions[name](*new_args, **kwargs)
@@ -678,4 +673,3 @@ class GPUIntraBackend(Backend):
 
     def num_cores_total(self):
         return self.num_gpus
-
