@@ -350,177 +350,6 @@ class GPURayActorBackend(Backend):
         self._remote_functions: dict = {}
         self._actors: dict = {}
         self.num_gpus = int(get_num_gpus()) if num_gpus is None else num_gpus
-
-        # Ray attributes for attaching to a Ray cluster environment
-        self._manage_ray = True
-        self._address: str = address
-        self._num_nodes = num_nodes
-        self._available_nodes = []
-        self._head_node = None
-        self._worker_nodes = []
-        self._devices: List[Device] = []
-        self._device_to_node: Dict[Device, Dict] = {}
-        import cupy as cp
-
-        self.cp = cp
-
-    def init(self):
-        if ray.is_initialized():
-            self._manage_ray = False
-        if self._manage_ray:
-            if self._address is None:
-                ray.init(num_cpus=self.num_cpus, num_gpus=self.num_gpus)
-            else:
-                # Don't need to manually set the number of cpus and gpus
-                ray.init(address=self._address)
-
-        for gpu_id in range(self.num_gpus):
-            pci_bus_id = self.cp.cuda.Device(gpu_id).pci_bus_id
-            # add inter node logic here when possible
-            self._worker_nodes.append(pci_bus_id)
-            self._available_nodes.append(pci_bus_id)
-
-        self.init_devices()
-
-    def init_devices(self):
-        self._devices = []
-        self._device_to_node = {}
-        for i in range(self.num_gpus):
-            pci_bus_id = self.cp.cuda.Device(i).pci_bus_id
-            gpu_device = self.cp.cuda.Device.from_pci_bus_id(pci_bus_id)
-            did = Device(i, self._gpu_key(pci_bus_id), "gpu", 0)
-            self._devices.append(did)
-            self._device_to_node[did] = gpu_device
-
-    def _gpu_key(self, pci_bus_id):
-        return "gpu:{}".format(pci_bus_id)
-
-    def _has_cpu_resources(self, node: dict) -> bool:
-        return self._node_cpu_resources(node) > 0.0
-
-    def _node_cpu_resources(self, node: dict) -> float:
-        return node["Resources"]["CPU"] if "CPU" in node["Resources"] else 0.0
-
-    def _node_key(self, node: dict) -> str:
-        node_key = list(filter(lambda key: "node" in key, node["Resources"].keys()))
-        assert len(node_key) == 1
-        return node_key[0]
-
-    def _node_ip(self, node: dict) -> str:
-        return self._node_key(node).split(":")[1]
-
-    def shutdown(self):
-        if self._manage_ray:
-            ray.shutdown()
-
-    def put(self, value: Any, device: Device):
-        """
-        Put object into backend storage and force placement on the relevant node.
-        """
-        return self.call("identity", [value], {}, device, {})
-
-    def get(self, object_ids: Union[Any, List]):
-        """
-        Get object from backend storage.
-        CuPy also uses .get() to copy to CPU memory to serve to user.
-        """
-        import cupy as cp
-
-        # for i in range(8):
-        #     cp.cuda.Device(i).synchronize()
-        carrs = ray.get(object_ids)
-        if isinstance(carrs, list):
-            return [cp.asnumpy(carr) for carr in carrs]
-        return cp.asnumpy(carrs)
-
-    def remote(self, function: FunctionType, remote_params: Dict):
-        """
-        Return a callable remote function with remote_params.
-        """
-        r = ray.remote(num_gpus=1, **remote_params)
-        return r(function)
-
-    def devices(self):
-        return self._devices
-
-    def register(self, name: str, func: callable, remote_params: Dict = None):
-        if name in self._remote_functions:
-            return
-        self._remote_functions[name] = self.remote(func, remote_params)
-
-    def call(self, name: str, args, kwargs, device: Device, options: Dict):
-        gpu = self._device_to_node[device]
-        #
-        # # print(gpu, [arg.device for arg in args if isinstance(arg, self.cp.ndarray)])
-        # new_args = []
-        # for arg in args:
-        #     if isinstance(arg, self.cp.ndarray) and gpu != arg.device:
-        #         with gpu:
-        #             arg = self.cp.asarray(arg)
-        #             new_args.append(arg)
-        #
-        #     else:
-        #         new_args.append(arg)
-        #
-        # with gpu:
-        #     return self._remote_functions[name](*new_args, **kwargs)
-
-        if device is not None:
-            node = self._device_to_node[device]
-            node_key = self._node_key(node)
-            if "resources" in options:
-                assert node_key not in options
-            options["resources"] = {node_key: 1.0 / 10**4}
-        return self._remote_functions[name].options(**options).remote(*args, **kwargs)
-
-    def register_actor(self, name: str, cls: type):
-        """
-        :param name: Name of the actor. This should be unique.
-        :param cls: The Python class to convert into an actor.
-        :return: None
-        """
-        assert name not in self._actors
-        self._actors[name] = cls
-
-    def make_actor(self, name: str, *args, device: Device = None, **kwargs):
-        """
-        :param name: The name of the actor.
-        :param args: args to pass to __init__.
-        :param device: A device. This is captured by the system and not passed to __init__.
-        :param kwargs: kwargs to pass to __init__.
-        :return: An Actor.
-        """
-        return self._actors[name](*args, **kwargs)
-
-    def call_actor_method(self, actor, method: str, *args, **kwargs):
-        """
-        :param actor: Actor instance.
-        :param method: Method name.
-        :param args: Method args.
-        :param kwargs: Method kwargs.
-        :return: Result of calling method.
-        """
-        return getattr(actor, method)(*args, **kwargs)
-
-    def num_cores_total(self):
-        return self.num_gpus
-
-
-# This serves as a layer of indirection between sending stuff via actor. #TODO: Explore this later
-@ray.remote(num_gpus=1)
-class GPUActor(object):
-    def __init__(self):
-        return "This actor is allowed to use GPUs {}.".format(ray.get_gpu_ids())
-
-
-class GPUIntraBackend(Backend):
-    def __init__(self, num_cpus: Optional[int] = None, num_gpus: Optional[int] = None):
-        import cupy as cp
-
-        self.num_cpus = int(get_num_cores()) if num_cpus is None else num_cpus
-        self._remote_functions: dict = {}
-        self._actors: dict = {}
-        self.num_gpus = int(get_num_gpus()) if num_gpus is None else num_gpus
         self._devices = []
         self._device_to_node = {}
         self.cp = cp
@@ -528,6 +357,7 @@ class GPUIntraBackend(Backend):
         self._worker_nodes = []
         self._gpu_list = list(range(int(get_num_gpus())))
         self._comm = None
+        self._cache = {}
 
     def init(self):
         for gpu_id in range(self.num_gpus):
@@ -583,6 +413,8 @@ class GPUIntraBackend(Backend):
         import cupy as cp
         import numpy as np
 
+        self._cache.clear()
+
         for i in range(self.num_gpus):
             cp.cuda.Device(i).synchronize()
 
@@ -622,19 +454,200 @@ class GPUIntraBackend(Backend):
 
         for arg in args:
             if isinstance(arg, self.cp.ndarray) and gpu != arg.device:
-                groupStart()
-                with gpu:
-                    new_arg = self.cp.zeros(arg.shape, dtype=arg.dtype)
-                # print(arg.device.id, gpu.id)
-                # explicitly send data to GPU with NCCL using one process
-                self._comm[gpu.id].send(
-                    new_arg.data.ptr, new_arg.size, NCCL_INT64, arg.device.id, stream
-                )
-                self._comm[arg.device.id].recv(
-                    arg.data.ptr, arg.size, NCCL_INT64, new_arg.device.id, stream
-                )
+                
+                key = str(arg.data.ptr) + str(arg.shape) + str(gpu.id)
+                if key not in self._cache:
+                    groupStart()
+                    self._comm[arg.device.id].bcast(arg.data.ptr, arg.size, NCCL_INT64, self._comm[arg.device.id].rank_id(), stream)
+                    for i in range(self.num_gpus):
+                        if i != arg.device.id:
+                            key = str(arg.data.ptr) + str(arg.shape) + str(i)
+                            with self.cp.cuda.Device(i):
+                                self._cache[key] = self.cp.zeros(shape=arg.shape, dtype=arg.dtype)
+                            self._comm[i].bcast(self._cache[key].data.ptr, arg.size, NCCL_INT64, self._comm[arg.device.id].rank_id(), stream)
+                    groupEnd()
+
+                key = str(arg.data.ptr) + str(arg.shape) + str(gpu.id)
+                new_arg = self._cache[key]
                 new_args.append(new_arg)
-                groupEnd()
+                
+            else:
+                new_args.append(arg)
+
+        with gpu:
+            return self._remote_functions[name](*new_args, **kwargs)
+
+    # This is for sklearn, ignore for now
+    def register_actor(self, name: str, cls: type):
+        """
+        :param name: Name of the actor. This should be unique.
+        :param cls: The Python class to convert into an actor.
+        :return: None
+        """
+        assert name not in self._actors
+        self._actors[name] = cls
+
+    def make_actor(self, name: str, *args, device: Device = None, **kwargs):
+        """
+        :param name: The name of the actor.
+        :param args: args to pass to __init__.
+        :param device: A device. This is captured by the system and not passed to __init__.
+        :param kwargs: kwargs to pass to __init__.
+        :return: An Actor.
+        """
+        return self._actors[name](*args, **kwargs)
+
+    def call_actor_method(self, actor, method: str, *args, **kwargs):
+        """
+        :param actor: Actor instance.
+        :param method: Method name.
+        :param args: Method args.
+        :param kwargs: Method kwargs.
+        :return: Result of calling method.
+        """
+        return getattr(actor, method)(*args, **kwargs)
+
+    def num_cores_total(self):
+        return self.num_gpus
+
+
+
+# This serves as a layer of indirection between sending stuff via actor. #TODO: Explore this later
+@ray.remote(num_gpus=1)
+class GPUActor(object):
+    def __init__(self):
+        return "This actor is allowed to use GPUs {}.".format(ray.get_gpu_ids())
+
+
+class GPUIntraBackend(Backend):
+    def __init__(self, num_cpus: Optional[int] = None, num_gpus: Optional[int] = None):
+        import cupy as cp
+
+        self.num_cpus = int(get_num_cores()) if num_cpus is None else num_cpus
+        self._remote_functions: dict = {}
+        self._actors: dict = {}
+        self.num_gpus = int(get_num_gpus()) if num_gpus is None else num_gpus
+        self._devices = []
+        self._device_to_node = {}
+        self.cp = cp
+        self._available_nodes = []
+        self._worker_nodes = []
+        self._gpu_list = list(range(int(get_num_gpus())))
+        self._comm = None
+        self._cache = {}
+
+    def init(self):
+        for gpu_id in range(self.num_gpus):
+            pci_bus_id = self.cp.cuda.Device(gpu_id).pci_bus_id
+            # add inter node logic here when possible
+            self._worker_nodes.append(pci_bus_id)
+            self._available_nodes.append(pci_bus_id)
+
+        self.init_devices()
+        self._comm = NcclCommunicator.initAll(self._gpu_list)
+
+    def init_devices(self):
+        for i in range(self.num_gpus):
+            pci_bus_id = self.cp.cuda.Device(i).pci_bus_id
+            gpu_device = self.cp.cuda.Device.from_pci_bus_id(pci_bus_id)
+            did = Device(i, self._gpu_key(pci_bus_id), "gpu", 0)
+            self._devices.append(did)
+            self._device_to_node[did] = gpu_device
+
+    def _gpu_key(self, pci_bus_id):
+        return "gpu:{}".format(pci_bus_id)
+
+    def shutdown(self):
+        mempool = self.cp.get_default_memory_pool()
+        mempool.free_all_blocks()
+
+    def put(self, value: Any, device: Device):
+        """
+        Put object into backend storage and force placement on the relevant node.
+        """
+        if device is not None:
+            gpu = self._device_to_node[device]
+            node_key = self._gpu_key(gpu)
+            # if "resources" in options:
+            #     assert node_key not in options
+            # options["resources"] = {node_key: 1.0 / 10**4}
+
+        import cupy as cp
+        import numpy as np
+
+        with gpu:
+            if np.isscalar(value):
+                return value
+
+            return cp.array(value)
+
+    def get(self, object_ids: Union[Any, List]):
+        """
+        Get object from backend storage.
+
+        CuPy also uses .get() to copy to CPU memory to serve to user.
+        """
+        import cupy as cp
+        import numpy as np
+
+        self._cache.clear()
+
+        for i in range(self.num_gpus):
+            cp.cuda.Device(i).synchronize()
+
+        # TODO: some things in CuPy don't translate well to NumPy, clean this up in a helper function
+        if type(object_ids[0]) == np.float64 or type(object_ids[0]) == int:
+            return object_ids
+        if isinstance(object_ids, list):
+            return [
+                a.get()
+                for a in object_ids
+                if type(a) is not bool and type(a) != np.ndarray
+            ]  # TODO: clean up this case
+        else:
+            return object_ids.get()
+
+    def remote(self, function: FunctionType, remote_params: Dict):
+        """
+        Return a callable remote function with remote_params.
+        """
+        return function
+
+    def devices(self):
+        return self._devices
+
+    def register(self, name: str, func: callable, remote_params: Dict = None):
+        if name in self._remote_functions:
+            return
+        if remote_params is None:
+            remote_params = {}
+        self._remote_functions[name] = self.remote(func, remote_params)
+
+    def call(self, name: str, args, kwargs, device: Device, options: Dict):
+        gpu = self._device_to_node[device]
+
+        new_args = []
+        stream = cp.cuda.Stream.null.ptr
+
+        for arg in args:
+            if isinstance(arg, self.cp.ndarray) and gpu != arg.device:
+                
+                key = str(arg.data.ptr) + str(arg.shape) + str(gpu.id)
+                if key not in self._cache:
+                    groupStart()
+                    self._comm[arg.device.id].bcast(arg.data.ptr, arg.size, NCCL_INT64, self._comm[arg.device.id].rank_id(), stream)
+                    for i in range(self.num_gpus):
+                        if i != arg.device.id:
+                            key = str(arg.data.ptr) + str(arg.shape) + str(i)
+                            with self.cp.cuda.Device(i):
+                                self._cache[key] = self.cp.zeros(shape=arg.shape, dtype=arg.dtype)
+                            self._comm[i].bcast(self._cache[key].data.ptr, arg.size, NCCL_INT64, self._comm[arg.device.id].rank_id(), stream)
+                    groupEnd()
+
+                key = str(arg.data.ptr) + str(arg.shape) + str(gpu.id)
+                new_arg = self._cache[key]
+                new_args.append(new_arg)
+                
             else:
                 new_args.append(arg)
 
