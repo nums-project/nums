@@ -32,15 +32,28 @@ try:
     import cupy as cp
     from cupy.cuda.nccl import (
         NcclCommunicator,
-        NCCL_INT32,
-        NCCL_INT64,
+        NCCL_FLOAT64,
+        NCCL_FLOAT32,
+        NCCL_FLOAT16,
         NCCL_SUM,
         groupStart,
         groupEnd,
     )
+    import os
+    os.environ["NCCL_LAUNCH_MODE"] = "PARALLEL"
+
+    
 except:
     pass
 
+import numpy as np
+DTYPES = {
+    np.float16 : NCCL_FLOAT16,
+    np.float32 : NCCL_FLOAT32,
+    np.float64 : NCCL_FLOAT64,
+    np.int32 : NCCL_FLOAT32,
+    np.int64 : NCCL_FLOAT64,
+}
 
 ### This is a serial gpu implementation (No communication)
 class GPUSerialBackend(Backend):
@@ -413,7 +426,6 @@ class GPURayActorBackend(Backend):
         import cupy as cp
         import numpy as np
 
-        self._cache.clear()
 
         for i in range(self.num_gpus):
             cp.cuda.Device(i).synchronize()
@@ -454,7 +466,7 @@ class GPURayActorBackend(Backend):
 
         for arg in args:
             if isinstance(arg, self.cp.ndarray) and gpu != arg.device:
-                
+
                 key = str(arg.data.ptr) + str(arg.shape) + str(gpu.id)
                 if key not in self._cache:
                     groupStart()
@@ -470,7 +482,7 @@ class GPURayActorBackend(Backend):
                 key = str(arg.data.ptr) + str(arg.shape) + str(gpu.id)
                 new_arg = self._cache[key]
                 new_args.append(new_arg)
-                
+
             else:
                 new_args.append(arg)
 
@@ -534,7 +546,8 @@ class GPUIntraBackend(Backend):
         self._worker_nodes = []
         self._gpu_list = list(range(int(get_num_gpus())))
         self._comm = None
-        self._cache = {}
+        self._streams = []
+        self._recv_bufs = {}
 
     def init(self):
         for gpu_id in range(self.num_gpus):
@@ -545,6 +558,16 @@ class GPUIntraBackend(Backend):
 
         self.init_devices()
         self._comm = NcclCommunicator.initAll(self._gpu_list)
+
+        for i in range(self.num_gpus):
+            with self.cp.cuda.Device(i):
+                self._streams.append(self.cp.cuda.Stream(non_blocking=True))#non_blocking=True
+        
+        # for i in range(self.num_gpus):
+        #     with cp.cuda.Device(self._streams[i].device_id):
+        #         with self._streams[i]:
+        #             self._send_bufs.append(cp.zeros(shape=(10000, 10000)))
+        #             self._recv_bufs.append(cp.zeros(shape=(10000, 10000)))
 
     def init_devices(self):
         for i in range(self.num_gpus):
@@ -574,12 +597,14 @@ class GPUIntraBackend(Backend):
 
         import cupy as cp
         import numpy as np
-
-        with gpu:
-            if np.isscalar(value):
-                return value
-
-            return cp.array(value)
+        # print("putting")
+        with self.cp.cuda.Device(self._streams[gpu.id].device_id):
+            with self._streams[gpu.id]:
+                if np.isscalar(value):
+                    # print("scalar")
+                    return value
+                # print("arr")
+                return cp.array(value)
 
     def get(self, object_ids: Union[Any, List]):
         """
@@ -590,10 +615,11 @@ class GPUIntraBackend(Backend):
         import cupy as cp
         import numpy as np
 
-        self._cache.clear()
+        self._recv_bufs.clear()
 
         for i in range(self.num_gpus):
             cp.cuda.Device(i).synchronize()
+            self._streams[i].synchronize()
 
         # TODO: some things in CuPy don't translate well to NumPy, clean this up in a helper function
         if type(object_ids[0]) == np.float64 or type(object_ids[0]) == int:
@@ -631,28 +657,32 @@ class GPUIntraBackend(Backend):
 
         for arg in args:
             if isinstance(arg, self.cp.ndarray) and gpu != arg.device:
-                
-                key = str(arg.data.ptr) + str(arg.shape) + str(gpu.id)
-                if key not in self._cache:
-                    groupStart()
-                    self._comm[arg.device.id].bcast(arg.data.ptr, arg.size, NCCL_INT64, self._comm[arg.device.id].rank_id(), stream)
-                    for i in range(self.num_gpus):
-                        if i != arg.device.id:
-                            key = str(arg.data.ptr) + str(arg.shape) + str(i)
-                            with self.cp.cuda.Device(i):
-                                self._cache[key] = self.cp.zeros(shape=arg.shape, dtype=arg.dtype)
-                            self._comm[i].bcast(self._cache[key].data.ptr, arg.size, NCCL_INT64, self._comm[arg.device.id].rank_id(), stream)
-                    groupEnd()
+                send_rank = arg.device.id
+                recv_rank = gpu.id    
+                with self.cp.cuda.Device(self._streams[recv_rank].device_id):
+                    with self._streams[recv_rank]:
+                        key = str(recv_rank) + "_" +  str(arg.size)
+                        if key not in self._recv_bufs:
+                            # Allocate and reuse as many buffers needed for communication. Will be deleted after
+                            # a call to synchronization
+                            self._recv_bufs[key] = self.cp.zeros(shape=arg.shape, dtype=arg.dtype)
 
-                key = str(arg.data.ptr) + str(arg.shape) + str(gpu.id)
-                new_arg = self._cache[key]
+                        new_arg = self._recv_bufs[key]
+                        nccl_type = DTYPES[arg.dtype]
+
+                        self._comm[recv_rank].send(
+                            new_arg.data.ptr, new_arg.size, nccl_type, self._comm[send_rank].rank_id(), self._streams[recv_rank].ptr
+                        )
+                        self._comm[send_rank].recv(
+                            arg.data.ptr, arg.size, nccl_type, self._comm[recv_rank].rank_id(),  self._streams[send_rank].ptr
+                        )
                 new_args.append(new_arg)
-                
             else:
                 new_args.append(arg)
 
-        with gpu:
-            return self._remote_functions[name](*new_args, **kwargs)
+        with self.cp.cuda.Device(self._streams[gpu.id].device_id):
+            with self._streams[gpu.id]:
+                return self._remote_functions[name](*new_args, **kwargs)
 
     # This is for sklearn, ignore for now
     def register_actor(self, name: str, cls: type):
@@ -686,3 +716,4 @@ class GPUIntraBackend(Backend):
 
     def num_cores_total(self):
         return self.num_gpus
+

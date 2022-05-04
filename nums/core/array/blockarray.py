@@ -25,6 +25,14 @@ from nums.core.grid.grid import ArrayGrid
 from nums.core.kernel.kernel_manager import KernelManager
 
 
+from cupy.cuda.nccl import (
+    NcclCommunicator,
+    NCCL_INT32,
+    NCCL_INT64,
+    NCCL_SUM,
+    groupStart,
+    groupEnd,
+)
 # pylint: disable=too-many-lines
 
 
@@ -780,6 +788,7 @@ class BlockArray(BlockArrayBase):
             return other_block.true_grid_entry(), other_block.true_grid_shape()
 
     def tensordot(self, other, axes=2):
+        groupStart()
         if isinstance(axes, int):
             pass
         elif array_utils.is_array_like(axes):
@@ -852,6 +861,7 @@ class BlockArray(BlockArrayBase):
                 result_block.oid = self._tree_reduce(
                     "sum", sum_oids, result_block.grid_entry, result_block.grid_shape
                 )
+        groupEnd()
         return result
 
     def __matmul__(self, other):
