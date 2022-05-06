@@ -33,6 +33,7 @@ from cupy.cuda.nccl import (
     groupStart,
     groupEnd,
 )
+
 # pylint: disable=too-many-lines
 
 
@@ -788,7 +789,6 @@ class BlockArray(BlockArrayBase):
             return other_block.true_grid_entry(), other_block.true_grid_shape()
 
     def tensordot(self, other, axes=2):
-        groupStart()
         if isinstance(axes, int):
             pass
         elif array_utils.is_array_like(axes):
@@ -861,7 +861,6 @@ class BlockArray(BlockArrayBase):
                 result_block.oid = self._tree_reduce(
                     "sum", sum_oids, result_block.grid_entry, result_block.grid_shape
                 )
-        groupEnd()
         return result
 
     def __matmul__(self, other):
@@ -996,7 +995,7 @@ class BlockArray(BlockArrayBase):
 
     def __rpow__(self, other):
         other = self.check_or_convert_other(other)
-        return other**self
+        return other ** self
 
     __ipow__ = __pow__
 
@@ -1187,10 +1186,10 @@ class Reshape:
         # A set of these indices may be transmitted over the network,
         # so we want to pick the smallest encoding possible.
         index_types = [
-            (2**8, np.uint8),
-            (2**16, np.uint16),
-            (2**32, np.uint32),
-            (2**64, np.uint64),
+            (2 ** 8, np.uint8),
+            (2 ** 16, np.uint16),
+            (2 ** 32, np.uint32),
+            (2 ** 64, np.uint64),
         ]
         index_type = None
         for bound, curr_index_type in index_types:

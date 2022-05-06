@@ -40,20 +40,25 @@ try:
         groupEnd,
     )
     import os
-    os.environ["NCCL_LAUNCH_MODE"] = "PARALLEL"
 
-    
+    os.environ["NCCL_LAUNCH_MODE"] = "PARALLEL"
+    os.environ["CUPY_TF32"] = "1"
+    os.environ["CUPY_ACCELERATORS"] = "cub,cutensor"
+
+
 except:
     pass
 
 import numpy as np
+
 DTYPES = {
-    np.float16 : NCCL_FLOAT16,
-    np.float32 : NCCL_FLOAT32,
-    np.float64 : NCCL_FLOAT64,
-    np.int32 : NCCL_FLOAT32,
-    np.int64 : NCCL_FLOAT64,
+    "float16": NCCL_FLOAT16,
+    "float32": NCCL_FLOAT32,
+    "float64": NCCL_FLOAT64,
+    "int32": NCCL_FLOAT32,
+    "int64": NCCL_FLOAT64,
 }
+
 
 ### This is a serial gpu implementation (No communication)
 class GPUSerialBackend(Backend):
@@ -312,7 +317,7 @@ class GPUParallelBackend(Backend):
             node_key = self._node_key(node)
             if "resources" in options:
                 assert node_key not in options
-            options["resources"] = {node_key: 1.0 / 10**4}
+            options["resources"] = {node_key: 1.0 / 10 ** 4}
         return self._remote_functions[name].options(**options).remote(*args, **kwargs)
 
     def register_actor(self, name: str, cls: type):
@@ -426,7 +431,6 @@ class GPURayActorBackend(Backend):
         import cupy as cp
         import numpy as np
 
-
         for i in range(self.num_gpus):
             cp.cuda.Device(i).synchronize()
 
@@ -470,13 +474,27 @@ class GPURayActorBackend(Backend):
                 key = str(arg.data.ptr) + str(arg.shape) + str(gpu.id)
                 if key not in self._cache:
                     groupStart()
-                    self._comm[arg.device.id].bcast(arg.data.ptr, arg.size, NCCL_INT64, self._comm[arg.device.id].rank_id(), stream)
+                    self._comm[arg.device.id].bcast(
+                        arg.data.ptr,
+                        arg.size,
+                        NCCL_INT64,
+                        self._comm[arg.device.id].rank_id(),
+                        stream,
+                    )
                     for i in range(self.num_gpus):
                         if i != arg.device.id:
                             key = str(arg.data.ptr) + str(arg.shape) + str(i)
                             with self.cp.cuda.Device(i):
-                                self._cache[key] = self.cp.zeros(shape=arg.shape, dtype=arg.dtype)
-                            self._comm[i].bcast(self._cache[key].data.ptr, arg.size, NCCL_INT64, self._comm[arg.device.id].rank_id(), stream)
+                                self._cache[key] = self.cp.zeros(
+                                    shape=arg.shape, dtype=arg.dtype
+                                )
+                            self._comm[i].bcast(
+                                self._cache[key].data.ptr,
+                                arg.size,
+                                NCCL_INT64,
+                                self._comm[arg.device.id].rank_id(),
+                                stream,
+                            )
                     groupEnd()
 
                 key = str(arg.data.ptr) + str(arg.shape) + str(gpu.id)
@@ -523,7 +541,6 @@ class GPURayActorBackend(Backend):
         return self.num_gpus
 
 
-
 # This serves as a layer of indirection between sending stuff via actor. #TODO: Explore this later
 @ray.remote(num_gpus=1)
 class GPUActor(object):
@@ -561,13 +578,7 @@ class GPUIntraBackend(Backend):
 
         for i in range(self.num_gpus):
             with self.cp.cuda.Device(i):
-                self._streams.append(self.cp.cuda.Stream(non_blocking=True))#non_blocking=True
-        
-        # for i in range(self.num_gpus):
-        #     with cp.cuda.Device(self._streams[i].device_id):
-        #         with self._streams[i]:
-        #             self._send_bufs.append(cp.zeros(shape=(10000, 10000)))
-        #             self._recv_bufs.append(cp.zeros(shape=(10000, 10000)))
+                self._streams.append(self.cp.cuda.Stream(non_blocking=True))
 
     def init_devices(self):
         for i in range(self.num_gpus):
@@ -597,6 +608,7 @@ class GPUIntraBackend(Backend):
 
         import cupy as cp
         import numpy as np
+
         # print("putting")
         with self.cp.cuda.Device(self._streams[gpu.id].device_id):
             with self._streams[gpu.id]:
@@ -653,12 +665,12 @@ class GPUIntraBackend(Backend):
         gpu = self._device_to_node[device]
 
         new_args = []
-        stream = cp.cuda.Stream.null.ptr
 
         for arg in args:
             if isinstance(arg, self.cp.ndarray) and gpu != arg.device:
-                send_rank = arg.device.id
-                recv_rank = gpu.id    
+                send_rank = arg.device.id # probably don't need this, delete later after benchmakrking
+                recv_rank = gpu.id
+                # print("sending from {} to {}".format(send_rank, recv_rank))
                 with self.cp.cuda.Device(self._streams[recv_rank].device_id):
                     with self._streams[recv_rank]:
                         key = str(recv_rank) + "_" +  str(arg.size)
@@ -668,14 +680,32 @@ class GPUIntraBackend(Backend):
                             self._recv_bufs[key] = self.cp.zeros(shape=arg.shape, dtype=arg.dtype)
 
                         new_arg = self._recv_bufs[key]
-                        nccl_type = DTYPES[arg.dtype]
 
-                        self._comm[recv_rank].send(
-                            new_arg.data.ptr, new_arg.size, nccl_type, self._comm[send_rank].rank_id(), self._streams[recv_rank].ptr
-                        )
-                        self._comm[send_rank].recv(
-                            arg.data.ptr, arg.size, nccl_type, self._comm[recv_rank].rank_id(),  self._streams[send_rank].ptr
-                        )
+                        # new_arg = self.cp.zeros(shape=arg.shape, dtype=arg.dtype)
+                nccl_type = DTYPES[arg.dtype.name]
+                groupStart()
+                # self._comm[send_rank].send(
+                #     arg.data.ptr, arg.size, nccl_type, self._comm[recv_rank].rank_id(), self._streams[send_rank].ptr
+                # )
+                # self._comm[recv_rank].recv(
+                #     new_arg.data.ptr, arg.size, nccl_type, self._comm[send_rank].rank_id(), self._streams[recv_rank].ptr
+                # )
+
+                self._comm[recv_rank].send(
+                    arg.data.ptr,
+                    arg.size,
+                    nccl_type,
+                    recv_rank,
+                    self._streams[recv_rank].ptr,
+                )
+                self._comm[recv_rank].recv(
+                    new_arg.data.ptr,
+                    arg.size,
+                    nccl_type,
+                    recv_rank,
+                    self._streams[recv_rank].ptr,
+                )
+                groupEnd()
                 new_args.append(new_arg)
             else:
                 new_args.append(arg)
@@ -716,4 +746,3 @@ class GPUIntraBackend(Backend):
 
     def num_cores_total(self):
         return self.num_gpus
-
