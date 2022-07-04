@@ -24,7 +24,7 @@ Transpose-like operations
    :toctree: generated/
 
    swapaxes
-   ndarray.T
+   BlockArray.T
    transpose
 
 Changing number of dimensions
