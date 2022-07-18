@@ -1214,7 +1214,9 @@ class Einsum(TreeNode):
         leaf: Leaf = Leaf(self.cluster_state)
         leaf.block = block
         # Assume dense for simplicity.
-        leaf.tree_node_size = TreeNodeSize(self.shape(), np.prod(self.shape()), block.dtype, block.fill_value)
+        leaf.tree_node_size = TreeNodeSize(
+            self.shape(), np.prod(self.shape()), block.dtype, block.fill_value
+        )
         leaf.copy_on_op = self.copy_on_op
         return leaf, block
 
