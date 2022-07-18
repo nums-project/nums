@@ -62,7 +62,7 @@ class GraphArray(object):
             # Create the leaf representing this block for future computations.
             leaf: Leaf = Leaf(cluster_state)
             leaf.block = block
-            if sync_nnz > 0:
+            if sync_nnz > 0 and not block.is_dense:
                 nnz = block.nnz  # Blocking fetch
             else:
                 nnz = np.prod(block.shape)

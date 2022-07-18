@@ -146,3 +146,6 @@ notebooks
 
 *.lock
 **/dask-worker-space
+
+# VS Code
+.vscode/

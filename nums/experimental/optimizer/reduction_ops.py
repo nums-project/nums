@@ -299,8 +299,9 @@ class TreeReductionOp(TreeNode):
                 shape = leaf_block.shape
             else:
                 assert leaf_block.shape == shape
-        # leaf_block: Block = leafs[0].block
-        # return leaf_block.size()
+        leaf_block: Block = leafs[0].block
+        if leaf_block.is_dense:
+            return leaf_block.size()
         if sync_nnz > 1:
             leafs[0].tree_node_size.nnz = leafs[0].block.nnz  # Blocking fetch
             leafs[1].tree_node_size.nnz = leafs[1].block.nnz  # Blocking fetch

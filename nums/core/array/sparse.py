@@ -566,7 +566,7 @@ class SparseBlockArray(BlockArray):
         # TODO: densify when fill_value != 0
         assert self.fill_value == 0
         if isinstance(other, SparseBlockArray):
-            assert other.fill_value == 0
+            assert other.fill_value == 0, "Sparse-dense tensordot may not be tractable."
         densify = array_utils.get_sparse_bop_return_type(
             "tensordot",
             self.fill_value,
@@ -632,7 +632,7 @@ class SparseBlockArray(BlockArray):
                     sum_oids.append(
                         (dotted_oid, dot_grid_args[0], dot_grid_args[1], False)
                     )
-                result_block.oid = self._tree_reduce(
+                result_block.oid = self.tree_reduce(
                     "sum", sum_oids, result_block.grid_entry, result_block.grid_shape
                 )
                 if not densify:

@@ -23,8 +23,9 @@ from nums.core.settings import sync_nnz
 from nums.core.array import utils as array_utils
 from nums.core.array.base import Block
 from nums.core.grid.grid import Device
-from nums.experimental.optimizer.clusterstate import ClusterState
 from nums.core.kernel.kernel_manager import KernelManager
+from nums.experimental.optimizer.clusterstate import ClusterState
+from nums.experimental.optimizer.size import TreeNodeSize
 
 
 def subsample(total_items, max_items, rs: np.random.RandomState):
@@ -343,10 +344,11 @@ class UnaryOp(TreeNode):
 
     def _mem_cost(self):
         assert isinstance(self.child, Leaf)
-        # block: Block = self.child.block
-        # return np.product(block.shape)
+        block: Block = self.child.block
+        if block.is_dense:
+            return np.product(block.shape)
         if sync_nnz > 1:
-            self.child.tree_node_size.nnz = self.child.block.nnz  # Blocking fetch
+            self.child.tree_node_size.nnz = block.nnz  # Blocking fetch
         return self.child.tree_node_size.uop(self.op_name).nbytes
 
     def shape(self):
@@ -465,14 +467,16 @@ class ReduceAxis(UnaryOp):
 
     def _mem_cost(self):
         assert isinstance(self.child, Leaf)
-        # return np.product(self.shape())
+        block: Block = self.child.block
+        if block.is_dense:
+            return np.product(self.shape())
         if sync_nnz > 1:
-            self.child.tree_node_size.nnz = self.child.block.nnz  # Blocking fetch
+            self.child.tree_node_size.nnz = block.nnz  # Blocking fetch
         return self.child.tree_node_size.reduce_axis(
             self.op_name,
             self.axis,
             self.keepdims,
-            self.child.block.transposed,
+            block.transposed,
         ).nbytes
 
     def update_tuple_property(self, val, keep_dim_val: Union[int, tuple] = 1):
@@ -709,7 +713,6 @@ class BinaryOp(TreeNode):
     def _mem_cost(self):
         # Computes the memory required to perform this operation.
         # We approximate by just computing the memory required to store the result.
-        # return np.product(self.shape())
         assert isinstance(self.left, Leaf) and isinstance(self.right, Leaf)
         lblock: Block = self.left.block
         rblock: Block = self.right.block
@@ -720,6 +723,8 @@ class BinaryOp(TreeNode):
         else:
             op_name, args = self.op_name, {}
             assert array_utils.can_broadcast_shapes(lblock.shape, rblock.shape)
+        if lblock.is_dense and rblock.is_dense:
+            return np.product(self.shape())
         if sync_nnz > 1:
             self.left.tree_node_size.nnz = lblock.nnz  # Blocking fetch
             self.right.tree_node_size.nnz = rblock.nnz  # Blocking fetch
@@ -1177,7 +1182,10 @@ class Einsum(TreeNode):
         # captured by leaf node computations.
         self.cluster_state.commit_nary_op(self._mem_cost(), block_ids, device)
         # Update cluster state with new block.
-        self.cluster_state.add_block(new_block.id, new_block.size(), [device])
+        # self.cluster_state.add_block(new_block.id, new_block.size(), [device])
+        self.cluster_state.add_block(
+            new_block.id, new_leaf.tree_node_size.nbytes, [device]
+        )
         if not self.cluster_state.created_on_only:
             for block_id in block_ids:
                 assert self.cluster_state.blocks_local(block_id, new_leaf.block.id)
@@ -1205,6 +1213,8 @@ class Einsum(TreeNode):
         )
         leaf: Leaf = Leaf(self.cluster_state)
         leaf.block = block
+        # Assume dense for simplicity.
+        leaf.tree_node_size = TreeNodeSize(self.shape(), np.prod(self.shape()), block.dtype, block.fill_value)
         leaf.copy_on_op = self.copy_on_op
         return leaf, block
 
