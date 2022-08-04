@@ -266,7 +266,7 @@ class TreeReductionOp(TreeNode):
         block: Block = lblock.copy()
         block.transposed = False
         block.dtype = array_utils.get_reduce_output_type(self.op_name, lblock.dtype)
-        block.oid = lblock._km.bop_reduce(
+        block.oid = lblock.km.bop_reduce(
             op_name,
             lblock.oid,
             rblock.oid,

@@ -176,28 +176,29 @@ class GraphArray(object):
     def other_to_ga(self, other):
         return GraphArray.to_ga(other, self.cluster_state, self.km, self.copy_on_op)
 
-    def tensordot(self, other, axes=2):
-        other = self.other_to_ga(other)
+    @staticmethod
+    def tensordot(a, b, axes=2):
+        b = a.other_to_ga(b)
         # TODO: Reuse BlockArrayBase tensordot operator.
-        this_axes = self.grid.grid_shape[:-axes]
-        this_sum_axes = self.grid.grid_shape[-axes:]
-        other_axes = other.grid.grid_shape[axes:]
-        other_sum_axes = other.grid.grid_shape[:axes]
-        assert this_sum_axes == other_sum_axes
-        result_shape = tuple(self.shape[:-axes] + other.shape[axes:])
-        result_block_shape = tuple(self.block_shape[:-axes] + other.block_shape[axes:])
+        a_axes = a.grid.grid_shape[:-axes]
+        a_sum_axes = a.grid.grid_shape[-axes:]
+        b_axes = b.grid.grid_shape[axes:]
+        b_sum_axes = b.grid.grid_shape[:axes]
+        assert a_sum_axes == b_sum_axes
+        result_shape = tuple(a.shape[:-axes] + b.shape[axes:])
+        result_block_shape = tuple(a.block_shape[:-axes] + b.block_shape[axes:])
         result_grid = ArrayGrid(
             shape=result_shape,
             block_shape=result_block_shape,
-            dtype=self.dtype.__name__,
+            dtype=a.dtype.__name__,
         )
-        assert result_grid.grid_shape == tuple(this_axes + other_axes)
+        assert result_grid.grid_shape == tuple(a_axes + b_axes)
         result_graphs = np.empty(shape=result_grid.grid_shape, dtype=np.object)
-        this_dims = list(itertools.product(*map(range, this_axes)))
-        other_dims = list(itertools.product(*map(range, other_axes)))
-        sum_dims = list(itertools.product(*map(range, this_sum_axes)))
-        for i in this_dims:
-            for j in other_dims:
+        a_dims = list(itertools.product(*map(range, a_axes)))
+        b_dims = list(itertools.product(*map(range, b_axes)))
+        sum_dims = list(itertools.product(*map(range, a_sum_axes)))
+        for i in a_dims:
+            for j in b_dims:
                 # A \in \R^{I \times K}
                 # B \in \R^{K \times J}
                 # C \in \R^{I \times J}
@@ -205,20 +206,20 @@ class GraphArray(object):
                 grid_entry = tuple(i + j)
                 if len(sum_dims) == 1:
                     k = sum_dims[0]
-                    self_node: TreeNode = self.graphs[tuple(i + k)]
-                    other_node: TreeNode = other.graphs[tuple(k + j)]
-                    dot_node: TreeNode = self_node.tensordot(other_node, axes=axes)
+                    a_node: TreeNode = a.graphs[tuple(i + k)]
+                    b_node: TreeNode = b.graphs[tuple(k + j)]
+                    dot_node: TreeNode = a_node.tensordot(b_node, axes=axes)
                     result_graphs[grid_entry] = dot_node
                 else:
-                    rop = TreeReductionOp(self.cluster_state)
+                    rop = TreeReductionOp(a.cluster_state)
                     rop.set_grid_entry(grid_entry)
                     rop.set_grid_shape(result_grid.grid_shape)
                     rop.op_name = "sum"
-                    rop.copy_on_op = self.copy_on_op
+                    rop.copy_on_op = a.copy_on_op
                     for k in sum_dims:
-                        self_node: TreeNode = self.graphs[tuple(i + k)]
-                        other_node: TreeNode = other.graphs[tuple(k + j)]
-                        dot_node: TreeNode = self_node.tensordot(other_node, axes=axes)
+                        a_node: TreeNode = a.graphs[tuple(i + k)]
+                        b_node: TreeNode = b.graphs[tuple(k + j)]
+                        dot_node: TreeNode = a_node.tensordot(b_node, axes=axes)
                         # Explicitly add parent here, since sum depends on prod.
                         # Not needed for other ops; make_bop takes care of it.
                         # We don't need to copy the node here since the local
@@ -229,14 +230,14 @@ class GraphArray(object):
 
         return GraphArray(
             result_grid,
-            self.cluster_state,
+            a.cluster_state,
             result_graphs,
-            self.km,
-            copy_on_op=self.copy_on_op,
+            a.km,
+            copy_on_op=a.copy_on_op,
         )
 
     def __matmul__(self, other):
-        return self.tensordot(other, axes=1)
+        return self.tensordot(self, other, axes=1)
 
     def ga_from_arr(self, arr: Union[TreeNode, np.ndarray], result_shape: tuple):
         if isinstance(arr, TreeNode):

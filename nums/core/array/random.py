@@ -220,21 +220,21 @@ class NumsRandomState:
         self,
         low,
         high=None,
-        dtype=int,
+        dtype=None,
         shape=None,
         block_shape=None,
         p=0.01,
         fill_value=0,
     ):
         if dtype is None:
-            dtype = np.float64
+            dtype = np.int64
         assert isinstance(dtype, type)
         return self._sparse_sample_basic(
             "randint",
+            {"low": low, "high": high, "dtype": dtype},
             shape,
             block_shape,
             dtype,
-            {"low": low, "high": high, "dtype": dtype},
             p,
             fill_value,
         )
@@ -251,10 +251,10 @@ class NumsRandomState:
     ):
         return self._sparse_sample_basic(
             "uniform",
+            {"low": low, "high": high},
             shape,
             block_shape,
             dtype,
-            {"low": low, "high": high},
             p,
             fill_value,
         )
@@ -271,10 +271,10 @@ class NumsRandomState:
     ):
         return self._sparse_sample_basic(
             "normal",
+            {"loc": loc, "scale": scale},
             shape,
             block_shape,
             dtype,
-            {"loc": loc, "scale": scale},
             p,
             fill_value,
         )
@@ -282,10 +282,10 @@ class NumsRandomState:
     def _sparse_sample_basic(
         self,
         rfunc_name,
+        rfunc_args: Dict,
         shape,
         block_shape,
         dtype,
-        rfunc_args: Dict,
         p,
         fill_value,
     ) -> SparseBlockArray:

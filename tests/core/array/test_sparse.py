@@ -34,14 +34,18 @@ def test_from_coo(app_inst: ArrayApplication):
 def test_sparse_random(app_inst: ArrayApplication):
     rs: NumsRandomState = app_inst.random_state(1337)
     x_sba = rs.sparse_randint(
-        1, high=5, dtype=int, shape=(15, 10), block_shape=(5, 5), p=0.1, fill_value=0
+        1,
+        high=5,
+        dtype=np.int64,
+        shape=(100, 50),
+        block_shape=(50, 50),
+        p=0.1,
+        fill_value=0,
     )
     x_ba = x_sba.to_ba()
     x_np = x_ba.get()
     x_sp = sparse.COO.from_numpy(x_np, fill_value=0)
     assert x_sba.nnz == x_sp.nnz
-    assert x_sba.nbytes == x_sp.nbytes
-    print(x_np)
 
 
 def test_sparse_uop(app_inst: ArrayApplication):
@@ -73,17 +77,27 @@ def test_sparse_add(app_inst: ArrayApplication):
     y_ba = y_sba.to_ba()
     assert np.array_equal(x1 + x2, y_ba.get())
 
-    # Test sparse-dense.
+    # Test dense-sparse.
     y_ba = x2_ba + x1_sba  # __radd__
     assert np.array_equal(x2 + x1_sp, y_ba.get())
+    y_ba = x1_sba - x2_ba  # __sub__
+    assert np.array_equal(x1_sp - x2, y_ba.get())
+    y_ba = x2_ba - x1_sba  # __rsub__
+    assert np.array_equal(x2 - x1_sp, y_ba.get())
 
     # Test sparse-scalar.
-    y_sp = x1_sp - 1
+    y_sp = x1_sp - 1  # __sub__
     y_sba = x1_sba - 1
     assert y_sba.fill_value == y_sp.fill_value  # 4
     assert y_sba.nnz == y_sp.nnz  # 16
     y_ba = y_sba.to_ba()
     assert np.array_equal(x1 - 1, y_ba.get())
+    y_sp = 1 - x1_sp  # __rsub__
+    y_sba = 1 - x1_sba
+    assert y_sba.fill_value == y_sp.fill_value  # 4
+    assert y_sba.nnz == y_sp.nnz  # 16
+    y_ba = y_sba.to_ba()
+    assert np.array_equal(1 - x1, y_ba.get())
 
 
 def test_sparse_mul(app_inst: ArrayApplication):
@@ -138,7 +152,7 @@ def test_neq(app_inst: ArrayApplication):
 
 
 def test_tensordot(app_inst: ArrayApplication):
-    x1 = np.array([[0, 0, 1, 1], [0, 0, 1, 1], [2, 2, 0, 0], [2, 2, 0, 0]])
+    x1 = np.array([[0, 0, 1, 2], [0, 0, 3, 4], [5, 6, 0, 0], [7, 8, 0, 0]])
     x2 = np.array([[0, 0, 1, 1], [0, 0, 1, 1], [2, 2, 2, 2], [2, 2, 2, 2]])
     x1_sp = sparse.COO.from_numpy(x1, fill_value=0)
     x2_sp = sparse.COO.from_numpy(x2, fill_value=0)
@@ -147,10 +161,13 @@ def test_tensordot(app_inst: ArrayApplication):
     x1_sba = SparseBlockArray.from_ba(x1_ba, fill_value=0)
     x2_sba = SparseBlockArray.from_ba(x2_ba, fill_value=0)
     y_sp = sparse.tensordot(x1_sp, x2_sp, axes=1)
-    y_sba = x1_sba.tensordot(x2_sba, axes=1)
+    y_sba = x1_sba @ x2_sba
     assert y_sba.fill_value == y_sp.fill_value  # 0
     assert y_sba.nnz == y_sp.nnz  #
     y_ba = y_sba.to_ba()
+    assert np.array_equal(np.tensordot(x1, x2, axes=1), y_ba.get())
+
+    y_ba = x1_ba @ x2_sba  # __rmatmul__
     assert np.array_equal(np.tensordot(x1, x2, axes=1), y_ba.get())
 
 

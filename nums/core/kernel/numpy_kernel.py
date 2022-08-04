@@ -435,6 +435,7 @@ class KernelCls(KernelImp):
             ufunc = scipy.special.__getattribute__(op)
         return ufunc(a1, a2)
 
+    # Works for sparse too.
     def bop_reduce(self, op, a1, a2, a1_T, a2_T):
         if a1_T:
             a1 = a1.T
@@ -561,10 +562,7 @@ class KernelCls(KernelImp):
             format="coo",
             fill_value=fill_value,
         )
-        if rfunc_name != "randint":
-            # Only random and integer supports sampling of a specific type.
-            result = result.astype(dtype)
-        return result
+        return result.astype(dtype)
 
     def sparse_map_uop(self, op_name, arr, args, kwargs):
         """
@@ -604,6 +602,10 @@ class KernelCls(KernelImp):
         elif not densify:
             assert isinstance(result, sparse.SparseArray)
         return result
+
+    def sparse_block_from_scalar(self, x):
+        assert np.isscalar(x)
+        return sparse.COO.from_numpy(np.array(x), fill_value=x)
 
     def sdtp(self, s: sparse.COO, *dense_arrays):
         data = np.copy(s.data)

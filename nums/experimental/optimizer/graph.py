@@ -443,9 +443,9 @@ class ReduceAxis(UnaryOp):
             shape=self.shape(),
             dtype=self.dtype(),
             transposed=False,
-            km=child_block._km,
+            km=child_block.km,
         )
-        block.oid = child_block._km.reduce_axis(
+        block.oid = child_block.km.reduce_axis(
             op_name=op_name,
             arr=child_block.oid,
             axis=self.axis,
@@ -1006,12 +1006,12 @@ class FunctionNode(TreeNode):
             assert isinstance(child, Leaf)
             block_oids.append(child.block.oid)
             if km is None:
-                km = child.block._km
+                km = child.block.km
         block: Block = Block(
             self._grid_entry, self._grid_shape, self._shape, self._dtype, False, km
         )
         block._device = device
-        block.oid = block._km.call(
+        block.oid = block.km.call(
             self.op_hash, *block_oids, syskwargs={"device": device}
         )
         leaf: Leaf = Leaf(self.cluster_state)
@@ -1203,12 +1203,12 @@ class Einsum(TreeNode):
             assert isinstance(child, Leaf)
             block_oids.append(child.block.oid)
             if km is None:
-                km = child.block._km
+                km = child.block.km
         block: Block = Block(
             self.grid_entry(), self.grid_shape(), self.shape(), self.dtype(), False, km
         )
         block._device = device
-        block.oid = block._km.einsum(
+        block.oid = block.km.einsum(
             self.subscript, *block_oids, syskwargs={"device": device}
         )
         leaf: Leaf = Leaf(self.cluster_state)

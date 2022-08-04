@@ -41,7 +41,7 @@ def optimized_tensordot(
     cluster_state: ClusterState = ClusterState(lhs.km.devices())
     lhs_ga: GraphArray = GraphArray.from_ba(lhs, cluster_state, copy_on_op=copy_on_op)
     rhs_ga: GraphArray = GraphArray.from_ba(rhs, cluster_state, copy_on_op=copy_on_op)
-    tensordot_ga = lhs_ga.tensordot(rhs_ga, axes=axes)
+    tensordot_ga = GraphArray.tensordot(lhs_ga, rhs_ga, axes=axes)
     global random_state
     print("*" * 50)
     print("op grid shape", tensordot_ga.grid.grid_shape)
@@ -119,7 +119,7 @@ def test_load_sqr(app_inst_mock_big):
     cluster_state: ClusterState = ClusterState(app.km.devices())
     lhs_ga: GraphArray = GraphArray.from_ba(lhs, cluster_state)
     rhs_ga: GraphArray = GraphArray.from_ba(rhs, cluster_state)
-    tensordot_ga = lhs_ga.tensordot(rhs_ga, axes=axes)
+    tensordot_ga = GraphArray.tensordot(lhs_ga, rhs_ga, axes=axes)
 
     mem_diff = max(cluster_state.resources[0]) - min(cluster_state.resources[0])
     net_in_diff = max(cluster_state.resources[1]) - min(cluster_state.resources[1])
@@ -163,7 +163,7 @@ def test_load_single_block_rhs(app_inst_mock_big):
     cluster_state: ClusterState = ClusterState(app.km.devices())
     lhs_ga: GraphArray = GraphArray.from_ba(lhs, cluster_state)
     rhs_ga: GraphArray = GraphArray.from_ba(rhs, cluster_state)
-    tensordot_ga = lhs_ga.tensordot(rhs_ga, axes=axes)
+    tensordot_ga = GraphArray.tensordot(lhs_ga, rhs_ga, axes=axes)
 
     print("memory", cluster_state.resources[0])
     print("net_in", cluster_state.resources[1])
