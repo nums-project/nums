@@ -21,7 +21,7 @@ import numpy as np
 
 from nums.core.settings import sync_nnz
 from nums.core.array import utils as array_utils
-from nums.core.array.base import Block
+from nums.core.array.base import BlockBase, Block
 from nums.core.grid.grid import Device
 from nums.core.kernel.kernel_manager import KernelManager
 from nums.experimental.optimizer.clusterstate import ClusterState
@@ -313,7 +313,7 @@ class UnaryOp(TreeNode):
         assert isinstance(self.child, Leaf)
         result = self._collapse(device)
         new_leaf: Leaf = result[0]
-        new_block: Block = result[1]
+        new_block: BlockBase = result[1]
         self.cluster_state.commit_uop(self._mem_cost(), self.child.block.id, device)
         # self.cluster_state.add_block(new_block.id, new_block.size(), [device])
         self.cluster_state.add_block(
@@ -330,12 +330,12 @@ class UnaryOp(TreeNode):
 
     def _collapse(self, device: Device):
         assert isinstance(self.child, Leaf)
-        block: Block = self.child.block
+        block: BlockBase = self.child.block
         op_name, args = self.op_name, {}
         if op_name == "transpose":
-            block: Block = block.transpose(defer=True)
+            block: BlockBase = block.transpose(defer=True)
         else:
-            block: Block = block.ufunc(op_name, device=device)
+            block: BlockBase = block.ufunc(op_name, device=device)
         leaf: Leaf = Leaf(self.cluster_state)
         leaf.block = block
         leaf.tree_node_size = self.child.tree_node_size.uop(op_name)
@@ -344,7 +344,7 @@ class UnaryOp(TreeNode):
 
     def _mem_cost(self):
         assert isinstance(self.child, Leaf)
-        block: Block = self.child.block
+        block: BlockBase = self.child.block
         if block.is_dense:
             return np.product(block.shape)
         if sync_nnz > 1:
@@ -434,10 +434,10 @@ class ReduceAxis(UnaryOp):
 
     def _collapse(self, device: Device):
         assert isinstance(self.child, Leaf)
-        child_block: Block = self.child.block
+        child_block: BlockBase = self.child.block
         op_name, args = self.op_name, {}
 
-        block = Block(
+        block: BlockBase = Block(
             grid_entry=self.grid_entry(),
             grid_shape=self.grid_shape(),
             shape=self.shape(),
@@ -467,7 +467,7 @@ class ReduceAxis(UnaryOp):
 
     def _mem_cost(self):
         assert isinstance(self.child, Leaf)
-        block: Block = self.child.block
+        block: BlockBase = self.child.block
         if block.is_dense:
             return np.product(self.shape())
         if sync_nnz > 1:
@@ -661,7 +661,7 @@ class BinaryOp(TreeNode):
         assert isinstance(self.left, Leaf) and isinstance(self.right, Leaf)
         result = self._collapse(device)
         new_leaf: Leaf = result[0]
-        new_block: Block = result[1]
+        new_block: BlockBase = result[1]
         # This updates load on nodes and channels.
         # This also updates block states to indicate that they now reside on the provided nodes.
         # Update the cluster state after computing the leaf, so that transfer costs are properly
@@ -690,8 +690,8 @@ class BinaryOp(TreeNode):
 
     def _collapse(self, device: Device):
         assert isinstance(self.left, Leaf) and isinstance(self.right, Leaf)
-        lblock: Block = self.left.block
-        rblock: Block = self.right.block
+        lblock: BlockBase = self.left.block
+        rblock: BlockBase = self.right.block
         if self.op_name == "matmul":
             op_name, args = "tensordot", {"axes": 1}
         elif self.op_name == "tensordot":
@@ -699,7 +699,7 @@ class BinaryOp(TreeNode):
         else:
             op_name, args = self.op_name, {}
             assert array_utils.can_broadcast_shapes(lblock.shape, rblock.shape)
-        block: Block = lblock.bop(op_name, rblock, args=args, device=device)
+        block: BlockBase = lblock.bop(op_name, rblock, args=args, device=device)
         leaf: Leaf = Leaf(self.cluster_state)
         leaf.block = block
         leaf.tree_node_size = self.left.tree_node_size.bop(
@@ -714,8 +714,8 @@ class BinaryOp(TreeNode):
         # Computes the memory required to perform this operation.
         # We approximate by just computing the memory required to store the result.
         assert isinstance(self.left, Leaf) and isinstance(self.right, Leaf)
-        lblock: Block = self.left.block
-        rblock: Block = self.right.block
+        lblock: BlockBase = self.left.block
+        rblock: BlockBase = self.right.block
         if self.op_name == "matmul":
             op_name, args = "tensordot", {"axes": 1}
         elif self.op_name == "tensordot":
@@ -981,7 +981,7 @@ class FunctionNode(TreeNode):
         block_ids = [child.block.id for child in self.children]
         result = self._collapse(device)
         new_leaf: Leaf = result[0]
-        new_block: Block = result[1]
+        new_block: BlockBase = result[1]
         # This updates load on nodes and channels.
         # This also updates block states to indicate that they now reside on the provided nodes.
         # Update the cluster state after computing the leaf, so that transfer costs are properly
@@ -1007,7 +1007,7 @@ class FunctionNode(TreeNode):
             block_oids.append(child.block.oid)
             if km is None:
                 km = child.block.km
-        block: Block = Block(
+        block: BlockBase = Block(
             self._grid_entry, self._grid_shape, self._shape, self._dtype, False, km
         )
         block._device = device
@@ -1175,7 +1175,7 @@ class Einsum(TreeNode):
         block_ids = [child.block.id for child in self.children]
         result = self._collapse(device)
         new_leaf: Leaf = result[0]
-        new_block: Block = result[1]
+        new_block: BlockBase = result[1]
         # This updates load on nodes and channels.
         # This also updates block states to indicate that they now reside on the provided nodes.
         # Update the cluster state after computing the leaf, so that transfer costs are properly
@@ -1204,7 +1204,7 @@ class Einsum(TreeNode):
             block_oids.append(child.block.oid)
             if km is None:
                 km = child.block.km
-        block: Block = Block(
+        block: BlockBase = Block(
             self.grid_entry(), self.grid_shape(), self.shape(), self.dtype(), False, km
         )
         block._device = device

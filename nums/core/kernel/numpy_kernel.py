@@ -540,6 +540,16 @@ class KernelCls(KernelImp):
     def sparse_nbytes(self, arr):
         return arr.nbytes
 
+    def new_sparse_block(self, op_name, grid_entry, grid_meta):
+        op_func = sparse.__getattribute__(op_name)
+        grid = ArrayGrid.from_meta(grid_meta)
+        block_shape = grid.get_block_shape(grid_entry)
+        if op_name == "eye":
+            assert np.all(np.diff(grid_entry) == 0)
+            return op_func(*block_shape, dtype=grid.dtype)
+        else:
+            return op_func(block_shape, dtype=grid.dtype)
+
     def sparse_random_block(
         self,
         rng_params,

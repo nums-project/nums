@@ -23,7 +23,7 @@ import opt_einsum as oe
 
 from nums.core.settings import sync_nnz
 from nums.core.array import utils as array_utils
-from nums.core.array.base import BlockArrayBase, Block
+from nums.core.array.base import BlockBase, BlockArrayBase
 from nums.core.array.blockarray import BlockArray
 from nums.core.array.sparse import SparseBlockArray
 from nums.core.kernel.kernel_manager import KernelManager
@@ -50,7 +50,7 @@ class GraphArray(object):
     ) -> np.ndarray:
         graphs = np.empty(shape=ba.grid.grid_shape, dtype=np.object)
         for grid_entry in ba.grid.get_entry_iterator():
-            block: Block = ba.blocks[grid_entry]
+            block: BlockBase = ba.blocks[grid_entry]
             # Allocate the block to the node on which it's created.
             km: KernelManager = ba.km
             device: Device = km.device_grid.get_device(
@@ -166,7 +166,7 @@ class GraphArray(object):
                 yield node
 
     def to_blocks(self) -> np.ndarray:
-        blocks: np.ndarray = np.empty(self.grid.grid_shape, dtype=Block)
+        blocks: np.ndarray = np.empty(self.grid.grid_shape, dtype=BlockBase)
         for grid_entry in self.grid.get_entry_iterator():
             leaf: TreeNode = self.graphs[grid_entry]
             assert isinstance(leaf, Leaf), "%s,%s" % (str(leaf), type(leaf))

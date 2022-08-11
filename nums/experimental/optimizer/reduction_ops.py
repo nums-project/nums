@@ -20,7 +20,7 @@ import copy
 import numpy as np
 
 from nums.core.settings import sync_nnz
-from nums.core.array.base import Block
+from nums.core.array.base import BlockBase
 from nums.core.grid.grid import Device
 from nums.core.kernel.kernel_manager import KernelManager
 from nums.experimental.optimizer.clusterstate import ClusterState
@@ -215,7 +215,7 @@ class TreeReductionOp(TreeNode):
         assert isinstance(left, Leaf) and isinstance(right, Leaf)
         result = self._collapse(device, left, right)
         new_leaf: Leaf = result[0]
-        new_block: Block = result[1]
+        new_block: BlockBase = result[1]
 
         # Update action leaf queue.
         assert set(leaf_ids) == {self.action_leaf_q.pop(0), self.action_leaf_q.pop(0)}
@@ -257,13 +257,13 @@ class TreeReductionOp(TreeNode):
         return self
 
     def _collapse(self, device: Device, left: Leaf, right: Leaf):
-        lblock: Block = left.block
-        rblock: Block = right.block
+        lblock: BlockBase = left.block
+        rblock: BlockBase = right.block
         if self.op_name == "matmul":
             raise ValueError("matmul is not a supported reduction operator.")
         op_name, args = self.op_name, {}
         assert lblock.shape == rblock.shape
-        block: Block = lblock.copy()
+        block: BlockBase = lblock.copy()
         block.transposed = False
         block.dtype = array_utils.get_reduce_output_type(self.op_name, lblock.dtype)
         block.oid = lblock.km.bop_reduce(
@@ -294,12 +294,12 @@ class TreeReductionOp(TreeNode):
         shape = None
         for leaf in leafs:
             assert leaf.tree_node_id in self.leafs_dict
-            leaf_block: Block = leaf.block
+            leaf_block: BlockBase = leaf.block
             if shape is None:
                 shape = leaf_block.shape
             else:
                 assert leaf_block.shape == shape
-        leaf_block: Block = leafs[0].block
+        leaf_block: BlockBase = leafs[0].block
         if leaf_block.is_dense:
             return leaf_block.size()
         if sync_nnz > 1:

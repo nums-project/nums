@@ -171,6 +171,17 @@ def test_tensordot(app_inst: ArrayApplication):
     assert np.array_equal(np.tensordot(x1, x2, axes=1), y_ba.get())
 
 
+# def test_getitem(app_inst: ArrayApplication):
+#     x1 = np.array([[0, 0, 1, 1], [0, 0, 1, 1], [2, 2, 2, 2], [2, 2, 2, 2]])
+#     x1_sp = sparse.COO.from_numpy(x1, fill_value=2)
+#     x1_ba = app_inst.array(x1, block_shape=(2, 2))
+#     x1_sba = SparseBlockArray.from_ba(x1_ba, fill_value=2)
+#     y_sp = x1_sp[0:2, 1:3]
+#     y_sba = x1_sba[0:2, 1:3]
+#     assert y_sba.fill_value == y_sp.fill_value # 2
+#     assert np.array_equal(y_sp.todense(), y_sba.to_ba().get())
+
+
 def test_sdtp(app_inst: ArrayApplication):
     shape = 50, 50, 50
     block_shape = 10, 10, 10

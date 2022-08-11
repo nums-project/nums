@@ -19,7 +19,7 @@ import numpy as np
 
 from nums.core.array import selection
 from nums.core.array import utils as array_utils
-from nums.core.array.base import Block, BlockArrayBase
+from nums.core.array.base import BlockBase, BlockArrayBase
 from nums.core.array.selection import BasicSelection
 from nums.core.kernel.kernel_manager import KernelManager
 from nums.core.grid.grid import ArrayGrid
@@ -175,7 +175,7 @@ class ArrayView:
                 ]
                 if src_dst_intersection_block.is_empty():
                     continue
-                src_block: Block = self._source.blocks[src_grid_entry]
+                src_block: BlockBase = self._source.blocks[src_grid_entry]
                 src_oids.append(src_block.oid)
                 src_sel_block: BasicSelection = src_sel_arr[src_grid_entry]
                 src_dep_sel_loc = src_dst_intersection_block - src_sel_block.position()
@@ -184,7 +184,7 @@ class ArrayView:
                     src_dst_intersection_block - dst_sel_offset_block.position()
                 )
                 dst_params.append((dst_block_sel_loc.selector(), False))
-            dst_block: Block = dst_ba.blocks.reshape(dst_grid_bc.grid_shape)[
+            dst_block: BlockBase = dst_ba.blocks.reshape(dst_grid_bc.grid_shape)[
                 dst_grid_entry_bc
             ]
             dst_block.oid = km.create_block(
@@ -300,8 +300,8 @@ class ArrayView:
                 )
                 # This is a reference assignment, and the grid properties between the
                 # two blocks may differ, so retain those properties in the copy.
-                dst_block: Block = self._source.blocks[dst_grid_entry]
-                src_block_copy: Block = value._source.blocks[src_grid_entry].copy()
+                dst_block: BlockBase = self._source.blocks[dst_grid_entry]
+                src_block_copy: BlockBase = value._source.blocks[src_grid_entry].copy()
                 src_block_copy.grid_entry = dst_block.grid_entry
                 src_block_copy.grid_shape = dst_block.grid_shape
                 self._source.blocks[dst_grid_entry] = src_block_copy
@@ -331,8 +331,8 @@ class ArrayView:
                 )
                 # This is a reference assignment, and the grid properties between the
                 # two blocks may differ, so retain those properties in the copy.
-                dst_block: Block = self._source.blocks[dst_grid_entry]
-                src_block_copy: Block = src_ba.blocks[src_grid_entry].copy()
+                dst_block: BlockBase = self._source.blocks[dst_grid_entry]
+                src_block_copy: BlockBase = src_ba.blocks[src_grid_entry].copy()
                 src_block_copy.grid_entry = dst_block.grid_entry
                 src_block_copy.grid_shape = dst_block.grid_shape
                 self._source.blocks[dst_grid_entry] = src_block_copy
@@ -393,7 +393,7 @@ class ArrayView:
             src_oids = []
             src_params = []
             dst_params = []
-            dst_block: Block = dst_ba.blocks[dst_grid_entry]
+            dst_block: BlockBase = dst_ba.blocks[dst_grid_entry]
             for src_index, src_grid_entry_bc in enumerate(
                 src_inflated_grid.get_entry_iterator()
             ):
@@ -404,7 +404,7 @@ class ArrayView:
                     continue
 
                 src_grid_entry = src_grid_entry_iterator[src_index]
-                src_block: Block = src_ba_bc.blocks[src_grid_entry]
+                src_block: BlockBase = src_ba_bc.blocks[src_grid_entry]
                 src_oids.append(src_block.oid)
 
                 src_sel_block_offset: BasicSelection = src_sel_offset[src_grid_entry_bc]

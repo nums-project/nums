@@ -179,6 +179,9 @@ class Kernel:
     def sparse_nbytes(self, arr, syskwargs: Dict):
         raise NotImplementedError()
 
+    def new_sparse_block(self, op_name, grid_entry, grid_meta, syskwargs: Dict):
+        raise NotImplementedError()
+
     def sparse_random_block(
         self,
         rng_params,

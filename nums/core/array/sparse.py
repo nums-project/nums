@@ -269,6 +269,28 @@ class SparseBlockArray(BlockArrayBase):
         return f"SparseBlockArray({self.blocks})"
 
     @classmethod
+    def empty(cls, shape, block_shape, dtype, km: KernelManager):
+        return SparseBlockArray.create(
+            "empty", shape, block_shape, dtype, km, fill_value=0
+        )
+
+    @classmethod
+    def create(
+        cls, create_op_name, shape, block_shape, dtype, km: KernelManager, fill_value=0
+    ):
+        grid = ArrayGrid(shape=shape, block_shape=block_shape, dtype=dtype.__name__)
+        grid_meta = grid.to_meta()
+        arr = SparseBlockArray(grid, km, fill_value)
+        for grid_entry in grid.get_entry_iterator():
+            arr.blocks[grid_entry].oid = km.new_sparse_block(
+                create_op_name,
+                grid_entry,
+                grid_meta,
+                syskwargs={"grid_entry": grid_entry, "grid_shape": grid.grid_shape},
+            )
+        return arr
+
+    @classmethod
     def from_np(cls, arr, block_shape, copy, km, fill_value=0):
         dtype_str = str(arr.dtype)
         grid = ArrayGrid(arr.shape, block_shape, dtype_str)
@@ -423,6 +445,7 @@ class SparseBlockArray(BlockArrayBase):
             raise Exception("Unsupported type %s" % type(obj))
         if block_shape is None:
             block_shape = km.get_block_shape(np_array.shape, np_array.dtype)
+        # Assume object is dense.
         return BlockArray.from_np(np_array, block_shape, False, km)
 
     def check_or_convert_other(self, other, compute_block_shape=False):

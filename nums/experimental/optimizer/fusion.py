@@ -5,7 +5,6 @@ import hashlib
 import numpy as np
 
 from nums.core.array import utils as array_utils
-from nums.core.array.base import Block
 from nums.core.grid.grid import Device
 from nums.experimental.optimizer.clusterstate import ClusterState
 
