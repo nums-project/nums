@@ -224,7 +224,6 @@ class NumsRandomState:
         shape=None,
         block_shape=None,
         p=0.01,
-        fill_value=0,
     ):
         if dtype is None:
             dtype = np.int64
@@ -236,7 +235,6 @@ class NumsRandomState:
             block_shape,
             dtype,
             p,
-            fill_value,
         )
 
     def sparse_uniform(
@@ -247,7 +245,6 @@ class NumsRandomState:
         block_shape=None,
         dtype=None,
         p=0.01,
-        fill_value=0,
     ):
         return self._sparse_sample_basic(
             "uniform",
@@ -256,7 +253,6 @@ class NumsRandomState:
             block_shape,
             dtype,
             p,
-            fill_value,
         )
 
     def sparse_normal(
@@ -267,7 +263,6 @@ class NumsRandomState:
         block_shape=None,
         dtype=None,
         p=0.01,
-        fill_value=0,
     ):
         return self._sparse_sample_basic(
             "normal",
@@ -276,7 +271,6 @@ class NumsRandomState:
             block_shape,
             dtype,
             p,
-            fill_value,
         )
 
     def _sparse_sample_basic(
@@ -287,7 +281,6 @@ class NumsRandomState:
         block_shape,
         dtype,
         p,
-        fill_value,
     ) -> SparseBlockArray:
         if shape is None:
             assert block_shape is None
@@ -300,7 +293,7 @@ class NumsRandomState:
         assert isinstance(dtype, type)
         assert "size" not in rfunc_args
         grid: ArrayGrid = ArrayGrid(shape, block_shape, dtype=dtype.__name__)
-        sba: SparseBlockArray = SparseBlockArray(grid, self._km, fill_value)
+        sba: SparseBlockArray = SparseBlockArray(grid, self._km)
         for grid_entry in sba.grid.get_entry_iterator():
             rng_params = list(self._rng.new_block_rng_params())
             this_block_shape = grid.get_block_shape(grid_entry)
@@ -316,7 +309,6 @@ class NumsRandomState:
                 this_block_shape,
                 dtype,
                 p,
-                fill_value,
                 syskwargs=syskwargs,
             )
             block._nnz = sba.km.sparse_nnz(block.oid, syskwargs=syskwargs)

@@ -527,9 +527,8 @@ class KernelCls(KernelImp):
 
     # Sparse
 
-    def dense_to_sparse(self, arr, fill_value):
-        result = COO.from_numpy(arr, fill_value=fill_value)
-        return result
+    def dense_to_sparse(self, arr):
+        return COO.from_numpy(arr, fill_value=0)
 
     def sparse_to_dense(self, arr):
         return arr.todense()
@@ -558,7 +557,6 @@ class KernelCls(KernelImp):
         shape,
         dtype,
         p,
-        fill_value,
     ):
         rng = block_rng_legacy(*rng_params)
         rfunc = rng.__getattribute__(rfunc_name)
@@ -570,7 +568,7 @@ class KernelCls(KernelImp):
             random_state=rng,
             data_rvs=lambda s: rfunc(**rfunc_args, size=s),
             format="coo",
-            fill_value=fill_value,
+            fill_value=0,
         )
         return result.astype(dtype)
 
@@ -615,14 +613,14 @@ class KernelCls(KernelImp):
 
     def sparse_block_from_scalar(self, x):
         assert np.isscalar(x)
-        return sparse.COO.from_numpy(np.array(x), fill_value=x)
+        return sparse.COO.from_numpy(np.array(x), fill_value=0)
 
     def sdtp(self, s: sparse.COO, *dense_arrays):
         data = np.copy(s.data)
         for position in range(s.nnz):
             for axis in range(len(s.shape)):
                 data[position] *= dense_arrays[axis][s.coords[axis][position]]
-        return sparse.COO(s.coords, data, shape=s.shape, fill_value=s.fill_value)
+        return sparse.COO(s.coords, data, shape=s.shape, fill_value=0)
 
     def sdtd(self, s: sparse.COO, x: np.ndarray, y: np.ndarray, axes: int):
         # Check some things.
@@ -647,4 +645,4 @@ class KernelCls(KernelImp):
             sx = x[tuple(x_coords)]
             sy = y[tuple(y_coords)]
             data[position] *= np.tensordot(sx, sy, axes=axes)
-        return sparse.COO(s.coords, data, shape=s.shape, fill_value=s.fill_value)
+        return sparse.COO(s.coords, data, shape=s.shape, fill_value=0)

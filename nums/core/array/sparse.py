@@ -19,16 +19,18 @@ class SparseBlock(BlockBase):
         dtype,
         transposed,
         km: KernelManager,
-        fill_value=0,
         id=None,
         index_dtype=np.int64,
     ):
         super().__init__(grid_entry, grid_shape, shape, dtype, transposed, km, id)
-        self.fill_value = fill_value
         self.index_dtype = index_dtype
         self.oid = None
         self._nnz: object = None
         self._nbytes: object = None
+
+    @property
+    def is_dense(self):
+        return False
 
     @property
     def nnz(self):
@@ -74,30 +76,6 @@ class SparseBlock(BlockBase):
         block.oid = self.oid
         return block
 
-    def transpose(self, defer=False, redistribute=False):
-        grid_entryT = tuple(reversed(self.grid_entry))
-        grid_shapeT = tuple(reversed(self.grid_shape))
-        blockT = SparseBlock(
-            grid_entry=grid_entryT,
-            grid_shape=grid_shapeT,
-            shape=tuple(reversed(self.shape)),
-            dtype=self.dtype,
-            transposed=not self.transposed,
-            km=self.km,
-        )
-        blockT.oid = self.oid
-        if not defer:
-            blockT.transposed = False
-            if redistribute:
-                syskwargs = {"grid_entry": grid_entryT, "grid_shape": grid_shapeT}
-            else:
-                syskwargs = {
-                    "grid_entry": self.grid_entry,
-                    "grid_shape": self.grid_shape,
-                }
-            blockT.oid = self.km.transpose(self.oid, syskwargs=syskwargs)
-        return blockT
-
     def map_uop(self, op_name, args=None, kwargs=None, device=None):
         block = self.copy()
         block.dtype = array_utils.get_uop_output_type(op_name, self.dtype)
@@ -113,27 +91,43 @@ class SparseBlock(BlockBase):
         )
         block._nnz = self.km.sparse_nnz(block.oid, syskwargs=syskwargs)
         block._nbytes = self.km.sparse_nbytes(block.oid, syskwargs=syskwargs)
-        block.fill_value = np.__getattribute__(op_name)(self.fill_value)
         return block
 
     def block_from_scalar(self, other):
         assert array_utils.is_scalar(other)
-        block = SparseBlock(
-            self.grid_entry,
-            self.grid_shape,
-            (1,),
-            self.dtype,
-            False,
-            self.km,
-            fill_value=other,
-        )
-        block.oid = self.km.sparse_block_from_scalar(
-            other,
-            syskwargs={
-                "grid_entry": self.grid_entry,
-                "grid_shape": self.grid_shape,
-            },
-        )
+        # Construct sparse block only if value is 0.
+        if np.isclose(other, 0):
+            block = SparseBlock(
+                self.grid_entry,
+                self.grid_shape,
+                (1,),
+                self.dtype,
+                False,
+                self.km,
+            )
+            block.oid = self.km.sparse_block_from_scalar(
+                other,
+                syskwargs={
+                    "grid_entry": self.grid_entry,
+                    "grid_shape": self.grid_shape,
+                },
+            )
+        else:
+            block = Block(
+                self.grid_entry,
+                self.grid_shape,
+                (1,),
+                self.dtype,
+                False,
+                self.km,
+            )
+            block.oid = self.km.block_from_scalar(
+                other,
+                syskwargs={
+                    "grid_entry": self.grid_entry,
+                    "grid_shape": self.grid_shape,
+                },
+            )
         return block
 
     @staticmethod
@@ -144,9 +138,6 @@ class SparseBlock(BlockBase):
             result_shape,
             dtype,
         ) = BlockBase.block_meta(op_name, block1, block2, args)
-        fill_value = array_utils.get_bop_fill_value(
-            op_name, block1.fill_value, block2.fill_value
-        )
         # TODO: what happens when different index_dtype?
         block = SparseBlock(
             grid_entry=result_grid_entry,
@@ -154,7 +145,6 @@ class SparseBlock(BlockBase):
             shape=result_shape,
             dtype=dtype,
             transposed=False,
-            fill_value=fill_value,
             km=block1.km,
         )
         block._device = device
@@ -174,9 +164,7 @@ class SparseBlock(BlockBase):
         if not isinstance(a, BlockBase) or not isinstance(b, BlockBase):
             raise NotImplementedError()
 
-        densify = array_utils.get_sparse_bop_return_type(
-            op_name, a.fill_value, b.fill_value
-        )
+        densify = array_utils.get_sparse_bop_densify(op_name, a.is_dense, b.is_dense)
         if densify:
             block = Block.init_block(op_name, a, b, args, device)
         else:
@@ -206,11 +194,7 @@ class SparseBlock(BlockBase):
     def bop(self, op_name, other, args: dict, device=None):
         return self.binary_op(op_name, self, other, args, device)
 
-    # TODO: densify when fill_value != 0
     def tensordot(self, other, axes):
-        assert self.fill_value == 0
-        if not other.is_dense:
-            assert other.fill_value == 0
         return self.binary_op("tensordot", self, other, args={"axes": axes})
 
 
@@ -219,7 +203,6 @@ class SparseBlockArray(BlockArrayBase):
         self,
         grid: ArrayGrid,
         km: KernelManager,
-        fill_value=0,
         blocks: np.ndarray = None,
     ):
         if blocks is not None:
@@ -237,11 +220,13 @@ class SparseBlockArray(BlockArrayBase):
                     self.dtype,
                     False,
                     self.km,
-                    fill_value,
                 )
-        self.fill_value = fill_value
         self._nnz = -1
         self._nbytes = -1
+
+    @property
+    def is_dense(self):
+        return False
 
     @property
     def nnz(self):
@@ -270,17 +255,13 @@ class SparseBlockArray(BlockArrayBase):
 
     @classmethod
     def empty(cls, shape, block_shape, dtype, km: KernelManager):
-        return SparseBlockArray.create(
-            "empty", shape, block_shape, dtype, km, fill_value=0
-        )
+        return SparseBlockArray.create("empty", shape, block_shape, dtype, km)
 
     @classmethod
-    def create(
-        cls, create_op_name, shape, block_shape, dtype, km: KernelManager, fill_value=0
-    ):
+    def create(cls, create_op_name, shape, block_shape, dtype, km: KernelManager):
         grid = ArrayGrid(shape=shape, block_shape=block_shape, dtype=dtype.__name__)
         grid_meta = grid.to_meta()
-        arr = SparseBlockArray(grid, km, fill_value)
+        arr = SparseBlockArray(grid, km)
         for grid_entry in grid.get_entry_iterator():
             arr.blocks[grid_entry].oid = km.new_sparse_block(
                 create_op_name,
@@ -291,10 +272,10 @@ class SparseBlockArray(BlockArrayBase):
         return arr
 
     @classmethod
-    def from_np(cls, arr, block_shape, copy, km, fill_value=0):
+    def from_np(cls, arr, block_shape, copy, km):
         dtype_str = str(arr.dtype)
         grid = ArrayGrid(arr.shape, block_shape, dtype_str)
-        rarr = SparseBlockArray(grid, km, fill_value)
+        rarr = SparseBlockArray(grid, km)
         grid_entry_iterator = grid.get_entry_iterator()
         for grid_entry in grid_entry_iterator:
             grid_slice = grid.get_slice(grid_entry)
@@ -302,7 +283,7 @@ class SparseBlockArray(BlockArrayBase):
             if copy:
                 block = np.copy(block)
             # TODO: generalize for different kernels
-            block = sparse.COO.from_numpy(block, fill_value)
+            block = sparse.COO.from_numpy(block, fill_value=0)
             rarr.blocks[grid_entry].oid = km.put(
                 block,
                 syskwargs={"grid_entry": grid_entry, "grid_shape": grid.grid_shape},
@@ -333,12 +314,10 @@ class SparseBlockArray(BlockArrayBase):
     def from_scalar(cls, val, km):
         if not array_utils.is_scalar(val):
             raise ValueError("%s is not a scalar." % val)
-        return SparseBlockArray.from_np(
-            np.array(val), (), copy=False, km=km, fill_value=val
-        )
+        return SparseBlockArray.from_np(np.array(val), (), copy=False, km=km)
 
     @classmethod
-    def from_blocks(cls, arr: np.ndarray, result_shape, km, fill_value):
+    def from_blocks(cls, arr: np.ndarray, result_shape, km):
         sample_idx = tuple(0 for _ in arr.shape)
         if isinstance(arr, SparseBlock):
             sample_block = arr
@@ -353,7 +332,7 @@ class SparseBlockArray(BlockArrayBase):
             shape=result_shape, block_shape=result_block_shape, dtype=result_dtype_str
         )
         assert arr.shape == result_grid.grid_shape
-        result = SparseBlockArray(result_grid, km, fill_value)
+        result = SparseBlockArray(result_grid, km)
         for grid_entry in result_grid.get_entry_iterator():
             if isinstance(arr, SparseBlock):
                 block: SparseBlock = arr
@@ -363,12 +342,12 @@ class SparseBlockArray(BlockArrayBase):
         return result
 
     @classmethod
-    def from_ba(cls, ba: BlockArrayBase, fill_value=0):
+    def from_ba(cls, ba: BlockArrayBase):
         assert (
             ba.shape != ()
         ), "from_ba does not support scalar BlockArray. Use from_scalar."
         grid = ArrayGrid(ba.shape, ba.block_shape, ba.dtype.__name__)
-        sba = SparseBlockArray(grid, ba.km, fill_value)
+        sba = SparseBlockArray(grid, ba.km)
         for grid_entry in grid.get_entry_iterator():
             block: Block = ba.blocks[grid_entry]
             sblock: SparseBlock = sba.blocks[grid_entry]
@@ -378,12 +357,10 @@ class SparseBlockArray(BlockArrayBase):
             }
             sblock.oid = sba.km.dense_to_sparse(
                 block.oid,
-                fill_value,
                 syskwargs=syskwargs,
             )
             sblock._nnz = sba.km.sparse_nnz(sblock.oid, syskwargs=syskwargs)
             sblock._nbytes = sba.km.sparse_nbytes(sblock.oid, syskwargs=syskwargs)
-        sba.fill_value = fill_value
         return sba
 
     def to_ba(self):
@@ -404,7 +381,7 @@ class SparseBlockArray(BlockArrayBase):
 
     def copy(self):
         grid_copy = self.grid.from_meta(self.grid.to_meta())
-        rarr_copy = SparseBlockArray(grid_copy, self.km, self.fill_value)
+        rarr_copy = SparseBlockArray(grid_copy, self.km)
         for grid_entry in grid_copy.get_entry_iterator():
             rarr_copy.blocks[grid_entry] = self.blocks[grid_entry].copy()
         return rarr_copy
@@ -415,21 +392,6 @@ class SparseBlockArray(BlockArrayBase):
         for grid_entry in result.grid.get_entry_iterator():
             result.blocks[grid_entry] = self.blocks[grid_entry].astype(dtype)
         return result
-
-    def transpose(self, defer=False, redistribute=False):
-        if defer and redistribute:
-            warnings.warn("defer is True, redistribute=True will be ignored.")
-        metaT = self.grid.to_meta()
-        metaT["shape"] = tuple(reversed(metaT["shape"]))
-        metaT["block_shape"] = tuple(reversed(metaT["block_shape"]))
-        gridT = ArrayGrid.from_meta(metaT)
-        rarrT = SparseBlockArray(gridT, self.km, self.fill_value)
-        rarrT.blocks = np.copy(self.blocks.T)
-        for grid_entry in rarrT.grid.get_entry_iterator():
-            rarrT.blocks[grid_entry] = rarrT.blocks[grid_entry].transpose(
-                defer, redistribute
-            )
-        return rarrT
 
     @staticmethod
     def to_block_array(obj, km: KernelManager, block_shape=None):
@@ -463,8 +425,6 @@ class SparseBlockArray(BlockArrayBase):
         result = self.copy()
         for grid_entry in self.grid.get_entry_iterator():
             result.blocks[grid_entry] = self.blocks[grid_entry].ufunc(op_name)
-        func = np.__getattribute__(op_name)
-        result.fill_value = func(self.fill_value)
         result._nnz = -1
         result._nbytes = -1
         return result
@@ -482,11 +442,7 @@ class SparseBlockArray(BlockArrayBase):
         else:
             raise NotImplementedError()
 
-        densify = array_utils.get_sparse_bop_return_type(
-            op_name,
-            a.fill_value,
-            b.fill_value,
-        )
+        densify = array_utils.get_sparse_bop_densify(op_name, a.is_dense, b.is_dense)
         if a.shape == b.shape and a.block_shape == b.block_shape:
             return SparseBlockArray._fast_elementwise(op_name, a, b, densify)
         else:
@@ -498,13 +454,9 @@ class SparseBlockArray(BlockArrayBase):
                     km=a.km,
                 )
             else:
-                fill_value = array_utils.get_bop_fill_value(
-                    op_name, a.fill_value, b.fill_value
-                )
                 result = SparseBlockArray.from_blocks(
                     blocks_op(b.blocks),
                     result_shape=None,
-                    fill_value=fill_value,
                     km=a.km,
                 )
             return result
@@ -515,12 +467,8 @@ class SparseBlockArray(BlockArrayBase):
         dtype = array_utils.get_bop_output_type(op_name, a.dtype, b.dtype)
         if densify:
             block_type = Block
-            fill_value = None
         else:
             block_type = SparseBlock
-            fill_value = array_utils.get_bop_fill_value(
-                op_name, a.fill_value, b.fill_value
-            )
         blocks = np.empty(shape=a.grid_shape, dtype=block_type)
         for grid_entry in a.grid.get_entry_iterator():
             a_block: BlockBase = a.blocks[grid_entry]
@@ -550,7 +498,7 @@ class SparseBlockArray(BlockArrayBase):
         if densify:
             return BlockArray(grid, a.km, blocks=blocks)
         else:
-            return SparseBlockArray(grid, a.km, fill_value, blocks=blocks)
+            return SparseBlockArray(grid, a.km, blocks=blocks)
 
     #################
     # Linear Algebra
@@ -572,20 +520,11 @@ class SparseBlockArray(BlockArrayBase):
         else:
             raise NotImplementedError()
 
-        # PyData/Sparse only works with fill_value == 0
-        # TODO: densify when fill_value != 0
-        if not (a.is_dense or b.is_dense):
-            assert (
-                a.fill_value == 0 and b.fill_value == 0
-            ), "Sparse-sparse tensordot with non-zero fill value is not supported."
-
         if array_utils.np_tensordot_param_test(a.shape, a.ndim, b.shape, b.ndim, axes):
             raise ValueError("shape-mismatch for sum")
 
-        densify = array_utils.get_sparse_bop_return_type(
-            "tensordot",
-            a.fill_value,
-            b.fill_value,
+        densify = array_utils.get_sparse_bop_densify(
+            "tensordot", a.is_dense, b.is_dense
         )
 
         if axes > 0:
@@ -614,7 +553,7 @@ class SparseBlockArray(BlockArrayBase):
         if densify:
             result = BlockArray(result_grid, a.km)
         else:
-            result = SparseBlockArray(result_grid, a.km, a.fill_value)
+            result = SparseBlockArray(result_grid, a.km)
         a_dims = list(itertools.product(*map(range, a_axes)))
         b_dims = list(itertools.product(*map(range, b_axes)))
         sum_dims = list(itertools.product(*map(range, a_sum_axes)))
@@ -663,13 +602,12 @@ class SparseBlockArray(BlockArrayBase):
         """
         Perform a sampled tensor product among an arbitrary number of block arrays.
         """
-        assert np.allclose(self.fill_value, 0)
         for i, ba in enumerate(block_arrays):
             assert len(ba.shape) == 1
             assert ba.shape[0] == self.shape[i]
             assert ba.block_shape[0] == self.block_shape[i]
         # Sparsity of result is same as self.
-        result: SparseBlockArray = SparseBlockArray(self.grid, self.km, self.fill_value)
+        result: SparseBlockArray = SparseBlockArray(self.grid, self.km)
         for grid_entry in self.grid.get_entry_iterator():
             dense_oids = [
                 ba.blocks[grid_entry[i]].oid for i, ba in enumerate(block_arrays)
@@ -690,8 +628,6 @@ class SparseBlockArray(BlockArrayBase):
         is being performed are not partitioned.
         The last constraint can be eliminated if we add a sampled element-wise kernel.
         """
-        assert np.allclose(self.fill_value, 0)
-
         if array_utils.np_tensordot_param_test(x.shape, x.ndim, y.shape, y.ndim, axes):
             raise ValueError("shape-mismatch for sum")
 
@@ -716,7 +652,7 @@ class SparseBlockArray(BlockArrayBase):
         assert result_grid.grid_shape == tuple(x_axes + y_axes)
         assert result_grid.grid_shape == self.grid_shape
         assert result_grid.block_shape == self.block_shape
-        result: SparseBlockArray = SparseBlockArray(self.grid, self.km, self.fill_value)
+        result: SparseBlockArray = SparseBlockArray(self.grid, self.km)
         x_dims = list(itertools.product(*map(range, x_axes)))
         y_dims = list(itertools.product(*map(range, y_axes)))
         sum_dims = tuple([0] * axes)
@@ -752,10 +688,7 @@ class SparseBlockArray(BlockArrayBase):
         )
         dtype = bool.__name__
         grid = ArrayGrid(shape, block_shape, dtype)
-        fill_value = array_utils.get_bop_fill_value(
-            op_name, self.fill_value, other.fill_value
-        )
-        result = SparseBlockArray(grid, self.km, fill_value)
+        result = SparseBlockArray(grid, self.km)
         for grid_entry in result.grid.get_entry_iterator():
             other_block: Block = other.blocks.item()
             result.blocks[grid_entry] = self.blocks[grid_entry].bop(

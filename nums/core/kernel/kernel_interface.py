@@ -167,7 +167,7 @@ class Kernel:
 
     # Sparse
 
-    def dense_to_sparse(self, arr, fill_value, syskwargs: Dict):
+    def dense_to_sparse(self, arr, syskwargs: Dict):
         raise NotImplementedError()
 
     def sparse_to_dense(self, arr, syskwargs: Dict):
@@ -190,7 +190,6 @@ class Kernel:
         shape,
         dtype,
         p,
-        fill_value,
         syskwargs: Dict,
     ):
         raise NotImplementedError()

@@ -453,15 +453,15 @@ def normalize_axis_index(axis, ndim):
     return axis % ndim
 
 
-def get_sparse_bop_return_type(op_name, a_fv, b_fv):
-    def sample_array(fv):
+def get_sparse_bop_densify(op_name, a_dense, b_dense):
+    def sample_array(is_dense):
         s = np.eye(2)
-        if fv is not None:
-            return sparse.COO.from_numpy(s, fill_value=fv)
+        if not is_dense:
+            return sparse.COO.from_numpy(s, fill_value=0)
         return s
 
-    sa = sample_array(a_fv)
-    sb = sample_array(b_fv)
+    sa = sample_array(a_dense)
+    sb = sample_array(b_dense)
     if op_name == "tensordot":
         result = sparse.tensordot(sa, sb)
     else:
@@ -474,18 +474,3 @@ def get_sparse_bop_return_type(op_name, a_fv, b_fv):
     if isinstance(result, sparse.SparseArray):
         return False
     return True
-
-
-def get_bop_fill_value(op_name, a_fv, b_fv):
-    if a_fv is None and b_fv is None:
-        return None
-    if a_fv is None:
-        return b_fv
-    if b_fv is None:
-        return a_fv
-    op_name = np_ufunc_map.get(op_name, op_name)
-    try:
-        func = np.__getattribute__(op_name)
-    except Exception as _:
-        func = scipy.special.__getattribute__(op_name)
-    return func(a_fv, b_fv)

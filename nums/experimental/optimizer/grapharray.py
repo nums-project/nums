@@ -70,7 +70,7 @@ class GraphArray(object):
                 block.shape,
                 nnz,
                 block.dtype,
-                block.fill_value,
+                block.is_dense,
             )
             leaf.copy_on_op = copy_on_op
             graphs[grid_entry] = leaf
@@ -110,9 +110,7 @@ class GraphArray(object):
         ), "Cannot convert unsolved GraphArray to BlockArray."
         if sample_node.block.is_dense:
             return BlockArray(self.grid.copy(), self.km, self.to_blocks())
-        return SparseBlockArray(
-            self.grid.copy(), self.km, sample_node.block.fill_value, self.to_blocks()
-        )
+        return SparseBlockArray(self.grid.copy(), self.km, self.to_blocks())
 
     def __init__(
         self,
