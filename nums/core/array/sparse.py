@@ -1,13 +1,17 @@
 from typing import List
+import itertools
+import warnings
+import numpy as np
+import sparse
+
 from nums.core.array import utils as array_utils
 from nums.core.array.base import BlockBase, Block, BlockArrayBase
 from nums.core.array.blockarray import BlockArray
 from nums.core.kernel.kernel_manager import KernelManager
 from nums.core.grid.grid import ArrayGrid
-import numpy as np
-import itertools
-import warnings
-import sparse
+
+
+# pylint: disable=protected-access, redefined-builtin
 
 
 class SparseBlock(BlockBase):
@@ -77,7 +81,18 @@ class SparseBlock(BlockBase):
         return block
 
     def map_uop(self, op_name, args=None, kwargs=None, device=None):
-        block = self.copy()
+        densify = array_utils.get_sparse_uop_densify(op_name)
+        if densify:
+            block = Block(
+                self.grid_entry,
+                self.grid_shape,
+                self.shape,
+                self.dtype,
+                self.transposed,
+                self.km,
+            )
+        else:
+            block = self.copy()
         block.dtype = array_utils.get_uop_output_type(op_name, self.dtype)
         args = () if args is None else args
         kwargs = {} if kwargs is None else kwargs
@@ -87,7 +102,7 @@ class SparseBlock(BlockBase):
             syskwargs = {"device": device}
         block._device = device
         block.oid = self.km.sparse_map_uop(
-            op_name, self.oid, args, kwargs, syskwargs=syskwargs
+            op_name, self.oid, args, kwargs, densify, syskwargs=syskwargs
         )
         block._nnz = self.km.sparse_nnz(block.oid, syskwargs=syskwargs)
         block._nbytes = self.km.sparse_nbytes(block.oid, syskwargs=syskwargs)
@@ -312,8 +327,12 @@ class SparseBlockArray(BlockArrayBase):
 
     @classmethod
     def from_scalar(cls, val, km):
-        if not array_utils.is_scalar(val):
-            raise ValueError("%s is not a scalar." % val)
+        # Only create SparseBlockArray with 0s. Other scalars should use dense BlockArray.
+        if not np.isclose(val, 0):
+            warnings.warn(
+                "%s cannot fill SparseBlockArray. Converting to BlockArray." % val
+            )
+            return BlockArray.from_np(np.array(val), (), copy=False, km=km)
         return SparseBlockArray.from_np(np.array(val), (), copy=False, km=km)
 
     @classmethod
@@ -422,12 +441,177 @@ class SparseBlockArray(BlockArrayBase):
         return False
 
     def ufunc(self, op_name):
-        result = self.copy()
+        densify = array_utils.get_sparse_uop_densify(op_name)
+        if densify:
+            result = BlockArray(self.grid, self.km)
+        else:
+            result = self.copy()
         for grid_entry in self.grid.get_entry_iterator():
             result.blocks[grid_entry] = self.blocks[grid_entry].ufunc(op_name)
         result._nnz = -1
         result._nbytes = -1
         return result
+
+    def reduce_axis(self, op_name, axis, keepdims=False):
+        if not (axis is None or isinstance(axis, (int, np.int32, np.int64))):
+            raise NotImplementedError("Only integer axis is currently supported.")
+        if 0 in self.shape:
+            return SparseBlockArray.create("zeros", (), (), float, self.km)
+        block_reduced_oids = np.empty_like(self.blocks, dtype=tuple)
+        for grid_entry in self.grid.get_entry_iterator():
+            block = self.blocks[grid_entry]
+            block_oid = self.km.sparse_reduce_axis(
+                op_name=op_name,
+                arr=block.oid,
+                axis=axis,
+                keepdims=keepdims,
+                transposed=block.transposed,
+                syskwargs={
+                    "grid_entry": block.grid_entry,
+                    "grid_shape": block.grid_shape,
+                },
+            )
+            block_reduced_oids[grid_entry] = (
+                block_oid,
+                block.grid_entry,
+                block.grid_shape,
+                False,
+            )
+        result_shape = []
+        result_block_shape = []
+        for curr_axis in range(len(self.shape)):
+            axis_size, axis_block_size = (
+                self.shape[curr_axis],
+                self.block_shape[curr_axis],
+            )
+            if curr_axis == axis or axis is None:
+                if keepdims:
+                    axis_size, axis_block_size = 1, 1
+                else:
+                    continue
+            result_shape.append(axis_size)
+            result_block_shape.append(axis_block_size)
+        result_shape = tuple(result_shape)
+        result_block_shape = tuple(result_block_shape)
+        result_dtype = array_utils.get_reduce_output_type(op_name, self.dtype)
+        result_grid = ArrayGrid(
+            shape=result_shape,
+            block_shape=result_block_shape,
+            dtype=result_dtype.__name__,
+        )
+        result = BlockArray(result_grid, self.km)
+
+        if axis is None:
+            if result.shape == ():
+                result_block: Block = result.blocks[()]
+            else:
+                result_block: Block = result.blocks[:].item()
+            result_block.oid = self.tree_reduce(
+                op_name,
+                block_reduced_oids.flatten().tolist(),
+                result_block.grid_entry,
+                result_block.grid_shape,
+                False,
+            )
+        else:
+            for result_grid_entry in result_grid.get_entry_iterator():
+                block_reduced_oids_axis = []
+                for sum_dim in range(self.grid.grid_shape[axis]):
+                    grid_entry = list(result_grid_entry)
+                    if keepdims:
+                        grid_entry[axis] = sum_dim
+                    else:
+                        grid_entry = grid_entry[:axis] + [sum_dim] + grid_entry[axis:]
+                    grid_entry = tuple(grid_entry)
+                    block_reduced_oids_axis.append(block_reduced_oids[grid_entry])
+                result_block: Block = result.blocks[result_grid_entry]
+                result_block.oid = self.tree_reduce(
+                    op_name,
+                    block_reduced_oids_axis,
+                    result_block.grid_entry,
+                    result_block.grid_shape,
+                    False,
+                )
+        return result
+
+    # pylint: disable=arguments-differ
+    def tree_reduce(
+        self,
+        op_name,
+        blocks_or_oids,
+        result_grid_entry,
+        result_grid_shape,
+        densify,
+        *args,
+    ):
+        """
+        Basic tree reduce imp.
+        Schedules op on same node as left operand.
+        :param op_name: The reduction op.
+        :param blocks_or_oids: A list of type Block or a list of tuples.
+        Tuples must be of the form
+        (oid, grid_entry, grid_shape, transposed)
+        :param result_grid_entry: The grid entry of the result block. This will be used
+        to compute the final reduction step.
+        :param result_grid_shape: The grid entry of the result block. This will be used
+        to compute the final reduction step.
+        :return: The oid of the result.
+        """
+        oid_list = blocks_or_oids
+        if isinstance(blocks_or_oids[0], Block):
+            oid_list = [
+                (b.oid, b.grid_entry, b.grid_shape, b.transposed)
+                for b in blocks_or_oids
+            ]
+        if len(oid_list) == 1:
+            return oid_list[0][0]
+        q = oid_list
+        if densify:
+            while len(q) > 1:
+                a_oid, a_ge, a_gs, a_T = q.pop(0)
+                b_oid, _, _, b_T = q.pop(0)
+                ge, gs = (
+                    (result_grid_entry, result_grid_shape)
+                    if len(q) == 0
+                    else (a_ge, a_gs)
+                )
+                c_oid = self.km.bop_reduce(
+                    op_name,
+                    a_oid,
+                    b_oid,
+                    a_T,
+                    b_T,
+                    syskwargs={
+                        "grid_entry": ge,
+                        "grid_shape": gs,
+                    },
+                )
+                q.append((c_oid, ge, gs, False))
+        else:
+            while len(q) > 1:
+                a_oid, a_ge, a_gs, a_T = q.pop(0)
+                b_oid, _, _, b_T = q.pop(0)
+                ge, gs = (
+                    (result_grid_entry, result_grid_shape)
+                    if len(q) == 0
+                    else (a_ge, a_gs)
+                )
+                c_oid = self.km.sparse_bop_reduce(
+                    op_name,
+                    a_oid,
+                    b_oid,
+                    a_T,
+                    b_T,
+                    syskwargs={
+                        "grid_entry": ge,
+                        "grid_shape": gs,
+                    },
+                )
+                q.append((c_oid, ge, gs, False))
+        r_oid, r_ge, r_gs, _ = q.pop(0)
+        assert r_ge == result_grid_entry
+        assert r_gs == result_grid_shape
+        return r_oid
 
     #################
     # Arithmetic
@@ -583,7 +767,11 @@ class SparseBlockArray(BlockArrayBase):
                         (dotted_oid, dot_grid_args[0], dot_grid_args[1], False)
                     )
                 result_block.oid = a.tree_reduce(
-                    "sum", sum_oids, result_block.grid_entry, result_block.grid_shape
+                    "sum",
+                    sum_oids,
+                    result_block.grid_entry,
+                    result_block.grid_shape,
+                    densify,
                 )
                 if not densify:
                     syskwargs = {

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from typing import Tuple, Type
+from typing import Tuple
 
 import numpy as np
 

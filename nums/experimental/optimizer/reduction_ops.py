@@ -41,10 +41,11 @@ class TreeReductionOp(TreeNode):
         self.action_leaf_q = []
 
     def __repr__(self):
-        return "Reduc(id=%s, op=%s, in=%d)" % (
+        return "Reduc(id=%s, op=%s, in=%d, dense_kernel=%s)" % (
             str(self.tree_node_id),
             self.op_name,
             len(self.children_dict),
+            self.dense_kernel,
         )
 
     def get_children(self):
@@ -83,6 +84,9 @@ class TreeReductionOp(TreeNode):
             if child.tree_node_id in self.leafs_dict:
                 rop.leafs_dict[child_copy.tree_node_id] = child_copy
         # TODO (hme): How do we properly copy random state?
+
+        rop.tree_node_meta = self.tree_node_meta
+        rop.dense_kernel = self.dense_kernel
         return rop
 
     def add_child(self, child: TreeNode):
@@ -231,7 +235,7 @@ class TreeReductionOp(TreeNode):
         # Update cluster state with new block.
         # self.cluster_state.add_block(new_block.id, new_block.size(), [device])
         self.cluster_state.add_block(
-            new_block.id, new_leaf.tree_node_size.nbytes, [device]
+            new_block.id, new_leaf.tree_node_meta.nbytes, [device]
         )
         if not self.cluster_state.created_on_only:
             assert self.cluster_state.blocks_local(left.block.id, right.block.id)
@@ -266,21 +270,33 @@ class TreeReductionOp(TreeNode):
         block: BlockBase = lblock.copy()
         block.transposed = False
         block.dtype = array_utils.get_reduce_output_type(self.op_name, lblock.dtype)
-        block.oid = lblock.km.bop_reduce(
-            op_name,
-            lblock.oid,
-            rblock.oid,
-            lblock.transposed,
-            rblock.transposed,
-            syskwargs={"device": device},
-        )
+        if self.dense_kernel:
+            assert lblock.is_dense and rblock.is_dense
+            block.oid = lblock.km.bop_reduce(
+                op_name,
+                lblock.oid,
+                rblock.oid,
+                lblock.transposed,
+                rblock.transposed,
+                syskwargs={"device": device},
+            )
+        else:
+            assert not lblock.is_dense or not rblock.is_dense
+            block.oid = lblock.km.sparse_bop_reduce(
+                op_name,
+                lblock.oid,
+                rblock.oid,
+                lblock.transposed,
+                rblock.transposed,
+                syskwargs={"device": device},
+            )
         block._device = device
 
         leaf: Leaf = Leaf(self.cluster_state)
         leaf.block = block
-        leaf.tree_node_size = left.tree_node_size.bop(
+        leaf.tree_node_meta = left.tree_node_meta.bop(
             op_name,
-            right.tree_node_size,
+            right.tree_node_meta,
             **args,
         )
         leaf.copy_on_op = self.copy_on_op
@@ -303,13 +319,13 @@ class TreeReductionOp(TreeNode):
         if leaf_block.is_dense:
             return leaf_block.size()
         if sync_nnz > 1:
-            leafs[0].tree_node_size.nnz = leafs[0].block.nnz  # Blocking fetch
-            leafs[1].tree_node_size.nnz = leafs[1].block.nnz  # Blocking fetch
+            leafs[0].tree_node_meta.nnz = leafs[0].block.nnz  # Blocking fetch
+            leafs[1].tree_node_meta.nnz = leafs[1].block.nnz  # Blocking fetch
         return (
             leafs[0]
-            .tree_node_size.bop(
+            .tree_node_meta.bop(
                 self.op_name,
-                leafs[1].tree_node_size,
+                leafs[1].tree_node_meta,
             )
             .nbytes
         )
@@ -350,10 +366,14 @@ class TreeReductionOp(TreeNode):
             # This will force a different hash for large fused reductions,
             # if this is, for whatever reason, needed.
             size = len(self.children_dict)
-            self._expression = "TreeReductionOp(op=%s, size=%s, id=%s)" % (
-                self.op_name,
-                str(size),
-                self.tree_node_id,
+            self._expression = (
+                "TreeReductionOp(op=%s, size=%s, id=%s, dense_kernel=%s)"
+                % (
+                    self.op_name,
+                    str(size),
+                    self.tree_node_id,
+                    self.dense_kernel,
+                )
             )
         return self._expression
 

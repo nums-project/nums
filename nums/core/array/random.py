@@ -311,5 +311,6 @@ class NumsRandomState:
                 p,
                 syskwargs=syskwargs,
             )
+            # pylint: disable=protected-access
             block._nnz = sba.km.sparse_nnz(block.oid, syskwargs=syskwargs)
         return sba

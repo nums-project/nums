@@ -1,9 +1,7 @@
 import numpy as np
 import sparse
-import pytest
 
 from nums.core.array.application import ArrayApplication
-from nums.core.array.blockarray import BlockArray
 from nums.core.array.sparse import SparseBlockArray
 from nums.core.array.random import NumsRandomState
 
@@ -83,16 +81,12 @@ def test_sparse_add(app_inst: ArrayApplication):
     assert np.array_equal(x2 - x1_sp, y_ba.get())
 
     # Test sparse-scalar.
-    y_sp = x1_sp - 1  # __sub__
-    y_sba = x1_sba - 1
-    assert y_sba.nnz == y_sp.nnz  # 16
-    y_ba = y_sba.to_ba()
-    assert np.array_equal(x1 - 1, y_ba.get())
-    y_sp = 1 - x1_sp  # __rsub__
-    y_sba = 1 - x1_sba
-    assert y_sba.nnz == y_sp.nnz  # 16
-    y_ba = y_sba.to_ba()
-    assert np.array_equal(1 - x1, y_ba.get())
+    y = (x1_sp - 1).todense()  # __sub__
+    y_ba = x1_sba - 1
+    assert np.array_equal(y, y_ba.get())
+    y = (1 - x1_sp).todense()  # __rsub__
+    y_ba = 1 - x1_sba
+    assert np.array_equal(y, y_ba.get())
 
 
 def test_sparse_mul(app_inst: ArrayApplication):

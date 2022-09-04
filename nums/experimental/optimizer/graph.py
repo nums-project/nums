@@ -22,10 +22,11 @@ import numpy as np
 from nums.core.settings import sync_nnz
 from nums.core.array import utils as array_utils
 from nums.core.array.base import BlockBase, Block
+from nums.core.array.sparse import SparseBlock
 from nums.core.grid.grid import Device
 from nums.core.kernel.kernel_manager import KernelManager
 from nums.experimental.optimizer.clusterstate import ClusterState
-from nums.experimental.optimizer.size import TreeNodeSize
+from nums.experimental.optimizer.node_meta import TreeNodeMeta, LeafMeta
 
 
 def subsample(total_items, max_items, rs: np.random.RandomState):
@@ -51,6 +52,13 @@ class TreeNode(object):
         self._grid_shape = None
         self._dtype = None
         self._expression = None
+
+        # Type LeafMeta for leaves: shape, nnz, dtype, and whether output is_dense.
+        # Type TreeNodeMeta for other nodes: dtype and whether output is_dense.
+        self.tree_node_meta: TreeNodeMeta = None
+        # Whether this operation invokes dense or sparse kernel.
+        # Need to explicitly set is_dense property after initialization.
+        self.dense_kernel = True
 
     def get_root(self):
         if self.parent is None:
@@ -123,6 +131,12 @@ class TreeNode(object):
             assert self.parent is None and other.parent is None
             bop.left, bop.right = self, other
             bop.left.parent, bop.right.parent = bop, bop
+        bop.tree_node_meta = bop.left.tree_node_meta.bop_partial(
+            op_name, bop.right.tree_node_meta
+        )
+        bop.dense_kernel = (
+            bop.left.tree_node_meta.is_dense and bop.right.tree_node_meta.is_dense
+        )
         return bop
 
     def tensordot(self, other, axes):
@@ -154,7 +168,6 @@ class Leaf(TreeNode):
         super().__init__(cluster_state, tree_node_id)
         self.block = None
         self.marker = -1
-        self.tree_node_size = None
 
     def get_children(self):
         return []
@@ -186,8 +199,8 @@ class Leaf(TreeNode):
         # This property is only used for fusion.
         leaf.marker = self.marker
 
-        # This property is for experimental output size estimation.
-        leaf.tree_node_size = self.tree_node_size
+        leaf.tree_node_meta = self.tree_node_meta
+        leaf.dense_kernel = self.dense_kernel
         return leaf
 
     def get_leafs(self):
@@ -229,7 +242,7 @@ class Leaf(TreeNode):
 
     def fuse(self, func_node, km: KernelManager):
         f = km.get_fuseable("identity")
-        return f, [self.copy(self.cluster_state, func_node)]
+        return f, [self.copy(self.cluster_state, func_node)], self.tree_node_meta
 
     def is_scalar(self):
         return self.block.size() == 1
@@ -242,10 +255,11 @@ class UnaryOp(TreeNode):
         self.op_name = None
 
     def __repr__(self):
-        return "UnaryOp(name=%s, id=%s, child=%s)" % (
+        return "UnaryOp(name=%s, id=%s, child=%s, dense_kernel=%s)" % (
             self.op_name,
             str(self.tree_node_id),
             str(self.child.tree_node_id),
+            self.dense_kernel,
         )
 
     def get_children(self):
@@ -264,6 +278,9 @@ class UnaryOp(TreeNode):
         uop.child = self.child.copy(cluster_state, parent=uop, new_ids=new_ids)
         uop.op_name = self.op_name
         uop.copy_on_op = self.copy_on_op
+
+        uop.tree_node_meta = self.tree_node_meta
+        uop.dense_kernel = self.dense_kernel
         return uop
 
     def update_child(self, old_children, new_children):
@@ -317,7 +334,7 @@ class UnaryOp(TreeNode):
         self.cluster_state.commit_uop(self._mem_cost(), self.child.block.id, device)
         # self.cluster_state.add_block(new_block.id, new_block.size(), [device])
         self.cluster_state.add_block(
-            new_block.id, new_leaf.tree_node_size.nbytes, [device]
+            new_block.id, new_leaf.tree_node_meta.nbytes, [device]
         )
         if not self.cluster_state.created_on_only:
             assert self.cluster_state.blocks_local(
@@ -338,7 +355,8 @@ class UnaryOp(TreeNode):
             block: BlockBase = block.ufunc(op_name, device=device)
         leaf: Leaf = Leaf(self.cluster_state)
         leaf.block = block
-        leaf.tree_node_size = self.child.tree_node_size.uop(op_name)
+        assert isinstance(self.child.tree_node_meta, LeafMeta)
+        leaf.tree_node_meta = self.child.tree_node_meta.uop(op_name)
         leaf.copy_on_op = self.copy_on_op
         return leaf, block
 
@@ -348,8 +366,9 @@ class UnaryOp(TreeNode):
         if block.is_dense:
             return np.product(block.shape)
         if sync_nnz > 1:
-            self.child.tree_node_size.nnz = block.nnz  # Blocking fetch
-        return self.child.tree_node_size.uop(self.op_name).nbytes
+            self.child.tree_node_meta.nnz = block.nnz  # Blocking fetch
+        assert isinstance(self.child.tree_node_meta, LeafMeta)
+        return self.child.tree_node_meta.uop(self.op_name).nbytes
 
     def shape(self):
         if self._shape is None:
@@ -387,24 +406,35 @@ class UnaryOp(TreeNode):
 
     def expression(self):
         if self._expression is None:
-            self._expression = "UnaryOp(op=%s, x=%s)" % (
+            self._expression = "UnaryOp(op=%s, dense_kernel=%s, x=%s)" % (
                 self.op_name,
+                self.dense_kernel,
                 self.child.expression(),
             )
         return self._expression
 
     def fuse(self, func_node, km: KernelManager):
-        child_op, child_args = self.child.fuse(func_node, km)
+        child_op, child_args, child_meta = self.child.fuse(func_node, km)
         if self.op_name == "transpose":
             self_op = km.get_fuseable("transpose")
         else:
-            self_op = km.get_fuseable("map_uop")
-            self_op = partial(self_op, op_name=self.op_name, args=(), kwargs={})
+            if self.dense_kernel:
+                self_op = km.get_fuseable("map_uop")
+                self_op = partial(self_op, op_name=self.op_name, args=(), kwargs={})
+            else:
+                self_op = km.get_fuseable("sparse_map_uop")
+                self_op = partial(
+                    self_op,
+                    op_name=self.op_name,
+                    args=(),
+                    kwargs={},
+                    densify=self.tree_node_meta.is_dense,
+                )
 
         def fused(*args):
             return self_op(arr=child_op(*args))
 
-        return fused, child_args
+        return fused, child_args, child_meta.uop(self.op_name)
 
 
 class ReduceAxis(UnaryOp):
@@ -430,6 +460,9 @@ class ReduceAxis(UnaryOp):
         ra.axis = self.axis
         ra.keepdims = self.keepdims
         ra.copy_on_op = self.copy_on_op
+
+        ra.tree_node_meta = self.tree_node_meta
+        ra.dense_kernel = self.dense_kernel
         return ra
 
     def _collapse(self, device: Device):
@@ -445,22 +478,32 @@ class ReduceAxis(UnaryOp):
             transposed=False,
             km=child_block.km,
         )
-        block.oid = child_block.km.reduce_axis(
-            op_name=op_name,
-            arr=child_block.oid,
-            axis=self.axis,
-            keepdims=self.keepdims,
-            transposed=child_block.transposed,
-            syskwargs={"device": device},
-        )
+        if self.dense_kernel:
+            block.oid = child_block.km.reduce_axis(
+                op_name=op_name,
+                arr=child_block.oid,
+                axis=self.axis,
+                keepdims=self.keepdims,
+                transposed=child_block.transposed,
+                syskwargs={"device": device},
+            )
+        else:
+            block.oid = child_block.km.sparse_reduce_axis(
+                op_name=op_name,
+                arr=child_block.oid,
+                axis=self.axis,
+                keepdims=self.keepdims,
+                transposed=child_block.transposed,
+                syskwargs={"device": device},
+            )
         block._device = device
         leaf: Leaf = Leaf(self.cluster_state)
         leaf.block = block
-        leaf.tree_node_size = self.child.tree_node_size.reduce_axis(
+        assert isinstance(self.child.tree_node_meta, LeafMeta)
+        leaf.tree_node_meta = self.child.tree_node_meta.reduce_axis(
             self.op_name,
             self.axis,
             self.keepdims,
-            self.child.block.transposed,
         )
         leaf.copy_on_op = self.copy_on_op
         return leaf, block
@@ -471,12 +514,12 @@ class ReduceAxis(UnaryOp):
         if block.is_dense:
             return np.product(self.shape())
         if sync_nnz > 1:
-            self.child.tree_node_size.nnz = block.nnz  # Blocking fetch
-        return self.child.tree_node_size.reduce_axis(
+            self.child.tree_node_meta.nnz = block.nnz  # Blocking fetch
+        assert isinstance(self.child.tree_node_meta, LeafMeta)
+        return self.child.tree_node_meta.reduce_axis(
             self.op_name,
             self.axis,
             self.keepdims,
-            block.transposed,
         ).nbytes
 
     def update_tuple_property(self, val, keep_dim_val: Union[int, tuple] = 1):
@@ -519,18 +562,25 @@ class ReduceAxis(UnaryOp):
 
     def expression(self):
         if self._expression is None:
-            self._expression = "ReduceAxis(op=%s, x=%s, axis=%s, keepdims=%s)" % (
-                self.op_name,
-                self.child.expression(),
-                str(self.axis),
-                str(self.keepdims),
+            self._expression = (
+                "ReduceAxis(op=%s, axis=%s, keepdims=%s, dense_kernel=%s, x=%s)"
+                % (
+                    self.op_name,
+                    str(self.axis),
+                    str(self.keepdims),
+                    self.dense_kernel,
+                    self.child.expression(),
+                )
             )
         return self._expression
 
     def fuse(self, func_node, km: KernelManager):
-        child_op, child_args = self.child.fuse(func_node, km)
+        child_op, child_args, child_meta = self.child.fuse(func_node, km)
 
-        self_op = km.get_fuseable("reduce_axis")
+        if self.dense_kernel:
+            self_op = km.get_fuseable("reduce_axis")
+        else:
+            self_op = km.get_fuseable("sparse_reduce_axis")
         kwargs = {
             "op_name": self.op_name,
             "axis": self.axis,
@@ -543,7 +593,11 @@ class ReduceAxis(UnaryOp):
         def fused(*args):
             return self_op(arr=child_op(*args))
 
-        return fused, child_args
+        return (
+            fused,
+            child_args,
+            child_meta.reduce_axis(self.op_name, self.axis, self.keepdims),
+        )
 
 
 class BinaryOp(TreeNode):
@@ -563,11 +617,12 @@ class BinaryOp(TreeNode):
             "matmul": "@",
             "tensordot": "@",
         }[self.op_name]
-        return "BOp(id=%s, op=%s%s%s)" % (
+        return "BOp(id=%s, op=%s%s%s, dense_kernel=%s)" % (
             self.tree_node_id,
             str(self.left.tree_node_id),
             bop_symbol,
             str(self.right.tree_node_id),
+            self.dense_kernel,
         )
 
     def get_children(self):
@@ -591,6 +646,9 @@ class BinaryOp(TreeNode):
         bop.left = self.left.copy(cluster_state, bop, new_ids=new_ids)
         bop.right = self.right.copy(cluster_state, bop, new_ids=new_ids)
         bop.copy_on_op = self.copy_on_op
+
+        bop.tree_node_meta = self.tree_node_meta
+        bop.dense_kernel = self.dense_kernel
         return bop
 
     def update_child(self, old_children, new_children):
@@ -672,7 +730,7 @@ class BinaryOp(TreeNode):
         # Update cluster state with new block.
         # self.cluster_state.add_block(new_block.id, new_block.size(), [device])
         self.cluster_state.add_block(
-            new_block.id, new_leaf.tree_node_size.nbytes, [device]
+            new_block.id, new_leaf.tree_node_meta.nbytes, [device]
         )
         if not self.cluster_state.created_on_only:
             assert self.cluster_state.blocks_local(
@@ -702,9 +760,11 @@ class BinaryOp(TreeNode):
         block: BlockBase = lblock.bop(op_name, rblock, args=args, device=device)
         leaf: Leaf = Leaf(self.cluster_state)
         leaf.block = block
-        leaf.tree_node_size = self.left.tree_node_size.bop(
+        assert isinstance(self.left.tree_node_meta, LeafMeta)
+        assert isinstance(self.right.tree_node_meta, LeafMeta)
+        leaf.tree_node_meta = self.left.tree_node_meta.bop(
             op_name,
-            self.right.tree_node_size,
+            self.right.tree_node_meta,
             **args,
         )
         leaf.copy_on_op = self.copy_on_op
@@ -726,11 +786,13 @@ class BinaryOp(TreeNode):
         if lblock.is_dense and rblock.is_dense:
             return np.product(self.shape())
         if sync_nnz > 1:
-            self.left.tree_node_size.nnz = lblock.nnz  # Blocking fetch
-            self.right.tree_node_size.nnz = rblock.nnz  # Blocking fetch
-        return self.left.tree_node_size.bop(
+            self.left.tree_node_meta.nnz = lblock.nnz  # Blocking fetch
+            self.right.tree_node_meta.nnz = rblock.nnz  # Blocking fetch
+        assert isinstance(self.left.tree_node_meta, LeafMeta)
+        assert isinstance(self.right.tree_node_meta, LeafMeta)
+        return self.left.tree_node_meta.bop(
             op_name,
-            self.right.tree_node_size,
+            self.right.tree_node_meta,
             **args,
         ).nbytes
 
@@ -801,27 +863,44 @@ class BinaryOp(TreeNode):
         if self._expression is None:
             if self.op_name == "matmul" or self.op_name == "tensordot":
                 axes = self.args.get("axes", 1)
-                self._expression = "BinaryOp(op=%s, x=%s, y=%s, axes=%s)" % (
-                    self.op_name,
-                    self.left.expression(),
-                    self.right.expression(),
-                    axes,
+                self._expression = (
+                    "BinaryOp(op=%s, axes=%s, dense_kernel=%s, x=%s, y=%s)"
+                    % (
+                        self.op_name,
+                        axes,
+                        self.dense_kernel,
+                        self.left.expression(),
+                        self.right.expression(),
+                    )
                 )
-            self._expression = "BinaryOp(op=%s, x=%s, y=%s)" % (
+            self._expression = "BinaryOp(op=%s, dense_kernel=%s, x=%s, y=%s)" % (
                 self.op_name,
+                self.dense_kernel,
                 self.left.expression(),
                 self.right.expression(),
             )
         return self._expression
 
     def fuse(self, func_node, km: KernelManager):
-        left_op, left_args = self.left.fuse(func_node, km)
-        right_op, right_args = self.right.fuse(func_node, km)
-
-        self_op = km.get_fuseable("bop")
+        left_op, left_args, left_meta = self.left.fuse(func_node, km)
+        right_op, right_args, right_meta = self.right.fuse(func_node, km)
 
         axes = 1 if self.args is None else self.args.get("axes", 1)
-        self_op = partial(self_op, op=self.op_name, a1_T=False, a2_T=False, axes=axes)
+        if self.dense_kernel:
+            self_op = km.get_fuseable("bop")
+            self_op = partial(
+                self_op, op=self.op_name, a1_T=False, a2_T=False, axes=axes
+            )
+        else:
+            self_op = km.get_fuseable("sparse_bop")
+            self_op = partial(
+                self_op,
+                op=self.op_name,
+                a1_T=False,
+                a2_T=False,
+                axes=axes,
+                densify=self.tree_node_meta.is_dense,
+            )
         num_left = len(left_args)
         # Combine the left and right args.
         args = left_args + right_args
@@ -836,7 +915,21 @@ class BinaryOp(TreeNode):
             args2 = args[num_left:]
             return self_op(a1=left_op(*args1), a2=right_op(*args2))
 
-        return fused, args
+        if self.op_name == "matmul":
+            op_name, extra_args = "tensordot", {"axes": 1}
+        elif self.op_name == "tensordot":
+            op_name, extra_args = "tensordot", self.args
+        else:
+            op_name, extra_args = self.op_name, {}
+        return (
+            fused,
+            args,
+            left_meta.bop(
+                op_name,
+                right_meta,
+                **extra_args,
+            ),
+        )
 
 
 class FunctionNode(TreeNode):
@@ -867,7 +960,7 @@ class FunctionNode(TreeNode):
         km.register(self.op_hash, self.op_func, {})
 
     def __repr__(self):
-        return "Function(id=%s, op=%s, args=%s" % (
+        return "Function(id=%s, op=%s, args=%s)" % (
             self.tree_node_id,
             self.op_hash,
             len(self.children),
@@ -895,11 +988,13 @@ class FunctionNode(TreeNode):
         fnode.parent = parent
         fnode.op_hash = self.op_hash
         fnode.op_func = self.op_func
-        fnode.op_expression = self.op_expression
         fnode.children = [
             child.copy(cluster_state, fnode, new_ids=new_ids) for child in self.children
         ]
         fnode.copy_on_op = self.copy_on_op
+
+        fnode.tree_node_meta = self.tree_node_meta
+        fnode.dense_kernel = self.dense_kernel
         return fnode
 
     def update_child(self, old_children, new_children):
@@ -1007,7 +1102,11 @@ class FunctionNode(TreeNode):
             block_oids.append(child.block.oid)
             if km is None:
                 km = child.block.km
-        block: BlockBase = Block(
+        if self.tree_node_meta.is_dense:
+            block_type = Block
+        else:
+            block_type = SparseBlock
+        block: BlockBase = block_type(
             self._grid_entry, self._grid_shape, self._shape, self._dtype, False, km
         )
         block._device = device
@@ -1016,6 +1115,7 @@ class FunctionNode(TreeNode):
         )
         leaf: Leaf = Leaf(self.cluster_state)
         leaf.block = block
+        leaf.tree_node_meta = self.tree_node_meta
         leaf.copy_on_op = self.copy_on_op
         return leaf, block
 
@@ -1063,7 +1163,7 @@ class Einsum(TreeNode):
         self.children: List[TreeNode] = None
 
     def __repr__(self):
-        return "Einsum(id=%s, subscript=%s, operands=%s" % (
+        return "Einsum(id=%s, subscript=%s, operands=%s)" % (
             self.tree_node_id,
             self.subscript,
             len(self.children),
@@ -1184,7 +1284,7 @@ class Einsum(TreeNode):
         # Update cluster state with new block.
         # self.cluster_state.add_block(new_block.id, new_block.size(), [device])
         self.cluster_state.add_block(
-            new_block.id, new_leaf.tree_node_size.nbytes, [device]
+            new_block.id, new_leaf.tree_node_meta.nbytes, [device]
         )
         if not self.cluster_state.created_on_only:
             for block_id in block_ids:
@@ -1214,8 +1314,11 @@ class Einsum(TreeNode):
         leaf: Leaf = Leaf(self.cluster_state)
         leaf.block = block
         # Assume dense for simplicity.
-        leaf.tree_node_size = TreeNodeSize(
-            self.shape(), np.prod(self.shape()), block.dtype, block.is_dense
+        leaf.tree_node_meta = LeafMeta(
+            self.shape(),
+            np.prod(self.shape()),
+            block.dtype,
+            block.is_dense,
         )
         leaf.copy_on_op = self.copy_on_op
         return leaf, block

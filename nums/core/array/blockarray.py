@@ -19,7 +19,7 @@ import itertools
 import numpy as np
 
 from nums.core.array import utils as array_utils
-from nums.core.array.base import Block, BlockArrayBase
+from nums.core.array.base import BlockBase, Block, BlockArrayBase
 from nums.core.array.view import ArrayView
 from nums.core.grid.grid import ArrayGrid
 from nums.core.kernel.kernel_manager import KernelManager
@@ -298,10 +298,6 @@ class BlockArray(BlockArrayBase):
             # Treat this as a shuffle.
             return self._advanced_single_array_select(ss, axis=axis)
 
-        # This is to deal with circular imports. Little overhead since this happens once per call.
-        # However, would be better to rearrange modules in the future.
-        from nums.core.array.view import ArrayView
-
         av: ArrayView = ArrayView.from_block_array(self)
         # TODO (hme): We don't have to create, but do so for now until we need to optimize.
         return av[ss].create()
@@ -409,10 +405,6 @@ class BlockArray(BlockArrayBase):
         ss, is_handled_advanced, axis = self._preprocess_subscript(key)
         if is_handled_advanced:
             return self._advanced_single_array_assign(ss, value, axis)
-
-        # This is to deal with circular imports. Little overhead since this happens once per call.
-        # However, would be better to rearrange modules in the future.
-        from nums.core.array.view import ArrayView
 
         av: ArrayView = ArrayView.from_block_array(self)
         av[key] = value
@@ -714,6 +706,54 @@ class BlockArray(BlockArrayBase):
                 )
         return result
 
+    def tree_reduce(
+        self, op_name, blocks_or_oids, result_grid_entry, result_grid_shape, *args
+    ):
+        """
+        Basic tree reduce imp.
+        Schedules op on same node as left operand.
+        :param op_name: The reduction op.
+        :param blocks_or_oids: A list of type Block or a list of tuples.
+        Tuples must be of the form
+        (oid, grid_entry, grid_shape, transposed)
+        :param result_grid_entry: The grid entry of the result block. This will be used
+        to compute the final reduction step.
+        :param result_grid_shape: The grid entry of the result block. This will be used
+        to compute the final reduction step.
+        :return: The oid of the result.
+        """
+        oid_list = blocks_or_oids
+        if isinstance(blocks_or_oids[0], Block):
+            oid_list = [
+                (b.oid, b.grid_entry, b.grid_shape, b.transposed)
+                for b in blocks_or_oids
+            ]
+        if len(oid_list) == 1:
+            return oid_list[0][0]
+        q = oid_list
+        while len(q) > 1:
+            a_oid, a_ge, a_gs, a_T = q.pop(0)
+            b_oid, _, _, b_T = q.pop(0)
+            ge, gs = (
+                (result_grid_entry, result_grid_shape) if len(q) == 0 else (a_ge, a_gs)
+            )
+            c_oid = self.km.bop_reduce(
+                op_name,
+                a_oid,
+                b_oid,
+                a_T,
+                b_T,
+                syskwargs={
+                    "grid_entry": ge,
+                    "grid_shape": gs,
+                },
+            )
+            q.append((c_oid, ge, gs, False))
+        r_oid, r_ge, r_gs, _ = q.pop(0)
+        assert r_ge == result_grid_entry
+        assert r_gs == result_grid_shape
+        return r_oid
+
     #################
     # Arithmetic
     #################
@@ -827,6 +867,7 @@ class BlockArray(BlockArrayBase):
                 for k in sum_dims:
                     a_block: Block = a.blocks[tuple(i + k)]
                     b_block: Block = b.blocks[tuple(k + j)]
+                    # pylint: disable=protected-access
                     dot_grid_args = a._compute_tensordot_syskwargs(a_block, b_block)
                     dotted_oid = a.km.bop(
                         "tensordot",
@@ -852,7 +893,7 @@ class BlockArray(BlockArrayBase):
     # Inequalities
     #################
 
-    def __inequality__(self, op, other):
+    def __inequality__(self, op_name, other):
         other = self.check_or_convert_other(other)
         if other is NotImplemented:
             return NotImplemented
@@ -872,7 +913,7 @@ class BlockArray(BlockArrayBase):
             else:
                 other_block: Block = other.blocks[grid_entry]
             result.blocks[grid_entry] = self.blocks[grid_entry].bop(
-                op, other_block, args={}
+                op_name, other_block, args={}
             )
         return result
 

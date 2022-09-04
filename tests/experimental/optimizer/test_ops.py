@@ -200,21 +200,24 @@ def test_sparse_bop(app_inst_mock_small):
 
     app = app_inst_mock_small
     cluster_state = ClusterState(app.km.devices())
-    X = app.random.sparse_normal(shape=(10, 3), block_shape=(5, 3))
+    X = app.random.sparse_normal(shape=(10, 6), block_shape=(5, 3), p=0.1)
     Xc = X
-    theta: SparseBlockArray = SparseBlockArray.from_ba(
-        app.zeros((Xc.shape[1],), (Xc.block_shape[1],), dtype=Xc.dtype)
-    )
+    print(Xc.nnz)
+    theta: BlockArray = app.ones((Xc.shape[1],), (Xc.block_shape[1],), dtype=Xc.dtype)
     X_ga: GraphArray = GraphArray.from_ba(Xc, cluster_state)
     theta_ga: GraphArray = GraphArray.from_ba(theta, cluster_state)
     Z_ga: GraphArray = X_ga @ theta_ga
     Z_ga: GraphArray = collapse_graph_array(app, Z_ga)
+    # one_ga: GraphArray = GraphArray.from_ba(
+    #     BlockArray.from_scalar(1, app.km), cluster_state
+    # )
     one_ga: GraphArray = GraphArray.from_ba(
-        SparseBlockArray.from_scalar(1, app.km), cluster_state
+        app.ones((Xc.shape[0],), (Xc.block_shape[0],), dtype=Xc.dtype), cluster_state
     )
     mu_ga: GraphArray = collapse_graph_array(app, one_ga / (one_ga + app.exp(-Z_ga)))
-    mu_ba: SparseBlockArray = compute_graph_array(app, mu_ga)
-    print(mu_ba.todense().get())
+    mu_ba: BlockArray = compute_graph_array(app, mu_ga)
+    print(mu_ba.get())
+    assert np.allclose(1 / (1 + np.exp(-(X.to_ba().get() @ theta.get()))), mu_ba.get())
 
 
 def test_sparse_bop_2(app_inst_mock_small):
@@ -256,7 +259,9 @@ def test_sparse_bop_2(app_inst_mock_small):
     P = P_sba.to_ba().get()
     Q = Q_sba.to_ba().get()
     S = S_sba.to_ba().get()
-    assert np.allclose(S - P @ Q.T, X_sba.to_ba().get())
+    X = X_sba.to_ba().get()
+    print(X)
+    assert np.allclose(S - P @ Q.T, X)
 
 
 if __name__ == "__main__":

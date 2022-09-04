@@ -48,7 +48,7 @@ class FuseGraph(object):
             )
             if child_leafs is None:
                 # This branch has been pruned.
-                return None, None, None
+                return None, None, 0
             if len(child_block_id_set) <= self.max_args:
                 # If it's a frontier node, then there's no point in fusing it.
                 # If it's a leaf, we still want to count toward node_leafs,
@@ -102,11 +102,15 @@ class FuseGraph(object):
 
     def fuse_node(self, node: TreeNode):
         result = FunctionNode(node.cluster_state)
-        result.op_func, result.children = node.fuse(result, self.km)
+        result.op_func, result.children, result.tree_node_meta = node.fuse(
+            result, self.km
+        )
         result.set_shape(node.shape())
         result.set_grid_entry(node.grid_entry())
         result.set_grid_shape(node.grid_shape())
         result.set_dtype(node.dtype())
+        assert result.tree_node_meta.shape == result.shape()
+        assert result.tree_node_meta.dtype == result.dtype()
 
         expression_str = node.expression()
         result.set_expression(expression_str)

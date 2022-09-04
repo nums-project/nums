@@ -194,10 +194,18 @@ class Kernel:
     ):
         raise NotImplementedError()
 
-    def sparse_map_uop(self, op_name, arr, args, kwargs, syskwargs: Dict):
+    def sparse_map_uop(self, op_name, arr, args, kwargs, densify, syskwargs: Dict):
         raise NotImplementedError()
 
     def sparse_bop(self, op, a1, a2, a1_T, a2_T, axes, densify, syskwargs: Dict):
+        raise NotImplementedError()
+
+    def sparse_reduce_axis(
+        self, op_name, arr, axis, keepdims, transposed, syskwargs: Dict
+    ):
+        raise NotImplementedError()
+
+    def sparse_bop_reduce(self, op, a1, a2, a1_T, a2_T, syskwargs: Dict):
         raise NotImplementedError()
 
     def sparse_block_from_scalar(self, x, syskwargs: Dict):

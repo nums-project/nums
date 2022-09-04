@@ -13,17 +13,16 @@
 # limitations under the License.
 
 
-# pylint: disable = protected-access
-# pylint: disable=too-many-lines
-
 import warnings
-from numba.core.errors import NumbaNotImplementedError
-
 import numpy as np
 
 from nums.core.array import utils as array_utils
 from nums.core.kernel.kernel_manager import KernelManager
 from nums.core.grid.grid import ArrayGrid
+
+
+# pylint: disable=protected-access, redefined-builtin
+# pylint: disable=too-many-lines
 
 
 class BlockBase:
@@ -68,7 +67,7 @@ class BlockBase:
     def size(self):
         return np.product(self.shape)
 
-    def copy(self):
+    def copy(self, shallow=True):
         raise NotImplementedError()
 
     def get(self):
@@ -209,7 +208,7 @@ class BlockBase:
     def binary_op(op_name, a, b, args: dict, device=None):
         raise NotImplementedError()
 
-    def bop(self, op_name, other, args: dict, device=None, **kwargs):
+    def bop(self, op_name, other, args: dict, device=None):
         raise NotImplementedError()
 
     def tensordot(self, other, axes):
@@ -253,7 +252,7 @@ class BlockBase:
     def __rtruediv__(self, other):
         if not self._check_bop_implemented(other):
             return NotImplemented
-        return self.binary_op("trudiv", other, self, args={})
+        return self.binary_op("truediv", other, self, args={})
 
     def __pow__(self, other):
         if not self._check_bop_implemented(other):
@@ -310,18 +309,6 @@ class BlockBase:
 
 class Block(BlockBase):
     # pylint: disable=redefined-builtin, global-statement
-
-    def __init__(
-        self,
-        grid_entry,
-        grid_shape,
-        shape,
-        dtype,
-        transposed,
-        km: KernelManager,
-        id=None,
-    ):
-        super().__init__(grid_entry, grid_shape, shape, dtype, transposed, km, id)
 
     @property
     def is_dense(self):
@@ -592,53 +579,13 @@ class BlockArrayBase:
         result.blocks = broadcast
         return result
 
+    def reduce_axis(self, op_name, axis, keepdims=False):
+        raise NotImplementedError()
+
     def tree_reduce(
-        self, op_name, blocks_or_oids, result_grid_entry, result_grid_shape
+        self, op_name, blocks_or_oids, result_grid_entry, result_grid_shape, *args
     ):
-        """
-        Basic tree reduce imp.
-        Schedules op on same node as left operand.
-        :param op_name: The reduction op.
-        :param blocks_or_oids: A list of type Block or a list of tuples.
-        Tuples must be of the form
-        (oid, grid_entry, grid_shape, transposed)
-        :param result_grid_entry: The grid entry of the result block. This will be used
-        to compute the final reduction step.
-        :param result_grid_shape: The grid entry of the result block. This will be used
-        to compute the final reduction step.
-        :return: The oid of the result.
-        """
-        oid_list = blocks_or_oids
-        if isinstance(blocks_or_oids[0], Block):
-            oid_list = [
-                (b.oid, b.grid_entry, b.grid_shape, b.transposed)
-                for b in blocks_or_oids
-            ]
-        if len(oid_list) == 1:
-            return oid_list[0][0]
-        q = oid_list
-        while len(q) > 1:
-            a_oid, a_ge, a_gs, a_T = q.pop(0)
-            b_oid, _, _, b_T = q.pop(0)
-            ge, gs = (
-                (result_grid_entry, result_grid_shape) if len(q) == 0 else (a_ge, a_gs)
-            )
-            c_oid = self.km.bop_reduce(
-                op_name,
-                a_oid,
-                b_oid,
-                a_T,
-                b_T,
-                syskwargs={
-                    "grid_entry": ge,
-                    "grid_shape": gs,
-                },
-            )
-            q.append((c_oid, ge, gs, False))
-        r_oid, r_ge, r_gs, _ = q.pop(0)
-        assert r_ge == result_grid_entry
-        assert r_gs == result_grid_shape
-        return r_oid
+        raise NotImplementedError()
 
     def check_or_convert_other(self, other, compute_block_shape=False):
         raise NotImplementedError()
@@ -870,7 +817,7 @@ class BlockArrayBase:
     # Inequalities
     #################
 
-    def __inequality__(self, op, other):
+    def __inequality__(self, op_name, other):
         raise NotImplementedError()
 
     def __ge__(self, other):

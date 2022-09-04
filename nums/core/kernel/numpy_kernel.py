@@ -435,7 +435,6 @@ class KernelCls(KernelImp):
             ufunc = scipy.special.__getattribute__(op)
         return ufunc(a1, a2)
 
-    # Works for sparse too.
     def bop_reduce(self, op, a1, a2, a1_T, a2_T):
         if a1_T:
             a1 = a1.T
@@ -572,7 +571,7 @@ class KernelCls(KernelImp):
         )
         return result.astype(dtype)
 
-    def sparse_map_uop(self, op_name, arr, args, kwargs):
+    def sparse_map_uop(self, op_name, arr, args, kwargs, densify):
         """
         Args:
             func: types.Callable
@@ -583,6 +582,10 @@ class KernelCls(KernelImp):
         args = list(args)
         args.insert(0, arr)
         result = sparse.elemwise(ufunc, *args, **kwargs)
+        if densify and isinstance(result, sparse.SparseArray):
+            result = result.todense()
+        elif not densify:
+            assert isinstance(result, sparse.SparseArray)
         return result
 
     def sparse_bop(self, op, a1, a2, a1_T, a2_T, axes, densify):
@@ -610,6 +613,35 @@ class KernelCls(KernelImp):
         elif not densify:
             assert isinstance(result, sparse.SparseArray)
         return result
+
+    def sparse_reduce_axis(self, op_name, arr, axis, keepdims, transposed):
+        assert isinstance(arr, sparse.COO)
+        op_func = np.__getattribute__(op_name)
+        if transposed:
+            arr = arr.T
+        return arr.reduce(op_func, axis=axis, keepdims=keepdims)
+
+    def sparse_bop_reduce(self, op, a1, a2, a1_T, a2_T):
+        assert isinstance(a1, sparse.COO) and isinstance(a2, sparse.COO)
+        if a1_T:
+            a1 = a1.T
+        if a2_T:
+            a2 = a2.T
+
+        # These are faster.
+        if op == "sum":
+            r = a1 + a2
+        elif op == "prod":
+            r = a1 * a2
+        else:
+            a = sparse.stack([a1, a2], axis=0)
+            r = a.reduce(np.__getattribute__(op), axis=0, keepdims=False)
+
+        if a1 is np.nan or a2 is np.nan or r is np.nan:
+            assert np.isscalar(a1) and np.isscalar(a2) and np.isscalar(r)
+        else:
+            assert a1.shape == a2.shape == r.shape
+        return r
 
     def sparse_block_from_scalar(self, x):
         assert np.isscalar(x)

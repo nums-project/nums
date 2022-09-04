@@ -40,3 +40,21 @@ def set_using_marker(node, inputs):
         node.update_child([child], [inputs[child.marker]])
         inputs[child.marker].parent = node
     return node
+
+
+def print_graph(root: TreeNode):
+    """
+    Recursively print string representations of tree nodes using BFS.
+    """
+    print("print_graph")
+    nodes = [root]
+    while len(nodes) > 0:
+        node = nodes.pop(0)
+        if hasattr(node, "child"):
+            nodes.append(node.child)
+        if hasattr(node, "left"):
+            nodes.append(node.left)
+            nodes.append(node.right)
+        if hasattr(node, "children"):
+            nodes.extend(node.children)
+        print(node)

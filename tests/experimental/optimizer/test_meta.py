@@ -1,13 +1,13 @@
 import numpy as np
 import sparse
 
-from nums.experimental.optimizer.size import TreeNodeSize
+from nums.experimental.optimizer.node_meta import LeafMeta
 
 
 def test_nbytes():
     x1 = np.eye(10)
     x1_sp = sparse.COO.from_numpy(x1, fill_value=0)
-    x1_ts = TreeNodeSize(
+    x1_ts = LeafMeta(
         (10, 10),
         10,
         np.int64,
@@ -17,7 +17,7 @@ def test_nbytes():
 
 
 def test_uop():
-    x1_ts = TreeNodeSize(
+    x1_ts = LeafMeta(
         (10, 10),
         10,
         np.int64,
@@ -29,13 +29,13 @@ def test_uop():
 
 
 def test_add():
-    x1_ts = TreeNodeSize(
+    x1_ts = LeafMeta(
         (10, 10),
         10,
         np.int64,
         False,
     )
-    x2_ts = TreeNodeSize(
+    x2_ts = LeafMeta(
         (10, 10),
         20,
         np.int64,
@@ -47,13 +47,13 @@ def test_add():
 
 
 def test_mul():
-    x1_ts = TreeNodeSize(
+    x1_ts = LeafMeta(
         (10, 10),
         10,
         np.int64,
         False,
     )
-    x2_ts = TreeNodeSize(
+    x2_ts = LeafMeta(
         (10, 10),
         20,
         np.int64,
@@ -62,7 +62,7 @@ def test_mul():
     y_ts = x1_ts * x2_ts
     assert np.allclose(y_ts.nnz, int(0.1 * 0.2 * 100))
 
-    x2_ts = TreeNodeSize(
+    x2_ts = LeafMeta(
         (10, 1),
         10,
         np.int64,
@@ -71,7 +71,7 @@ def test_mul():
     y_ts = x1_ts * x2_ts
     assert np.allclose(y_ts.nnz, int(0.1 * 100))
 
-    x2_ts = TreeNodeSize(
+    x2_ts = LeafMeta(
         (10, 1),
         10,
         np.int64,
@@ -83,13 +83,13 @@ def test_mul():
 
 
 def test_tensordot():
-    x1_ts = TreeNodeSize(
+    x1_ts = LeafMeta(
         (10, 10),
         10,
         np.int64,
         False,
     )
-    x2_ts = TreeNodeSize(
+    x2_ts = LeafMeta(
         (10, 10),
         20,
         np.int64,

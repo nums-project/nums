@@ -35,12 +35,13 @@ from nums.experimental.optimizer.graph import (
     Leaf,
     UnaryOp,
     ReduceAxis,
+    FunctionNode,
     Einsum,
 )
 from nums.experimental.optimizer.reduction_ops import TreeReductionOp
 from nums.experimental.optimizer.fusion import FuseGraph
 from nums.experimental.optimizer.fusion_utils import set_using_marker, traverse_marker
-from nums.experimental.optimizer.size import TreeNodeSize
+from nums.experimental.optimizer.node_meta import LeafMeta
 
 
 class GraphArray(object):
@@ -66,17 +67,18 @@ class GraphArray(object):
                 nnz = block.nnz  # Blocking fetch
             else:
                 nnz = np.prod(block.shape)
-            leaf.tree_node_size = TreeNodeSize(
+            leaf.tree_node_meta = LeafMeta(
                 block.shape,
                 nnz,
                 block.dtype,
                 block.is_dense,
             )
+            leaf.dense_kernel = block.is_dense
             leaf.copy_on_op = copy_on_op
             graphs[grid_entry] = leaf
 
             cluster_state.add_block(
-                block.id, leaf.tree_node_size.nbytes, devices=[device]
+                block.id, leaf.tree_node_meta.nbytes, devices=[device]
             )
             cluster_state.init_mem_load(device, block.id)
         return graphs
@@ -224,6 +226,9 @@ class GraphArray(object):
                         # tree structure here is never exposed.
                         dot_node.parent = rop
                         rop.add_child(dot_node)
+                    rop.tree_node_meta = dot_node.tree_node_meta
+                    # Assume children are all dense or all sparse.
+                    rop.dense_kernel = dot_node.tree_node_meta.is_dense
                     result_graphs[grid_entry] = rop
 
         return GraphArray(
@@ -369,6 +374,8 @@ class GraphArray(object):
             assert old_root.parent is None
             uop.child = old_root
             old_root.parent = uop
+        uop.tree_node_meta = old_root.tree_node_meta.uop_partial(op_name)
+        uop.dense_kernel = old_root.tree_node_meta.is_dense
         new_arr[grid_entry] = uop
 
     def reduce_axis(self, op_name, axis, keepdims):
@@ -388,6 +395,12 @@ class GraphArray(object):
             reduced_tnode.op_name = op_name
             reduced_tnode.axis = axis
             reduced_tnode.keepdims = keepdims
+            reduced_tnode.tree_node_meta = tnode.tree_node_meta.reduce_axis_partial(
+                op_name,
+                axis,
+                keepdims,
+            )
+            reduced_tnode.dense_kernel = tnode.tree_node_meta.is_dense
             reduced_graphs[grid_entry] = reduced_tnode
 
         # Compute output GraphArray properties.
@@ -442,6 +455,8 @@ class GraphArray(object):
                 rop.add_child(child)
                 assert child.parent is None
                 child.parent = rop
+            rop.tree_node_meta = child.tree_node_meta
+            rop.dense_kernel = child.tree_node_meta.is_dense
             if result_grid.shape == ():
                 # keepdims = False.
                 result_graphs[()] = rop
@@ -469,6 +484,8 @@ class GraphArray(object):
                     rop.add_child(child)
                     assert child.parent is None
                     child.parent = rop
+                rop.tree_node_meta = child.tree_node_meta
+                rop.dense_kernel = child.tree_node_meta.is_dense
                 result_graphs[result_grid_entry] = rop
 
         return GraphArray(
@@ -485,16 +502,22 @@ class GraphArray(object):
     def compile(self, max_args: int):
         result_graphs = np.empty_like(self.graphs, dtype=self.graphs.dtype)
         counter = 0
+        first_grid_entry = (0,) * len(self.grid.shape)
         for grid_entry in self.grid.get_entry_iterator():
             graph = self.graphs[grid_entry]
             _, leaf_inputs = traverse_marker(graph, 0)
-            if grid_entry == (0,) or grid_entry == (0, 0):  # generic
-                result_graphs[grid_entry] = FuseGraph(
-                    graph, self.km, max_args=max_args
-                )()
-                fused_graph = result_graphs[grid_entry]
-                fused_graph.op_expression = fused_graph._expression
+            if grid_entry == first_grid_entry:
+                fused_graph = FuseGraph(graph, self.km, max_args=max_args)()
+                if not isinstance(fused_graph, FunctionNode):
+                    # Stopgap as this function currently assumes root is FunctionNode.
+                    return self
+                result_graphs[grid_entry] = fused_graph
+                # result_graphs[grid_entry] = FuseGraph(
+                #     graph, self.km, max_args=max_args
+                # )()
+                # fused_graph = result_graphs[grid_entry]
             else:
+                # TODO: support subtree fusion in this section. FuseGraph already does.
                 fused_graph_copy = fused_graph.copy(self.cluster_state, new_ids=True)
                 fused_graph_copy = set_using_marker(fused_graph_copy, leaf_inputs)
                 fused_graph_copy.set_grid_entry(grid_entry)

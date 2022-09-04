@@ -18,7 +18,6 @@ from typing import Tuple, Iterator
 
 import numpy as np
 import scipy.special
-import sparse
 
 from nums.core.settings import np_ufunc_map
 from nums.core.array.errors import AxisError
@@ -453,24 +452,25 @@ def normalize_axis_index(axis, ndim):
     return axis % ndim
 
 
-def get_sparse_bop_densify(op_name, a_dense, b_dense):
-    def sample_array(is_dense):
-        s = np.eye(2)
-        if not is_dense:
-            return sparse.COO.from_numpy(s, fill_value=0)
-        return s
-
-    sa = sample_array(a_dense)
-    sb = sample_array(b_dense)
-    if op_name == "tensordot":
-        result = sparse.tensordot(sa, sb)
-    else:
-        op_name = np_ufunc_map.get(op_name, op_name)
-        try:
-            ufunc = np.__getattribute__(op_name)
-        except Exception as _:
-            ufunc = scipy.special.__getattribute__(op_name)
-        result = sparse.elemwise(ufunc, sa, sb)
-    if isinstance(result, sparse.SparseArray):
+def get_sparse_uop_densify(op_name):
+    ufunc = np.__getattribute__(op_name)
+    if ufunc(0) == 0:
         return False
     return True
+
+
+sd_bop_sparse_ops = [
+    "mul",
+]
+
+
+def get_sparse_bop_densify(op_name, a_dense: bool, b_dense: bool):
+    if a_dense and b_dense:
+        return True
+
+    if a_dense or b_dense:
+        if op_name in sd_bop_sparse_ops:
+            return False
+        return True
+
+    return False
