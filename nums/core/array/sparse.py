@@ -286,6 +286,25 @@ class SparseBlockArray(BlockArray):
         return rarr
 
     @classmethod
+    def from_sparse(cls, arr, block_shape, copy, km, fill_value=0):
+        dtype_str = str(arr.dtype)
+        grid = ArrayGrid(arr.shape, block_shape, dtype_str)
+        rarr = SparseBlockArray(grid, km, fill_value)
+        grid_entry_iterator = grid.get_entry_iterator()
+        for grid_entry in grid_entry_iterator:
+            grid_slice = grid.get_slice(grid_entry)
+            block = arr[grid_slice]
+            if copy:
+                block = sparse.COO.copy(block)
+            # TODO: generalize for different kernels
+            rarr.blocks[grid_entry].oid = km.put(
+                block,
+                syskwargs={"grid_entry": grid_entry, "grid_shape": grid.grid_shape},
+            )
+            rarr.blocks[grid_entry].dtype = getattr(np, dtype_str)
+        return rarr
+
+    @classmethod
     def from_scalar(cls, val, km):
         if not array_utils.is_scalar(val):
             raise ValueError("%s is not a scalar." % val)
