@@ -76,7 +76,6 @@ np_bop_reduction_set = {"min", "amin", "max", "amax", "nanmax", "nanmin", "nansu
 # and converting back to the original block shape.
 doctest_fallbacks = {
     "argwhere",
-    "asscalar",
     "clip",
     "compress",
     "convolve",
