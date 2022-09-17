@@ -19,9 +19,11 @@ import itertools
 
 import opt_einsum as oe
 import numpy as np
+import sparse
 
 from nums.core.array import utils as array_utils
 from nums.core.array.blockarray import BlockArray, Block
+from nums.core.array.sparse import SparseBlockArray
 from nums.experimental.zarrgroup import ZarrGroup
 from nums.core.array.random import NumsRandomState
 from nums.core.kernel.kernel_manager import KernelManager
@@ -228,8 +230,8 @@ class ArrayApplication:
     def scalar(self, value):
         return BlockArray.from_scalar(value, self.km)
 
-    def array(self, array: Union[np.ndarray, List[float]], block_shape: tuple = None):
-        if not isinstance(array, np.ndarray):
+    def array(self, array: Union[np.ndarray, sparse.COO, List[float]], block_shape: tuple = None):
+        if not isinstance(array, (np.ndarray, sparse.COO)):
             if array_utils.is_array_like(array):
                 array = np.array(array)
             else:
@@ -237,9 +239,14 @@ class ArrayApplication:
                     "Unable to instantiate array from type %s" % type(array)
                 )
         assert len(array.shape) == len(block_shape)
-        return BlockArray.from_np(
-            array, block_shape=block_shape, copy=False, km=self.km
-        )
+        if isinstance(array, np.ndarray):
+            return BlockArray.from_np(
+                array, block_shape=block_shape, copy=False, km=self.km
+            )
+        else:
+            return SparseBlockArray.from_sparse(
+                array, block_shape=block_shape, copy=False, km=self.km
+            )
 
     def zeros(self, shape: tuple, block_shape: tuple, dtype: np.dtype = None):
         return self._new_array("zeros", shape, block_shape, dtype)

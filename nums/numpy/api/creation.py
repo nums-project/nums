@@ -16,6 +16,7 @@
 
 import warnings
 import numpy as np
+import sparse
 
 from nums.core.application_manager import instance as _instance
 from nums.core.array.blockarray import BlockArray
@@ -223,6 +224,15 @@ def array(object, dtype=None, copy=True, order="K", ndmin=0, subok=False) -> Blo
     app = _instance()
     block_shape = app.compute_block_shape(shape, dtype)
     return app.array(result, block_shape)
+
+
+def from_coo(a: sparse.COO):
+    assert(isinstance(a, sparse.COO))
+    dtype = np.__getattribute__(str(a.dtype))
+    shape = a.shape
+    app = _instance()
+    block_shape = app.compute_block_shape(shape, dtype)
+    return app.array(a, block_shape)
 
 
 def copy(a: BlockArray, order="K", subok=False):
