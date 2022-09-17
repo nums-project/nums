@@ -3,54 +3,71 @@ import numpy as np
 from nums.core.array import utils as array_utils
 
 
-# TODO: integrate this class with FuseGraph.
-class TreeNodeSize:
+class TreeNodeMeta:
     """
-    Encapsulated by each TreeNode to keep track of estimated or observed sizes of blocks.
+    Encapsulated by each TreeNode to keep track of node metadata like shape and output density.
+    """
+
+    def __init__(self, dtype, is_dense):
+        self.dtype = dtype
+        self.is_dense = is_dense
+
+    def copy(self):
+        return TreeNodeMeta(
+            self.dtype,
+            self.is_dense,
+        )
+
+    def uop_partial(self, op_name):
+        """
+        Does not update nnz, as it can't be estimated for non-leaf nodes.
+        """
+        is_dense = self.is_dense or array_utils.get_sparse_uop_densify(op_name)
+        return TreeNodeMeta(
+            dtype=array_utils.get_uop_output_type(op_name, self.dtype),
+            is_dense=is_dense,
+        )
+
+    def reduce_axis_partial(self, op_name, axis, keepdims):
+        return TreeNodeMeta(
+            dtype=array_utils.get_uop_output_type(op_name, self.dtype),
+            is_dense=True,
+        )
+
+    def bop_partial(self, op_name, other, **kwargs):
+        dtype = array_utils.get_bop_output_type(op_name, self.dtype, other.dtype)
+        is_dense = array_utils.get_sparse_bop_densify(
+            op_name,
+            self.is_dense,
+            other.is_dense,
+        )
+        return TreeNodeMeta(dtype, is_dense)
+
+
+class LeafMeta(TreeNodeMeta):
+    """
+    Encapsulated by each Leaf to keep track of sizes of blocks in addition to TreeNodeMeta.
     Sparse binary operations use B(n, p) to estimate nnz as needed.
     """
 
-    def __init__(self, shape, nnz, dtype, fill_value=None, index_dtype=np.int64):
+    def __init__(self, shape, nnz, dtype, is_dense, index_dtype=np.int64):
+        super().__init__(dtype, is_dense)
         self.shape = shape
         self.nnz = nnz
-        self.dtype = dtype
-        self.fill_value = fill_value
         self.index_dtype = index_dtype
         if self.is_dense:
             assert nnz == np.prod(shape)
         else:
             assert index_dtype is not None
 
-        self.bop_estimation_map = {
-            "add": self.add,
-            "sum": self.add,
-            "sub": self.add,
-            "mul": self.mul,
-            "prod": self.mul,
-            "truediv": self.truediv,
-            "pow": self.pow,
-            "matmul": lambda other: self.tensordot(other, axes=1),
-            "tensordot": self.tensordot,
-            "lt": lambda other: self.inequality("lt", other),
-            "le": lambda other: self.inequality("le", other),
-            "gt": lambda other: self.inequality("gt", other),
-            "ge": lambda other: self.inequality("ge", other),
-            "eq": lambda other: self.inequality("eq", other),
-            "ne": lambda other: self.inequality("ne", other),
-        }
-
     def copy(self):
-        return TreeNodeSize(
+        return LeafMeta(
             self.shape,
             self.nnz,
             self.dtype,
-            self.fill_value,
+            self.is_dense,
             self.index_dtype,
         )
-
-    @property
-    def is_dense(self):
-        return self.fill_value is None
 
     @property
     def nbytes(self):
@@ -65,40 +82,49 @@ class TreeNodeSize:
 
     def uop(self, op_name):
         if op_name == "transpose":
-            return TreeNodeSize(
+            return LeafMeta(
                 shape=tuple(reversed(self.shape)),
                 nnz=self.nnz,
                 dtype=self.dtype,
-                fill_value=self.fill_value,
+                is_dense=self.is_dense,
             )
-        if self.is_dense:
-            fill_value = None
-        else:
-            fill_value = np.__getattribute__(op_name)(self.fill_value)
-        return TreeNodeSize(
+        nnz = self.nnz
+        is_dense = self.is_dense
+        if not is_dense and array_utils.get_sparse_uop_densify(op_name):
+            nnz = np.prod(self.shape)
+            is_dense = True
+        return LeafMeta(
             shape=self.shape,
-            nnz=self.nnz,
+            nnz=nnz,
             dtype=array_utils.get_uop_output_type(op_name, self.dtype),
-            fill_value=fill_value,
+            is_dense=is_dense,
         )
 
-    def reduce_axis(self, op_name, axis, keepdims, transposed):
-        # Assume dense for now
+    def reduce_axis(self, op_name, axis, keepdims):
         shape = list(self.shape)
-        if transposed:
-            shape.reverse()
         if axis is None:
             shape = []
         elif keepdims:
             shape[axis] = 1
         else:
             shape.pop(axis)
-        return TreeNodeSize(
-            shape=tuple(shape),
-            nnz=np.prod(shape),
-            dtype=array_utils.get_uop_output_type(op_name, self.dtype),
-            fill_value=None,
-        )
+        if self.is_dense:
+            return LeafMeta(
+                shape=tuple(shape),
+                nnz=np.prod(shape),
+                dtype=array_utils.get_uop_output_type(op_name, self.dtype),
+                is_dense=True,
+            )
+        else:
+            # If any element in reduced axis is nonzero, result is nonzero.
+            p1 = self.nnz / np.prod(self.shape)
+            nnz = int((1 - (1 - p1) ** self.shape[axis]) * np.prod(shape))
+            return LeafMeta(
+                shape=tuple(shape),
+                nnz=nnz,
+                dtype=array_utils.get_uop_output_type(op_name, self.dtype),
+                is_dense=False,
+            )
 
     def _nnz_disjunction(self, other, shape):
         # If either element is nonzero, result is nonzero.
@@ -118,7 +144,6 @@ class TreeNodeSize:
 
     def _nnz_selection(self, other, shape):
         # If self element is nonzero, result is nonzero.
-        assert self.fill_value == 0
         n1 = np.prod(self.shape)
         p1 = self.nnz / n1
         return int(p1 * np.prod(shape))
@@ -126,29 +151,27 @@ class TreeNodeSize:
     def add(self, other):
         shape = array_utils.broadcast_shape(self.shape, other.shape)
         dtype = array_utils.get_bop_output_type("add", self.dtype, other.dtype)
-        is_dense = array_utils.get_sparse_bop_return_type(
+        is_dense = array_utils.get_sparse_bop_densify(
             "add",
-            self.fill_value,
-            other.fill_value,
+            self.is_dense,
+            other.is_dense,
         )
         if is_dense:
-            return TreeNodeSize(
+            return LeafMeta(
                 shape=shape,
                 nnz=np.prod(shape),
                 dtype=dtype,
-                fill_value=None,
+                is_dense=True,
             )
         if self.is_dense or other.is_dense:
             raise ValueError(
                 "TreeNodeSize.__add__ is inconsistent with sparse bop rules."
             )
-        return TreeNodeSize(
+        return LeafMeta(
             shape=shape,
             nnz=self._nnz_disjunction(other, shape),
             dtype=dtype,
-            fill_value=array_utils.get_bop_fill_value(
-                "add", self.fill_value, other.fill_value
-            ),
+            is_dense=False,
         )
 
     __add__ = add
@@ -156,42 +179,33 @@ class TreeNodeSize:
     def mul(self, other):
         shape = array_utils.broadcast_shape(self.shape, other.shape)
         dtype = array_utils.get_bop_output_type("mul", self.dtype, other.dtype)
-        is_dense = array_utils.get_sparse_bop_return_type(
+        is_dense = array_utils.get_sparse_bop_densify(
             "mul",
-            self.fill_value,
-            other.fill_value,
+            self.is_dense,
+            other.is_dense,
         )
         if is_dense:
-            return TreeNodeSize(
+            return LeafMeta(
                 shape=shape,
                 nnz=np.prod(shape),
                 dtype=dtype,
-                fill_value=None,
+                is_dense=True,
             )
         if not self.is_dense and not other.is_dense:
-            if self.fill_value == 0 and other.fill_value == 0:
-                nnz = self._nnz_conjunction(other, shape)
-            elif self.fill_value == 0:
-                nnz = self._nnz_selection(other, shape)
-            elif other.fill_value == 0:
-                nnz = other._nnz_selection(self, shape)
-            else:
-                nnz = self._nnz_disjunction(other, shape)
-        elif self.fill_value == 0 and other.is_dense:
+            nnz = self._nnz_conjunction(other, shape)
+        elif not self.is_dense and other.is_dense:
             nnz = self._nnz_selection(other, shape)
-        elif self.is_dense and other.fill_value == 0:
+        elif self.is_dense and not other.is_dense:
             nnz = other._nnz_selection(self, shape)
         else:
             raise ValueError(
                 "TreeNodeSize.__mul__ is inconsistent with sparse bop rules."
             )
-        return TreeNodeSize(
+        return LeafMeta(
             shape=shape,
             nnz=nnz,
             dtype=dtype,
-            fill_value=array_utils.get_bop_fill_value(
-                "mul", self.fill_value, other.fill_value
-            ),
+            is_dense=False,
         )
 
     __mul__ = mul
@@ -199,35 +213,33 @@ class TreeNodeSize:
     def truediv(self, other):
         shape = array_utils.broadcast_shape(self.shape, other.shape)
         dtype = array_utils.get_bop_output_type("truediv", self.dtype, other.dtype)
-        is_dense = array_utils.get_sparse_bop_return_type(
+        is_dense = array_utils.get_sparse_bop_densify(
             "truediv",
-            self.fill_value,
-            other.fill_value,
+            self.is_dense,
+            other.is_dense,
         )
         if is_dense:
-            return TreeNodeSize(
+            return LeafMeta(
                 shape=shape,
                 nnz=np.prod(shape),
                 dtype=dtype,
-                fill_value=None,
+                is_dense=True,
             )
         if self.is_dense or other.is_dense:
             raise ValueError(
                 "TreeNodeSize.__add__ is inconsistent with sparse bop rules."
             )
-        if other.fill_value == 0:  # nan
+        if not other.is_dense:  # nan
             nnz = other._nnz_selection(self, shape)
-        elif self.fill_value == 0:
+        elif not self.is_dense:
             nnz = self._nnz_selection(other, shape)
         else:
             nnz = self._nnz_disjunction(other, shape)
-        return TreeNodeSize(
+        return LeafMeta(
             shape=shape,
             nnz=nnz,
             dtype=dtype,
-            fill_value=array_utils.get_bop_fill_value(
-                "truediv", self.fill_value, other.fill_value
-            ),
+            is_dense=False,
         )
 
     __truediv__ = truediv
@@ -248,22 +260,17 @@ class TreeNodeSize:
             shape = tuple(self.shape + other.shape)
             sum_shape = (1,)
         dtype = array_utils.get_bop_output_type("tensordot", self.dtype, other.dtype)
-        is_dense = array_utils.get_sparse_bop_return_type(
-            "tensordot", self.fill_value, other.fill_value
+        is_dense = array_utils.get_sparse_bop_densify(
+            "tensordot", self.is_dense, other.is_dense
         )
         if is_dense:
-            return TreeNodeSize(
+            return LeafMeta(
                 shape=shape,
                 nnz=np.prod(shape),
                 dtype=dtype,
-                fill_value=None,
+                is_dense=True,
             )
-        if (
-            self.is_dense
-            or other.is_dense
-            or self.fill_value != 0
-            or other.fill_value != 0
-        ):
+        if self.is_dense or other.is_dense:
             raise ValueError(
                 "TreeNodeSize.tensordot is inconsistent with sparse bop rules."
             )
@@ -273,36 +280,50 @@ class TreeNodeSize:
         p2 = other.nnz / n2
         m = np.prod(shape)
         k = np.prod(sum_shape)
-        return TreeNodeSize(
+        return LeafMeta(
             shape=shape,
             nnz=int((1 - (1 - p1 * p2) ** k) * m),
             dtype=dtype,
-            fill_value=0,
+            is_dense=False,
         )
 
     def inequality(self, op_name, other):
         assert other.shape == ()
         dtype = array_utils.get_bop_output_type(op_name, self.dtype, other.dtype)
-        fill_value = array_utils.get_bop_fill_value(
-            op_name, self.fill_value, other.fill_value
-        )
-        return TreeNode(
+        return LeafMeta(
             shape=self.shape,
             nnz=self.nnz,
             dtype=dtype,
-            fill_value=fill_value,
+            is_dense=self.is_dense,
         )
 
-    def bop_dense(self, other):
+    def bop_dense(self, other, **kwargs):
         # NOTE: as catch-all fallback, this may be wrong for unknown non-elementwise binary ops.
         shape = array_utils.broadcast_shape(self.shape, other.shape)
         dtype = array_utils.get_bop_output_type("add", self.dtype, other.dtype)
-        return TreeNodeSize(
+        return LeafMeta(
             shape=shape,
             nnz=np.prod(shape),
             dtype=dtype,
-            fill_value=None,
+            is_dense=False,
         )
 
     def bop(self, op_name, other, **kwargs):
-        return self.bop_estimation_map.get(op_name, self.bop_dense)(other, **kwargs)
+        bop_estimation_map = {
+            "add": self.add,
+            "sum": self.add,
+            "sub": self.add,
+            "mul": self.mul,
+            "prod": self.mul,
+            "truediv": self.truediv,
+            "pow": self.pow,
+            "matmul": lambda other: self.tensordot(other, axes=1),
+            "tensordot": self.tensordot,
+            "lt": lambda other: self.inequality("lt", other),
+            "le": lambda other: self.inequality("le", other),
+            "gt": lambda other: self.inequality("gt", other),
+            "ge": lambda other: self.inequality("ge", other),
+            "eq": lambda other: self.inequality("eq", other),
+            "ne": lambda other: self.inequality("ne", other),
+        }
+        return bop_estimation_map.get(op_name, self.bop_dense)(other, **kwargs)

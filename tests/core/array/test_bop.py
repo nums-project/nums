@@ -69,7 +69,7 @@ def test_tensordot_basic(app_inst: ArrayApplication):
     shape = 2, 4, 10, 15
     npX = np.arange(np.product(shape)).reshape(*shape)
     rX = app_inst.array(npX, block_shape=(1, 2, 10, 3))
-    rResult = rX.T.tensordot(rX, axes=1)
+    rResult = rX.tensordot(rX.T, rX, axes=1)
     assert np.allclose(rResult.get(), (np.tensordot(npX.T, npX, axes=1)))
     common.check_block_integrity(rResult)
 
@@ -93,7 +93,7 @@ def test_tensordot_large_shape(app_inst: ArrayApplication):
 
     block_a = app_inst.array(a, block_shape=(30, 5, 3, 2))
     block_b = app_inst.array(b, block_shape=(2, 3, 5, 25))
-    block_c = block_a.tensordot(block_b, axes=1)
+    block_c = block_a.tensordot(block_a, block_b, axes=1)
     assert np.allclose(block_c.get(), c)
     common.check_block_integrity(block_c)
 
@@ -129,7 +129,7 @@ def test_tensordot_all_shapes(app_inst: ArrayApplication):
                 )
                 block_a = app_inst.array(a, block_shape=a_block_shape)
                 block_b = app_inst.array(b, block_shape=b_block_shape)
-                block_c = block_a.tensordot(block_b, axes=axes)
+                block_c = block_a.tensordot(block_a, block_b, axes=axes)
                 assert np.allclose(block_c.get(), c)
                 common.check_block_integrity(block_c)
 

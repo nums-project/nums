@@ -17,10 +17,9 @@ import warnings
 import itertools
 
 import numpy as np
-import nums.core.array.sparse as array_sparse
 
 from nums.core.array import utils as array_utils
-from nums.core.array.base import BlockArrayBase, Block
+from nums.core.array.base import BlockBase, Block, BlockArrayBase
 from nums.core.array.view import ArrayView
 from nums.core.grid.grid import ArrayGrid
 from nums.core.kernel.kernel_manager import KernelManager
@@ -30,6 +29,32 @@ from nums.core.kernel.kernel_manager import KernelManager
 
 
 class BlockArray(BlockArrayBase):
+    def __init__(self, grid: ArrayGrid, km: KernelManager, blocks: np.ndarray = None):
+        if blocks is not None:
+            assert blocks.dtype == Block, "BlockArray must be initialized with Blocks"
+        super().__init__(grid, km, blocks)
+        try:
+            self.nbytes = self.grid.nbytes()
+        except ValueError as _:
+            self.nbytes = None
+        if self.blocks is None:
+            # TODO (hme): Subclass np.ndarray for self.blocks instances,
+            #  and override key methods to better integrate with NumPy's ufuncs.
+            self.blocks = np.empty(shape=self.grid.grid_shape, dtype=Block)
+            for grid_entry in self.grid.get_entry_iterator():
+                self.blocks[grid_entry] = Block(
+                    grid_entry=grid_entry,
+                    grid_shape=self.grid.grid_shape,
+                    shape=self.grid.get_block_shape(grid_entry),
+                    dtype=self.dtype,
+                    transposed=False,
+                    km=self.km,
+                )
+
+    @property
+    def is_dense(self):
+        return True
+
     @classmethod
     def empty(cls, shape, block_shape, dtype, km: KernelManager):
         return BlockArray.create("empty", shape, block_shape, dtype, km)
@@ -115,24 +140,12 @@ class BlockArray(BlockArrayBase):
             rarr_copy.blocks[grid_entry] = self.blocks[grid_entry].copy()
         return rarr_copy
 
-    def touch(self):
-        """
-        "Touch" an array. This is an efficient distributed "wait" operation.
-        """
-        oids = []
-        for grid_entry in self.grid.get_entry_iterator():
-            block: Block = self.blocks[grid_entry]
-            oids.append(
-                self.km.touch(
-                    block.oid,
-                    syskwargs={
-                        "grid_entry": block.grid_entry,
-                        "grid_shape": block.grid_shape,
-                    },
-                )
-            )
-        self.km.get(oids)
-        return self
+    def astype(self, dtype):
+        grid = ArrayGrid(self.shape, self.block_shape, dtype.__name__)
+        result = BlockArray(grid, self.km)
+        for grid_entry in result.grid.get_entry_iterator():
+            result.blocks[grid_entry] = self.blocks[grid_entry].astype(dtype)
+        return result
 
     def is_single_block(self):
         return self.blocks.size == 1
@@ -223,42 +236,6 @@ class BlockArray(BlockArrayBase):
         rarr_swap = BlockArray(grid_swap, self.km, rarr_src)
         return rarr_swap
 
-    def transpose(self, defer=False, redistribute=False):
-        """
-        Transpose this matrix. Only use defer with arithmetic operations.
-        Setting redistribute to True may significantly impact performance.
-        :param defer: When true, the transpose operation will be applied
-        with the next arithmetic operation.
-        :param redistribute: If defer is false, setting this to true will
-        redistribute the data according to the device grid (data placement policy).
-        This parameter has no effect when defer is true.
-        :return: The transposed matrix.
-        """
-        if defer and redistribute:
-            warnings.warn("defer is True, redistribute=True will be ignored.")
-        metaT = self.grid.to_meta()
-        metaT["shape"] = tuple(reversed(metaT["shape"]))
-        metaT["block_shape"] = tuple(reversed(metaT["block_shape"]))
-        gridT = ArrayGrid.from_meta(metaT)
-        rarrT = BlockArray(gridT, self.km)
-        rarrT.blocks = np.copy(self.blocks.T)
-        for grid_entry in rarrT.grid.get_entry_iterator():
-            rarrT.blocks[grid_entry] = rarrT.blocks[grid_entry].transpose(
-                defer, redistribute
-            )
-        return rarrT
-
-    def __getattr__(self, item):
-        if item == "__array_priority__" or item == "__array_struct__":
-            # This is triggered by a numpy array on the LHS.
-            raise TypeError("Unexpected conversion attempt from BlockArray to ndarray.")
-        elif item == "ndim":
-            return len(self.shape)
-        elif item == "T":
-            return self.transpose()
-        else:
-            raise NotImplementedError(item)
-
     def _preprocess_subscript(self, item):
         if not isinstance(item, tuple):
             ss = (item,)
@@ -267,7 +244,7 @@ class BlockArray(BlockArrayBase):
         # We need to fetch any block arrays.
         tmp = []
         for entry in ss:
-            if isinstance(entry, BlockArray):
+            if isinstance(entry, BlockArrayBase):
                 val = entry.get()
             else:
                 val = entry
@@ -323,7 +300,7 @@ class BlockArray(BlockArrayBase):
 
         av: ArrayView = ArrayView.from_block_array(self)
         # TODO (hme): We don't have to create, but do so for now until we need to optimize.
-        return av[ss].create(BlockArray)
+        return av[ss].create()
 
     def _advanced_single_array_select(self, ss: tuple, axis: int = 0):
         # Create output array along the axis of the selection operation.
@@ -355,7 +332,7 @@ class BlockArray(BlockArrayBase):
                 shape.append(self.shape[i])
                 block_shape.append(self.block_shape[i])
 
-        dst_arr = BlockArray(
+        dst_arr = type(self)(
             ArrayGrid(
                 shape=tuple(shape),
                 block_shape=tuple(block_shape),
@@ -424,10 +401,11 @@ class BlockArray(BlockArrayBase):
         return dst_arr
 
     def __setitem__(self, key, value):
-        value: BlockArray = BlockArray.to_block_array(value, self.km)
+        value: BlockArrayBase = self.to_block_array(value, self.km)
         ss, is_handled_advanced, axis = self._preprocess_subscript(key)
         if is_handled_advanced:
             return self._advanced_single_array_assign(ss, value, axis)
+
         av: ArrayView = ArrayView.from_block_array(self)
         av[key] = value
 
@@ -445,7 +423,7 @@ class BlockArray(BlockArrayBase):
         # 2. value is scalar or 1-dimensional.
         # We currently don't support the case where value may broadcasted if it has more dims.
         # This should be a straight-forward future task.
-        value: BlockArray = value
+        value: BlockArrayBase = value
         mode = None
         if len(value.shape) == 0:
             # subscripted value per block will broadcast to other dimensions.
@@ -526,7 +504,7 @@ class BlockArray(BlockArrayBase):
             },
         )
         for dst_grid_entry in dst_arr.grid.get_entry_iterator():
-            dst_block: Block = dst_arr.blocks[dst_grid_entry]
+            dst_block: BlockBase = dst_arr.blocks[dst_grid_entry]
             dst_coord: tuple = dst_arr.grid.get_entry_coordinates(dst_grid_entry)
 
             # Make sure index values in subscript are within bounds of dst_arr.
@@ -553,7 +531,7 @@ class BlockArray(BlockArrayBase):
                 continue
 
             if mode == "scalar":
-                src_block: Block = src_arr.blocks.item()
+                src_block: BlockBase = src_arr.blocks.item()
                 src_coord: tuple = src_arr.grid.get_entry_coordinates(
                     src_block.grid_entry
                 )
@@ -571,7 +549,7 @@ class BlockArray(BlockArrayBase):
                 )
             elif mode == "single-dim":
                 for src_grid_entry in src_arr.grid.get_entry_iterator():
-                    src_block: Block = src_arr.blocks[src_grid_entry]
+                    src_block: BlockBase = src_arr.blocks[src_grid_entry]
                     src_coord: tuple = src_arr.grid.get_entry_coordinates(
                         src_grid_entry
                     )
@@ -597,7 +575,7 @@ class BlockArray(BlockArrayBase):
                         + [j]
                         + list(dst_grid_entry[axis + 1 :])
                     )
-                    src_block: Block = src_arr.blocks[src_grid_entry]
+                    src_block: BlockBase = src_arr.blocks[src_grid_entry]
                     src_coord: tuple = src_arr.grid.get_entry_coordinates(
                         src_grid_entry
                     )
@@ -635,59 +613,18 @@ class BlockArray(BlockArrayBase):
         block_shape = None if compute_block_shape else self.block_shape
         return BlockArray.to_block_array(other, self.km, block_shape=block_shape)
 
+    def _check_bop_implemented(self, other):
+        if isinstance(other, (BlockArray, np.ndarray, list)) or array_utils.is_scalar(
+            other
+        ):
+            return True
+        return False
+
     def ufunc(self, op_name):
         result = self.copy()
         for grid_entry in self.grid.get_entry_iterator():
             result.blocks[grid_entry] = self.blocks[grid_entry].ufunc(op_name)
         return result
-
-    def tree_reduce(
-        self, op_name, blocks_or_oids, result_grid_entry, result_grid_shape
-    ):
-        """
-        Basic tree reduce imp.
-        Schedules op on same node as left operand.
-        :param op_name: The reduction op.
-        :param blocks_or_oids: A list of type Block or a list of tuples.
-                               Tuples must be of the form
-                               (oid, grid_entry, grid_shape, transposed)
-        :param result_grid_entry: The grid entry of the result block. This will be used
-                                  to compute the final reduction step.
-        :param result_grid_shape: The grid entry of the result block. This will be used
-                                  to compute the final reduction step.
-        :return: The oid of the result.
-        """
-        oid_list = blocks_or_oids
-        if isinstance(blocks_or_oids[0], Block):
-            oid_list = [
-                (b.oid, b.grid_entry, b.grid_shape, b.transposed)
-                for b in blocks_or_oids
-            ]
-        if len(oid_list) == 1:
-            return oid_list[0][0]
-        q = oid_list
-        while len(q) > 1:
-            a_oid, a_ge, a_gs, a_T = q.pop(0)
-            b_oid, _, _, b_T = q.pop(0)
-            ge, gs = (
-                (result_grid_entry, result_grid_shape) if len(q) == 0 else (a_ge, a_gs)
-            )
-            c_oid = self.km.bop_reduce(
-                op_name,
-                a_oid,
-                b_oid,
-                a_T,
-                b_T,
-                syskwargs={
-                    "grid_entry": ge,
-                    "grid_shape": gs,
-                },
-            )
-            q.append((c_oid, ge, gs, False))
-        r_oid, r_ge, r_gs, _ = q.pop(0)
-        assert r_ge == result_grid_entry
-        assert r_gs == result_grid_shape
-        return r_oid
 
     def reduce_axis(self, op_name, axis, keepdims=False):
         if not (axis is None or isinstance(axis, (int, np.int32, np.int64))):
@@ -769,18 +706,115 @@ class BlockArray(BlockArrayBase):
                 )
         return result
 
+    def tree_reduce(
+        self, op_name, blocks_or_oids, result_grid_entry, result_grid_shape, *args
+    ):
+        """
+        Basic tree reduce imp.
+        Schedules op on same node as left operand.
+        :param op_name: The reduction op.
+        :param blocks_or_oids: A list of type Block or a list of tuples.
+        Tuples must be of the form
+        (oid, grid_entry, grid_shape, transposed)
+        :param result_grid_entry: The grid entry of the result block. This will be used
+        to compute the final reduction step.
+        :param result_grid_shape: The grid entry of the result block. This will be used
+        to compute the final reduction step.
+        :return: The oid of the result.
+        """
+        oid_list = blocks_or_oids
+        if isinstance(blocks_or_oids[0], Block):
+            oid_list = [
+                (b.oid, b.grid_entry, b.grid_shape, b.transposed)
+                for b in blocks_or_oids
+            ]
+        if len(oid_list) == 1:
+            return oid_list[0][0]
+        q = oid_list
+        while len(q) > 1:
+            a_oid, a_ge, a_gs, a_T = q.pop(0)
+            b_oid, _, _, b_T = q.pop(0)
+            ge, gs = (
+                (result_grid_entry, result_grid_shape) if len(q) == 0 else (a_ge, a_gs)
+            )
+            c_oid = self.km.bop_reduce(
+                op_name,
+                a_oid,
+                b_oid,
+                a_T,
+                b_T,
+                syskwargs={
+                    "grid_entry": ge,
+                    "grid_shape": gs,
+                },
+            )
+            q.append((c_oid, ge, gs, False))
+        r_oid, r_ge, r_gs, _ = q.pop(0)
+        assert r_ge == result_grid_entry
+        assert r_gs == result_grid_shape
+        return r_oid
+
+    #################
+    # Arithmetic
+    #################
+
+    @staticmethod
+    def elementwise(op_name, a, b):
+        if isinstance(a, BlockArray):
+            b = a.check_or_convert_other(b)
+        elif isinstance(b, BlockArray):
+            a = b.check_or_convert_other(a)
+        else:
+            raise NotImplementedError()
+
+        if a.shape == b.shape and a.block_shape == b.block_shape:
+            return BlockArray._fast_elementwise(op_name, a, b)
+        blocks_op = a.blocks.__getattribute__("__%s__" % op_name)
+        return BlockArray.from_blocks(blocks_op(b.blocks), result_shape=None, km=a.km)
+
+    @staticmethod
+    def _fast_elementwise(op_name, a, b):
+        """
+        Implements fast scheduling for basic element-wise operations.
+        """
+        dtype = array_utils.get_bop_output_type(op_name, a.dtype, b.dtype)
+        # Schedule the op first.
+        blocks = np.empty(shape=a.grid.grid_shape, dtype=Block)
+        for grid_entry in a.grid.get_entry_iterator():
+            a_block: Block = a.blocks[grid_entry]
+            b_block: Block = b.blocks[grid_entry]
+            blocks[grid_entry] = block = Block(
+                grid_entry=grid_entry,
+                grid_shape=a_block.grid_shape,
+                shape=a_block.shape,
+                dtype=dtype,
+                transposed=False,
+                km=a.km,
+            )
+            block.oid = a.km.bop(
+                op_name,
+                a_block.oid,
+                b_block.oid,
+                a_block.transposed,
+                b_block.transposed,
+                axes={},
+                syskwargs={
+                    "grid_entry": grid_entry,
+                    "grid_shape": a.grid.grid_shape,
+                },
+            )
+        return BlockArray(
+            ArrayGrid(a.shape, a.block_shape, dtype.__name__),
+            a.km,
+            blocks=blocks,
+        )
+
     #################
     # Linear Algebra
     #################
 
-    def _compute_tensordot_syskwargs(self, self_block: Block, other_block: Block):
-        # Schedule on larger block.
-        if np.product(self_block.shape) >= np.product(other_block.shape):
-            return self_block.true_grid_entry(), self_block.true_grid_shape()
-        else:
-            return other_block.true_grid_entry(), other_block.true_grid_shape()
-
-    def tensordot(self, other, axes=2):
+    @staticmethod
+    def tensordot(a, b, axes=2):
         if isinstance(axes, int):
             pass
         elif array_utils.is_array_like(axes):
@@ -788,59 +822,59 @@ class BlockArray(BlockArrayBase):
         else:
             raise TypeError(f"Unexpected axes type '{type(axes).__name__}'")
 
-        other = self.check_or_convert_other(other, compute_block_shape=True)
+        if isinstance(a, BlockArray):
+            b = a.check_or_convert_other(b, compute_block_shape=True)
+        elif isinstance(b, BlockArray):
+            a = b.check_or_convert_other(a, compute_block_shape=True)
+        else:
+            raise NotImplementedError()
 
-        if array_utils.np_tensordot_param_test(
-            self.shape, self.ndim, other.shape, other.ndim, axes
-        ):
+        if array_utils.np_tensordot_param_test(a.shape, a.ndim, b.shape, b.ndim, axes):
             raise ValueError("shape-mismatch for sum")
 
         if axes > 0:
-            this_axes = self.grid.grid_shape[:-axes]
-            this_sum_axes = self.grid.grid_shape[-axes:]
-            other_axes = other.grid.grid_shape[axes:]
-            other_sum_axes = other.grid.grid_shape[:axes]
-            assert this_sum_axes == other_sum_axes
-            result_shape = tuple(self.shape[:-axes] + other.shape[axes:])
-            result_block_shape = tuple(
-                self.block_shape[:-axes] + other.block_shape[axes:]
-            )
+            a_axes = a.grid.grid_shape[:-axes]
+            a_sum_axes = a.grid.grid_shape[-axes:]
+            b_axes = b.grid.grid_shape[axes:]
+            b_sum_axes = b.grid.grid_shape[:axes]
+            assert a_sum_axes == b_sum_axes
+            result_shape = tuple(a.shape[:-axes] + b.shape[axes:])
+            result_block_shape = tuple(a.block_shape[:-axes] + b.block_shape[axes:])
         else:
-            this_axes = self.grid.grid_shape
-            other_axes = other.grid.grid_shape
-            this_sum_axes = ()
-            result_shape = tuple(self.shape + other.shape)
-            result_block_shape = tuple(self.block_shape + other.block_shape)
+            a_axes = a.grid.grid_shape
+            b_axes = b.grid.grid_shape
+            a_sum_axes = ()
+            result_shape = tuple(a.shape + b.shape)
+            result_block_shape = tuple(a.block_shape + b.block_shape)
 
         result_grid = ArrayGrid(
             shape=result_shape,
             block_shape=result_block_shape,
             dtype=array_utils.get_bop_output_type(
-                "tensordot", self.dtype, other.dtype
+                "tensordot", a.dtype, b.dtype
             ).__name__,
         )
-        assert result_grid.grid_shape == tuple(this_axes + other_axes)
-        result = BlockArray(result_grid, self.km)
-        this_dims = list(itertools.product(*map(range, this_axes)))
-        other_dims = list(itertools.product(*map(range, other_axes)))
-        sum_dims = list(itertools.product(*map(range, this_sum_axes)))
-        for i in this_dims:
-            for j in other_dims:
+        assert result_grid.grid_shape == tuple(a_axes + b_axes)
+        result = BlockArray(result_grid, a.km)
+        a_dims = list(itertools.product(*map(range, a_axes)))
+        b_dims = list(itertools.product(*map(range, b_axes)))
+        sum_dims = list(itertools.product(*map(range, a_sum_axes)))
+        for i in a_dims:
+            for j in b_dims:
                 grid_entry = tuple(i + j)
                 result_block: Block = result.blocks[grid_entry]
                 sum_oids = []
                 for k in sum_dims:
-                    self_block: Block = self.blocks[tuple(i + k)]
-                    other_block: Block = other.blocks[tuple(k + j)]
-                    dot_grid_args = self._compute_tensordot_syskwargs(
-                        self_block, other_block
-                    )
-                    dotted_oid = self.km.bop(
+                    a_block: Block = a.blocks[tuple(i + k)]
+                    b_block: Block = b.blocks[tuple(k + j)]
+                    # pylint: disable=protected-access
+                    dot_grid_args = a._compute_tensordot_syskwargs(a_block, b_block)
+                    dotted_oid = a.km.bop(
                         "tensordot",
-                        self_block.oid,
-                        other_block.oid,
-                        self_block.transposed,
-                        other_block.transposed,
+                        a_block.oid,
+                        b_block.oid,
+                        a_block.transposed,
+                        b_block.transposed,
                         axes=axes,
                         syskwargs={
                             "grid_entry": dot_grid_args[0],
@@ -850,177 +884,19 @@ class BlockArray(BlockArrayBase):
                     sum_oids.append(
                         (dotted_oid, dot_grid_args[0], dot_grid_args[1], False)
                     )
-                result_block.oid = self.tree_reduce(
+                result_block.oid = a.tree_reduce(
                     "sum", sum_oids, result_block.grid_entry, result_block.grid_shape
                 )
         return result
-
-    def __matmul__(self, other):
-        if len(self.shape) > 2:
-            # TODO (bcp): NumPy's implementation does a stacked matmul, which is not supported yet.
-            raise NotImplementedError(
-                "Matrix multiply for tensors of rank > 2 not supported yet."
-            )
-        else:
-            return self.tensordot(other, 1)
-
-    def __rmatmul__(self, other):
-        other = self.check_or_convert_other(other)
-        return other @ self
-
-    __imatmul__ = __matmul__
-
-    #################
-    # Arithmetic
-    #################
-
-    def _fast_element_wise(self, op_name, other):
-        """
-        Implements fast scheduling for basic element-wise operations.
-        """
-        dtype = array_utils.get_bop_output_type(op_name, self.dtype, other.dtype)
-        # Schedule the op first.
-        blocks = np.empty(shape=self.grid.grid_shape, dtype=Block)
-        for grid_entry in self.grid.get_entry_iterator():
-            self_block: Block = self.blocks[grid_entry]
-            other_block: Block = other.blocks[grid_entry]
-            blocks[grid_entry] = block = Block(
-                grid_entry=grid_entry,
-                grid_shape=self_block.grid_shape,
-                shape=self_block.shape,
-                dtype=dtype,
-                transposed=False,
-                km=self.km,
-            )
-            block.oid = self.km.bop(
-                op_name,
-                self_block.oid,
-                other_block.oid,
-                self_block.transposed,
-                other_block.transposed,
-                axes={},
-                syskwargs={
-                    "grid_entry": grid_entry,
-                    "grid_shape": self.grid.grid_shape,
-                },
-            )
-        return BlockArray(
-            ArrayGrid(self.shape, self.block_shape, dtype.__name__),
-            self.km,
-            blocks=blocks,
-        )
-
-    def __elementwise__(self, op_name, other):
-        other = self.check_or_convert_other(other)
-        if self.shape == other.shape and self.block_shape == other.block_shape:
-            return self._fast_element_wise(op_name, other)
-        blocks_op = self.blocks.__getattribute__("__%s__" % op_name)
-        return BlockArray.from_blocks(
-            blocks_op(other.blocks), result_shape=None, km=self.km
-        )
-
-    def __neg__(self):
-        return self.ufunc("negative")
-
-    def __pos__(self):
-        return self
-
-    def __abs__(self):
-        return self.ufunc("abs")
-
-    def __mod__(self, other):
-        return self.__elementwise__("mod", other)
-
-    def __rmod__(self, other):
-        other = self.check_or_convert_other(other)
-        return other.__elementwise__("mod", self)
-
-    __imod__ = __mod__
-
-    def __add__(self, other):
-        if isinstance(other, array_sparse.SparseBlockArray):
-            return NotImplemented
-        return self.__elementwise__("add", other)
-
-    def __radd__(self, other):
-        if isinstance(other, array_sparse.SparseBlockArray):
-            return NotImplemented
-        other = self.check_or_convert_other(other)
-        return other.__elementwise__("add", self)
-
-    __iadd__ = __add__
-
-    def __sub__(self, other):
-        if isinstance(other, array_sparse.SparseBlockArray):
-            return NotImplemented
-        return self.__elementwise__("sub", other)
-
-    def __rsub__(self, other):
-        if isinstance(other, array_sparse.SparseBlockArray):
-            return NotImplemented
-        other = self.check_or_convert_other(other)
-        return other.__elementwise__("sub", self)
-
-    __isub__ = __sub__
-
-    def __mul__(self, other):
-        if isinstance(other, array_sparse.SparseBlockArray):
-            return NotImplemented
-        return self.__elementwise__("mul", other)
-
-    def __rmul__(self, other):
-        if isinstance(other, array_sparse.SparseBlockArray):
-            return NotImplemented
-        other = self.check_or_convert_other(other)
-        return other.__elementwise__("mul", self)
-
-    __imul__ = __mul__
-
-    def __truediv__(self, other):
-        if isinstance(other, array_sparse.SparseBlockArray):
-            return NotImplemented
-        return self.__elementwise__("truediv", other)
-
-    def __rtruediv__(self, other):
-        if isinstance(other, array_sparse.SparseBlockArray):
-            return NotImplemented
-        other = self.check_or_convert_other(other)
-        return other / self
-
-    __itruediv__ = __truediv__
-
-    def __floordiv__(self, other):
-        if isinstance(other, array_sparse.SparseBlockArray):
-            return NotImplemented
-        return self.__elementwise__("floor_divide", other)
-
-    def __rfloordiv__(self, other):
-        if isinstance(other, array_sparse.SparseBlockArray):
-            return NotImplemented
-        other = self.check_or_convert_other(other)
-        return other.__elementwise__("floor_divide", self)
-
-    __ifloordiv__ = __floordiv__
-
-    def __pow__(self, other):
-        if isinstance(other, array_sparse.SparseBlockArray):
-            return NotImplemented
-        return self.__elementwise__("pow", other)
-
-    def __rpow__(self, other):
-        if isinstance(other, array_sparse.SparseBlockArray):
-            return NotImplemented
-        other = self.check_or_convert_other(other)
-        return other**self
-
-    __ipow__ = __pow__
 
     #################
     # Inequalities
     #################
 
-    def __inequality__(self, op, other):
+    def __inequality__(self, op_name, other):
         other = self.check_or_convert_other(other)
+        if other is NotImplemented:
+            return NotImplemented
         assert (
             other.shape == () or other.shape == self.shape
         ), "Currently supports comparison with scalars only."
@@ -1037,128 +913,9 @@ class BlockArray(BlockArrayBase):
             else:
                 other_block: Block = other.blocks[grid_entry]
             result.blocks[grid_entry] = self.blocks[grid_entry].bop(
-                op, other_block, args={}
+                op_name, other_block, args={}
             )
-
         return result
-
-    def __ge__(self, other):
-        return self.__inequality__("ge", other)
-
-    def __rge__(self, other):
-        other = self.check_or_convert_other(other)
-        return other.__inequality__("ge", self)
-
-    def __gt__(self, other):
-        return self.__inequality__("gt", other)
-
-    def __rgt__(self, other):
-        other = self.check_or_convert_other(other)
-        return other.__inequality__("gt", self)
-
-    def __le__(self, other):
-        return self.__inequality__("le", other)
-
-    def __rle__(self, other):
-        other = self.check_or_convert_other(other)
-        return other.__inequality__("le", self)
-
-    def __lt__(self, other):
-        return self.__inequality__("lt", other)
-
-    def __rlt__(self, other):
-        other = self.check_or_convert_other(other)
-        return other.__inequality__("lt", self)
-
-    def __eq__(self, other):
-        return self.__inequality__("eq", other)
-
-    def __req__(self, other):
-        other = self.check_or_convert_other(other)
-        return other.__inequality__("eq", self)
-
-    def __ne__(self, other):
-        return self.__inequality__("ne", other)
-
-    def __rne__(self, other):
-        other = self.check_or_convert_other(other)
-        return other.__inequality__("ne", self)
-
-    ##################
-    # Boolean
-    ##################
-
-    # TODO (hme): Type check bool ops.
-    def __bool__(self):
-        # pylint: disable=no-member
-        if np.sum(self.shape) == len(self.shape):
-            # If all ones or scalar, then this is defined.
-            return self.get().__bool__()
-        return True
-
-    def __invert__(self):
-        return self.ufunc("invert")
-
-    def __or__(self, other):
-        return self.__elementwise__("bitwise_or", other)
-
-    def __ror__(self, other):
-        other = self.check_or_convert_other(other)
-        return other.__elementwise__("bitwise_or", self)
-
-    __ior__ = __or__
-
-    def __and__(self, other):
-        return self.__elementwise__("bitwise_and", other)
-
-    def __rand__(self, other):
-        other = self.check_or_convert_other(other)
-        return other.__elementwise__("bitwise_and", self)
-
-    __iand__ = __and__
-
-    def __xor__(self, other):
-        return self.__elementwise__("bitwise_xor", other)
-
-    def __rxor__(self, other):
-        other = self.check_or_convert_other(other)
-        return other.__elementwise__("bitwise_xor", self)
-
-    __ixor__ = __xor__
-
-    def __lshift__(self, other):
-        return self.__elementwise__("left_shift", other)
-
-    def __rlshift__(self, other):
-        other = self.check_or_convert_other(other)
-        return other.__elementwise__("left_shift", self)
-
-    __ilshift__ = __lshift__
-
-    def __rshift__(self, other):
-        return self.__elementwise__("right_shift", other)
-
-    def __rrshift__(self, other):
-        other = self.check_or_convert_other(other)
-        return other.__elementwise__("right_shift", self)
-
-    __irshift__ = __rshift__
-
-    # All operators: https://docs.python.org/3/library/operator.html
-
-    def astype(self, dtype):
-        grid = ArrayGrid(self.shape, self.block_shape, dtype.__name__)
-        result = BlockArray(grid, self.km)
-        for grid_entry in result.grid.get_entry_iterator():
-            result.blocks[grid_entry] = self.blocks[grid_entry].astype(dtype)
-        return result
-
-    def flattened_oids(self):
-        oids = []
-        for grid_entry in self.grid.get_entry_iterator():
-            oid = self.blocks[grid_entry].oid
-            oids.append(oid)
-        return oids
 
 
 class Reshape:
@@ -1239,7 +996,7 @@ class Reshape:
         # Generate index mappings per block, and group source indices to minimize
         # RPCs and generation of new objects.
         km = arr.km
-        dst_arr = BlockArray.empty(
+        dst_arr = type(arr).empty(
             shape=shape, block_shape=block_shape, dtype=arr.dtype, km=km
         )
         for dst_grid_entry in dst_arr.grid.get_entry_iterator():
@@ -1268,7 +1025,7 @@ class Reshape:
         return dst_arr
 
     def _block_shape_reshape(self, arr, block_shape):
-        rarr: BlockArray = BlockArray.empty(arr.shape, block_shape, arr.dtype, arr.km)
+        rarr: BlockArray = type(arr).empty(arr.shape, block_shape, arr.dtype, arr.km)
         for grid_entry in rarr.grid.get_entry_iterator():
             grid_entry_slice = rarr.grid.get_slice(grid_entry)
             # TODO (hme): This could be less costly.

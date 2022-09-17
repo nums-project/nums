@@ -167,7 +167,7 @@ class Kernel:
 
     # Sparse
 
-    def dense_to_sparse(self, arr, fill_value, syskwargs: Dict):
+    def dense_to_sparse(self, arr, syskwargs: Dict):
         raise NotImplementedError()
 
     def sparse_to_dense(self, arr, syskwargs: Dict):
@@ -179,6 +179,9 @@ class Kernel:
     def sparse_nbytes(self, arr, syskwargs: Dict):
         raise NotImplementedError()
 
+    def new_sparse_block(self, op_name, grid_entry, grid_meta, syskwargs: Dict):
+        raise NotImplementedError()
+
     def sparse_random_block(
         self,
         rng_params,
@@ -187,15 +190,25 @@ class Kernel:
         shape,
         dtype,
         p,
-        fill_value,
         syskwargs: Dict,
     ):
         raise NotImplementedError()
 
-    def sparse_map_uop(self, op_name, arr, args, kwargs, syskwargs: Dict):
+    def sparse_map_uop(self, op_name, arr, args, kwargs, densify, syskwargs: Dict):
         raise NotImplementedError()
 
     def sparse_bop(self, op, a1, a2, a1_T, a2_T, axes, densify, syskwargs: Dict):
+        raise NotImplementedError()
+
+    def sparse_reduce_axis(
+        self, op_name, arr, axis, keepdims, transposed, syskwargs: Dict
+    ):
+        raise NotImplementedError()
+
+    def sparse_bop_reduce(self, op, a1, a2, a1_T, a2_T, syskwargs: Dict):
+        raise NotImplementedError()
+
+    def sparse_block_from_scalar(self, x, syskwargs: Dict):
         raise NotImplementedError()
 
     def sdtp(self, s, *dense_arrays, syskwargs: Dict):

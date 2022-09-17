@@ -230,7 +230,11 @@ class ArrayApplication:
     def scalar(self, value):
         return BlockArray.from_scalar(value, self.km)
 
-    def array(self, array: Union[np.ndarray, sparse.COO, List[float]], block_shape: tuple = None):
+    def array(
+        self,
+        array: Union[np.ndarray, sparse.COO, List[float]],
+        block_shape: tuple = None,
+    ):
         if not isinstance(array, (np.ndarray, sparse.COO)):
             if array_utils.is_array_like(array):
                 array = np.array(array)
@@ -917,7 +921,7 @@ class ArrayApplication:
             # TODO(hme): Faster to create ndarray first,
             #  and instantiate block array on return
             #  to avoid instantiating blocks on BlockArray initialization.
-            rarr.blocks[grid_entry] = arr.blocks[grid_entry].uop_map(
+            rarr.blocks[grid_entry] = arr.blocks[grid_entry].map_uop(
                 op_name, args=args, kwargs=kwargs
             )
         return rarr
@@ -928,7 +932,7 @@ class ArrayApplication:
     def tensordot(
         self, arr_1: BlockArray, arr_2: BlockArray, axes: int = 2
     ) -> BlockArray:
-        return arr_1.tensordot(arr_2, axes)
+        return arr_1.tensordot(arr_1, arr_2, axes)
 
     def einsum(self, subscript, *operands):
         def _compute_syskwargs(blocks):

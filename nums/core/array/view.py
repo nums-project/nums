@@ -19,7 +19,7 @@ import numpy as np
 
 from nums.core.array import selection
 from nums.core.array import utils as array_utils
-from nums.core.array.base import Block, BlockArrayBase
+from nums.core.array.base import BlockBase, BlockArrayBase
 from nums.core.array.selection import BasicSelection
 from nums.core.kernel.kernel_manager import KernelManager
 from nums.core.grid.grid import ArrayGrid
@@ -39,6 +39,7 @@ class ArrayView:
     def __init__(self, source, sel: BasicSelection = None, block_shape: tuple = None):
         self._source: BlockArrayBase = source
         self._km: KernelManager = self._source.km
+        self._concrete_cls = type(source)
 
         if sel is None:
             sel = BasicSelection.from_shape(self._source.shape)
@@ -84,7 +85,7 @@ class ArrayView:
         result: ArrayView = ArrayView(self._source, sel)
         return result
 
-    def create(self, concrete_cls=None) -> BlockArrayBase:
+    def create(self) -> BlockArrayBase:
         if self.sel.basic_steps():
             if self.sel.is_aligned(self._source.block_shape):
                 # Assertion below should form a conjunction with the above condition.
@@ -95,20 +96,21 @@ class ArrayView:
                     self.sel.get_broadcastable_block_shape(self.block_shape),
                     self._source.block_shape,
                 )
-                return self.create_references(concrete_cls)
+                return self.create_references(self._concrete_cls)
             else:
-                return self.create_basic_single_step(concrete_cls)
+                return self.create_basic_single_step(self._concrete_cls)
         else:
-            return self.create_basic_multi_step(concrete_cls)
+            return self.create_basic_multi_step(self._concrete_cls)
 
     def create_references(self, concrete_cls) -> BlockArrayBase:
         # TODO (hme): Double check this.
-        array_cls = BlockArrayBase if concrete_cls is None else concrete_cls
-        dst_ba: BlockArrayBase = array_cls(self.grid, self._km)
+        # array_cls = BlockArrayBase if concrete_cls is None else concrete_cls
+        # dst_ba: BlockArrayBase = array_cls(self.grid, self._km)
+        dst_ba: BlockArrayBase = concrete_cls(self.grid, self._km)
         if 0 in self.shape:
             return dst_ba
         grid_offset = self.sel.position().value // np.array(
-            self._source.block_shape, dtype=np.int
+            self._source.block_shape, dtype=np.intp
         )
         dst_inflated_shape = self.sel.get_broadcastable_shape()
         dst_inflated_block_shape = self.sel.get_broadcastable_block_shape(
@@ -123,7 +125,9 @@ class ArrayView:
         ):
             dst_grid_entry = dst_grid_entry_iterator[dst_index]
             src_grid_entry = tuple(
-                (np.array(dst_inflated_grid_entry, dtype=np.int) + grid_offset).tolist()
+                (
+                    np.array(dst_inflated_grid_entry, dtype=np.intp) + grid_offset
+                ).tolist()
             )
             dst_ba.blocks[dst_grid_entry].oid = self._source.blocks[src_grid_entry].oid
             dst_ba.blocks[dst_grid_entry].transposed = self._source.blocks[
@@ -171,7 +175,7 @@ class ArrayView:
                 ]
                 if src_dst_intersection_block.is_empty():
                     continue
-                src_block: Block = self._source.blocks[src_grid_entry]
+                src_block: BlockBase = self._source.blocks[src_grid_entry]
                 src_oids.append(src_block.oid)
                 src_sel_block: BasicSelection = src_sel_arr[src_grid_entry]
                 src_dep_sel_loc = src_dst_intersection_block - src_sel_block.position()
@@ -180,7 +184,7 @@ class ArrayView:
                     src_dst_intersection_block - dst_sel_offset_block.position()
                 )
                 dst_params.append((dst_block_sel_loc.selector(), False))
-            dst_block: Block = dst_ba.blocks.reshape(dst_grid_bc.grid_shape)[
+            dst_block: BlockBase = dst_ba.blocks.reshape(dst_grid_bc.grid_shape)[
                 dst_grid_entry_bc
             ]
             dst_block.oid = km.create_block(
@@ -261,7 +265,7 @@ class ArrayView:
         # but the destination selection may not have the same shape as value.
         # May need to broadcast value to destination selection output shape.
         dst_offset = dst_sel.position().value // np.array(
-            self._source.block_shape, dtype=np.int
+            self._source.block_shape, dtype=np.intp
         )
         # Do we need to broadcast?
         if isinstance(value, ArrayView) and (
@@ -273,7 +277,7 @@ class ArrayView:
             # We don't need to create value to perform the reference copy.
             # No broadcasting required, so this should be okay.
             src_offset = value.sel.position().value // np.array(
-                value._source.block_shape, dtype=np.int
+                value._source.block_shape, dtype=np.intp
             )
             src_inflated_shape = dst_sel.get_broadcastable_shape()
             src_inflated_block_shape = dst_sel.get_broadcastable_block_shape(
@@ -286,18 +290,18 @@ class ArrayView:
                 # Num axes in value grid may be too small.
                 dst_grid_entry = tuple(
                     (
-                        np.array(src_grid_entry_inflated, dtype=np.int) + dst_offset
+                        np.array(src_grid_entry_inflated, dtype=np.intp) + dst_offset
                     ).tolist()
                 )
                 src_grid_entry = tuple(
                     (
-                        np.array(src_grid_entry_inflated, dtype=np.int) + src_offset
+                        np.array(src_grid_entry_inflated, dtype=np.intp) + src_offset
                     ).tolist()
                 )
                 # This is a reference assignment, and the grid properties between the
                 # two blocks may differ, so retain those properties in the copy.
-                dst_block: Block = self._source.blocks[dst_grid_entry]
-                src_block_copy: Block = value._source.blocks[src_grid_entry].copy()
+                dst_block: BlockBase = self._source.blocks[dst_grid_entry]
+                src_block_copy: BlockBase = value._source.blocks[src_grid_entry].copy()
                 src_block_copy.grid_entry = dst_block.grid_entry
                 src_block_copy.grid_shape = dst_block.grid_shape
                 self._source.blocks[dst_grid_entry] = src_block_copy
@@ -322,13 +326,13 @@ class ArrayView:
                 src_grid_entry = src_grid_entry_iterator[src_index]
                 dst_grid_entry = tuple(
                     (
-                        np.array(src_grid_entry_inflated, dtype=np.int) + dst_offset
+                        np.array(src_grid_entry_inflated, dtype=np.intp) + dst_offset
                     ).tolist()
                 )
                 # This is a reference assignment, and the grid properties between the
                 # two blocks may differ, so retain those properties in the copy.
-                dst_block: Block = self._source.blocks[dst_grid_entry]
-                src_block_copy: Block = src_ba.blocks[src_grid_entry].copy()
+                dst_block: BlockBase = self._source.blocks[dst_grid_entry]
+                src_block_copy: BlockBase = src_ba.blocks[src_grid_entry].copy()
                 src_block_copy.grid_entry = dst_block.grid_entry
                 src_block_copy.grid_shape = dst_block.grid_shape
                 self._source.blocks[dst_grid_entry] = src_block_copy
@@ -389,7 +393,7 @@ class ArrayView:
             src_oids = []
             src_params = []
             dst_params = []
-            dst_block: Block = dst_ba.blocks[dst_grid_entry]
+            dst_block: BlockBase = dst_ba.blocks[dst_grid_entry]
             for src_index, src_grid_entry_bc in enumerate(
                 src_inflated_grid.get_entry_iterator()
             ):
@@ -400,7 +404,7 @@ class ArrayView:
                     continue
 
                 src_grid_entry = src_grid_entry_iterator[src_index]
-                src_block: Block = src_ba_bc.blocks[src_grid_entry]
+                src_block: BlockBase = src_ba_bc.blocks[src_grid_entry]
                 src_oids.append(src_block.oid)
 
                 src_sel_block_offset: BasicSelection = src_sel_offset[src_grid_entry_bc]

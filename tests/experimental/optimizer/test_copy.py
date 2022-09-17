@@ -88,7 +88,7 @@ def tensordot(
     cluster_state = ClusterState(lhs.km.devices())
     lhs_ga: GraphArray = GraphArray.from_ba(lhs, cluster_state, copy_on_op=copy_on_op)
     rhs_ga: GraphArray = GraphArray.from_ba(rhs, cluster_state, copy_on_op=copy_on_op)
-    return lhs_ga.tensordot(rhs_ga, axes=axes)
+    return GraphArray.tensordot(lhs_ga, rhs_ga, axes=axes)
 
 
 def optimized_tensordot(

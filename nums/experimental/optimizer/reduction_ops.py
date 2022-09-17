@@ -20,7 +20,7 @@ import copy
 import numpy as np
 
 from nums.core.settings import sync_nnz
-from nums.core.array.base import Block
+from nums.core.array.base import BlockBase
 from nums.core.grid.grid import Device
 from nums.core.kernel.kernel_manager import KernelManager
 from nums.experimental.optimizer.clusterstate import ClusterState
@@ -41,10 +41,11 @@ class TreeReductionOp(TreeNode):
         self.action_leaf_q = []
 
     def __repr__(self):
-        return "Reduc(id=%s, op=%s, in=%d)" % (
+        return "Reduc(id=%s, op=%s, in=%d, dense_kernel=%s)" % (
             str(self.tree_node_id),
             self.op_name,
             len(self.children_dict),
+            self.dense_kernel,
         )
 
     def get_children(self):
@@ -83,6 +84,9 @@ class TreeReductionOp(TreeNode):
             if child.tree_node_id in self.leafs_dict:
                 rop.leafs_dict[child_copy.tree_node_id] = child_copy
         # TODO (hme): How do we properly copy random state?
+
+        rop.tree_node_meta = self.tree_node_meta
+        rop.dense_kernel = self.dense_kernel
         return rop
 
     def add_child(self, child: TreeNode):
@@ -215,7 +219,7 @@ class TreeReductionOp(TreeNode):
         assert isinstance(left, Leaf) and isinstance(right, Leaf)
         result = self._collapse(device, left, right)
         new_leaf: Leaf = result[0]
-        new_block: Block = result[1]
+        new_block: BlockBase = result[1]
 
         # Update action leaf queue.
         assert set(leaf_ids) == {self.action_leaf_q.pop(0), self.action_leaf_q.pop(0)}
@@ -231,7 +235,7 @@ class TreeReductionOp(TreeNode):
         # Update cluster state with new block.
         # self.cluster_state.add_block(new_block.id, new_block.size(), [device])
         self.cluster_state.add_block(
-            new_block.id, new_leaf.tree_node_size.nbytes, [device]
+            new_block.id, new_leaf.tree_node_meta.nbytes, [device]
         )
         if not self.cluster_state.created_on_only:
             assert self.cluster_state.blocks_local(left.block.id, right.block.id)
@@ -257,30 +261,42 @@ class TreeReductionOp(TreeNode):
         return self
 
     def _collapse(self, device: Device, left: Leaf, right: Leaf):
-        lblock: Block = left.block
-        rblock: Block = right.block
+        lblock: BlockBase = left.block
+        rblock: BlockBase = right.block
         if self.op_name == "matmul":
             raise ValueError("matmul is not a supported reduction operator.")
         op_name, args = self.op_name, {}
         assert lblock.shape == rblock.shape
-        block: Block = lblock.copy()
+        block: BlockBase = lblock.copy()
         block.transposed = False
         block.dtype = array_utils.get_reduce_output_type(self.op_name, lblock.dtype)
-        block.oid = lblock._km.bop_reduce(
-            op_name,
-            lblock.oid,
-            rblock.oid,
-            lblock.transposed,
-            rblock.transposed,
-            syskwargs={"device": device},
-        )
+        if self.dense_kernel:
+            assert lblock.is_dense and rblock.is_dense
+            block.oid = lblock.km.bop_reduce(
+                op_name,
+                lblock.oid,
+                rblock.oid,
+                lblock.transposed,
+                rblock.transposed,
+                syskwargs={"device": device},
+            )
+        else:
+            assert not lblock.is_dense or not rblock.is_dense
+            block.oid = lblock.km.sparse_bop_reduce(
+                op_name,
+                lblock.oid,
+                rblock.oid,
+                lblock.transposed,
+                rblock.transposed,
+                syskwargs={"device": device},
+            )
         block._device = device
 
         leaf: Leaf = Leaf(self.cluster_state)
         leaf.block = block
-        leaf.tree_node_size = left.tree_node_size.bop(
+        leaf.tree_node_meta = left.tree_node_meta.bop(
             op_name,
-            right.tree_node_size,
+            right.tree_node_meta,
             **args,
         )
         leaf.copy_on_op = self.copy_on_op
@@ -294,22 +310,22 @@ class TreeReductionOp(TreeNode):
         shape = None
         for leaf in leafs:
             assert leaf.tree_node_id in self.leafs_dict
-            leaf_block: Block = leaf.block
+            leaf_block: BlockBase = leaf.block
             if shape is None:
                 shape = leaf_block.shape
             else:
                 assert leaf_block.shape == shape
-        leaf_block: Block = leafs[0].block
+        leaf_block: BlockBase = leafs[0].block
         if leaf_block.is_dense:
             return leaf_block.size()
         if sync_nnz > 1:
-            leafs[0].tree_node_size.nnz = leafs[0].block.nnz  # Blocking fetch
-            leafs[1].tree_node_size.nnz = leafs[1].block.nnz  # Blocking fetch
+            leafs[0].tree_node_meta.nnz = leafs[0].block.nnz  # Blocking fetch
+            leafs[1].tree_node_meta.nnz = leafs[1].block.nnz  # Blocking fetch
         return (
             leafs[0]
-            .tree_node_size.bop(
+            .tree_node_meta.bop(
                 self.op_name,
-                leafs[1].tree_node_size,
+                leafs[1].tree_node_meta,
             )
             .nbytes
         )
@@ -350,10 +366,14 @@ class TreeReductionOp(TreeNode):
             # This will force a different hash for large fused reductions,
             # if this is, for whatever reason, needed.
             size = len(self.children_dict)
-            self._expression = "TreeReductionOp(op=%s, size=%s, id=%s)" % (
-                self.op_name,
-                str(size),
-                self.tree_node_id,
+            self._expression = (
+                "TreeReductionOp(op=%s, size=%s, id=%s, dense_kernel=%s)"
+                % (
+                    self.op_name,
+                    str(size),
+                    self.tree_node_id,
+                    self.dense_kernel,
+                )
             )
         return self._expression
 

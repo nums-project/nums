@@ -23,7 +23,7 @@ import opt_einsum as oe
 
 from nums.core.settings import sync_nnz
 from nums.core.array import utils as array_utils
-from nums.core.array.base import BlockArrayBase, Block
+from nums.core.array.base import BlockBase, BlockArrayBase
 from nums.core.array.blockarray import BlockArray
 from nums.core.array.sparse import SparseBlockArray
 from nums.core.kernel.kernel_manager import KernelManager
@@ -35,12 +35,13 @@ from nums.experimental.optimizer.graph import (
     Leaf,
     UnaryOp,
     ReduceAxis,
+    FunctionNode,
     Einsum,
 )
 from nums.experimental.optimizer.reduction_ops import TreeReductionOp
 from nums.experimental.optimizer.fusion import FuseGraph
 from nums.experimental.optimizer.fusion_utils import set_using_marker, traverse_marker
-from nums.experimental.optimizer.size import TreeNodeSize
+from nums.experimental.optimizer.node_meta import LeafMeta
 
 
 class GraphArray(object):
@@ -50,7 +51,7 @@ class GraphArray(object):
     ) -> np.ndarray:
         graphs = np.empty(shape=ba.grid.grid_shape, dtype=np.object)
         for grid_entry in ba.grid.get_entry_iterator():
-            block: Block = ba.blocks[grid_entry]
+            block: BlockBase = ba.blocks[grid_entry]
             # Allocate the block to the node on which it's created.
             km: KernelManager = ba.km
             device: Device = km.device_grid.get_device(
@@ -66,17 +67,18 @@ class GraphArray(object):
                 nnz = block.nnz  # Blocking fetch
             else:
                 nnz = np.prod(block.shape)
-            leaf.tree_node_size = TreeNodeSize(
+            leaf.tree_node_meta = LeafMeta(
                 block.shape,
                 nnz,
                 block.dtype,
-                block.fill_value,
+                block.is_dense,
             )
+            leaf.dense_kernel = block.is_dense
             leaf.copy_on_op = copy_on_op
             graphs[grid_entry] = leaf
 
             cluster_state.add_block(
-                block.id, leaf.tree_node_size.nbytes, devices=[device]
+                block.id, leaf.tree_node_meta.nbytes, devices=[device]
             )
             cluster_state.init_mem_load(device, block.id)
         return graphs
@@ -110,9 +112,7 @@ class GraphArray(object):
         ), "Cannot convert unsolved GraphArray to BlockArray."
         if sample_node.block.is_dense:
             return BlockArray(self.grid.copy(), self.km, self.to_blocks())
-        return SparseBlockArray(
-            self.grid.copy(), self.km, sample_node.block.fill_value, self.to_blocks()
-        )
+        return SparseBlockArray(self.grid.copy(), self.km, self.to_blocks())
 
     def __init__(
         self,
@@ -166,7 +166,7 @@ class GraphArray(object):
                 yield node
 
     def to_blocks(self) -> np.ndarray:
-        blocks: np.ndarray = np.empty(self.grid.grid_shape, dtype=Block)
+        blocks: np.ndarray = np.empty(self.grid.grid_shape, dtype=BlockBase)
         for grid_entry in self.grid.get_entry_iterator():
             leaf: TreeNode = self.graphs[grid_entry]
             assert isinstance(leaf, Leaf), "%s,%s" % (str(leaf), type(leaf))
@@ -176,28 +176,29 @@ class GraphArray(object):
     def other_to_ga(self, other):
         return GraphArray.to_ga(other, self.cluster_state, self.km, self.copy_on_op)
 
-    def tensordot(self, other, axes=2):
-        other = self.other_to_ga(other)
+    @staticmethod
+    def tensordot(a, b, axes=2):
+        b = a.other_to_ga(b)
         # TODO: Reuse BlockArrayBase tensordot operator.
-        this_axes = self.grid.grid_shape[:-axes]
-        this_sum_axes = self.grid.grid_shape[-axes:]
-        other_axes = other.grid.grid_shape[axes:]
-        other_sum_axes = other.grid.grid_shape[:axes]
-        assert this_sum_axes == other_sum_axes
-        result_shape = tuple(self.shape[:-axes] + other.shape[axes:])
-        result_block_shape = tuple(self.block_shape[:-axes] + other.block_shape[axes:])
+        a_axes = a.grid.grid_shape[:-axes]
+        a_sum_axes = a.grid.grid_shape[-axes:]
+        b_axes = b.grid.grid_shape[axes:]
+        b_sum_axes = b.grid.grid_shape[:axes]
+        assert a_sum_axes == b_sum_axes
+        result_shape = tuple(a.shape[:-axes] + b.shape[axes:])
+        result_block_shape = tuple(a.block_shape[:-axes] + b.block_shape[axes:])
         result_grid = ArrayGrid(
             shape=result_shape,
             block_shape=result_block_shape,
-            dtype=self.dtype.__name__,
+            dtype=a.dtype.__name__,
         )
-        assert result_grid.grid_shape == tuple(this_axes + other_axes)
+        assert result_grid.grid_shape == tuple(a_axes + b_axes)
         result_graphs = np.empty(shape=result_grid.grid_shape, dtype=np.object)
-        this_dims = list(itertools.product(*map(range, this_axes)))
-        other_dims = list(itertools.product(*map(range, other_axes)))
-        sum_dims = list(itertools.product(*map(range, this_sum_axes)))
-        for i in this_dims:
-            for j in other_dims:
+        a_dims = list(itertools.product(*map(range, a_axes)))
+        b_dims = list(itertools.product(*map(range, b_axes)))
+        sum_dims = list(itertools.product(*map(range, a_sum_axes)))
+        for i in a_dims:
+            for j in b_dims:
                 # A \in \R^{I \times K}
                 # B \in \R^{K \times J}
                 # C \in \R^{I \times J}
@@ -205,38 +206,41 @@ class GraphArray(object):
                 grid_entry = tuple(i + j)
                 if len(sum_dims) == 1:
                     k = sum_dims[0]
-                    self_node: TreeNode = self.graphs[tuple(i + k)]
-                    other_node: TreeNode = other.graphs[tuple(k + j)]
-                    dot_node: TreeNode = self_node.tensordot(other_node, axes=axes)
+                    a_node: TreeNode = a.graphs[tuple(i + k)]
+                    b_node: TreeNode = b.graphs[tuple(k + j)]
+                    dot_node: TreeNode = a_node.tensordot(b_node, axes=axes)
                     result_graphs[grid_entry] = dot_node
                 else:
-                    rop = TreeReductionOp(self.cluster_state)
+                    rop = TreeReductionOp(a.cluster_state)
                     rop.set_grid_entry(grid_entry)
                     rop.set_grid_shape(result_grid.grid_shape)
                     rop.op_name = "sum"
-                    rop.copy_on_op = self.copy_on_op
+                    rop.copy_on_op = a.copy_on_op
                     for k in sum_dims:
-                        self_node: TreeNode = self.graphs[tuple(i + k)]
-                        other_node: TreeNode = other.graphs[tuple(k + j)]
-                        dot_node: TreeNode = self_node.tensordot(other_node, axes=axes)
+                        a_node: TreeNode = a.graphs[tuple(i + k)]
+                        b_node: TreeNode = b.graphs[tuple(k + j)]
+                        dot_node: TreeNode = a_node.tensordot(b_node, axes=axes)
                         # Explicitly add parent here, since sum depends on prod.
                         # Not needed for other ops; make_bop takes care of it.
                         # We don't need to copy the node here since the local
                         # tree structure here is never exposed.
                         dot_node.parent = rop
                         rop.add_child(dot_node)
+                    rop.tree_node_meta = dot_node.tree_node_meta
+                    # Assume children are all dense or all sparse.
+                    rop.dense_kernel = dot_node.tree_node_meta.is_dense
                     result_graphs[grid_entry] = rop
 
         return GraphArray(
             result_grid,
-            self.cluster_state,
+            a.cluster_state,
             result_graphs,
-            self.km,
-            copy_on_op=self.copy_on_op,
+            a.km,
+            copy_on_op=a.copy_on_op,
         )
 
     def __matmul__(self, other):
-        return self.tensordot(other, axes=1)
+        return self.tensordot(self, other, axes=1)
 
     def ga_from_arr(self, arr: Union[TreeNode, np.ndarray], result_shape: tuple):
         if isinstance(arr, TreeNode):
@@ -370,6 +374,8 @@ class GraphArray(object):
             assert old_root.parent is None
             uop.child = old_root
             old_root.parent = uop
+        uop.tree_node_meta = old_root.tree_node_meta.uop_partial(op_name)
+        uop.dense_kernel = old_root.tree_node_meta.is_dense
         new_arr[grid_entry] = uop
 
     def reduce_axis(self, op_name, axis, keepdims):
@@ -389,6 +395,12 @@ class GraphArray(object):
             reduced_tnode.op_name = op_name
             reduced_tnode.axis = axis
             reduced_tnode.keepdims = keepdims
+            reduced_tnode.tree_node_meta = tnode.tree_node_meta.reduce_axis_partial(
+                op_name,
+                axis,
+                keepdims,
+            )
+            reduced_tnode.dense_kernel = tnode.tree_node_meta.is_dense
             reduced_graphs[grid_entry] = reduced_tnode
 
         # Compute output GraphArray properties.
@@ -443,6 +455,8 @@ class GraphArray(object):
                 rop.add_child(child)
                 assert child.parent is None
                 child.parent = rop
+            rop.tree_node_meta = child.tree_node_meta
+            rop.dense_kernel = child.tree_node_meta.is_dense
             if result_grid.shape == ():
                 # keepdims = False.
                 result_graphs[()] = rop
@@ -470,6 +484,8 @@ class GraphArray(object):
                     rop.add_child(child)
                     assert child.parent is None
                     child.parent = rop
+                rop.tree_node_meta = child.tree_node_meta
+                rop.dense_kernel = child.tree_node_meta.is_dense
                 result_graphs[result_grid_entry] = rop
 
         return GraphArray(
@@ -486,16 +502,22 @@ class GraphArray(object):
     def compile(self, max_args: int):
         result_graphs = np.empty_like(self.graphs, dtype=self.graphs.dtype)
         counter = 0
+        first_grid_entry = (0,) * len(self.grid.shape)
         for grid_entry in self.grid.get_entry_iterator():
             graph = self.graphs[grid_entry]
             _, leaf_inputs = traverse_marker(graph, 0)
-            if grid_entry == (0,) or grid_entry == (0, 0):  # generic
-                result_graphs[grid_entry] = FuseGraph(
-                    graph, self.km, max_args=max_args
-                )()
-                fused_graph = result_graphs[grid_entry]
-                fused_graph.op_expression = fused_graph._expression
+            if grid_entry == first_grid_entry:
+                fused_graph = FuseGraph(graph, self.km, max_args=max_args)()
+                if not isinstance(fused_graph, FunctionNode):
+                    # Stopgap as this function currently assumes root is FunctionNode.
+                    return self
+                result_graphs[grid_entry] = fused_graph
+                # result_graphs[grid_entry] = FuseGraph(
+                #     graph, self.km, max_args=max_args
+                # )()
+                # fused_graph = result_graphs[grid_entry]
             else:
+                # TODO: support subtree fusion in this section. FuseGraph already does.
                 fused_graph_copy = fused_graph.copy(self.cluster_state, new_ids=True)
                 fused_graph_copy = set_using_marker(fused_graph_copy, leaf_inputs)
                 fused_graph_copy.set_grid_entry(grid_entry)

@@ -227,7 +227,7 @@ def array(object, dtype=None, copy=True, order="K", ndmin=0, subok=False) -> Blo
 
 
 def from_coo(a: sparse.COO):
-    assert(isinstance(a, sparse.COO))
+    assert isinstance(a, sparse.COO)
     dtype = np.__getattribute__(str(a.dtype))
     shape = a.shape
     app = _instance()

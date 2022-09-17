@@ -526,9 +526,8 @@ class KernelCls(KernelImp):
 
     # Sparse
 
-    def dense_to_sparse(self, arr, fill_value):
-        result = COO.from_numpy(arr, fill_value=fill_value)
-        return result
+    def dense_to_sparse(self, arr):
+        return COO.from_numpy(arr, fill_value=0)
 
     def sparse_to_dense(self, arr):
         return arr.todense()
@@ -539,6 +538,16 @@ class KernelCls(KernelImp):
     def sparse_nbytes(self, arr):
         return arr.nbytes
 
+    def new_sparse_block(self, op_name, grid_entry, grid_meta):
+        op_func = sparse.__getattribute__(op_name)
+        grid = ArrayGrid.from_meta(grid_meta)
+        block_shape = grid.get_block_shape(grid_entry)
+        if op_name == "eye":
+            assert np.all(np.diff(grid_entry) == 0)
+            return op_func(*block_shape, dtype=grid.dtype)
+        else:
+            return op_func(block_shape, dtype=grid.dtype)
+
     def sparse_random_block(
         self,
         rng_params,
@@ -547,7 +556,6 @@ class KernelCls(KernelImp):
         shape,
         dtype,
         p,
-        fill_value,
     ):
         rng = block_rng_legacy(*rng_params)
         rfunc = rng.__getattribute__(rfunc_name)
@@ -559,14 +567,11 @@ class KernelCls(KernelImp):
             random_state=rng,
             data_rvs=lambda s: rfunc(**rfunc_args, size=s),
             format="coo",
-            fill_value=fill_value,
+            fill_value=0,
         )
-        if rfunc_name != "randint":
-            # Only random and integer supports sampling of a specific type.
-            result = result.astype(dtype)
-        return result
+        return result.astype(dtype)
 
-    def sparse_map_uop(self, op_name, arr, args, kwargs):
+    def sparse_map_uop(self, op_name, arr, args, kwargs, densify):
         """
         Args:
             func: types.Callable
@@ -577,6 +582,10 @@ class KernelCls(KernelImp):
         args = list(args)
         args.insert(0, arr)
         result = sparse.elemwise(ufunc, *args, **kwargs)
+        if densify and isinstance(result, sparse.SparseArray):
+            result = result.todense()
+        elif not densify:
+            assert isinstance(result, sparse.SparseArray)
         return result
 
     def sparse_bop(self, op, a1, a2, a1_T, a2_T, axes, densify):
@@ -605,12 +614,45 @@ class KernelCls(KernelImp):
             assert isinstance(result, sparse.SparseArray)
         return result
 
+    def sparse_reduce_axis(self, op_name, arr, axis, keepdims, transposed):
+        assert isinstance(arr, sparse.COO)
+        op_func = np.__getattribute__(op_name)
+        if transposed:
+            arr = arr.T
+        return arr.reduce(op_func, axis=axis, keepdims=keepdims)
+
+    def sparse_bop_reduce(self, op, a1, a2, a1_T, a2_T):
+        assert isinstance(a1, sparse.COO) and isinstance(a2, sparse.COO)
+        if a1_T:
+            a1 = a1.T
+        if a2_T:
+            a2 = a2.T
+
+        # These are faster.
+        if op == "sum":
+            r = a1 + a2
+        elif op == "prod":
+            r = a1 * a2
+        else:
+            a = sparse.stack([a1, a2], axis=0)
+            r = a.reduce(np.__getattribute__(op), axis=0, keepdims=False)
+
+        if a1 is np.nan or a2 is np.nan or r is np.nan:
+            assert np.isscalar(a1) and np.isscalar(a2) and np.isscalar(r)
+        else:
+            assert a1.shape == a2.shape == r.shape
+        return r
+
+    def sparse_block_from_scalar(self, x):
+        assert np.isscalar(x)
+        return sparse.COO.from_numpy(np.array(x), fill_value=0)
+
     def sdtp(self, s: sparse.COO, *dense_arrays):
         data = np.copy(s.data)
         for position in range(s.nnz):
             for axis in range(len(s.shape)):
                 data[position] *= dense_arrays[axis][s.coords[axis][position]]
-        return sparse.COO(s.coords, data, shape=s.shape, fill_value=s.fill_value)
+        return sparse.COO(s.coords, data, shape=s.shape, fill_value=0)
 
     def sdtd(self, s: sparse.COO, x: np.ndarray, y: np.ndarray, axes: int):
         # Check some things.
@@ -635,4 +677,4 @@ class KernelCls(KernelImp):
             sx = x[tuple(x_coords)]
             sy = y[tuple(y_coords)]
             data[position] *= np.tensordot(sx, sy, axes=axes)
-        return sparse.COO(s.coords, data, shape=s.shape, fill_value=s.fill_value)
+        return sparse.COO(s.coords, data, shape=s.shape, fill_value=0)
