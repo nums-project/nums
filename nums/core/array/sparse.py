@@ -307,10 +307,10 @@ class SparseBlockArray(BlockArrayBase):
         return rarr
 
     @classmethod
-    def from_sparse(cls, arr, block_shape, copy, km, fill_value=0):
+    def from_sparse(cls, arr, block_shape, copy, km):
         dtype_str = str(arr.dtype)
         grid = ArrayGrid(arr.shape, block_shape, dtype_str)
-        rarr = SparseBlockArray(grid, km, fill_value)
+        rarr = SparseBlockArray(grid, km)
         grid_entry_iterator = grid.get_entry_iterator()
         for grid_entry in grid_entry_iterator:
             grid_slice = grid.get_slice(grid_entry)

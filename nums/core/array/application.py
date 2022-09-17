@@ -230,7 +230,11 @@ class ArrayApplication:
     def scalar(self, value):
         return BlockArray.from_scalar(value, self.km)
 
-    def array(self, array: Union[np.ndarray, sparse.COO, List[float]], block_shape: tuple = None):
+    def array(
+        self,
+        array: Union[np.ndarray, sparse.COO, List[float]],
+        block_shape: tuple = None,
+    ):
         if not isinstance(array, (np.ndarray, sparse.COO)):
             if array_utils.is_array_like(array):
                 array = np.array(array)

@@ -11,7 +11,6 @@ def test_sparse_init(app_inst: ArrayApplication):
     x_ba = app_inst.array(x1, block_shape=(2, 2))
     x_sba = SparseBlockArray.from_ba(x_ba)
     assert x_sba.nnz == 8
-    assert x_sba.nbytes == 8 * 4 + 2 * 8 * 8
     y_ba = x_sba.to_ba()
     assert np.array_equal(x1, y_ba.get())
 
@@ -19,12 +18,11 @@ def test_sparse_init(app_inst: ArrayApplication):
 def test_from_coo(app_inst: ArrayApplication):
     row_coords = [0, 1, 0, 1, 2, 2, 3, 3]
     col_coords = [3, 2, 2, 3, 0, 1, 0, 1]
-    values     = [1, 1, 1, 1, 2, 2, 2, 2]
+    values = [1, 1, 1, 1, 2, 2, 2, 2]
     x_sp = sparse.COO([row_coords, col_coords], values)
     x_de = x_sp.todense()
     x_sba = app_inst.array(x_sp, block_shape=(2, 2))
     assert x_sba.nnz == 8
-    assert x_sba.nbytes == 8 * 4 + 2 * 8 * 8
     y_ba = x_sba.to_ba()
     assert np.array_equal(x_de, y_ba.get())
 
