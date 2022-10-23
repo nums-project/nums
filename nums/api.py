@@ -25,10 +25,14 @@ def init(
     address: Optional[str] = None,
     num_cpus: Optional[int] = None,
     cluster_shape: Optional[tuple] = None,
+    backend: Optional[str] = None,
 ):
     # pylint: disable = import-outside-toplevel
     import nums.core.settings as settings
 
+    if backend is not None:
+        assert backend in {"serial", "ray", "dask", "mpi"}
+        settings.backend_name = backend
     if cluster_shape is not None:
         assert settings.cluster_shape is None
         settings.cluster_shape = cluster_shape

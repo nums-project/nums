@@ -24,6 +24,23 @@ from nums.core.array.blockarray import BlockArray
 # pylint: disable=import-outside-toplevel
 
 
+def test_init():
+    import nums
+    from nums.core import application_manager
+    from nums.core.backends.serial import SerialBackend
+    from nums.core.backends.ray import RayBackend
+
+    nums.init(backend="serial")
+    instance = application_manager.instance()
+    assert isinstance(instance.km.backend, SerialBackend)
+    application_manager.destroy()
+
+    nums.init(backend="ray")
+    instance = application_manager.instance()
+    assert isinstance(instance.km.backend, RayBackend)
+    application_manager.destroy()
+
+
 def test_rwd():
     import nums
     from nums.core import application_manager
