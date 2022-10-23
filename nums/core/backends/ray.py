@@ -127,7 +127,7 @@ class RayBackend(Backend):
     def warmup(self, n: int):
         # Quick warm-up. Useful for quick and more accurate testing.
         if n > 0:
-            assert n < 10**6
+            assert n < 10 ** 6
 
             def warmup_func(n):
                 # pylint: disable=import-outside-toplevel
@@ -171,7 +171,7 @@ class RayBackend(Backend):
             node_key = self._node_key(node)
             if "resources" in options:
                 assert node_key not in options
-            options["resources"] = {node_key: 1.0 / 10**4}
+            options["resources"] = {node_key: 1.0 / 10 ** 4}
         return self._remote_functions[name].options(**options).remote(*args, **kwargs)
 
     def devices(self) -> List[Device]:
@@ -200,7 +200,7 @@ class RayBackend(Backend):
         actor = self._actors[name]
         node = self._device_to_node[device]
         node_key = self._node_key(node)
-        options = {"resources": {node_key: 1.0 / 10**4}}
+        options = {"resources": {node_key: 1.0 / 10 ** 4}}
         return actor.options(**options).remote(*args, **kwargs)
 
     def call_actor_method(self, actor, method: str, *args, **kwargs):

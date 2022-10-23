@@ -63,7 +63,9 @@ def test_blockarray_perm(nps_app_inst):
     )
     np_arr = arr.get()
     rs = nps.random.RandomState(1337)
-    np_arr_shuffle: BlockArray = rs.permutation(arr).get()
+    np_arr_shuffle: BlockArray = rs.permutation(
+        arr
+    ).get()  # bug in random where it's not cupy
     for i in range(shape[0]):
         num_found = 0
         for j in range(shape[0]):

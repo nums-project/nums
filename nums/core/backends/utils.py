@@ -17,6 +17,7 @@ import errno
 import inspect
 import socket
 import types
+import os
 from functools import wraps
 import warnings
 
@@ -42,6 +43,17 @@ def get_num_cores(reserved_for_os=2):
     cores -= reserved_for_os
     assert cores >= 2
     return cores
+
+
+def get_num_gpus():
+    # TODO: Try to get the number of GPUs from Ray
+    try:
+        gpus = int(
+            os.popen("nvidia-smi --query-gpu=name --format=csv,noheader | wc -l").read()
+        )
+    except:
+        gpus = 0
+    return gpus
 
 
 def method_meta(num_returns=1):

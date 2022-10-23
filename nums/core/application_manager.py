@@ -29,6 +29,10 @@ from nums.core.backends import (
     SerialBackend,
     RayBackend,
     RayBackendStockScheduler,
+    GPUSerialBackend,
+    GPUParallelBackend,
+    GPURayActorBackend,
+    GPUIntraBackend,
     MPIBackend,
 )
 from nums.core.backends import utils as backend_utils
@@ -76,10 +80,31 @@ def create():
         if settings.num_cpus is None
         else settings.num_cpus
     )
+    num_gpus = int(backend_utils.get_num_gpus())
+
     cluster_shape = (1, 1) if settings.cluster_shape is None else settings.cluster_shape
+
+    """
+    #TODO: rename to these
+    gpu-serial
+    gpu-ray
+    gpu-nccl
+    """
 
     # Initialize kernel interface and backend.
     backend_name = settings.backend_name
+
+    # Catch errors for GPU support
+    if num_gpus == 0 and "gpu" in backend_name:
+        try:
+            import cupy
+        except ImportError:
+            raise Exception(
+                "GPU backend requested but CuPy is not installed. "
+                "Please install CuPy to use the GPU backend."
+            )
+        raise Exception("GPU backend requested but no GPUs found through nvidia-smi.")
+
     if backend_name == "serial":
         backend: Backend = SerialBackend(num_cpus)
     elif backend_name == "ray":
@@ -93,6 +118,34 @@ def create():
         )
     elif backend_name == "mpi":
         backend: Backend = MPIBackend()
+    elif backend_name == "gpu":
+        # TODO: These are temporary names, change once finalized
+        # TODO: Don't really need a head node for GPU support in general.
+        backend: Backend = GPUSerialBackend()
+    elif backend_name == "gpu-ray":
+        num_nodes = int(np.product(cluster_shape))
+        backend: Backend = GPUParallelBackend(
+            address=settings.address,
+            use_head=True,  # TODO: temporary
+            num_nodes=num_nodes,
+            num_cpus=num_cpus,
+            num_gpus=num_gpus,
+        )
+    elif backend_name == "gpu-ray-actor":  # TODO: Remove if not needed
+        num_nodes = int(np.product(cluster_shape))
+        backend: Backend = GPURayActorBackend(
+            address=settings.address,
+            use_head=True,  # TODO: temporary
+            num_nodes=num_nodes,
+            num_cpus=num_cpus,
+            num_gpus=num_gpus,
+        )
+    elif backend_name == "gpu-intra":
+        backend: Backend = GPUIntraBackend()
+        # TODO: figure out how to explicitly handle the cluster shape
+        # Maybe handle a intra cluster shape?
+        cluster_shape = (num_gpus, 1)
+
     elif backend_name == "ray-scheduler":
         use_head = settings.use_head
         num_devices = int(np.product(cluster_shape))
@@ -128,15 +181,32 @@ def create():
         raise Exception("Unexpected backend name %s" % settings.backend_name)
     backend.init()
 
-    kernel_module = {"numpy": numpy_kernel}[settings.kernel_name]
+    device_type = "cpu"
+    # TODO: this is temporary
+    if (
+        backend_name == "gpu"
+        or backend_name == "gpu-ray"
+        or backend_name == "gpu-ray-actor"
+    ):
+        from nums.core.kernel import cupy_kernel
+
+        kernel_module = {"cupy": cupy_kernel}["cupy"]
+        device_type = "gpu"
+    elif backend_name == "gpu-intra":
+        from nums.core.kernel import cupy_parallel_kernel
+
+        kernel_module = {"cupy": cupy_parallel_kernel}["cupy"]
+        device_type = "gpu"
+    else:
+        kernel_module = {"numpy": numpy_kernel}[settings.kernel_name]
 
     if settings.device_grid_name == "cyclic":
         device_grid: DeviceGrid = CyclicDeviceGrid(
-            cluster_shape, "cpu", backend.devices()
+            cluster_shape, device_type, backend.devices()
         )
     elif settings.device_grid_name == "packed":
         device_grid: DeviceGrid = PackedDeviceGrid(
-            cluster_shape, "cpu", backend.devices()
+            cluster_shape, device_type, backend.devices()  # TODO: GPU?
         )
     else:
         raise Exception("Unexpected device grid name %s" % settings.device_grid_name)

@@ -25,6 +25,15 @@ from nums.core.grid.grid import ArrayGrid
 from nums.core.kernel.kernel_manager import KernelManager
 
 
+from cupy.cuda.nccl import (
+    NcclCommunicator,
+    NCCL_INT32,
+    NCCL_INT64,
+    NCCL_SUM,
+    groupStart,
+    groupEnd,
+)
+
 # pylint: disable=too-many-lines
 
 
@@ -986,7 +995,7 @@ class BlockArray(BlockArrayBase):
 
     def __rpow__(self, other):
         other = self.check_or_convert_other(other)
-        return other**self
+        return other ** self
 
     __ipow__ = __pow__
 
@@ -1177,10 +1186,10 @@ class Reshape:
         # A set of these indices may be transmitted over the network,
         # so we want to pick the smallest encoding possible.
         index_types = [
-            (2**8, np.uint8),
-            (2**16, np.uint16),
-            (2**32, np.uint32),
-            (2**64, np.uint64),
+            (2 ** 8, np.uint8),
+            (2 ** 16, np.uint16),
+            (2 ** 32, np.uint32),
+            (2 ** 64, np.uint64),
         ]
         index_type = None
         for bound, curr_index_type in index_types:

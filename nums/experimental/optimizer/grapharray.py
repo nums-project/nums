@@ -255,7 +255,7 @@ class GraphArray(object):
     def __pow__(self, other):
         other = self.other_to_ga(other)
         return self.ga_from_arr(
-            self.graphs**other.graphs,
+            self.graphs ** other.graphs,
             array_utils.broadcast_shape(self.shape, other.shape),
         )
 
@@ -284,7 +284,7 @@ class GraphArray(object):
 
     def __rpow__(self, other):
         other = self.other_to_ga(other)
-        return other**self
+        return other ** self
 
     # Unary operators.
     def __neg__(self):

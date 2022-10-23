@@ -140,7 +140,8 @@ class DeviceGrid:
             if device.node_id not in node_map:
                 node_map[device.node_id] = 0
             node_map[device.node_id] += 1
-        assert len(node_addr_check) == len(node_map)
+        if device.device_type == "cpu":
+            assert len(node_addr_check) == len(node_map)
         devices_per_node = None
         for _, device_count in node_map.items():
             if devices_per_node is None:

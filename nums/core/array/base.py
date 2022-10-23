@@ -21,6 +21,7 @@ import numpy as np
 from nums.core.array import utils as array_utils
 from nums.core.kernel.kernel_manager import KernelManager
 from nums.core.grid.grid import ArrayGrid
+from nums.core import settings
 
 
 class Block:
