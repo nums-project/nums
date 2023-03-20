@@ -1,0 +1,1 @@
+.. automodule:: numpy.doc.constants
